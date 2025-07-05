@@ -1,0 +1,36 @@
+{
+  "name": "my-ammex-website",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.518.0",
+    "prop-types": "^15.8.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-router-dom": "7.6.2",
+    "recharts": "^2.15.4",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.2.37",
+    "@types/react-dom": "18.2.15",
+    "@vitejs/plugin-react": "4.2.0",
+    "autoprefixer": "10.4.21",
+    "eslint": "8.53.0",
+    "eslint-plugin-react-hooks": "4.6.0",
+    "eslint-plugin-react-refresh": "0.4.4",
+    "postcss": "8.5.3",
+    "shadcn-ui": "^0.9.5",
+    "tailwindcss": "4.1.7",
+    "vite": "5.0.0"
+  }
+}
