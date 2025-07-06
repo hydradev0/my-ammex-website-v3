@@ -161,7 +161,7 @@ const Dashboard = () => {
       <>
         <TopBar />
         <Navigation />
-        <div className="w-full min-h-[calc(100vh-140px)] flex flex-col items-center justify-center">
+        <div className="w-full min-h-[calc(100vh)] flex flex-col items-center justify-center">
           <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
           <div className="text-gray-600 text-lg">Loading Dashboard Data...</div>
         </div>

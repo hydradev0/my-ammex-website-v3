@@ -12,7 +12,8 @@ function Inventory() {
     { id: 1, name: 'Machine' },
     { id: 2, name: 'Marker' },
     { id: 3, name: 'Drill' },
-    { id: 4, name: 'Raw Materials' }
+    { id: 4, name: 'Raw Materials' },
+    { id: 5, name: 'Tools' }
   ]);
 
   return (

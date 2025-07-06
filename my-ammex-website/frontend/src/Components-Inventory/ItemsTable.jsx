@@ -14,7 +14,8 @@ const CATEGORY_STYLES = {
   'Raw Materials': 'bg-blue-100 text-blue-800',
   'Machine': 'bg-green-100 text-green-800',
   'Marker': 'bg-purple-100 text-purple-800',
-  'Drill': 'bg-orange-100 text-orange-800'
+  'Drill': 'bg-orange-100 text-orange-800',
+  'Tools': 'bg-red-100 text-red-800',
 };
 
 function mapStockDataToItemTableFormat(stockItem) {
@@ -161,7 +162,7 @@ function ItemsTable({ categories, setCategories }) {
             filterValue={filterValue}
             setFilterValue={setFilterValue}
             customerCount={filteredItems.length}
-            filterOptions={['Filter by...', 'Raw Materials', 'Machine', 'Marker', 'Drill']}
+            filterOptions={['Filter by...', ...categories.map(category => category.name)]}
             placeholder="Search items..."
           />
           

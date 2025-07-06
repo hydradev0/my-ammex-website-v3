@@ -400,7 +400,7 @@ ItemModal.propTypes = {
       name: PropTypes.string.isRequired
     })
   ).isRequired
-};
+};  
 
 function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', ...props }) {
   return (
