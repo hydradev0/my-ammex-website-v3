@@ -1,7 +1,6 @@
-// PostgreSQL Configuration (Commented out to prevent interruption)
-// const { Sequelize } = require('sequelize');
+const { Sequelize } = require('sequelize');
 
-// let sequelize = null;
+let sequelize = null;
 
 const connectDB = async () => {
   try {
@@ -15,38 +14,72 @@ const connectDB = async () => {
       return;
     }
 
-    // PostgreSQL Connection (Commented out to prevent interruption)
-    /*
+    // PostgreSQL Connection with best practices
     if (process.env.DATABASE_URL) {
       sequelize = new Sequelize(process.env.DATABASE_URL, {
         dialect: 'postgres',
-        logging: false, // Set to console.log to see SQL queries
+        logging: process.env.NODE_ENV === 'development' ? console.log : false,
         pool: {
-          max: 5,
-          min: 0,
-          acquire: 30000,
-          idle: 10000
+          max: 10, // Maximum number of connection instances
+          min: 0,  // Minimum number of connection instances
+          acquire: 60000, // Maximum time, in milliseconds, that pool will try to get connection before throwing error
+          idle: 10000 // Maximum time, in milliseconds, that a connection can be idle before being released
+        },
+        dialectOptions: {
+          ssl: process.env.NODE_ENV === 'production' ? {
+            require: true,
+            rejectUnauthorized: false
+          } : false
+        },
+        define: {
+          timestamps: true, // Adds createdAt and updatedAt timestamps
+          underscored: true, // Use snake_case for column names
+          freezeTableName: true // Prevents Sequelize from pluralizing table names
         }
       });
 
+      // Test the connection
       await sequelize.authenticate();
-      console.log('PostgreSQL Connected successfully.');
+      console.log('✅ PostgreSQL Connected successfully.');
       
       // Sync all models (in development)
       if (process.env.NODE_ENV === 'development') {
         await sequelize.sync({ alter: true });
-        console.log('Database synchronized.');
+        console.log('✅ Database synchronized.');
       }
     }
-    */
 
   } catch (error) {
-    console.error(`Database connection error: ${error.message}`);
+    console.error(`❌ Database connection error: ${error.message}`);
     console.log('⚠️  Continuing without database connection for development');
     // Don't exit process for development
-    // process.exit(1);
   }
 };
 
+// Graceful shutdown function
+const closeDB = async () => {
+  if (sequelize) {
+    try {
+      await sequelize.close();
+      console.log('✅ Database connection closed.');
+    } catch (error) {
+      console.error('❌ Error closing database connection:', error.message);
+    }
+  }
+};
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Received SIGINT. Closing database connection...');
+  await closeDB();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Received SIGTERM. Closing database connection...');
+  await closeDB();
+  process.exit(0);
+});
+
 // Export both the connection function and sequelize instance
-module.exports = { connectDB, sequelize: null }; 
+module.exports = { connectDB, sequelize, closeDB }; 

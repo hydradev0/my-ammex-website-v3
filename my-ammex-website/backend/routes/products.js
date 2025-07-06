@@ -1,40 +1,58 @@
 const express = require('express');
 const router = express.Router();
-const Product = require('../models/Product');
+const { check } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const {
+  getAllProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getLowStockProducts,
+  updateProductStock
+} = require('../controllers/productController');
 
-// Get all products
-router.get('/', protect, async (req, res) => {
-  const products = await Product.find();
-  res.json(products);
-});
+// Validation middleware
+const validateProduct = [
+  check('name', 'Product name is required').not().isEmpty(),
+  check('sku', 'SKU is required').not().isEmpty(),
+  check('price', 'Price must be a positive number').isFloat({ min: 0 }),
+  check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 })
+];
 
-// Get a single product by ID
-router.get('/:id', protect, async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Product not found' });
-  res.json(product);
-});
+// @route   GET /api/products
+// @desc    Get all products
+// @access  Private
+router.get('/', protect, getAllProducts);
 
-// Create a new product (admin only)
-router.post('/', protect, authorize('admin'), async (req, res) => {
-  const product = new Product(req.body);
-  await product.save();
-  res.status(201).json(product);
-});
+// @route   GET /api/products/low-stock
+// @desc    Get low stock products
+// @access  Private
+router.get('/low-stock', protect, getLowStockProducts);
 
-// Update a product (admin only)
-router.put('/:id', protect, authorize('admin'), async (req, res) => {
-  const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  if (!product) return res.status(404).json({ message: 'Product not found' });
-  res.json(product);
-});
+// @route   GET /api/products/:id
+// @desc    Get single product by ID
+// @access  Private
+router.get('/:id', protect, getProductById);
 
-// Delete a product (admin only)
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
-  const product = await Product.findByIdAndDelete(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Product not found' });
-  res.json({ message: 'Product deleted' });
-});
+// @route   POST /api/products
+// @desc    Create new product (admin only)
+// @access  Private/Admin
+router.post('/', protect, authorize('admin'), validateProduct, createProduct);
+
+// @route   PUT /api/products/:id
+// @desc    Update product (admin only)
+// @access  Private/Admin
+router.put('/:id', protect, authorize('admin'), updateProduct);
+
+// @route   PATCH /api/products/:id/stock
+// @desc    Update product stock
+// @access  Private
+router.patch('/:id/stock', protect, updateProductStock);
+
+// @route   DELETE /api/products/:id
+// @desc    Delete product (admin only)
+// @access  Private/Admin
+router.delete('/:id', protect, authorize('admin'), deleteProduct);
 
 module.exports = router; 
