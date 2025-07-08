@@ -113,6 +113,21 @@ const AnalyticsModal = ({
     );
   };
 
+  // Handle body overflow when modal is open
+  React.useEffect(() => {
+    if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const modalContent = (

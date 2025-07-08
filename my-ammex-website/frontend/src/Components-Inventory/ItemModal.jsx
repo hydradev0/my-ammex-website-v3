@@ -53,19 +53,22 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [vendorDropdownOpen, categoryDropdownOpen]);
+  
+  if (!isOpen) return null;
 
   useEffect(() => {
     if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
       document.body.classList.add('overflow-hidden');
     } else {
+      document.documentElement.classList.remove('overflow-hidden');
       document.body.classList.remove('overflow-hidden');
     }
     return () => {
+      document.documentElement.classList.remove('overflow-hidden');
       document.body.classList.remove('overflow-hidden');
     };
   }, [isOpen]);
-
-  if (!isOpen) return null;
   
   // Handle form input changes
   const handleInputChange = (e) => {

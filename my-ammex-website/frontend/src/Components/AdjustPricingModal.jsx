@@ -21,6 +21,20 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
     }
   }, [product]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [isOpen]);
+
   const handleNewPriceChange = (e) => {
     const value = parseFloat(e.target.value) || 0;
     setNewPrice(value);

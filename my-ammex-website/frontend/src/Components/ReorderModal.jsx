@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 function ReorderModal({ isOpen, onClose, product, onReorder }) {
+
   if (!isOpen || !product) return null;
 
   const [reorderQuantity, setReorderQuantity] = useState(product.reorderQuantity);
@@ -37,6 +38,20 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
     const initialDuration = calculateStockDuration(product.reorderQuantity, product.monthlySales);
     setStockDuration(initialDuration);
   }, [product.reorderQuantity, product.monthlySales]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [isOpen]);
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -155,9 +170,11 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
       </div>
     </div>
   );
+  
 
   // Use portal to render modal outside the scaled container
   return createPortal(modalContent, document.body);
 }
+
 
 export default ReorderModal;

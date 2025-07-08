@@ -1,114 +1,135 @@
 const express = require('express');
 const router = express.Router();
-const analyticsController = require('../controllers/analytics');
-const auth = require('../middleware/auth');
+const analyticsController = require('../controllers/analyticsController');
+const { protect } = require('../middleware/auth');
 
-// Get comprehensive analytics dashboard
-router.get('/dashboard', auth, analyticsController.getDashboardAnalytics);
+// @route   GET /api/analytics/dashboard
+// @desc    Get comprehensive analytics dashboard
+// @access  Private
+router.get('/dashboard', protect, analyticsController.getDashboardAnalytics);
 
-// Get specific analytics data
-router.get('/sales', auth, async (req, res) => {
+// @route   GET /api/analytics/sales
+// @desc    Get sales analytics
+// @access  Private
+router.get('/sales', protect, async (req, res, next) => {
   try {
     const salesMetrics = await analyticsController.getSalesMetrics();
     res.json({ success: true, data: salesMetrics });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch sales analytics' });
+    next(error);
   }
 });
 
-router.get('/inventory', auth, async (req, res) => {
+// @route   GET /api/analytics/inventory
+// @desc    Get inventory analytics
+// @access  Private
+router.get('/inventory', protect, async (req, res, next) => {
   try {
     const inventoryMetrics = await analyticsController.getInventoryMetrics();
     res.json({ success: true, data: inventoryMetrics });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch inventory analytics' });
+    next(error);
   }
 });
 
-router.get('/customers', auth, async (req, res) => {
+// @route   GET /api/analytics/customers
+// @desc    Get customer analytics
+// @access  Private
+router.get('/customers', protect, async (req, res, next) => {
   try {
     const customerMetrics = await analyticsController.getCustomerMetrics();
     res.json({ success: true, data: customerMetrics });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch customer analytics' });
+    next(error);
   }
 });
 
 // AI Predictions
-router.get('/predictions/sales', auth, async (req, res) => {
+// @route   GET /api/analytics/predictions/sales
+// @desc    Get sales forecast
+// @access  Private
+router.get('/predictions/sales', protect, async (req, res, next) => {
   try {
     const salesForecast = await analyticsController.predictSales();
     res.json({ success: true, data: salesForecast });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to generate sales forecast' });
+    next(error);
   }
 });
 
-router.get('/predictions/demand', auth, async (req, res) => {
+// @route   GET /api/analytics/predictions/demand
+// @desc    Get demand forecast
+// @access  Private
+router.get('/predictions/demand', protect, async (req, res, next) => {
   try {
     const demandForecast = await analyticsController.predictDemand();
     res.json({ success: true, data: demandForecast });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to generate demand forecast' });
+    next(error);
   }
 });
 
-router.get('/predictions/inventory', auth, async (req, res) => {
+// @route   GET /api/analytics/predictions/inventory
+// @desc    Get inventory forecast
+// @access  Private
+router.get('/predictions/inventory', protect, async (req, res, next) => {
   try {
     const inventoryForecast = await analyticsController.predictInventoryNeeds();
     res.json({ success: true, data: inventoryForecast });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to generate inventory forecast' });
+    next(error);
   }
 });
 
 // Reorder recommendations
-router.get('/recommendations/reorder', auth, async (req, res) => {
+// @route   GET /api/analytics/recommendations/reorder
+// @desc    Get reorder recommendations
+// @access  Private
+router.get('/recommendations/reorder', protect, async (req, res, next) => {
   try {
     const recommendations = await analyticsController.getReorderRecommendations();
     res.json({ success: true, data: recommendations });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to generate reorder recommendations' });
-  }
-});
-
-// Anomaly detection
-router.get('/anomalies', auth, async (req, res) => {
-  try {
-    const anomalies = await analyticsController.detectAnomalies();
-    res.json({ success: true, data: anomalies });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to detect anomalies' });
+    next(error);
   }
 });
 
 // Customer segmentation
-router.get('/customers/segments', auth, async (req, res) => {
+// @route   GET /api/analytics/customers/segments
+// @desc    Get customer segments
+// @access  Private
+router.get('/customers/segments', protect, async (req, res, next) => {
   try {
     const segments = await analyticsController.segmentCustomers();
     res.json({ success: true, data: segments });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to segment customers' });
+    next(error);
   }
 });
 
 // Customer lifetime value
-router.get('/customers/ltv', auth, async (req, res) => {
+// @route   GET /api/analytics/customers/ltv
+// @desc    Get customer lifetime value
+// @access  Private
+router.get('/customers/ltv', protect, async (req, res, next) => {
   try {
     const ltv = await analyticsController.calculateCustomerLTV();
     res.json({ success: true, data: ltv });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to calculate customer LTV' });
+    next(error);
   }
 });
 
 // Stock turnover analysis
-router.get('/inventory/turnover', auth, async (req, res) => {
+// @route   GET /api/analytics/inventory/turnover
+// @desc    Get stock turnover analysis
+// @access  Private
+router.get('/inventory/turnover', protect, async (req, res, next) => {
   try {
     const turnover = await analyticsController.calculateStockTurnover();
     res.json({ success: true, data: turnover });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to calculate stock turnover' });
+    next(error);
   }
 });
 

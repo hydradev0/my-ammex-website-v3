@@ -112,7 +112,7 @@ const PaginationTable = ({
 
   return (
     <div className={`flex items-center justify-between px-2 py-3 ${className}`}>
-      {/* Items per page selector and Go to page */}
+      
       {showItemsPerPage && (
         <div className="flex items-center space-x-4">
           {/* Custom Dropdown for Rows per page */}
@@ -183,6 +183,13 @@ const PaginationTable = ({
             />
           </form>
           {gotoError && <span className="text-xs text-red-600 ml-2">{gotoError}</span>}
+
+          {/*Show just the items per page selector when there's only one page*/}
+            <div className="flex items-center space-x-6 lg:space-x-8">
+              <div className="flex w-[150px] items-center justify-center text-md font-bold text-gray-700 whitespace-nowrap">
+                All records - ({totalItems})
+              </div>
+            </div>
         </div>
       )}
 
@@ -250,14 +257,7 @@ const PaginationTable = ({
             </button>
           </div>
         </div>
-      ) : (
-        // Show just the items per page selector when there's only one page
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex w-[150px] items-center justify-center text-md font-bold text-gray-700 whitespace-nowrap">
-            All records - ({totalItems})
-          </div>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };

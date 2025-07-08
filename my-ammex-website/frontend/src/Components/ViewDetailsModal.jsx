@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
+import { useEffect } from 'react';
 
 function ViewDetailsModal({ 
   onClose, 
@@ -11,6 +12,20 @@ function ViewDetailsModal({
   isOpen = true
 }) {
   if (!isOpen || !data) return null;
+
+  useEffect(() => {
+    if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [isOpen]);
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

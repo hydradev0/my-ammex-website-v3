@@ -5,11 +5,14 @@ import { useEffect } from 'react';
 function OrdersModal({ isOpen, onClose, title, children, titleClassName }) {
   useEffect(() => {
     if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
       document.body.classList.add('overflow-hidden');
     } else {
+      document.documentElement.classList.remove('overflow-hidden');
       document.body.classList.remove('overflow-hidden');
     }
     return () => {
+      document.documentElement.classList.remove('overflow-hidden');
       document.body.classList.remove('overflow-hidden');
     };
   }, [isOpen]);

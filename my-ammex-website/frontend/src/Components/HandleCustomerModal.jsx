@@ -12,12 +12,14 @@ function HandleCustomerModal({
 }) {
   useEffect(() => {
     if (isOpen) {
+      document.documentElement.classList.add('overflow-hidden');
       document.body.classList.add('overflow-hidden');
     } else {
+      document.documentElement.classList.remove('overflow-hidden');
       document.body.classList.remove('overflow-hidden');
     }
-    // Clean up on unmount
     return () => {
+      document.documentElement.classList.remove('overflow-hidden');
       document.body.classList.remove('overflow-hidden');
     };
   }, [isOpen]);

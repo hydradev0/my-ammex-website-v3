@@ -35,6 +35,21 @@ export const analyticsData = {
     averageOrderValue: 450,
     previousMonthOrderValue: 420,
     previousMonthOrders: 280
+  },
+  cartInsights: {
+    conversionRate: 34,
+    itemsAbandoned: 205,
+    revenueLost: 2850,
+    abandonedProducts: [
+      { name: 'Drill', count: 80 },
+      { name: 'Wrenches', count: 65 },
+      { name: 'Grinder', count: 40 },
+      { name: 'Screwdriver', count: 20 },
+    ],
+    cartConversion: [
+      { name: 'Converted', value: 34 },
+      { name: 'Abandoned', value: 66 },
+    ]
   }
 };
 

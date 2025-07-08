@@ -9,6 +9,7 @@ export const inventoryAlertsData = itemsData
     currentStock: item.quantity,
     minimumStockLevel: item.minLevel,
     category: item.category,
+    monthlySales: item.unitsSold,
     severity: item.quantity === 0 ? 'critical' : (item.quantity <= item.minLevel * 0.5 ? 'high' : 'medium'),
     status: 'active',
   }));

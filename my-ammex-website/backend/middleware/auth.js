@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User } = require('../models-postgres');
 
 // Protect routes
 exports.protect = async (req, res, next) => {
@@ -23,10 +23,12 @@ exports.protect = async (req, res, next) => {
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
 
     // Get user from the token
-    const user = await User.findById(decoded.id);
+    const user = await User.findByPk(decoded.id, {
+      attributes: { exclude: ['password'] }
+    });
     
     if (!user) {
       return res.status(401).json({
@@ -43,8 +45,7 @@ exports.protect = async (req, res, next) => {
     }
 
     // Update last login
-    user.lastLogin = Date.now();
-    await user.save();
+    await user.update({ lastLogin: new Date() });
 
     req.user = user;
     next();
@@ -59,6 +60,13 @@ exports.protect = async (req, res, next) => {
 // Grant access to specific roles
 exports.authorize = (...roles) => {
   return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated',
+      });
+    }
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -72,6 +80,13 @@ exports.authorize = (...roles) => {
 // Check department access
 exports.checkDepartment = (...departments) => {
   return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated',
+      });
+    }
+
     if (!departments.includes(req.user.department)) {
       return res.status(403).json({
         success: false,

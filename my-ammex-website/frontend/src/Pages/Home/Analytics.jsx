@@ -9,8 +9,9 @@ import SmartReorder from '../../Components-Analytics/SmartReorder';
 import StockMovement from '../../Components-Analytics/StockMovement';
 import MetricsCard from '../../Components-Analytics/MetricsCard';
 import TopProducts from '../../Components-Analytics/TopProducts';
-import { getSalesData } from '../../services/analyticsService';
+import { getSalesData, getCartInsights } from '../../services/analyticsService';
 import { getFormattedMetrics } from '../../data/analyticsData';
+import CartInsights from '../../Components-Analytics/CartInsights';
 
 const Analytics = () => {
   const [metrics, setMetrics] = useState({
@@ -19,6 +20,7 @@ const Analytics = () => {
     orders: { value: '0 Orders', previousMonth: '0 Orders', percentageChange: 0 }
   });
   const [salesData, setSalesData] = useState(null);
+  const [cartInsightsData, setCartInsightsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,12 +28,14 @@ const Analytics = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [formattedMetrics, salesData] = await Promise.all([
+        const [formattedMetrics, salesData, cartInsightsData] = await Promise.all([
           Promise.resolve(getFormattedMetrics()),
-          getSalesData()
+          getSalesData(),
+          getCartInsights()
         ]);
         setMetrics(formattedMetrics);
         setSalesData(salesData);
+        setCartInsightsData(cartInsightsData);
       } catch (err) {
         console.error('Error fetching analytics data:', err);
         setError('Failed to load analytics data');
@@ -109,9 +113,11 @@ const Analytics = () => {
                     sales: `${product.sales} units`,
                     growth: product.growth
                   })) || []}
-                />
+                />  
               </div>
-
+              <div className="w-full mt-1">
+                <CartInsights data={cartInsightsData} />
+              </div>
             </div>
             
             {/* Second Column - 1/3 width */}

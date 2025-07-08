@@ -75,4 +75,13 @@ export const getCustomerAnalytics = async () => {
   
   // For now, return mock data
   return analyticsData.customerMetrics;
+};
+
+// This function will be replaced with actual API call later
+export const getCartInsights = async () => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // For now, return mock data
+  return analyticsData.cartInsights;
 }; 
