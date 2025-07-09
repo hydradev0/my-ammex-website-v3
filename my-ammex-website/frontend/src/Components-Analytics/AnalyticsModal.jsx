@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useMemo, useRef } from 'react';
 import { X, ChevronDown, Filter } from 'lucide-react';
 import PaginationModal from '../Components/PaginationModal';
+import { createPortal } from 'react-dom';
+import ScrollLock from "../Components/ScrollLock";
 
 const AnalyticsModal = ({ 
   isOpen, 
@@ -22,6 +23,7 @@ const AnalyticsModal = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('lowestToHighest');
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const modalRef = useRef(null);
 
   // Reset to first page when modal opens
   React.useEffect(() => {
@@ -50,6 +52,20 @@ const AnalyticsModal = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isSortDropdownOpen]);
+
+  // Handle click outside modal
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && modalRef.current && event.target === modalRef.current) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   // Handle sort change
   const handleSortChange = (newSortBy) => {
@@ -113,31 +129,21 @@ const AnalyticsModal = ({
     );
   };
 
-  // Handle body overflow when modal is open
-  React.useEffect(() => {
-    if (isOpen) {
-      document.documentElement.classList.add('overflow-hidden');
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className={`bg-white rounded-lg p-6 ${width} flex flex-col ${maxHeight}`} style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}>
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+      <div
+        className={`bg-white rounded-lg p-6 ${width} flex flex-col ${maxHeight} overflow-hidden`}
+        style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+      >
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">{title}</h2>
-            
             {/* Sort Filter Dropdown */}
             {showSortFilter && (
               <div className="relative sort-dropdown">
@@ -149,7 +155,6 @@ const AnalyticsModal = ({
                   Sort by Units Sold:
                   <ChevronDown className={`h-6 w-6 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-                  
                 {isSortDropdownOpen && (
                   <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
                     <button
@@ -173,45 +178,60 @@ const AnalyticsModal = ({
               </div>
             )}
           </div>
-          
           <button 
-            className="hover:text-white hover:bg-red-800 text-gray-500 mb-4"
             onClick={onClose} 
+            className="hover:text-gray-400 text-gray-600 mb-4"
           >
             <X className="h-8 w-8" />
           </button>
         </div> 
-        
         {/* Scrollable Content */}
         <div className="overflow-y-auto flex-grow">
           <div className="p-4">
-            {showPagination && renderItem && paginationData ? (
+            {renderItem && items.length > 0 ? (
               <div className="space-y-4">
-                {paginationData.currentItems.map((item, pageIndex) => {
-                  const globalIndex = paginationData.startIndex + pageIndex;
-                  return renderItem(item, globalIndex, {
-                    allItems: items,
-                    currentPage: paginationData.currentPage,
-                    itemsPerPage: itemsPerPage,
-                    startIndex: paginationData.startIndex,
-                    endIndex: paginationData.endIndex
-                  });
-                })}
+                {showPagination && paginationData ? (
+                  // Render with pagination
+                  paginationData.currentItems.map((item, pageIndex) => {
+                    const globalIndex = paginationData.startIndex + pageIndex;
+                    return renderItem(item, globalIndex, {
+                      allItems: items,
+                      currentPage: paginationData.currentPage,
+                      itemsPerPage: itemsPerPage,
+                      startIndex: paginationData.startIndex,
+                      endIndex: paginationData.endIndex
+                    });
+                  })
+                ) : (
+                  // Render all items without pagination
+                  items.map((item, index) => {
+                    return renderItem(item, index, {
+                      allItems: items,
+                      currentPage: 1,
+                      itemsPerPage: items.length,
+                      startIndex: 0,
+                      endIndex: items.length
+                    });
+                  })
+                )}
               </div>
             ) : (
               children
             )}
           </div>
         </div>
-
         {/* Pagination Controls */}
         <PaginationControls />
       </div>
     </div>
   );
 
-  // Use portal to render modal outside the scaled container
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      <ScrollLock active={isOpen} />
+      {createPortal(modalContent, document.body)}
+    </>
+  );
 };
 
 export default AnalyticsModal; 

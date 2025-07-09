@@ -33,7 +33,7 @@ function HandleCustomerModal({
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-800">{title}</h2>
           <button 
-            className="hover:text-white hover:bg-red-800 text-gray-500 mb-4"
+            className="hover:text-gray-400 text-gray-600 mb-4"
             onClick={onClose} 
           >
             <X className="w-8 h-8" />

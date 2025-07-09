@@ -34,8 +34,8 @@ function ViewDetailsModal({
           <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">{title}</h2>
           
           <button 
-            className="hover:text-white hover:bg-red-800 text-gray-500 mb-4"
             onClick={onClose} 
+            className="hover:text-gray-400 text-gray-600 mb-4"
           >
             <X className="h-8 w-8" />
           </button>

@@ -1,13 +1,33 @@
 import { X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import ScrollLock from './ScrollLock';
 
 function ReorderModal({ isOpen, onClose, product, onReorder }) {
-
-  if (!isOpen || !product) return null;
-
-  const [reorderQuantity, setReorderQuantity] = useState(product.reorderQuantity);
+  const [reorderQuantity, setReorderQuantity] = useState(0);
   const [stockDuration, setStockDuration] = useState(0);
+  const modalRef = useRef(null);
+
+  // Initialize reorder quantity when product changes
+  useEffect(() => {
+    if (product) {
+      setReorderQuantity(product.reorderQuantity);
+    }
+  }, [product]);
+
+  // Handle click outside modal
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && modalRef.current && event.target === modalRef.current) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   // Calculate stock duration based on monthly sales
   const calculateStockDuration = (quantity, monthlySales) => {
@@ -17,9 +37,11 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
 
   // Update stock duration whenever reorder quantity changes
   useEffect(() => {
-    const duration = calculateStockDuration(reorderQuantity, product.monthlySales);
-    setStockDuration(duration);
-  }, [reorderQuantity, product.monthlySales]);
+    if (product) {
+      const duration = calculateStockDuration(reorderQuantity, product.monthlySales);
+      setStockDuration(duration);
+    }
+  }, [reorderQuantity, product]);
 
   const handleReorder = () => {
     onReorder(product.id, reorderQuantity);
@@ -28,45 +50,32 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
   const handleQuantityChange = (e) => {
     const value = parseInt(e.target.value) || 0;
     setReorderQuantity(value);
-    if (product.setReorderQuantity) {
+    if (product?.setReorderQuantity) {
       product.setReorderQuantity(value);
     }
   };
 
-  // Calculate initial duration
-  useEffect(() => {
-    const initialDuration = calculateStockDuration(product.reorderQuantity, product.monthlySales);
-    setStockDuration(initialDuration);
-  }, [product.reorderQuantity, product.monthlySales]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.documentElement.classList.add('overflow-hidden');
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, [isOpen]);
+  if (!isOpen || !product) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-[800px]" style={{ transform: 'scale(0.85)', transformOrigin: 'center' }}>
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-[800px]"
+        style={{ transform: 'scale(0.85)', transformOrigin: 'center' }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-800">Reorder Product</h2>
-          <button 
-            className="hover:text-white hover:bg-red-800 text-gray-500 mb-4"
-            onClick={onClose} 
+          <button
+            onClick={onClose}
+            className="hover:text-gray-400 text-gray-600 mb-4"
           >
             <X className="w-8 h-8" />
           </button>
         </div>
-
         {/* Content */}
         <div className="p-6">
           <div className="mb-6">
@@ -94,7 +103,6 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
               </div>
             </div>
           </div>
-
           {/* Reorder Quantity Section */}
           <div className="mb-6">
             <label htmlFor="reorderQuantity" className="block text-sm font-medium text-gray-700 mb-2">
@@ -125,7 +133,6 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
               </div>
             </div>
           </div>
-
           {/* Stock Status Section */}
           <div className="border-t border-gray-200 pt-4">
             <div className="space-y-2">
@@ -151,7 +158,6 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
             </div>
           </div>
         </div>
-
         {/* Footer */}
         <div className="border-t border-gray-200 p-6 flex justify-end gap-4">
           <button
@@ -170,11 +176,13 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
       </div>
     </div>
   );
-  
 
-  // Use portal to render modal outside the scaled container
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      <ScrollLock active={isOpen} />
+      {createPortal(modalContent, document.body)}
+    </>
+  );
 }
-
 
 export default ReorderModal;

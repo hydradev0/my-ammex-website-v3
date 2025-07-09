@@ -26,8 +26,8 @@ function OrdersModal({ isOpen, onClose, title, children, titleClassName }) {
           <div className="flex justify-between items-center border-b-2 pb-4 border-gray-300">
             <h2 className={`text-xl font-semibold ${titleClassName || ''}`}>{title}</h2>
             <button 
-              className="hover:text-white hover:bg-red-800 text-gray-500 cursor-pointer"
               onClick={onClose} 
+              className="hover:text-gray-400 text-gray-600 mb-4"
               >
               <X className="h-8 w-8" />
             </button>

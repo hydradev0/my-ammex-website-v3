@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import ScrollLock from './ScrollLock';
 
 const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
   const [currentPrice, setCurrentPrice] = useState(0);
@@ -8,6 +9,7 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [priceChange, setPriceChange] = useState(0);
   const [priceChangePercentage, setPriceChangePercentage] = useState(0);
+  const modalRef = useRef(null);
 
   useEffect(() => {
     if (product) {
@@ -21,32 +23,29 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
     }
   }, [product]);
 
+  // Handle click outside modal
   useEffect(() => {
-    if (isOpen) {
-      document.documentElement.classList.add('overflow-hidden');
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
+    const handleClickOutside = (event) => {
+      if (isOpen && modalRef.current && event.target === modalRef.current) {
+        onClose();
+      }
     };
-  }, [isOpen]);
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   const handleNewPriceChange = (e) => {
     const value = parseFloat(e.target.value) || 0;
     setNewPrice(value);
-    
     // Calculate price change
     const change = value - currentPrice;
     setPriceChange(change);
-    
     // Calculate percentage change
     const percentageChange = currentPrice > 0 ? (change / currentPrice) * 100 : 0;
     setPriceChangePercentage(percentageChange);
-    
     // Calculate discount percentage (if price is reduced)
     const discount = change < 0 ? Math.abs(percentageChange) : 0;
     setDiscountPercentage(discount);
@@ -55,11 +54,9 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
   const handleDiscountChange = (e) => {
     const discount = parseFloat(e.target.value) || 0;
     setDiscountPercentage(discount);
-    
     // Calculate new price based on discount
     const newPriceValue = currentPrice * (1 - discount / 100);
     setNewPrice(newPriceValue);
-    
     // Calculate price change
     const change = newPriceValue - currentPrice;
     setPriceChange(change);
@@ -94,19 +91,24 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
   if (!isOpen || !product) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-[800px]" style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}>
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-[800px]"
+        style={{ transform: 'scale(0.75)', transformOrigin: 'center' }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-800">Adjust Pricing</h2>
           <button 
-            className="hover:text-white hover:bg-red-800 text-gray-500 mb-4"
             onClick={onClose} 
+            className="hover:text-gray-400 text-gray-600 mb-4"
           >
             <X className="w-8 h-8" />
           </button>
         </div>
-
         {/* Content */}
         <div className="p-6">
           <div className="mb-6">
@@ -134,7 +136,6 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
               </div>
             </div>
           </div>
-
           {/* Pricing Section */}
           <div className="mb-6">
             <label htmlFor="currentPrice" className="block text-sm font-medium text-gray-700 mb-2">
@@ -156,7 +157,6 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
               <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
             </div>
           </div>
-
           {/* New Price Section */}
           <div className="mb-6">
             <label htmlFor="newPrice" className="block text-sm font-medium text-gray-700 mb-2">
@@ -182,7 +182,6 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
               </p>
             </div>
           </div>
-
           {/* Discount Percentage Section */}
           <div className="mb-6">
             <label htmlFor="discountPercentage" className="block text-sm font-medium text-gray-700 mb-2">
@@ -214,7 +213,6 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
               </div>
             </div>
           </div>
-
           {/* Price Status Section */}
           <div className="border-t border-gray-200 pt-4">
             <div className="space-y-2">
@@ -237,7 +235,6 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
             </div>
           </div>
         </div>
-
         {/* Footer */}
         <div className="border-t border-gray-200 p-6 flex justify-end gap-4">
           <button
@@ -257,8 +254,12 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
     </div>
   );
 
-  // Use portal to render modal outside the scaled container
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      <ScrollLock active={isOpen} />
+      {createPortal(modalContent, document.body)}
+    </>
+  );
 };
 
 export default AdjustPricingModal; 
