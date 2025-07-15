@@ -1,6 +1,10 @@
 const { Sequelize } = require('sequelize');
+const dotenv = require('dotenv');
+const { initializeModels } = require('../models-postgres');
+dotenv.config();
 
 let sequelize = null;
+let models = null;
 
 const connectDB = async () => {
   try {
@@ -42,6 +46,12 @@ const connectDB = async () => {
       await sequelize.authenticate();
       console.log('✅ PostgreSQL Connected successfully.');
       
+      // Initialize models after connection is established
+      models = {
+        ...initializeModels(sequelize),
+        Sequelize: sequelize.Sequelize
+      };
+      
       // Sync all models (in development)
       if (process.env.NODE_ENV === 'development') {
         await sequelize.sync({ alter: true });
@@ -82,4 +92,10 @@ process.on('SIGTERM', async () => {
 });
 
 // Export both the connection function and sequelize instance
-module.exports = { connectDB, sequelize, closeDB }; 
+module.exports = { 
+  connectDB, 
+  sequelize, 
+  closeDB, 
+  getModels: () => models,
+  getSequelize: () => sequelize?.Sequelize
+}; 

@@ -1,15 +1,15 @@
-const { Order, OrderItem } = require('../models-postgres');
+const { getModels } = require('../config/db');
 
 // Get all orders
 const getAllOrders = async (req, res, next) => {
   try {
+    const { Order, OrderItem } = getModels();
     const { page = 1, limit = 10, status, startDate, endDate } = req.query;
     
-    // Build where clause
-    const whereClause = {};
+    const whereClause = { isActive: true }; // Default to active orders
     if (status) whereClause.status = status;
     if (startDate && endDate) {
-      whereClause.date = {
+      whereClause.orderDate = {
         [require('sequelize').Op.between]: [new Date(startDate), new Date(endDate)]
       };
     }
@@ -45,9 +45,11 @@ const getAllOrders = async (req, res, next) => {
 // Get single order by ID
 const getOrderById = async (req, res, next) => {
   try {
+    const { Order, OrderItem } = getModels();
     const { id } = req.params;
 
     const order = await Order.findByPk(id, {
+      where: { isActive: true }, // Filter for active order
       include: [
         {
           model: OrderItem,
@@ -75,21 +77,28 @@ const getOrderById = async (req, res, next) => {
 // Create new order
 const createOrder = async (req, res, next) => {
   try {
-    const { orderId, clientName, items, total } = req.body;
+    const { Order, OrderItem } = getModels();
+    const { customerId, orderNumber, totalAmount, items, shippingAddress, billingAddress, notes } = req.body;
 
     // Create order
     const order = await Order.create({
-      orderId,
-      clientName,
-      total,
-      date: new Date()
+      customerId,
+      orderNumber,
+      totalAmount,
+      shippingAddress,
+      billingAddress,
+      notes,
+      orderDate: new Date()
     });
 
     // Create order items
     if (items && items.length > 0) {
       const orderItems = items.map(item => ({
-        ...item,
-        orderId: order.id
+        orderId: order.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice
       }));
       
       await OrderItem.bulkCreate(orderItems);
@@ -117,6 +126,7 @@ const createOrder = async (req, res, next) => {
 // Update order
 const updateOrder = async (req, res, next) => {
   try {
+    const { Order, OrderItem } = getModels();
     const { id } = req.params;
     const updateData = req.body;
 
@@ -152,6 +162,7 @@ const updateOrder = async (req, res, next) => {
 // Update order status
 const updateOrderStatus = async (req, res, next) => {
   try {
+    const { Order } = getModels();
     const { id } = req.params;
     const { status } = req.body;
 
@@ -177,6 +188,7 @@ const updateOrderStatus = async (req, res, next) => {
 // Delete order
 const deleteOrder = async (req, res, next) => {
   try {
+    const { Order } = getModels();
     const { id } = req.params;
 
     const order = await Order.findByPk(id);
@@ -187,7 +199,7 @@ const deleteOrder = async (req, res, next) => {
       });
     }
 
-    await order.destroy();
+    await order.update({ isActive: false });
 
     res.json({
       success: true,
@@ -201,6 +213,7 @@ const deleteOrder = async (req, res, next) => {
 // Get orders by status
 const getOrdersByStatus = async (req, res, next) => {
   try {
+    const { Order, OrderItem } = getModels();
     const { status } = req.params;
     const { page = 1, limit = 10 } = req.query;
 

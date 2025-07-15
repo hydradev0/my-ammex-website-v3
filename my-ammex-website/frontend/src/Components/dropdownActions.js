@@ -98,3 +98,52 @@ export const salesInvoicesDropdownActions = [
 export const itemsDropdownActions = [
   ...baseDropdownActions
 ]; 
+
+export const unitDropdownActions = [
+  {
+    id: 'view',
+    label: 'View all Products',
+    icon: Eye,
+    onClick: null,
+    className: 'text-gray-700'
+  },
+  {
+    id: 'edit',
+    label: 'Edit',
+    icon: Edit,
+    onClick: null,
+    className: 'text-gray-700'
+  },
+  {
+    id: 'delete',
+    label: 'Delete',
+    icon: Trash2,
+    onClick: null,
+    className: 'text-red-600'
+  }
+]; 
+
+export const categoryDropdownActions = [
+  {
+    id: 'view',
+    label: 'View all Products',
+    icon: Eye,
+    onClick: null,
+    className: 'text-gray-700'
+  },
+  {
+    id: 'edit',
+    label: 'Edit',
+    icon: Edit,
+    onClick: null,
+    className: 'text-gray-700'
+  },
+  {
+    id: 'delete',
+    label: 'Delete',
+    icon: Trash2,
+    onClick: null,
+    className: 'text-red-600'
+  }
+]; 
+

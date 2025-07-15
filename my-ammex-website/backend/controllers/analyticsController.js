@@ -1,4 +1,4 @@
-const { Order, OrderItem, Product, User } = require('../models-postgres');
+const { getModels } = require('../config/db');
 const { Op } = require('sequelize');
 const moment = require('moment');
 
@@ -35,6 +35,7 @@ class AnalyticsController {
 
   // Sales Analytics
   async getSalesMetrics() {
+    const { Order, OrderItem } = getModels();
     const now = moment();
     const lastMonth = moment().subtract(1, 'month');
     const last3Months = moment().subtract(3, 'months');
@@ -42,7 +43,8 @@ class AnalyticsController {
     // Get sales data using PostgreSQL
     const currentMonthOrders = await Order.findAll({
       where: {
-        date: {
+        isActive: true, // Filter for active orders
+        orderDate: {
           [Op.gte]: now.startOf('month').toDate()
         }
       },
@@ -56,7 +58,8 @@ class AnalyticsController {
 
     const lastMonthOrders = await Order.findAll({
       where: {
-        date: {
+        isActive: true, // Filter for active orders
+        orderDate: {
           [Op.gte]: lastMonth.startOf('month').toDate(),
           [Op.lt]: now.startOf('month').toDate()
         }
@@ -71,8 +74,9 @@ class AnalyticsController {
 
     const last3MonthsOrders = await Order.findAll({
       where: {
-        date: {
-          [Op.gte]: last3Months.toDate()
+        isActive: true, // Filter for active orders
+        orderDate: {
+          [Op.gte]: moment().subtract(3, 'months').toDate()
         }
       },
       include: [
@@ -84,9 +88,9 @@ class AnalyticsController {
     });
 
     // Calculate metrics
-    const currentMonthSales = currentMonthOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-    const lastMonthSales = lastMonthOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-    const last3MonthsSales = last3MonthsOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+    const currentMonthSales = currentMonthOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0);
+    const lastMonthSales = lastMonthOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0);
+    const last3MonthsSales = last3MonthsOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0);
 
     const salesGrowth = lastMonthSales > 0 ? ((currentMonthSales - lastMonthSales) / lastMonthSales) * 100 : 0;
     const averageOrderValue = currentMonthOrders.length > 0 ? currentMonthSales / currentMonthOrders.length : 0;
@@ -96,18 +100,18 @@ class AnalyticsController {
     currentMonthOrders.forEach(order => {
       if (order.items) {
         order.items.forEach(item => {
-          if (!productSales[item.name]) {
-            productSales[item.name] = { quantity: 0, revenue: 0 };
+          if (!productSales[item.productId]) {
+            productSales[item.productId] = { quantity: 0, revenue: 0 };
           }
-          productSales[item.name].quantity += item.quantity;
-          productSales[item.name].revenue += parseFloat(item.total);
+          productSales[item.productId].quantity += item.quantity;
+          productSales[item.productId].revenue += parseFloat(item.totalPrice);
         });
       }
     });
 
     const topProducts = Object.entries(productSales)
-      .map(([name, data]) => ({
-        name,
+      .map(([productId, data]) => ({
+        productId,
         quantity: data.quantity,
         revenue: data.revenue
       }))
@@ -126,6 +130,7 @@ class AnalyticsController {
 
   // Inventory Analytics
   async getInventoryMetrics() {
+    const { Product } = getModels();
     const products = await Product.findAll({
       where: { isActive: true }
     });
@@ -137,7 +142,7 @@ class AnalyticsController {
     
     // Low stock items
     const lowStockItems = products.filter(product => 
-      product.quantity <= product.minStockLevel);
+      product.quantity <= product.minLevel);
     
     // Stock turnover analysis
     const stockTurnover = await this.calculateStockTurnover();
@@ -156,6 +161,7 @@ class AnalyticsController {
 
   // Customer Analytics
   async getCustomerMetrics() {
+    const { User, Order } = getModels();
     const now = moment();
     const lastMonth = moment().subtract(1, 'month');
 
@@ -166,7 +172,8 @@ class AnalyticsController {
 
     const currentMonthOrders = await Order.findAll({
       where: {
-        date: {
+        isActive: true, // Filter for active orders
+        orderDate: {
           [Op.gte]: now.startOf('month').toDate()
         }
       }
@@ -201,232 +208,288 @@ class AnalyticsController {
     };
   }
 
-  // Sales Forecasting
+  // Sales prediction
   async predictSales() {
-    try {
-      // Get historical sales data (last 12 months)
-      const historicalData = await this.getHistoricalSalesData();
-      
-      if (historicalData.length < 3) {
-        return { nextMonth: 0, confidence: 0, trend: 'insufficient_data' };
-      }
-
-      // Simple linear prediction
-      const sales = historicalData.map(data => data.sales);
-      const avgSales = sales.reduce((sum, sale) => sum + sale, 0) / sales.length;
-      
-      // Calculate trend
-      const trend = sales[sales.length - 1] > avgSales ? 'increasing' : 'decreasing';
-      
-      // Simple prediction (average of last 3 months)
-      const recentSales = sales.slice(-3);
-      const nextMonthPrediction = recentSales.reduce((sum, sale) => sum + sale, 0) / recentSales.length;
-
-      return {
-        nextMonth: Math.max(0, Math.round(nextMonthPrediction)),
-        confidence: 75, // Simplified confidence
-        trend
-      };
-    } catch (error) {
-      console.error('Sales prediction error:', error);
-      return { nextMonth: 0, confidence: 0, trend: 'error' };
+    const { Order } = getModels();
+    const historicalData = await this.getHistoricalSalesData();
+    
+    // Simple linear regression for sales prediction
+    const months = historicalData.length;
+    if (months < 2) {
+      return { forecast: 0, confidence: 0 };
     }
+
+    const sumX = months * (months + 1) / 2;
+    const sumY = historicalData.reduce((sum, data) => sum + data.sales, 0);
+    const sumXY = historicalData.reduce((sum, data, index) => sum + (index + 1) * data.sales, 0);
+    const sumX2 = months * (months + 1) * (2 * months + 1) / 6;
+
+    const slope = (months * sumXY - sumX * sumY) / (months * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / months;
+
+    const nextMonthForecast = slope * (months + 1) + intercept;
+    const confidence = Math.max(0, Math.min(100, 85 - months * 2)); // Confidence decreases with less data
+
+    return {
+      forecast: Math.max(0, nextMonthForecast),
+      confidence: Math.round(confidence),
+      trend: slope > 0 ? 'increasing' : 'decreasing'
+    };
   }
 
-  // Demand Forecasting
+  // Demand prediction
   async predictDemand() {
-    try {
-      const products = await Product.findAll({
-        where: { isActive: true }
-      });
+    const { OrderItem, Product } = getModels();
+    const historicalData = await OrderItem.findAll({
+      include: [{
+        model: Product,
+        as: 'product'
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: 100
+    });
 
-      const demandPredictions = products.map(product => ({
-        productId: product.id,
-        productName: product.name,
-        currentStock: product.quantity,
-        predictedDemand: Math.round(product.quantity * 0.8), // Simplified prediction
-        reorderPoint: product.minStockLevel,
-        recommendation: product.quantity <= product.minStockLevel ? 'reorder' : 'monitor'
-      }));
+    // Group by product and calculate average demand
+    const productDemand = {};
+    historicalData.forEach(item => {
+      if (!productDemand[item.productId]) {
+        productDemand[item.productId] = { totalQuantity: 0, count: 0 };
+      }
+      productDemand[item.productId].totalQuantity += item.quantity;
+      productDemand[item.productId].count += 1;
+    });
 
-      return demandPredictions;
-    } catch (error) {
-      console.error('Demand prediction error:', error);
-      return [];
-    }
+    const demandForecast = Object.entries(productDemand).map(([productId, data]) => ({
+      productId,
+      averageDemand: Math.round(data.totalQuantity / data.count),
+      confidence: Math.min(90, 50 + data.count * 2)
+    }));
+
+    return demandForecast;
   }
 
-  // Inventory Needs Prediction
+  // Inventory needs prediction
   async predictInventoryNeeds() {
-    try {
-      const products = await Product.findAll({
-        where: { isActive: true }
-      });
+    const { Product } = getModels();
+    const products = await Product.findAll({
+      where: { isActive: true }
+    });
 
-      const inventoryNeeds = products
-        .filter(product => product.quantity <= product.minStockLevel)
-        .map(product => ({
-          productId: product.id,
-          productName: product.name,
-          currentStock: product.quantity,
-          minStockLevel: product.minStockLevel,
-          recommendedOrder: product.minStockLevel * 2 - product.quantity,
-          urgency: product.quantity === 0 ? 'critical' : 'high'
-        }));
+    const demandForecast = await this.predictDemand();
+    const demandMap = {};
+    demandForecast.forEach(item => {
+      demandMap[item.productId] = item.averageDemand;
+    });
 
-      return inventoryNeeds;
-    } catch (error) {
-      console.error('Inventory prediction error:', error);
-      return [];
-    }
+    const inventoryNeeds = products.map(product => {
+      const predictedDemand = demandMap[product.id] || 0;
+      const currentStock = product.quantity;
+      const recommendedOrder = Math.max(0, predictedDemand - currentStock + product.minLevel);
+      
+      return {
+        productId: product.id,
+        productName: product.itemName,
+        currentStock,
+        predictedDemand,
+        recommendedOrder,
+        urgency: currentStock <= product.minLevel ? 'high' : 
+                currentStock <= product.minLevel * 1.5 ? 'medium' : 'low'
+      };
+    });
+
+    return inventoryNeeds;
   }
 
-  // Customer Segmentation
+  // Customer segmentation
   async segmentCustomers() {
-    try {
-      const users = await User.findAll({
-        where: { role: 'sales' }
-      });
+    const { User, Order } = getModels();
+    const customers = await User.findAll({
+      where: { role: 'sales' }
+    });
 
-      const now = moment();
-      const lastMonth = moment().subtract(1, 'month');
-
-      // Get recent orders
-      const recentOrders = await Order.findAll({
-        where: {
-          date: {
-            [Op.gte]: lastMonth.toDate()
-          }
+    const customerOrders = await Order.findAll({
+      where: {
+        isActive: true, // Filter for active orders
+        orderDate: {
+          [Op.gte]: moment().subtract(12, 'months').toDate()
         }
-      });
+      }
+    });
 
-      // Simple segmentation
-      const activeCustomers = users.length; // Simplified
-      const newCustomers = Math.floor(users.length * 0.1); // 10% new
-      const repeatCustomers = Math.floor(users.length * 0.7); // 70% repeat
+    // Simple segmentation based on order frequency
+    const customerOrderCount = {};
+    customerOrders.forEach(order => {
+      if (!customerOrderCount[order.customerId]) {
+        customerOrderCount[order.customerId] = 0;
+      }
+      customerOrderCount[order.customerId]++;
+    });
 
-      return {
-        active: activeCustomers,
-        new: newCustomers,
-        repeat: repeatCustomers
-      };
-    } catch (error) {
-      console.error('Customer segmentation error:', error);
-      return { active: 0, new: 0, repeat: 0 };
-    }
+    const segments = {
+      active: 0,
+      new: 0,
+      repeat: 0
+    };
+
+    customers.forEach(customer => {
+      const orderCount = customerOrderCount[customer.id] || 0;
+      if (orderCount >= 5) segments.active++;
+      else if (orderCount >= 2) segments.repeat++;
+      else if (orderCount >= 1) segments.new++;
+    });
+
+    return segments;
   }
 
-  // Customer Lifetime Value
+  // Customer lifetime value
   async calculateCustomerLTV() {
-    try {
-      const orders = await Order.findAll({
-        include: [
-          {
-            model: OrderItem,
-            as: 'items'
-          }
-        ]
-      });
+    const { Order } = getModels();
+    const customerOrders = await Order.findAll({
+      where: {
+        isActive: true, // Filter for active orders
+        orderDate: {
+          [Op.gte]: moment().subtract(12, 'months').toDate()
+        }
+      }
+    });
 
-      const totalRevenue = orders.reduce((sum, order) => 
-        sum + parseFloat(order.total), 0);
-      const averageLTV = orders.length > 0 ? totalRevenue / orders.length : 0;
+    const customerRevenue = {};
+    customerOrders.forEach(order => {
+      if (!customerRevenue[order.customerId]) {
+        customerRevenue[order.customerId] = 0;
+      }
+      customerRevenue[order.customerId] += parseFloat(order.totalAmount);
+    });
 
-      // Top customers (simplified)
-      const topCustomers = orders
-        .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
-        .slice(0, 5)
-        .map(order => ({
-          clientName: order.clientName,
-          totalSpent: parseFloat(order.total)
-        }));
+    const ltvValues = Object.values(customerRevenue);
+    const averageLTV = ltvValues.length > 0 ? 
+      ltvValues.reduce((sum, ltv) => sum + ltv, 0) / ltvValues.length : 0;
 
-      return {
-        average: averageLTV,
-        top: topCustomers
-      };
-    } catch (error) {
-      console.error('Customer LTV error:', error);
-      return { average: 0, top: [] };
-    }
+    const topCustomers = Object.entries(customerRevenue)
+      .map(([customerId, ltv]) => ({ customerId, ltv }))
+      .sort((a, b) => b.ltv - a.ltv)
+      .slice(0, 10);
+
+    return {
+      average: Math.round(averageLTV * 100) / 100,
+      top: topCustomers
+    };
   }
 
-  // Stock Turnover
+  // Stock turnover analysis
   async calculateStockTurnover() {
-    try {
-      const products = await Product.findAll({
-        where: { isActive: true }
-      });
+    const { Product, OrderItem } = getModels();
+    const products = await Product.findAll({
+      where: { isActive: true }
+    });
 
-      const totalStockValue = products.reduce((sum, product) => 
-        sum + (parseFloat(product.price) * product.quantity), 0);
+    const orderItems = await OrderItem.findAll({
+      include: [{
+        model: Product,
+        as: 'product'
+      }],
+      where: {
+        isActive: true, // Filter for active orders
+        createdAt: {
+          [Op.gte]: moment().subtract(12, 'months').toDate()
+        }
+      }
+    });
 
-      // Simplified turnover calculation
-      const averageTurnover = totalStockValue > 0 ? 12 : 0; // 12 times per year
+    const productSales = {};
+    orderItems.forEach(item => {
+      if (!productSales[item.productId]) {
+        productSales[item.productId] = 0;
+      }
+      productSales[item.productId] += item.quantity;
+    });
+
+    const turnoverRates = products.map(product => {
+      const annualSales = productSales[product.id] || 0;
+      const averageInventory = product.quantity;
+      const turnoverRate = averageInventory > 0 ? annualSales / averageInventory : 0;
 
       return {
-        average: averageTurnover,
-        totalStockValue
+        productId: product.id,
+        productName: product.itemName,
+        annualSales,
+        averageInventory,
+        turnoverRate: Math.round(turnoverRate * 100) / 100,
+        category: turnoverRate > 12 ? 'high' : 
+                 turnoverRate > 6 ? 'medium' : 'low'
       };
-    } catch (error) {
-      console.error('Stock turnover error:', error);
-      return { average: 0, totalStockValue: 0 };
-    }
+    });
+
+    return turnoverRates;
   }
 
-  // Reorder Recommendations
+  // Reorder recommendations
   async getReorderRecommendations() {
-    try {
-      const products = await Product.findAll({
-        where: { isActive: true }
+    const { Product } = getModels();
+    const products = await Product.findAll({
+      where: { isActive: true }
+    });
+
+    const recommendations = products
+      .filter(product => product.quantity <= product.minLevel)
+      .map(product => {
+        const recommendedQuantity = product.maxLevel - product.quantity;
+        const urgency = product.quantity === 0 ? 'critical' : 
+                       product.quantity <= product.minLevel * 0.5 ? 'high' : 'medium';
+
+        return {
+          productId: product.id,
+          productName: product.itemName,
+          currentStock: product.quantity,
+          minLevel: product.minLevel,
+          maxLevel: product.maxLevel,
+          recommendedQuantity: Math.max(0, recommendedQuantity),
+          urgency,
+          estimatedCost: Math.round(recommendedQuantity * parseFloat(product.price) * 100) / 100
+        };
+      })
+      .sort((a, b) => {
+        const urgencyOrder = { critical: 3, high: 2, medium: 1 };
+        return urgencyOrder[b.urgency] - urgencyOrder[a.urgency];
       });
 
-      return products
-        .filter(product => product.quantity <= product.minStockLevel)
-        .map(product => ({
-          productId: product.id,
-          productName: product.name,
-          currentStock: product.quantity,
-          minStockLevel: product.minStockLevel,
-          recommendedOrder: product.minStockLevel * 2,
-          urgency: product.quantity === 0 ? 'critical' : 'high'
-        }));
-    } catch (error) {
-      console.error('Reorder recommendations error:', error);
-      return [];
-    }
+    return recommendations;
   }
 
-  // Historical Sales Data
+  // Get historical sales data
   async getHistoricalSalesData() {
-    try {
+    const { Order } = getModels();
+    const months = 12;
+    const historicalData = [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const startDate = moment().subtract(i, 'months').startOf('month');
+      const endDate = moment().subtract(i, 'months').endOf('month');
+
       const orders = await Order.findAll({
         where: {
-          date: {
-            [Op.gte]: moment().subtract(12, 'months').toDate()
+          isActive: true, // Filter for active orders
+          orderDate: {
+            [Op.between]: [startDate.toDate(), endDate.toDate()]
           }
         }
       });
 
-      // Group by month
-      const monthlyData = {};
-      orders.forEach(order => {
-        const month = moment(order.date).format('YYYY-MM');
-        if (!monthlyData[month]) {
-          monthlyData[month] = 0;
-        }
-        monthlyData[month] += parseFloat(order.total);
-      });
+      const monthlySales = orders.reduce((sum, order) => 
+        sum + parseFloat(order.totalAmount), 0);
 
-      return Object.entries(monthlyData).map(([month, sales]) => ({
-        month,
-        sales
-      }));
-    } catch (error) {
-      console.error('Historical data error:', error);
-      return [];
+      historicalData.push({
+        month: startDate.format('YYYY-MM'),
+        sales: monthlySales,
+        orders: orders.length
+      });
     }
+
+    return historicalData;
   }
 }
 
-module.exports = new AnalyticsController(); 
+// Create instance and export methods
+const analyticsController = new AnalyticsController();
+
+module.exports = analyticsController; 

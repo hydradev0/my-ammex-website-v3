@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
-import Table from './Table';
-import { MoreHorizontal } from 'lucide-react';
+import GenericTable from '../Components/GenericTable';
+import { categoryDropdownActions } from '../Components/dropdownActions';
 
 function CategoryTable({ categories, setCategories }) {
   // State for new category input
@@ -34,18 +34,6 @@ function CategoryTable({ categories, setCategories }) {
     }
   ];
   
-  // Custom row action for categories table
-  const customRowAction = (category) => (
-    <button 
-      className="cursor-pointer text-blue-900 hover:text-blue-600"
-      onClick={(e) => {
-        e.stopPropagation();
-        console.log('Category actions:', category);
-      }}
-    >
-      <MoreHorizontal className="h-6 w-6" />
-    </button>
-  );
   
   // Row click handler
   const handleRowClick = (category) => {
@@ -81,25 +69,21 @@ function CategoryTable({ categories, setCategories }) {
   }, [categories, searchTerm]);
 
   return (
-    <div className="min-h-screen">
+    <div className="bg-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto px-5 py-8">   
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Category</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">Category</h1>
         
         {/* Search and Filter Section */}
-        <div className="flex flex-col gap-3 mb-4">
-          <div className="w-full">
-            <div className="flex items-center gap-2">
-              <SearchFilter 
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                filterValue={filterValue}
-                setFilterValue={setFilterValue}
-                customerCount={filteredCategories.length}
-                filterOptions={['Filter by...']}
-                placeholder="Search categories..."
-              />
-            </div>
-          </div>
+        <div className="flex flex-col gap-4 mb-6">
+          <SearchFilter 
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            filterValue={filterValue}
+            setFilterValue={setFilterValue}
+            customerCount={filteredCategories.length}
+            filterOptions={['Filter by...']}
+            placeholder="Search categories..."
+          />
           
           {/* New Category Input Field and Success Message */}
           <div className="flex flex-col sm:flex-row gap-3 items-start">
@@ -135,19 +119,19 @@ function CategoryTable({ categories, setCategories }) {
           </div>
         )}
         
-        {/* Table for Categories */}
-        <div className="w-full">
-          <Table 
-            data={filteredCategories}
-            onRowClick={handleRowClick}
-            customRowAction={customRowAction}
-            pagination={true}
-            itemsPerPage={10}
-            emptyMessage="No categories found"
-            className="mb-8"
-            alternateRowColors={true}
-          />
-        </div>
+        {/* Generic Table for Categories */}
+        <GenericTable 
+          data={filteredCategories}
+          columns={categoryColumns}
+          onRowClick={handleRowClick}
+          pagination={true}
+          itemsPerPage={7}
+          emptyMessage="No categories found"
+          className="mb-8"
+          alternateRowColors={true}
+          dropdownActions={categoryDropdownActions}
+          width="max-w-7xl"
+        />
       </div>
     </div>
   );

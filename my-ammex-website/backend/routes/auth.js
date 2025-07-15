@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const { handleValidationErrors } = require('../middleware/validation');
 const {
   registerUser,
   loginUser,
@@ -28,12 +29,12 @@ const validateLogin = [
 // @route   POST /api/auth/register
 // @desc    Register new user (admin only)
 // @access  Private/Admin
-router.post('/register', protect, authorize('admin'), validateRegistration, registerUser);
+router.post('/register', protect, authorize('admin'), validateRegistration, handleValidationErrors, registerUser);
 
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
-router.post('/login', validateLogin, loginUser);
+router.post('/login', validateLogin, handleValidationErrors, loginUser);
 
 // @route   GET /api/auth/me
 // @desc    Get current user

@@ -1,5 +1,13 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models-postgres');
+const { models } = require('../config/db');
+
+// Get models instance
+const getModels = () => {
+  if (!models) {
+    throw new Error('Database models not initialized. Please ensure database connection is established.');
+  }
+  return models;
+};
 
 // Protect routes
 exports.protect = async (req, res, next) => {
@@ -26,6 +34,7 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
 
     // Get user from the token
+    const { User } = getModels();
     const user = await User.findByPk(decoded.id, {
       attributes: { exclude: ['password'] }
     });

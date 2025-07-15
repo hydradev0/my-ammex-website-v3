@@ -1,8 +1,8 @@
 import React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import SearchFilter from '../Components/SearchFilter';
-import { MoreHorizontal } from 'lucide-react';
-import Table from './Table';
+import GenericTable from '../Components/GenericTable';
+import { unitDropdownActions } from '../Components/dropdownActions';
 
 function UnitTable() {
   // State for units data
@@ -58,18 +58,6 @@ function UnitTable() {
     }
   ];
   
-  // Custom row action for units table
-  const customRowAction = (unit) => (
-    <button 
-      className="cursor-pointer text-blue-900 hover:text-blue-600"
-      onClick={(e) => {
-        e.stopPropagation();
-        console.log('Unit actions:', unit);
-      }}
-    >
-      <MoreHorizontal className="h-6 w-6" />
-    </button>
-  );
   
   // Row click handler
   const handleRowClick = (unit) => {
@@ -105,25 +93,21 @@ function UnitTable() {
   }, [units, searchTerm]);
 
   return (
-    <div className="min-h-screen">
+    <div className="bg-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto px-5 py-8">   
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Unit</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">Unit</h1>
         
         {/* Search and Filter Section */}
-        <div className="flex flex-col gap-3 mb-4">
-          <div className="w-full">
-            <div className="flex items-center gap-2">
-              <SearchFilter 
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                filterValue={filterValue}
-                setFilterValue={setFilterValue}
-                customerCount={filteredUnits.length}
-                filterOptions={['Filter by...']}
-                placeholder="Search units..."
-              />
-            </div>
-          </div>
+        <div className="flex flex-col gap-4 mb-6">
+          <SearchFilter 
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            filterValue={filterValue}
+            setFilterValue={setFilterValue}
+            customerCount={filteredUnits.length}
+            filterOptions={['Filter by...']}
+            placeholder="Search units..."
+          />
           
           {/* New Unit Input Field and Success Message */}
           <div className="flex flex-col sm:flex-row gap-3 items-start">
@@ -159,19 +143,19 @@ function UnitTable() {
           </div>
         )}
         
-        {/* Table for Units */}
-        <div className="w-full">
-          <Table 
-            data={filteredUnits}
-            onRowClick={handleRowClick}
-            customRowAction={customRowAction}
-            pagination={true}
-            itemsPerPage={10}
-            emptyMessage="No units found"
-            className="mb-8"
-            alternateRowColors={true}
-          />
-        </div>
+        {/* Generic Table for Units */}
+        <GenericTable 
+          data={filteredUnits}
+          columns={unitColumns}
+          onRowClick={handleRowClick}
+          pagination={true}
+          itemsPerPage={7}
+          emptyMessage="No units found"
+          className="mb-8"
+          alternateRowColors={true}
+          dropdownActions={unitDropdownActions}
+          width="max-w-7xl"
+        />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { User } = require('../models-postgres');
+const { getModels } = require('../config/db');
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -12,6 +12,7 @@ const generateToken = (id) => {
 // Register new user (admin only)
 const registerUser = async (req, res, next) => {
   try {
+    const { User } = getModels();
     const { name, email, password, role, department } = req.body;
 
     // Check if user exists
@@ -50,6 +51,7 @@ const registerUser = async (req, res, next) => {
 // Login user
 const loginUser = async (req, res, next) => {
   try {
+    const { User } = getModels();
     const { email, password } = req.body;
 
     // Check if user exists
@@ -103,6 +105,7 @@ const loginUser = async (req, res, next) => {
 // Get current user
 const getCurrentUser = async (req, res, next) => {
   try {
+    const { User } = getModels();
     const user = await User.findByPk(req.user.id, {
       attributes: { exclude: ['password'] }
     });
@@ -119,6 +122,7 @@ const getCurrentUser = async (req, res, next) => {
 // Get all users (admin only)
 const getAllUsers = async (req, res, next) => {
   try {
+    const { User } = getModels();
     const users = await User.findAll({
       attributes: { exclude: ['password'] },
       order: [['createdAt', 'DESC']]
@@ -136,6 +140,7 @@ const getAllUsers = async (req, res, next) => {
 // Update user (admin only)
 const updateUser = async (req, res, next) => {
   try {
+    const { User } = getModels();
     const { id } = req.params;
     const updateData = req.body;
 
@@ -168,6 +173,7 @@ const updateUser = async (req, res, next) => {
 // Delete user (admin only)
 const deleteUser = async (req, res, next) => {
   try {
+    const { User } = getModels();
     const { id } = req.params;
 
     const user = await User.findByPk(id);
@@ -178,7 +184,7 @@ const deleteUser = async (req, res, next) => {
       });
     }
 
-    await user.destroy();
+    await user.update({ isActive: false });
 
     res.json({
       success: true,

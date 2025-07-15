@@ -43,7 +43,8 @@ const GenericTable = ({
   className = '',
   emptyMessage = 'No data available',
   alternateRowColors = true,
-  dropdownActions = baseDropdownActions
+  dropdownActions = baseDropdownActions,
+  width = 'max-w-full'
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage);
@@ -124,8 +125,8 @@ const GenericTable = ({
     <div className={`generic-table-container ${className}`}>
       {title && <h2 className="text-xl font-bold my-4">{title}</h2>}
       
-      <div className="overflow-x-auto bg-white rounded-md shadow-md">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className={`overflow-x-auto bg-white rounded-md shadow-md ${width}`}>
+        <table className="w-full divide-y divide-gray-200">
           <thead className="bg-blue-900">
             <tr>
               {columns.map((column, index) => (

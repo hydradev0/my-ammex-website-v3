@@ -10,9 +10,6 @@ dotenv.config();
 // Create Express app
 const app = express();
 
-// Connect to Database (PostgreSQL)
-connectDB();
-
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -30,126 +27,145 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API Routes - Use PostgreSQL routes if database is available, otherwise use mock routes
-if (process.env.DATABASE_URL) {
-  // Production/Development with database
-  app.use('/api/auth', require('./routes/auth'));
-  app.use('/api/products', require('./routes/products'));
-  app.use('/api/orders', require('./routes/orders'));
-  app.use('/api/analytics', require('./routes/analytics'));
-} else {
-  // Development without database - mock routes
-  app.get('/api/auth/me', (req, res) => {
-    res.json({
-      success: true,
-      data: {
-        id: 'dev-user-id',
-        name: 'Development User',
-        email: 'dev@example.com',
-        role: 'admin',
-        department: 'Administration'
+// Initialize server function
+const initializeServer = async () => {
+  try {
+    // Connect to Database (PostgreSQL)
+    await connectDB();
+
+    // API Routes - Use PostgreSQL routes if database is available, otherwise use mock routes
+    if (process.env.DATABASE_URL) {
+      // Production/Development with database
+      app.use('/api/auth', require('./routes/auth'));
+      app.use('/api/products', require('./routes/products'));
+      app.use('/api/categories', require('./routes/categories'));
+      app.use('/api/units', require('./routes/units'));
+      app.use('/api/customers', require('./routes/customers'));
+      
+      app.use('/api/orders', require('./routes/orders'));
+      app.use('/api/analytics', require('./routes/analytics'));
+    } else {
+      // Development without database - mock routes
+      app.get('/api/auth/me', (req, res) => {
+        res.json({
+          success: true,
+          data: {
+            id: 'dev-user-id',
+            name: 'Development User',
+            email: 'dev@example.com',
+            role: 'admin',
+            department: 'Administration'
+          }
+        });
+      });
+
+      app.post('/api/auth/login', (req, res) => {
+        res.json({
+          success: true,
+          token: 'dev-token',
+          user: {
+            id: 'dev-user-id',
+            name: 'Development User',
+            email: 'dev@example.com',
+            role: 'admin',
+            department: 'Administration'
+          }
+        });
+      });
+
+      app.get('/api/products', (req, res) => {
+        res.json({
+          success: true,
+          data: []
+        });
+      });
+
+      app.get('/api/orders', (req, res) => {
+        res.json({
+          success: true,
+          data: []
+        });
+      });
+
+      app.get('/api/analytics', (req, res) => {
+        res.json({
+          success: true,
+          data: {}
+        });
+      });
+    }
+
+    // 404 handler
+    app.use('*', (req, res) => {
+      res.status(404).json({
+        success: false,
+        message: `Route ${req.originalUrl} not found`
+      });
+    });
+
+    // Global error handling middleware
+    app.use((err, req, res, next) => {
+      console.error('Error:', err);
+      
+      // Default error
+      let error = { ...err };
+      error.message = err.message;
+
+      // Sequelize validation error
+      if (err.name === 'SequelizeValidationError') {
+        const message = Object.values(err.errors).map(val => val.message).join(', ');
+        error.message = message;
+        error.statusCode = 400;
       }
-    });
-  });
 
-  app.post('/api/auth/login', (req, res) => {
-    res.json({
-      success: true,
-      token: 'dev-token',
-      user: {
-        id: 'dev-user-id',
-        name: 'Development User',
-        email: 'dev@example.com',
-        role: 'admin',
-        department: 'Administration'
+      // Sequelize unique constraint error
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        const message = Object.values(err.errors).map(val => val.message).join(', ');
+        error.message = message;
+        error.statusCode = 400;
       }
+
+      // JWT errors
+      if (err.name === 'JsonWebTokenError') {
+        error.message = 'Invalid token';
+        error.statusCode = 401;
+      }
+
+      if (err.name === 'TokenExpiredError') {
+        error.message = 'Token expired';
+        error.statusCode = 401;
+      }
+
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Internal server error',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+      });
     });
-  });
 
-  app.get('/api/products', (req, res) => {
-    res.json({
-      success: true,
-      data: []
+    // Start server
+    const PORT = process.env.PORT || 5000;
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📊 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'Mock (No Database)'}`);
     });
-  });
 
-  app.get('/api/orders', (req, res) => {
-    res.json({
-      success: true,
-      data: []
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('🛑 SIGTERM received. Shutting down gracefully...');
+      server.close(() => {
+        console.log('✅ Process terminated');
+      });
     });
-  });
 
-  app.get('/api/analytics', (req, res) => {
-    res.json({
-      success: true,
-      data: {}
-    });
-  });
-}
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`
-  });
-});
-
-// Global error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  
-  // Default error
-  let error = { ...err };
-  error.message = err.message;
-
-  // Sequelize validation error
-  if (err.name === 'SequelizeValidationError') {
-    const message = Object.values(err.errors).map(val => val.message).join(', ');
-    error.message = message;
-    error.statusCode = 400;
+  } catch (error) {
+    console.error('❌ Failed to initialize server:', error);
+    process.exit(1);
   }
+};
 
-  // Sequelize unique constraint error
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    const message = Object.values(err.errors).map(val => val.message).join(', ');
-    error.message = message;
-    error.statusCode = 400;
-  }
-
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    error.message = 'Invalid token';
-    error.statusCode = 401;
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    error.message = 'Token expired';
-    error.statusCode = 401;
-  }
-
-  res.status(error.statusCode || 500).json({
-    success: false,
-    message: error.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
-
-// Start server
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📊 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'Mock (No Database)'}`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Process terminated');
-  });
-});
+// Start the server
+initializeServer();
 
 module.exports = app; 
