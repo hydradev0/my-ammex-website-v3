@@ -34,10 +34,10 @@ const getCategory = async (req, res) => {
     const { include } = req.query;
 
     let includeOptions = [];
-    if (include === 'products') {
+    if (include === 'items') {
       includeOptions.push({
         model: models.Product,
-        as: 'products',
+        as: 'items',
         where: { isActive: true },
         required: false,
         include: [{
@@ -51,7 +51,7 @@ const getCategory = async (req, res) => {
     const category = await models.Category.findByPk(req.params.id, {
       where: { isActive: true },
       include: includeOptions,
-      order: include === 'products' ? [['products', 'itemName', 'ASC']] : undefined
+      order: include === 'items' ? [['items', 'itemName', 'ASC']] : undefined
     });
 
     if (!category) {

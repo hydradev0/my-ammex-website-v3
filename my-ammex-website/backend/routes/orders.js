@@ -16,7 +16,6 @@ const {
 // Validation middleware
 const validateOrder = [
   check('customerId', 'Customer ID is required').isInt({ min: 1 }),
-  check('orderNumber', 'Order number is required').not().isEmpty(),
   check('totalAmount', 'Total amount must be a positive number').isFloat({ min: 0 }),
   check('items', 'Order items are required').isArray({ min: 1 })
 ];

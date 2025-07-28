@@ -37,7 +37,7 @@ const initializeServer = async () => {
     if (process.env.DATABASE_URL) {
       // Production/Development with database
       app.use('/api/auth', require('./routes/auth'));
-      app.use('/api/products', require('./routes/products'));
+      app.use('/api/items', require('./routes/items'));
       app.use('/api/categories', require('./routes/categories'));
       app.use('/api/units', require('./routes/units'));
       app.use('/api/customers', require('./routes/customers'));
@@ -73,7 +73,7 @@ const initializeServer = async () => {
         });
       });
 
-      app.get('/api/products', (req, res) => {
+      app.get('/api/items', (req, res) => {
         res.json({
           success: true,
           data: []

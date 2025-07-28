@@ -14,7 +14,6 @@ const {
 
 // Validation middleware
 const validateCustomer = [
-  check('customerId', 'Customer ID is required').not().isEmpty().trim(),
   check('customerName', 'Customer name is required').not().isEmpty().trim(),
   check('telephone1', 'Telephone 1 is required').not().isEmpty().trim(),
   check('email1', 'Email 1 is required').isEmail(),

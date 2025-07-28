@@ -1,8 +1,8 @@
 const { getModels } = require('../config/db');
 const { Op } = require('sequelize');
 
-// Get all products
-const getAllProducts = async (req, res, next) => {
+// Get all items
+const getAllItems = async (req, res, next) => {
   try {
     const { Product, Category, Unit } = getModels();
     const { page = 1, limit = 10, category, search } = req.query;
@@ -14,7 +14,7 @@ const getAllProducts = async (req, res, next) => {
       whereClause.itemName = { [require('sequelize').Op.iLike]: `%${search}%` };
     }
 
-    const products = await Product.findAndCountAll({
+    const items = await Product.findAndCountAll({
       where: whereClause,
       include: [
         { model: Category, as: 'category' },
@@ -27,11 +27,11 @@ const getAllProducts = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: products.rows,
+      data: items.rows,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(products.count / limit),
-        totalItems: products.count,
+        totalPages: Math.ceil(items.count / limit),
+        totalItems: items.count,
         itemsPerPage: parseInt(limit)
       }
     });
@@ -40,44 +40,44 @@ const getAllProducts = async (req, res, next) => {
   }
 };
 
-// Get single product by ID
-const getProductById = async (req, res, next) => {
+// Get single item by ID
+const getItemById = async (req, res, next) => {
   try {
     const { Product, Category, Unit } = getModels();
     const { id } = req.params;
 
-    const product = await Product.findByPk(id, {
+    const item = await Product.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
       ]
     });
-    if (!product) {
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: 'Item not found'
       });
     }
 
     res.json({
       success: true,
-      data: product
+      data: item
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Create new product
-const createProduct = async (req, res, next) => {
+// Create new item
+const createItem = async (req, res, next) => {
   try {
     const { Product, Category, Unit } = getModels();
-    const productData = req.body;
+    const itemData = req.body;
 
-    const product = await Product.create(productData);
+    const item = await Product.create(itemData);
     
-    // Fetch the created product with related data
-    const createdProduct = await Product.findByPk(product.id, {
+    // Fetch the created item with related data
+    const createdItem = await Product.findByPk(item.id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -86,51 +86,51 @@ const createProduct = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      data: createdProduct
+      data: createdItem
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Update product
-const updateProduct = async (req, res, next) => {
+// Update item
+const updateItem = async (req, res, next) => {
   try {
     const { Product, Category, Unit } = getModels();
     const { id } = req.params;
     const updateData = req.body;
 
-    const currentProduct = await Product.findByPk(id, {
+    const currentItem = await Product.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
       ]
     });
-    if (!currentProduct) {
+    if (!currentItem) {
       return res.status(404).json({   
         success: false,
-        message: 'Product not found'
+        message: 'Item not found'
       });
     }
 
-    // Check for duplicate Name (excluding current product)
-    if (updateData.itemName && updateData.itemName !== currentProduct.itemName) {
-      const existingProduct = await Product.findOne({
+    // Check for duplicate Name (excluding current item)
+    if (updateData.itemName && updateData.itemName !== currentItem.itemName) {
+      const existingItem = await Product.findOne({
         where: {
           itemName: updateData.itemName,
           id: { [Op.ne]: id }
         }
       });
-      if (existingProduct) {
+      if (existingItem) {
         return res.status(400).json({
           success: false,
-          message: 'Product name already exists'
+          message: 'Item name already exists'
         });
       }
     }
 
-    // Check for duplicate Code (excluding current product)
-    if (updateData.itemCode && updateData.itemCode !== currentProduct.itemCode) {
+    // Check for duplicate Code (excluding current item)
+    if (updateData.itemCode && updateData.itemCode !== currentItem.itemCode) {
       const existingCode = await Product.findOne({
         where: {
           itemCode: updateData.itemCode,
@@ -140,15 +140,15 @@ const updateProduct = async (req, res, next) => {
       if (existingCode) {
         return res.status(400).json({
           success: false,
-          message: 'Product code already exists'
+          message: 'Item code already exists'
         });
       }
     }
 
-    await currentProduct.update(updateData);
+    await currentItem.update(updateData);
     
-    // Fetch the updated product with related data
-    const updatedProduct = await Product.findByPk(id, {
+    // Fetch the updated item with related data
+    const updatedItem = await Product.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -157,43 +157,43 @@ const updateProduct = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: updatedProduct
+      data: updatedItem
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Delete product (soft delete)
-const deleteProduct = async (req, res, next) => {
+// Delete item (soft delete)
+const deleteItem = async (req, res, next) => {
   try {
     const { Product } = getModels();
     const { id } = req.params;
 
-    const product = await Product.findByPk(id);
-    if (!product) {
+    const item = await Product.findByPk(id);
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: 'Item not found'
       });
     }
 
-    await product.update({ isActive: false });
+    await item.update({ isActive: false });
 
     res.json({
       success: true,
-      message: 'Product deleted successfully'
+      message: 'Item deleted successfully'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Get low stock products
-const getLowStockProducts = async (req, res, next) => {
+// Get low stock items
+const getLowStockItems = async (req, res, next) => {
   try {
     const { Product, Category, Unit } = getModels();
-    const products = await Product.findAll({
+    const items = await Product.findAll({
       where: {
         isActive: true,
         quantity: {
@@ -209,37 +209,37 @@ const getLowStockProducts = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: products
+      data: items
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Update product stock
-const updateProductStock = async (req, res, next) => {
+// Update item stock
+const updateItemStock = async (req, res, next) => {
   try {
     const { Product, Category, Unit } = getModels();
     const { id } = req.params;
     const { quantity } = req.body;
 
-    const product = await Product.findByPk(id, {
+    const item = await Product.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
       ]
     });
-    if (!product) {
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: 'Item not found'
       });
     }
 
-    await product.update({ quantity });
+    await item.update({ quantity });
     
-    // Fetch the updated product with related data
-    const updatedProduct = await Product.findByPk(id, {
+    // Fetch the updated item with related data
+    const updatedItem = await Product.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -248,7 +248,7 @@ const updateProductStock = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: updatedProduct
+      data: updatedItem
     });
   } catch (error) {
     next(error);
@@ -256,11 +256,11 @@ const updateProductStock = async (req, res, next) => {
 };
 
 module.exports = {
-  getAllProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getLowStockProducts,
-  updateProductStock
+  getAllItems,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+  getLowStockItems,
+  updateItemStock
 }; 

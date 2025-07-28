@@ -10,7 +10,26 @@ const calculateInventoryCounts = () => {
     item.currentStock === 0
   ).length;
 
-  return { lowStock, critical };
+  // Calculate additional inventory metrics
+  const totalStockValue = inventoryAlertsData.reduce((sum, item) => 
+    sum + (item.currentStock * (item.price || 0)), 0
+  );
+  
+  const outOfStock = inventoryAlertsData.filter(item => 
+    item.currentStock === 0
+  ).length;
+  
+  const reorderPending = inventoryAlertsData.filter(item => 
+    item.currentStock <= item.minimumStockLevel * 0.5
+  ).length;
+
+  return { 
+    lowStock, 
+    critical, 
+    totalStockValue,
+    outOfStock,
+    reorderPending
+  };
 };
 
 // Mock data for dashboard
@@ -49,7 +68,10 @@ export const getFormattedDashboardMetrics = () => {
     },
     inventory: {
       lowStock: dashboardData.inventory.lowStock,
-      critical: dashboardData.inventory.critical
+      critical: dashboardData.inventory.critical,
+      totalStockValue: dashboardData.inventory.totalStockValue,
+      outOfStock: dashboardData.inventory.outOfStock,
+      reorderPending: dashboardData.inventory.reorderPending
     },
     customers: {
       active: dashboardData.customers.active,

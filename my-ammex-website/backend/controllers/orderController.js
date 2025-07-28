@@ -78,11 +78,15 @@ const getOrderById = async (req, res, next) => {
 const createOrder = async (req, res, next) => {
   try {
     const { Order, OrderItem } = getModels();
-    const { customerId, orderNumber, totalAmount, items, shippingAddress, billingAddress, notes } = req.body;
+    const { customerId, totalAmount, items, shippingAddress, billingAddress, notes } = req.body;
+
+    const orderNumber = generateOrderNumber();
+    const userId = req.user.id; // employee's user ID from auth middleware
 
     // Create order
     const order = await Order.create({
-      customerId,
+      customerId,      // the customer (registered or walk-in)
+      userId,          // the employee handling the order
       orderNumber,
       totalAmount,
       shippingAddress,
@@ -244,6 +248,15 @@ const getOrdersByStatus = async (req, res, next) => {
     next(error);
   }
 };
+
+function generateOrderNumber() {
+  const date = new Date();
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const random = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+  return `ORD-${yyyy}${mm}${dd}-${random}`;
+}
 
 module.exports = {
   getAllOrders,

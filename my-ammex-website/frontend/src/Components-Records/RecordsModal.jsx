@@ -6,7 +6,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
   // State for form fields
   const [formData, setFormData] = useState({
     customerId: nextAccountCode,
-    customerName: '',
+    companyName: '',
     street: '',
     city: '',
     postalCode: '',
@@ -40,8 +40,8 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
       newErrors.customerId = 'Customer ID is required';
     }
 
-    if (!formData.customerName.trim()) {
-      newErrors.customerName = 'Customer name is required';
+    if (!formData.companyName.trim()) {
+      newErrors.companyName = 'Company name is required';
     }
     
     if (!formData.email1.trim()) {
@@ -100,7 +100,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
           
           <button 
             onClick={onClose} 
-            className="hover:text-gray-400 text-gray-600 mb-4"
+            className="hover:text-gray-400 cursor-pointer text-gray-600 mb-4 "
             >
             <X className="h-8 w-8" />
           </button>
@@ -123,12 +123,12 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
                 readOnly
               />
               <FormField
-                id="customerName"
-                label="Customer Name"
+                id="companyName"
+                label="Company Name"
                 type="text"
-                value={formData.customerName}
+                value={formData.companyName}
                 onChange={handleInputChange}
-                error={errors.customerName}
+                error={errors.companyName}
               />
             </div>
             

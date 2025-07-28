@@ -34,10 +34,10 @@ const getUnit = async (req, res) => {
     const { include } = req.query;
     
     let includeOptions = [];
-    if (include === 'products') {
+    if (include === 'items') {
       includeOptions.push({
         model: models.Product,
-        as: 'products',
+        as: 'items',
         where: { isActive: true },
         required: false,
         include: [{
@@ -51,7 +51,7 @@ const getUnit = async (req, res) => {
     const unit = await models.Unit.findByPk(req.params.id, {
       where: { isActive: true }, // Filter for active unit
       include: includeOptions,
-      order: include === 'products' ? [['products', 'itemName', 'ASC']] : undefined
+      order: include === 'items' ? [['items', 'itemName', 'ASC']] : undefined
     });
 
     if (!unit) {
@@ -171,15 +171,15 @@ const deleteUnit = async (req, res) => {
       });
     }
 
-    // Check if unit is being used by any products
-    const productsUsingUnit = await models.Product.count({
+    // Check if unit is being used by any items
+    const itemsUsingUnit = await models.Product.count({
       where: { unitId: req.params.id }
     });
 
-    if (productsUsingUnit > 0) {
+    if (itemsUsingUnit > 0) {
       return res.status(400).json({
         success: false,
-        message: `Cannot delete unit. It is being used by ${productsUsingUnit} product(s).`
+        message: `Cannot delete unit. It is being used by ${itemsUsingUnit} item(s).`
       });
     }
 

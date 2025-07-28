@@ -341,11 +341,8 @@ const initializeModels = (sequelize) => {
     },
     customerId: {
       type: DataTypes.STRING,
-      allowNull: false,
       unique: true,
-      validate: {
-        notEmpty: { msg: 'Customer ID is required' }
-      }
+      allowNull: true, // Will be set automatically
     },
     customerName: {
       type: DataTypes.STRING,
@@ -405,7 +402,16 @@ const initializeModels = (sequelize) => {
       defaultValue: true
     }
   }, {
-    timestamps: true
+    timestamps: true,
+    hooks: {
+      afterCreate: async (customer, options) => {
+        if (!customer.customerId) {
+          const paddedId = String(customer.id).padStart(4, '0');
+          customer.customerId = `CUST${paddedId}`;
+          await customer.save({ transaction: options.transaction });
+        }
+      }
+    }
   });
 
 
@@ -431,7 +437,7 @@ const initializeModels = (sequelize) => {
   // Category relationships
   Category.hasMany(Product, {
     foreignKey: 'categoryId',
-    as: 'products'
+    as: 'items'
   });
 
   Product.belongsTo(Category, {
@@ -442,7 +448,7 @@ const initializeModels = (sequelize) => {
   // Unit relationships
   Unit.hasMany(Product, {
     foreignKey: 'unitId',
-    as: 'products'
+    as: 'items'
   });
   Product.belongsTo(Unit, {
     foreignKey: 'unitId',

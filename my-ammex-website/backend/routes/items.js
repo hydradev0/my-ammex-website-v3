@@ -4,18 +4,18 @@ const { check } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 const { handleValidationErrors } = require('../middleware/validation');
 const {
-  getAllProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getLowStockProducts,
-  updateProductStock
-} = require('../controllers/productController');
+  getAllItems,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+  getLowStockItems,
+  updateItemStock
+} = require('../controllers/itemController');
 
 // Validation middleware
-const validateProduct = [
-  check('itemName', 'Product name is required').not().isEmpty(),
+const validateItem = [
+  check('itemName', 'Item name is required').not().isEmpty(),
   check('itemCode', 'Item code is required').not().isEmpty(),
   check('vendor', 'Vendor is required').not().isEmpty(),
   check('price', 'Price must be a positive number').isFloat({ min: 0 }),
@@ -28,41 +28,41 @@ const validateProduct = [
   check('maxLevel', 'Maximum level must be a non-negative integer').isInt({ min: 0 })
 ];
 
-// @route   GET /api/products
-// @desc    Get all products
+// @route   GET /api/items
+// @desc    Get all items
 // @access  Private
-router.get('/', /* protect, */ getAllProducts);
+router.get('/', /* protect, */ getAllItems);
 
-// @route   GET /api/products/low-stock
-// @desc    Get low stock products
+// @route   GET /api/items/low-stock
+// @desc    Get low stock items
 // @access  Private
-router.get('/low-stock', /* protect, */ getLowStockProducts);
+router.get('/low-stock', /* protect, */ getLowStockItems);
 
-// @route   GET /api/products/:id
-// @desc    Get single product by ID
+// @route   GET /api/items/:id
+// @desc    Get single item by ID
 // @access  Private
-router.get('/:id', /* protect, */ getProductById);
+router.get('/:id', /* protect, */ getItemById);
 
-// @route   POST /api/products
-// @desc    Create new product (admin only)
+// @route   POST /api/items
+// @desc    Create new item (admin only)
 // @access  Private/Admin
-router.post('/', /* protect, authorize('admin'), */ validateProduct, handleValidationErrors, createProduct);
+router.post('/', /* protect, authorize('admin'), */ validateItem, handleValidationErrors, createItem);
 
-// @route   PUT /api/products/:id
-// @desc    Update product (admin only)
+// @route   PUT /api/items/:id
+// @desc    Update item (admin only)
 // @access  Private/Admin
-router.put('/:id', /* protect, authorize('admin'), */ updateProduct);
+router.put('/:id', /* protect, authorize('admin'), */ updateItem);
 
-// @route   PATCH /api/products/:id/stock
-// @desc    Update product stock
+// @route   PATCH /api/items/:id/stock
+// @desc    Update item stock
 // @access  Private
 router.patch('/:id/stock', /* protect, */ [
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 })
-], handleValidationErrors, updateProductStock);
+], handleValidationErrors, updateItemStock);
 
-// @route   DELETE /api/products/:id
-// @desc    Delete product (admin only)
+// @route   DELETE /api/items/:id
+// @desc    Delete item (admin only)
 // @access  Private/Admin
-router.delete('/:id', /* protect, authorize('admin'), */ deleteProduct);
+router.delete('/:id', /* protect, authorize('admin'), */ deleteItem);
 
 module.exports = router; 

@@ -8,6 +8,7 @@ import MetricsCard from '../../Components-Dashboard/MetricsCard';
 import QuickActions from '../../Components-Dashboard/QuickActions';
 import ReorderModal from '../../Components/ReorderModal';
 import { inventoryAlertsData } from '../../data/inventoryAlertsData';
+import { getMetricsCardsForRole, getCurrentUserRole } from '../../utils/roleManager';
 
 const quickActions = [
   {
@@ -50,7 +51,7 @@ const Dashboard = () => {
   const [metrics, setMetrics] = useState({
     sales: { total: 0, averageOrderValue: 0 },
     orders: { total: 0, pending: 0 },
-    inventory: { lowStock: 0, critical: 0 },
+    inventory: { lowStock: 0, critical: 0, totalStockValue: 0, outOfStock: 0, reorderPending: 0 },
     customers: { active: 0, newSignups: 0 }
   });
 
@@ -156,6 +157,105 @@ const Dashboard = () => {
     setIsReorderModalOpen(true);
   };
 
+  // Get metrics cards for current user role
+  const userRole = getCurrentUserRole();
+  const metricsCards = getMetricsCardsForRole(userRole);
+
+  // Render metrics card based on title
+  const renderMetricsCard = (title) => {
+    switch (title) {
+      case "Today's Sales":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.sales.total}
+            valuePrefix="₱"
+            subtitle={`Average order value: ₱${metrics.sales.averageOrderValue.toLocaleString()}`}
+          />
+        );
+      
+      case "Today's Orders":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.orders.total}
+            subtitle={`${metrics.orders.pending} orders pending`}
+          />
+        );
+      
+      case "Low Stock Items":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.inventory.lowStock}
+            valueSuffix=" items"
+            statusIndicator={{
+              text: metrics.inventory.critical > 0 ? 'Critical' : 'Warning',
+              color: metrics.inventory.critical > 0 ? 'red' : 'yellow'
+            }}
+            subtitle={`${metrics.inventory.critical} items out of stock`}
+          />
+        );
+      
+      case "Today's Customers":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.customers.active}
+            subtitle={`${metrics.customers.newSignups} new signups`}
+          />
+        );
+      
+      case "Total Stock Value":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.inventory.totalStockValue}
+            valuePrefix="₱"
+            subtitle="Total value of all inventory"
+          />
+        );
+      
+      case "Out of Stock Items":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.inventory.outOfStock}
+            valueSuffix=" items"
+            statusIndicator={{
+              text: 'Good',
+              color: 'green'
+            }}
+            subtitle="Items with zero stock"
+          />
+        );
+      
+      case "Reorder Pending":
+        return (
+          <MetricsCard
+            key={title}
+            title={title}
+            value={metrics.inventory.reorderPending}
+            valueSuffix=" items"
+            statusIndicator={{
+              text: 'Good',
+              color: 'green'
+            }}
+            subtitle="Items needing reorder"
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -191,155 +291,129 @@ const Dashboard = () => {
           
           {/* Card Container */}
           <div className="grid grid-cols-4 gap-6 mb-10">
-            <MetricsCard
-              title="Today's Sales"
-              value={metrics.sales.total}
-              valuePrefix="₱"
-              subtitle={`Average order value: ₱${metrics.sales.averageOrderValue.toLocaleString()}`}
-            />
-
-            <MetricsCard
-              title="Today's Orders"
-              value={metrics.orders.total}
-              subtitle={`${metrics.orders.pending} orders pending`}
-            />
-
-            <MetricsCard
-              title="Low Stock Items"
-              value={metrics.inventory.lowStock}
-              valueSuffix=" items"
-              statusIndicator={{
-                text: metrics.inventory.critical > 0 ? 'Critical' : 'Warning',
-                color: metrics.inventory.critical > 0 ? 'red' : 'yellow'
-              }}
-              subtitle={`${metrics.inventory.critical} items out of stock`}
-            />
-
-            <MetricsCard
-              title="Today's Customers"
-              value={metrics.customers.active}
-              subtitle={`${metrics.customers.newSignups} new signups`}
-            />
+            {metricsCards.map((title) => renderMetricsCard(title))}
           </div>
 
           <div className="flex gap-6">
             <QuickActions actions={quickActions} />
 
-            {/* Inventory Alert Container */}
-            <div className="flex-[1.5] bg-white rounded-xl shadow-sm border border-gray-300">
-              <div className='border-b border-gray-300'>
-                <h2 className="text-2xl font-semibold px-6 py-3">Inventory Alerts</h2>
-              </div>
-              <div className="p-6">
-                {/* Search and Filters */}
-                <div className="flex gap-4 mb-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search products or SKUs..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  <div className="relative" ref={severityDropdownRef}>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Filter className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <button
-                      type="button"
-                      className="pl-10 gap-2 pr-4 py-2 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center w-full"
-                      onClick={() => setSeverityDropdownOpen((open) => !open)}
-                    >
-                      <span>{filterSeverity === 'all' ? 'All Severities' : filterSeverity.charAt(0).toUpperCase() + filterSeverity.slice(1)}</span>
-                      <ChevronDown className={`w-6 h-6 transition-transform ${severityDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {severityDropdownOpen && (
-                      <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg">
-                        {severityOptions.map(option => (
-                          <li
-                            key={option.value}
-                            className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${filterSeverity === option.value ? 'bg-blue-600 text-white hover:bg-blue-700 hover:text-white font-semibold' : ''}`}
-                            onClick={() => {
-                              setFilterSeverity(option.value);
-                              setSeverityDropdownOpen(false);
-                            }}  
-                          >
-                            {option.label}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+            {/* Inventory Alert Container - Only show for inventory and admin roles */}
+            {(userRole === 'admin' || userRole === 'inventory' || userRole === 'logistics') && (
+              <div className="flex-[1.5] bg-white rounded-xl shadow-sm border border-gray-300">
+                <div className='border-b border-gray-300'>
+                  <h2 className="text-2xl font-semibold px-6 py-3">Inventory Alerts</h2>
                 </div>
-
-                {/* Alerts List */}
-                <div className="divide-y divide-gray-200 max-h-[550px] overflow-y-auto pb-4 pr-4">
-                  {filteredAlerts.map((alert) => (
-                    <div key={alert.id} className="py-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getSeverityColor(alert.severity)}`}>
-                              {getSeverityIcon(alert.severity)}
-                              {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
-                            </span>
-                          </div>
-                          
-                          <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                            {alert.productName}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2">SKU: {alert.sku}</p>
-                          
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500">Current Stock:</span>
-                              <span className={`ml-2 font-semibold text-xl ${alert.currentStock < alert.minimumStockLevel ? 'text-red-600' : 'text-gray-900'}`}>
-                                {alert.currentStock} units
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Minimum Stock Level:</span>
-                              <span className="ml-2 font-semibold text-xl text-gray-900">{alert.minimumStockLevel} units</span>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-3 flex items-center gap-4">
-                            <span className={`text-sm font-medium ${
-                              alert.currentStock === 0 ? 'text-red-600' : 
-                              alert.currentStock <= alert.minimumStockLevel * 0.3 ? 'text-red-500' :
-                              alert.currentStock <= alert.minimumStockLevel * 0.5 ? 'text-orange-500' : 'text-yellow-600'
-                            }`}>
-                              {getStockStatus(alert.currentStock, alert.minimumStockLevel)}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-2 ml-4">
-                          <button 
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                            onClick={() => openReorderModal(alert)}
-                          >
-                            Reorder
-                          </button>
-                        </div>
+                <div className="p-6">
+                  {/* Search and Filters */}
+                  <div className="flex gap-4 mb-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search products or SKUs..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent"
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-                
-                {filteredAlerts.length === 0 && (
-                  <div className="p-8 text-center">
-                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts found</h3>
-                    <p className="text-gray-600">Try adjusting your filters or search terms.</p>
+                    <div className="relative" ref={severityDropdownRef}>
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Filter className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <button
+                        type="button"
+                        className="pl-10 gap-2 pr-4 py-2 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center w-full"
+                        onClick={() => setSeverityDropdownOpen((open) => !open)}
+                      >
+                        <span>{filterSeverity === 'all' ? 'All Severities' : filterSeverity.charAt(0).toUpperCase() + filterSeverity.slice(1)}</span>
+                        <ChevronDown className={`w-6 h-6 transition-transform ${severityDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {severityDropdownOpen && (
+                        <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg">
+                          {severityOptions.map(option => (
+                            <li
+                              key={option.value}
+                              className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${filterSeverity === option.value ? 'bg-blue-600 text-white hover:bg-blue-700 hover:text-white font-semibold' : ''}`}
+                              onClick={() => {
+                                setFilterSeverity(option.value);
+                                setSeverityDropdownOpen(false);
+                              }}  
+                            >
+                              {option.label}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-                )}
+
+                  {/* Alerts List */}
+                  <div className="divide-y divide-gray-200 max-h-[550px] overflow-y-auto pb-4 pr-4">
+                    {filteredAlerts.map((alert) => (
+                      <div key={alert.id} className="py-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getSeverityColor(alert.severity)}`}>
+                                {getSeverityIcon(alert.severity)}
+                                {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
+                              </span>
+                            </div>
+                            
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                              {alert.productName}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-2">SKU: {alert.sku}</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-500">Current Stock:</span>
+                                <span className={`ml-2 font-semibold text-xl ${alert.currentStock < alert.minimumStockLevel ? 'text-red-600' : 'text-gray-900'}`}>
+                                  {alert.currentStock} units
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Minimum Stock Level:</span>
+                                <span className="ml-2 font-semibold text-xl text-gray-900">{alert.minimumStockLevel} units</span>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-3 flex items-center gap-4">
+                              <span className={`text-sm font-medium ${
+                                alert.currentStock === 0 ? 'text-red-600' : 
+                                alert.currentStock <= alert.minimumStockLevel * 0.3 ? 'text-red-500' :
+                                alert.currentStock <= alert.minimumStockLevel * 0.5 ? 'text-orange-500' : 'text-yellow-600'
+                              }`}>
+                                {getStockStatus(alert.currentStock, alert.minimumStockLevel)}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2 ml-4">
+                            <button 
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              onClick={() => openReorderModal(alert)}
+                            >
+                              Reorder
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {filteredAlerts.length === 0 && (
+                    <div className="p-8 text-center">
+                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts found</h3>
+                      <p className="text-gray-600">Try adjusting your filters or search terms.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

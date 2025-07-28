@@ -105,12 +105,12 @@ export const customerViewConfig = {
       gridCols: 'grid-cols-1',
       fields: [
         {
-          label: 'Customer Name',
+          label: 'Company Name',
           key: 'name',
           width: 'w-2/3'
         },
         {
-          label: 'Customer Code',
+          label: 'Customer ID',
           key: 'accountCode',
           width: 'w-1/3'
         },
