@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import ScrollLock from "../Components/ScrollLock";
 
-function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
+function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode,
+  width = 'w-[1200px]',
+  maxHeight = 'max-h-[100vh]',
+ }) {
   // State for form fields
   const [formData, setFormData] = useState({
     customerId: nextAccountCode,
@@ -20,6 +24,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
   
   // State for validation errors
   const [errors, setErrors] = useState({});
+  const modalRef = useRef(null);
   
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -69,42 +74,40 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
     }
   };
 
+  // Handle click outside modal
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && modalRef.current && event.target === modalRef.current) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  useEffect(() => {
-    if (isOpen) {
-      document.documentElement.classList.add('overflow-hidden');
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, [isOpen]);
-
-  return (
-    <div className="fixed inset-0  bg-black/50 flex items-center justify-center z-50"
-        // onClick={(e) => {
-        //   if (e.target === e.currentTarget) {
-        //     onClose(); // close modal only when clicking the backdrop
-        //   }
-        // }}
+  const modalContent = (
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     >
-      
-      <div className="bg-white rounded-lg p-6 w-full max-w-6xl flex flex-col max-h-screen">
+      <div 
+        className={`bg-white rounded-lg p-6 ${width} flex flex-col ${maxHeight} overflow-hidden`}
+        style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+      >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">Add New Customer</h2>
           
           <button 
             onClick={onClose} 
-            className="hover:text-gray-400 cursor-pointer text-gray-600 mb-4 "
-            >
+            className="hover:text-gray-400 cursor-pointer text-gray-600 mb-4"
+          >
             <X className="h-8 w-8" />
           </button>
-           
         </div> 
         
         <div className="overflow-y-auto flex-grow">
@@ -251,6 +254,13 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode }) {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <ScrollLock active={isOpen} />
+      {createPortal(modalContent, document.body)}
+    </>
   );
 }
 

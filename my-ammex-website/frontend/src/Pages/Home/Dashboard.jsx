@@ -274,7 +274,7 @@ const Dashboard = () => {
       <>
         <TopBar />
         <Navigation />
-        <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center">
+        <div className="w-full min-h-[calc(100vh)] flex items-center justify-center">
           <div className="text-red-600">Error loading dashboard data: {error}</div>
         </div>
       </>

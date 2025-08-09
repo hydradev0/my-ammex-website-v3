@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import PropTypes from 'prop-types';
+import { createPortal } from 'react-dom';
+import ScrollLock from "../Components/ScrollLock";
 
-function ItemModal({ isOpen = true, onClose, onSubmit, categories }) {
+function ItemModal({ isOpen = true, onClose, onSubmit, categories, 
+  width = 'w-[1200px]',
+  maxHeight = 'max-h-[100vh]',}) {
   // State for form fields
   const [formData, setFormData] = useState({
     itemCode: '',
@@ -35,6 +39,7 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories }) {
   const vendorDropdownRef = useRef(null);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef(null);
+  const modalRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -53,22 +58,22 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [vendorDropdownOpen, categoryDropdownOpen]);
+
+  // Handle click outside modal
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && modalRef.current && event.target === modalRef.current) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
   
   if (!isOpen) return null;
-
-  useEffect(() => {
-    if (isOpen) {
-      document.documentElement.classList.add('overflow-hidden');
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, [isOpen]);
   
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -173,14 +178,20 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-6xl flex flex-col max-h-11/12">
+  const modalContent = (
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+       <div
+        className={`bg-white rounded-lg p-6 ${width} flex flex-col ${maxHeight} overflow-hidden`}
+        style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+      >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">Add New Item</h2>
           
           <button 
-            className="hover:text-gray-400 text-gray-600 mb-4"
+            className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
             onClick={onClose} 
           >
             <X className="h-8 w-8" />
@@ -391,6 +402,13 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories }) {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <ScrollLock active={isOpen} />
+      {createPortal(modalContent, document.body)}
+    </>
   );
 }
 

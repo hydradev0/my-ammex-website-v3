@@ -61,7 +61,15 @@ const Analytics = () => {
   }
 
   if (error) {
-    return <div className='flex justify-center items-center h-screen text-xl text-red-600'>{error}</div>;
+    return (
+      <>
+        <TopBar />
+        <Navigation />
+        <div className="w-full min-h-[calc(100vh)] flex items-center justify-center">
+          <div className="text-red-600">Error loading analytics data: {error}</div>
+        </div>
+      </>
+    );
   }
 
   return (

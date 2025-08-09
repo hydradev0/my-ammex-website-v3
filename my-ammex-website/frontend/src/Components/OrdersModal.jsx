@@ -18,7 +18,7 @@ function OrdersModal({ isOpen, onClose, title, children, titleClassName }) {
   }, [isOpen]);
 
   if (!isOpen) return null;
-
+{/*Sales quote, sales order, sales invoice */}
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto">

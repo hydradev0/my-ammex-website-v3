@@ -71,7 +71,7 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
           <h2 className="text-2xl font-semibold text-gray-800">Reorder Product</h2>
           <button
             onClick={onClose}
-            className="hover:text-gray-400 text-gray-600 mb-4"
+            className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
           >
             <X className="w-8 h-8" />
           </button>

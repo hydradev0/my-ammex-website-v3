@@ -1,5 +1,7 @@
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import ScrollLock from "./ScrollLock";
 
 function HandleCustomerModal({ 
   isOpen, 
@@ -7,33 +9,40 @@ function HandleCustomerModal({
   title,
   children,
   footerContent,
-  width = "600px",
-  maxHeight = "100vh"
+  width = 'w-[600px]',
+  maxHeight = 'max-h-[100vh]',
 }) {
+  const modalRef = useRef(null);
+
+  // Handle click outside modal
   useEffect(() => {
-    if (isOpen) {
-      document.documentElement.classList.add('overflow-hidden');
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
+    const handleClickOutside = (event) => {
+      if (isOpen && modalRef.current && event.target === modalRef.current) {
+        onClose();
+      }
     };
-  }, [isOpen]);
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className={`bg-white rounded-xl shadow-lg w-[${width}] max-h-[${maxHeight}] overflow-y-auto`}>
+  const modalContent = (
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+      <div className={`bg-white rounded-xl shadow-lg ${width} ${maxHeight} overflow-y-auto`} 
+       style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-800">{title}</h2>
           <button 
-            className="hover:text-gray-400 text-gray-600 mb-4"
+            className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
             onClick={onClose} 
           >
             <X className="w-8 h-8" />
@@ -53,6 +62,13 @@ function HandleCustomerModal({
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <ScrollLock active={isOpen} />
+      {createPortal(modalContent, document.body)}
+    </>
   );
 }
 

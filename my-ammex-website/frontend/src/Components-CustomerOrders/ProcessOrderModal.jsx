@@ -39,7 +39,7 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, discountPercent,
       isOpen={isOpen}
       onClose={onClose}
       title="Process Order"
-      width="800px"
+      width="w-[800px]"
       footerContent={footerContent}
     >
       <div className="mb-6">

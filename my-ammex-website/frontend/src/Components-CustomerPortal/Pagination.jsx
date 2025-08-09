@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   // Show fewer page numbers on mobile
@@ -25,10 +26,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
         disabled={currentPage === 1}
-        className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-200 text-gray-700 rounded-3xl disabled:bg-gray-100 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-sm"
+        className="px-3 sm:px-3 py-3 sm:py-2 bg-gray-200 text-gray-700 rounded-3xl disabled:bg-gray-100 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-sm"
       >
         <span className="hidden sm:inline">Previous</span>
-        <span className="sm:hidden">←</span>
+        <span className="sm:hidden"><ArrowLeft size={16} /></span>
       </button>
       
       {visiblePages.map((page, index) => (
@@ -36,7 +37,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           key={index}
           onClick={() => typeof page === 'number' ? onPageChange(page) : null}
           disabled={typeof page !== 'number'}
-          className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-3xl cursor-pointer transition-colors text-sm min-w-[2rem] sm:min-w-[2.5rem] ${
+          className={`px-5 sm:px-3 py-3 sm:py-2 rounded-3xl cursor-pointer transition-colors text-sm min-w-[2rem] sm:min-w-[2.5rem] ${
             currentPage === page
               ? 'bg-[#3182ce] text-white'
               : typeof page === 'number'
@@ -51,10 +52,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
         disabled={currentPage === totalPages}
-        className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-200 text-gray-700 rounded-3xl disabled:bg-gray-100 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-sm"
+        className="px-3 sm:px-3 py-3 sm:py-2 bg-gray-200 text-gray-700 rounded-3xl disabled:bg-gray-100 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-sm"
       >
         <span className="hidden sm:inline">Next</span>
-        <span className="sm:hidden">→</span>
+        <span className="sm:hidden"><ArrowRight size={16} /></span>
       </button>
     </div>
   );

@@ -80,7 +80,7 @@ const Profile = () => {
           <ArrowLeft className="w-5 h-5" />
           Back
         </button>
-        <h1 className="text-2xl sm:text-2xl md:text-2xl lg:text-2xl font-bold text-gray-800 text-center sm:text-left sm:-ml-4 -md:ml-2 -lg:ml-2 xl:ml-2">My Profile</h1>
+        <h1 className="text-2xl sm:text-2xl md:text-2xl lg:text-2xl font-bold text-gray-800 text-center sm:text-left sm:-ml-4 -md:ml-2 -lg:ml-2 xl:ml-2">Profile</h1>
         <div className="w-full sm:ml-auto sm:w-auto">
           {!isEditing ? (
             <button

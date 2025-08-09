@@ -16,10 +16,23 @@ html, body {
   width: 100vw;
   margin: 0;
   padding: 0;
-}
-html{
   overflow-x: hidden;
+  position: relative;
 }
+
+html {
+  overflow-x: hidden;
+  /* Prevent horizontal scrolling on mobile */
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  /* Prevent horizontal scrolling on mobile */
+  overflow-x: hidden;
+  position: relative;
+}
+
+
 
 .app-scale-wrapper {
   transform: scale(0.8);
@@ -61,6 +74,152 @@ html{
   .desktop-hidden {
     display: none;
   }
+}
+
+/* Modern Toast Animations */
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up-bounce {
+  0% {
+    transform: translateY(100%) scale(0.95);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(-5px) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes progress-shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-toast-slide-in {
+  animation: toast-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-up-bounce {
+  animation: slide-up-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-toast-progress {
+  animation: toast-progress 4s linear forwards;
+}
+
+.animate-progress-shrink {
+  animation: progress-shrink 5s linear forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Enhanced shadow utilities for toast */
+.shadow-3xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive toast positioning */
+@media (max-width: 640px) {
+  .toast-mobile {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    min-width: auto;
+    max-width: none;
+  }
+  
+  /* Ensure cart sidebar is properly hidden on mobile when closed */
+  .cart-sidebar-hidden {
+    transform: translateX(100%) !important;
+    pointer-events: none !important;
+  }
+  
+  /* Additional mobile cart hiding for better security */
+  @media (max-width: 640px) {
+    .cart-sidebar[data-closed="true"] {
+      transform: translateX(100%) !important;
+      pointer-events: none !important;
+    }
+  }
+  
+
+}
+
+/* Toast hover effects */
+.toast-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 

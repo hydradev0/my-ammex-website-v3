@@ -17,7 +17,7 @@ function ViewOrderModal({ isOpen, onClose, order }) {
       isOpen={isOpen}
       onClose={onClose}
       title="Order Details"
-      width="800px"
+      width="w-[800px]"
       footerContent={footerContent}
     >
       {/* Order Information */}

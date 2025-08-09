@@ -110,6 +110,11 @@ export const customerViewConfig = {
           width: 'w-2/3'
         },
         {
+          label: 'Contact Person',
+          key: 'contactPerson',
+          width: 'w-1/3'
+        },
+        {
           label: 'Customer ID',
           key: 'accountCode',
           width: 'w-1/3'
@@ -123,7 +128,7 @@ export const customerViewConfig = {
           label: 'Phone',
           key: 'telephone',
           width: 'w-1/3'
-        }
+        },
       ]
     },
     {
@@ -163,10 +168,6 @@ export const customerViewConfig = {
       gridCols: 'grid-cols-2',
       bgColor: 'bg-gray-100',
       fields: [
-        {
-          label: 'Contact Person',
-          key: 'contactPerson'
-        },
         {
           label: 'Notes',
           key: 'notes',

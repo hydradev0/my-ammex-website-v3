@@ -5,7 +5,7 @@ function TopBar() {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-[#2c5282] h-16 sm:h-18 w-full flex items-center px-3 sm:px-5 text-white text-sm relative">
+    <div className="bg-[#2c5282] w-full flex items-center px-3 sm:px-5 text-white text-sm h-16 sm:h-18">
       <div className="flex justify-between w-full max-w-7xl">
         <div className="pl-4 sm:pl-8 md:pl-16">
           <button 

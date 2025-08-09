@@ -8,7 +8,6 @@ const SearchFilters = ({
   selectedCategory,
   setSelectedCategory,
   categories,
-  onCartClick,
   cartItemCount,
 }) => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -18,7 +17,7 @@ const SearchFilters = ({
 
   
   return (
-    <div className="bg-white border-b border-gray-400 px-2 sm:px-4 md:px-6 py-3 sm:py-4 shadow-sm sticky top-0 z-40">
+    <div className="bg-white border-b border-gray-400 px-2 sm:px-4 md:px-6 py-3 sm:py-4 shadow-sm sm:top-18 z-40">
       {/* Desktop Layout */}
       <div className="hidden md:flex gap-4 items-center justify-between">
         <div className="flex gap-4 items-center flex-1">
@@ -92,7 +91,7 @@ const SearchFilters = ({
 
         {/* Cart Button */}
         <button
-          onClick={onCartClick}
+          onClick={() => navigate('/Products/Cart')}
           className="relative bg-[#3182ce] mr-2 text-white px-4 py-2 rounded-3xl flex items-center gap-2 hover:bg-[#4992d6] transition-colors whitespace-nowrap"
         >
           <ShoppingCart size={20} />
@@ -166,7 +165,7 @@ const SearchFilters = ({
 
           {/* Cart Button Mobile*/}
           <button
-            onClick={onCartClick}
+            onClick={() => navigate('/Products/Cart')}
             className="relative bg-[#3182ce] mr-5 text-white hover:bg-[#4992d6] px-3 py-2 rounded-3xl  flex items-center gap-1 transition-colors whitespace-nowrap"
           >
             <ShoppingCart size={18} />

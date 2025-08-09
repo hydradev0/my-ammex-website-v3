@@ -172,7 +172,7 @@ function HandleOrders() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-5 py-8 min-h-screen">
+    <div className="max-w-7xl mx-auto px-5 py-8 min-h-[calc(100vh-140px)]">
       <h1 className="text-3xl font-bold text-gray-800 mb-4">Customer Orders</h1>
 
       {/* Filters and Search Section */}

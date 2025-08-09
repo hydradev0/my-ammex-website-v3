@@ -6,5 +6,9 @@ export default defineConfig({
   plugins: [react()],
   css: {
     postcss: './postcss.config.js'
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 3000
   }
 })

@@ -69,7 +69,7 @@ function CategoryTable({ categories, setCategories }) {
   }, [categories, searchTerm]);
 
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="w-full min-h-[calc(100vh-140px)]">
       <div className="max-w-7xl mx-auto px-5 py-8">   
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Category</h1>
         

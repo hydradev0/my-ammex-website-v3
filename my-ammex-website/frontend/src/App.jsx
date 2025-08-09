@@ -12,6 +12,7 @@ import SalesInvoice from './Pages/Sales/SalesInvoice';
 import CustomerOrders from './Pages/Sales/CustomerOrders';
 import EmployeeManagement from './Pages/Admin/EmployeeManagement';
 import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
+import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
 
@@ -20,7 +21,7 @@ function App() {
     <>
     <BrowserRouter>
       <div className="app-scale-wrapper">
-      <div className='bg-gray-100 h-screen'>
+      <div className='bg-gray-100 min-h-screen'>
       <Routes>
         {/* Home */}
         <Route path="Home/Dashboard" element={<Dashboard />} />
@@ -45,6 +46,7 @@ function App() {
         
         {/* Customer Portal */}
         <Route path="Products" element={<CustomerPortal />} />
+        <Route path="Products/Cart" element={<Cart />} />
         <Route path="Products/Profile" element={<Profile />} />
         <Route path="Products/Orders" element={<Orders />} />
         

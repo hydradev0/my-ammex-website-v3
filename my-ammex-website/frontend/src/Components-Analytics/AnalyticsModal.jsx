@@ -180,7 +180,7 @@ const AnalyticsModal = ({
           </div>
           <button 
             onClick={onClose} 
-            className="hover:text-gray-400 text-gray-600 mb-4"
+            className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
           >
             <X className="h-8 w-8" />
           </button>
