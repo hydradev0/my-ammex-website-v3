@@ -74,12 +74,9 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
       {/* Mobile-First Modal */}
       <div className="flex items-end lg:items-center justify-center h-full lg:p-4">
         <div 
-          className={`bg-white w-full h-11/12 lg:h-auto lg:${maxHeight} lg:${width} lg:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden transition-transform duration-300 ease-out ${
-            isAnimating ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'
-          } lg:scale-75`}
-          style={{ 
-            transformOrigin: 'center',
-          }}
+          className={`bg-white w-full h-11/12 lg:h-auto lg:${maxHeight} lg:${width} lg:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden transition-transform duration-300 ease-out 
+          ${isAnimating ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'} lg:scale-65`}
+          style={{ transformOrigin: 'center' }}
         >
           {/* Drag Handle - Mobile Only */}
           <div className="flex lg:hidden justify-center pt-2 pb-1 flex-shrink-0">
@@ -93,7 +90,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
               onClick={handleClose}
               className="p-1.5 lg:p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
             >
-              <X className="w-6 h-6 text-gray-500 cursor-pointer" />
+              <X className="w-8 h-8 text-gray-500 cursor-pointer" />
             </button>
           </div>
           
@@ -155,13 +152,13 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
                   {/* Variations */}
                   {variations.map((variation) => (
                     <div key={variation.id} className="space-y-1.5 lg:space-y-2">
-                      <label className="text-xs lg:text-sm font-medium text-gray-700">{variation.name}</label>
+                      <label className="text-sm lg:text-lg font-medium text-gray-700">{variation.name}</label>
                       <div className="flex flex-wrap gap-1.5 lg:gap-2">
                         {variation.options.map((option) => (
                           <button
                             key={option}
                             onClick={() => setSelectedVariation({ ...selectedVariation, [variation.name]: option })}
-                            className={`px-2 py-1.5 lg:px-3 lg:py-2 cursor-pointer border rounded-md lg:rounded-lg text-xs lg:text-sm transition-colors ${
+                            className={`px-2 py-1.5 lg:px-3 lg:py-2 cursor-pointer border rounded-md lg:rounded-lg text-sm lg:text-lg transition-colors ${
                               selectedVariation?.[variation.name] === option
                                 ? 'border-[#2c5282] bg-[#2c5282] text-white'
                                 : 'border-gray-300 text-gray-700 hover:border-gray-400'
@@ -176,7 +173,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
 
                   {/* Quantity Selector */}
                   <div className="space-y-1.5 lg:space-y-2">
-                    <label className="text-xs lg:text-sm font-medium text-gray-700">Quantity</label>
+                    <label className="text-sm lg:text-lg font-medium text-gray-700">Quantity</label>
                     <div className="flex items-center space-x-2 lg:space-x-3">
                       <button
                         onClick={() => handleQuantityChange(-1)}
@@ -216,8 +213,8 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
 
                   {/* Description */}
                   <div className="pt-2 lg:pt-4 border-t border-gray-200">
-                    <h3 className="font-medium text-gray-900 mb-1.5 lg:mb-2 text-sm lg:text-base">Description</h3>
-                    <p className="text-xs lg:text-sm text-gray-600 leading-relaxed">
+                    <h3 className="font-medium text-gray-900 mb-1.5 lg:mb-2 text-sm lg:text-xl">Description</h3>
+                    <p className="text-xs lg:text-lg text-gray-600 leading-relaxed">
                       This high-quality industrial product is designed for professional use in demanding environments. 
                       Built with premium materials and engineered for durability, it provides reliable performance 
                       for your industrial applications. Features include advanced safety mechanisms, ergonomic design, 

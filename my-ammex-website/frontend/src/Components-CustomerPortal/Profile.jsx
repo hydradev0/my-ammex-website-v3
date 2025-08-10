@@ -85,7 +85,7 @@ const Profile = () => {
           {!isEditing ? (
             <button
               onClick={handleEdit}
-              className="flex items-center justify-center gap-2 bg-[#48bb78] hover:bg-[#38a169] text-white px-4 py-2 rounded-3xl transition-colors w-full sm:w-auto"
+              className="flex items-center cursor-pointer justify-center gap-2 bg-[#48bb78] hover:bg-[#38a169] text-white px-4 py-2 rounded-3xl transition-colors w-full sm:w-auto"
             >
               <Edit className="w-4 h-4" />
               Edit Profile
@@ -147,7 +147,7 @@ const Profile = () => {
                   type="text"
                   value={editData.companyName}
                   onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.companyName}</div>
@@ -160,7 +160,7 @@ const Profile = () => {
                   type="text"
                   value={editData.contactName}
                   onChange={(e) => handleInputChange('contactName', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.contactName}</div>
@@ -186,7 +186,7 @@ const Profile = () => {
                   type="tel"
                   value={editData.telephone1}
                   onChange={(e) => handleInputChange('telephone1', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.telephone1}</div>
@@ -199,7 +199,7 @@ const Profile = () => {
                   type="tel"
                   value={editData.telephone2}
                   onChange={(e) => handleInputChange('telephone2', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.telephone2}</div>
@@ -225,7 +225,7 @@ const Profile = () => {
                   type="email"
                   value={editData.email1}
                   onChange={(e) => handleInputChange('email1', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 break-all text-sm sm:text-base">{userData.email1}</div>
@@ -238,7 +238,7 @@ const Profile = () => {
                   type="email"
                   value={editData.email2}
                   onChange={(e) => handleInputChange('email2', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 break-all text-sm sm:text-base">{userData.email2}</div>
@@ -264,7 +264,7 @@ const Profile = () => {
                   type="text"
                   value={editData.street}
                   onChange={(e) => handleInputChange('street', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.street}</div>
@@ -277,7 +277,7 @@ const Profile = () => {
                   type="text"
                   value={editData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.city}</div>
@@ -290,7 +290,7 @@ const Profile = () => {
                   type="text"
                   value={editData.postalCode}
                   onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.postalCode}</div>
@@ -303,7 +303,7 @@ const Profile = () => {
                   type="text"
                   value={editData.country}
                   onChange={(e) => handleInputChange('country', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.country}</div>
@@ -325,7 +325,7 @@ const Profile = () => {
                 value={editData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
+                className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
               />
             ) : (
               <div className="text-gray-900 text-sm sm:text-base">{userData.notes}</div>

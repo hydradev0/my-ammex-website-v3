@@ -216,13 +216,13 @@ const Cart = () => {
           <div className="flex gap-3">
             <button
               onClick={() => setShowPreviewModal(false)}
-              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-3xl hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 cursor-pointer py-3 border border-gray-300 text-gray-700 rounded-3xl hover:bg-gray-50 transition-colors"
             >
               Back to Cart
             </button>
             <button
               onClick={handleConfirmPreview}
-              className="flex-1 bg-[#3182ce] text-white px-4 py-3 rounded-3xl font-medium hover:bg-[#2c5282] transition-colors"
+              className="flex-1 cursor-pointer bg-[#3182ce] text-white px-4 py-3 rounded-3xl font-medium hover:bg-[#2c5282] transition-colors"
             >
               Confirm Order
             </button>
@@ -285,7 +285,7 @@ const Cart = () => {
         <div className="flex items-center text-sm text-gray-500 mb-4 sm:mb-0 sm:-mt-4 sm:-mx-1 md:-mx-30 lg:-mx-40 xl:-mx-48">
           <button 
             onClick={() => handleBreadcrumbClick('/Products')}
-            className="hover:text-blue-600 transition-colors"
+            className="hover:text-blue-600 cursor-pointer transition-colors"
           >
             Products
           </button>
@@ -412,14 +412,14 @@ const Cart = () => {
                 
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-[#3182ce] text-white py-3 rounded-3xl font-medium hover:bg-[#2c5282] transition-colors"
+                  className="w-full cursor-pointer bg-[#3182ce] text-white py-3 rounded-3xl font-medium hover:bg-[#2c5282] transition-colors"
                 >
                   Proceed to Checkout
                 </button>
                 
                 <button
                   onClick={handleContinueShopping}
-                  className="w-full mt-3 bg-gray-100 text-gray-700 py-3 rounded-3xl font-medium hover:bg-gray-200 transition-colors"
+                  className="w-full mt-3 cursor-pointer bg-gray-100 text-gray-700 py-3 rounded-3xl font-medium hover:bg-gray-200 transition-colors"
                 >
                   Continue Shopping
                 </button>
