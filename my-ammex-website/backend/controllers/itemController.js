@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 // Get all items
 const getAllItems = async (req, res, next) => {
   try {
-    const { Product, Category, Unit } = getModels();
+    const { Item, Category, Unit } = getModels();
     const { page = 1, limit = 10, category, search } = req.query;
     
     // Build where clause
@@ -14,7 +14,7 @@ const getAllItems = async (req, res, next) => {
       whereClause.itemName = { [require('sequelize').Op.iLike]: `%${search}%` };
     }
 
-    const items = await Product.findAndCountAll({
+    const items = await Item.findAndCountAll({
       where: whereClause,
       include: [
         { model: Category, as: 'category' },
@@ -43,10 +43,10 @@ const getAllItems = async (req, res, next) => {
 // Get single item by ID
 const getItemById = async (req, res, next) => {
   try {
-    const { Product, Category, Unit } = getModels();
+    const { Item, Category, Unit } = getModels();
     const { id } = req.params;
 
-    const item = await Product.findByPk(id, {
+    const item = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -71,13 +71,13 @@ const getItemById = async (req, res, next) => {
 // Create new item
 const createItem = async (req, res, next) => {
   try {
-    const { Product, Category, Unit } = getModels();
+    const { Item, Category, Unit } = getModels();
     const itemData = req.body;
 
-    const item = await Product.create(itemData);
+    const item = await Item.create(itemData);
     
     // Fetch the created item with related data
-    const createdItem = await Product.findByPk(item.id, {
+    const createdItem = await Item.findByPk(item.id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -96,11 +96,11 @@ const createItem = async (req, res, next) => {
 // Update item
 const updateItem = async (req, res, next) => {
   try {
-    const { Product, Category, Unit } = getModels();
+    const { Item, Category, Unit } = getModels();
     const { id } = req.params;
     const updateData = req.body;
 
-    const currentItem = await Product.findByPk(id, {
+    const currentItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -115,7 +115,7 @@ const updateItem = async (req, res, next) => {
 
     // Check for duplicate Name (excluding current item)
     if (updateData.itemName && updateData.itemName !== currentItem.itemName) {
-      const existingItem = await Product.findOne({
+      const existingItem = await Item.findOne({
         where: {
           itemName: updateData.itemName,
           id: { [Op.ne]: id }
@@ -131,7 +131,7 @@ const updateItem = async (req, res, next) => {
 
     // Check for duplicate Code (excluding current item)
     if (updateData.itemCode && updateData.itemCode !== currentItem.itemCode) {
-      const existingCode = await Product.findOne({
+      const existingCode = await Item.findOne({
         where: {
           itemCode: updateData.itemCode,
           id: { [Op.ne]: id }
@@ -148,7 +148,7 @@ const updateItem = async (req, res, next) => {
     await currentItem.update(updateData);
     
     // Fetch the updated item with related data
-    const updatedItem = await Product.findByPk(id, {
+    const updatedItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -167,10 +167,10 @@ const updateItem = async (req, res, next) => {
 // Delete item (soft delete)
 const deleteItem = async (req, res, next) => {
   try {
-    const { Product } = getModels();
+    const { Item } = getModels();
     const { id } = req.params;
 
-    const item = await Product.findByPk(id);
+    const item = await Item.findByPk(id);
     if (!item) {
       return res.status(404).json({
         success: false,
@@ -192,8 +192,8 @@ const deleteItem = async (req, res, next) => {
 // Get low stock items
 const getLowStockItems = async (req, res, next) => {
   try {
-    const { Product, Category, Unit } = getModels();
-    const items = await Product.findAll({
+    const { Item, Category, Unit } = getModels();
+    const items = await Item.findAll({
       where: {
         isActive: true,
         quantity: {
@@ -219,11 +219,11 @@ const getLowStockItems = async (req, res, next) => {
 // Update item stock
 const updateItemStock = async (req, res, next) => {
   try {
-    const { Product, Category, Unit } = getModels();
+    const { Item, Category, Unit } = getModels();
     const { id } = req.params;
     const { quantity } = req.body;
 
-    const item = await Product.findByPk(id, {
+    const item = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }
@@ -239,7 +239,7 @@ const updateItemStock = async (req, res, next) => {
     await item.update({ quantity });
     
     // Fetch the updated item with related data
-    const updatedItem = await Product.findByPk(id, {
+    const updatedItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
         { model: Unit, as: 'unit' }

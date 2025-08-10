@@ -11,4 +11,5 @@ export const inventoryAlertsData = itemsData
     category: item.category,
     severity: item.quantity === 0 ? 'critical' : (item.quantity <= item.minLevel * 0.5 ? 'high' : 'medium'),
     status: 'active',
+    monthlySales: item.unitsSold || 0,
   }));

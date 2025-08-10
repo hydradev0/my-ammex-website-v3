@@ -3,15 +3,17 @@ import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import { useEffect } from 'react';
 
-function ViewDetailsModal({ 
-  onClose, 
-  data, 
-  title = 'Details', 
+function ViewItemModal({
+  onClose,
+  data,
+  title = 'Details',
   sections = [],
   className = '',
   isOpen = true
 }) {
-  if (!isOpen || !data) return null;
+  if (!isOpen || !data) {
+    return null;
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -41,7 +43,9 @@ function ViewDetailsModal({
           </button>
         </div> 
         
+        {/* Simplified content for testing */}
         <div className="overflow-y-auto flex-grow p-6">
+          {/* Original sections */}
           {sections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
               {/* Section Header */}
@@ -83,7 +87,7 @@ function ViewDetailsModal({
   return createPortal(modalContent, document.body);
 }
 
-ViewDetailsModal.propTypes = {
+ViewItemModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   data: PropTypes.object.isRequired,
   title: PropTypes.string,
@@ -129,4 +133,4 @@ function ViewField({ label, value, width = 'w-full', isTextArea = false, customR
   );
 }
 
-export default ViewDetailsModal; 
+export default ViewItemModal; 

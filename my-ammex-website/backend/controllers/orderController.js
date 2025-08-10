@@ -99,7 +99,7 @@ const createOrder = async (req, res, next) => {
     if (items && items.length > 0) {
       const orderItems = items.map(item => ({
         orderId: order.id,
-        productId: item.productId,
+        itemId: item.itemId,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.totalPrice

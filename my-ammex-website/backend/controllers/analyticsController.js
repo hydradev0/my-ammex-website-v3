@@ -95,23 +95,23 @@ class AnalyticsController {
     const salesGrowth = lastMonthSales > 0 ? ((currentMonthSales - lastMonthSales) / lastMonthSales) * 100 : 0;
     const averageOrderValue = currentMonthOrders.length > 0 ? currentMonthSales / currentMonthOrders.length : 0;
 
-    // Top selling products
-    const productSales = {};
+    // Top selling items
+    const itemSales = {};
     currentMonthOrders.forEach(order => {
       if (order.items) {
         order.items.forEach(item => {
-          if (!productSales[item.productId]) {
-            productSales[item.productId] = { quantity: 0, revenue: 0 };
+          if (!itemSales[item.itemId]) {
+            itemSales[item.itemId] = { quantity: 0, revenue: 0 };
           }
-          productSales[item.productId].quantity += item.quantity;
-          productSales[item.productId].revenue += parseFloat(item.totalPrice);
+          itemSales[item.itemId].quantity += item.quantity;
+          itemSales[item.itemId].revenue += parseFloat(item.totalPrice);
         });
       }
     });
 
-    const topProducts = Object.entries(productSales)
-      .map(([productId, data]) => ({
-        productId,
+    const topItems = Object.entries(itemSales)
+      .map(([itemId, data]) => ({
+        itemId,
         quantity: data.quantity,
         revenue: data.revenue
       }))
@@ -124,25 +124,25 @@ class AnalyticsController {
       salesGrowth,
       averageOrderValue,
       totalOrders: currentMonthOrders.length,
-      topProducts
+      topItems
     };
   }
 
-  // Inventory Analytics
-  async getInventoryMetrics() {
-    const { Product } = getModels();
-    const products = await Product.findAll({
-      where: { isActive: true }
-    });
-    
-    // Calculate inventory metrics
-    const totalProducts = products.length;
-    const totalStockValue = products.reduce((sum, product) => 
-      sum + (parseFloat(product.price) * product.quantity), 0);
-    
-    // Low stock items
-    const lowStockItems = products.filter(product => 
-      product.quantity <= product.minLevel);
+      // Inventory Analytics
+    async getInventoryMetrics() {
+      const { Item } = getModels();
+      const items = await Item.findAll({
+        where: { isActive: true }
+      });
+      
+      // Calculate inventory metrics
+      const totalProducts = items.length;
+      const totalStockValue = items.reduce((sum, item) => 
+        sum + (parseFloat(item.price) * item.quantity), 0);
+      
+      // Low stock items
+      const lowStockItems = items.filter(item => 
+        item.quantity <= item.minLevel);
     
     // Stock turnover analysis
     const stockTurnover = await this.calculateStockTurnover();
@@ -239,28 +239,28 @@ class AnalyticsController {
 
   // Demand prediction
   async predictDemand() {
-    const { OrderItem, Product } = getModels();
+    const { OrderItem, Item } = getModels();
     const historicalData = await OrderItem.findAll({
       include: [{
-        model: Product,
-        as: 'product'
+        model: Item,
+        as: 'item'
       }],
       order: [['createdAt', 'DESC']],
       limit: 100
     });
 
-    // Group by product and calculate average demand
-    const productDemand = {};
+    // Group by item and calculate average demand
+    const itemDemand = {};
     historicalData.forEach(item => {
-      if (!productDemand[item.productId]) {
-        productDemand[item.productId] = { totalQuantity: 0, count: 0 };
+      if (!itemDemand[item.itemId]) {
+        itemDemand[item.itemId] = { totalQuantity: 0, count: 0 };
       }
-      productDemand[item.productId].totalQuantity += item.quantity;
-      productDemand[item.productId].count += 1;
+      itemDemand[item.itemId].totalQuantity += item.quantity;
+      itemDemand[item.itemId].count += 1;
     });
 
-    const demandForecast = Object.entries(productDemand).map(([productId, data]) => ({
-      productId,
+    const demandForecast = Object.entries(itemDemand).map(([itemId, data]) => ({
+      itemId,
       averageDemand: Math.round(data.totalQuantity / data.count),
       confidence: Math.min(90, 50 + data.count * 2)
     }));
@@ -270,30 +270,30 @@ class AnalyticsController {
 
   // Inventory needs prediction
   async predictInventoryNeeds() {
-    const { Product } = getModels();
-    const products = await Product.findAll({
+    const { Item } = getModels();
+    const items = await Item.findAll({
       where: { isActive: true }
     });
 
     const demandForecast = await this.predictDemand();
     const demandMap = {};
     demandForecast.forEach(item => {
-      demandMap[item.productId] = item.averageDemand;
+      demandMap[item.itemId] = item.averageDemand;
     });
 
-    const inventoryNeeds = products.map(product => {
-      const predictedDemand = demandMap[product.id] || 0;
-      const currentStock = product.quantity;
-      const recommendedOrder = Math.max(0, predictedDemand - currentStock + product.minLevel);
+    const inventoryNeeds = items.map(item => {
+      const predictedDemand = demandMap[item.id] || 0;
+      const currentStock = item.quantity;
+      const recommendedOrder = Math.max(0, predictedDemand - currentStock + item.minLevel);
       
       return {
-        productId: product.id,
-        productName: product.itemName,
+        itemId: item.id,
+        itemName: item.itemName,
         currentStock,
         predictedDemand,
         recommendedOrder,
-        urgency: currentStock <= product.minLevel ? 'high' : 
-                currentStock <= product.minLevel * 1.5 ? 'medium' : 'low'
+        urgency: currentStock <= item.minLevel ? 'high' : 
+                currentStock <= item.minLevel * 1.5 ? 'medium' : 'low'
       };
     });
 
@@ -378,15 +378,15 @@ class AnalyticsController {
 
   // Stock turnover analysis
   async calculateStockTurnover() {
-    const { Product, OrderItem } = getModels();
-    const products = await Product.findAll({
+    const { Item, OrderItem } = getModels();
+    const items = await Item.findAll({
       where: { isActive: true }
     });
 
     const orderItems = await OrderItem.findAll({
       include: [{
-        model: Product,
-        as: 'product'
+        model: Item,
+        as: 'item'
       }],
       where: {
         isActive: true, // Filter for active orders
@@ -396,22 +396,22 @@ class AnalyticsController {
       }
     });
 
-    const productSales = {};
+    const itemSales = {};
     orderItems.forEach(item => {
-      if (!productSales[item.productId]) {
-        productSales[item.productId] = 0;
+      if (!itemSales[item.itemId]) {
+        itemSales[item.itemId] = 0;
       }
-      productSales[item.productId] += item.quantity;
+      itemSales[item.itemId] += item.quantity;
     });
 
-    const turnoverRates = products.map(product => {
-      const annualSales = productSales[product.id] || 0;
-      const averageInventory = product.quantity;
+    const turnoverRates = items.map(item => {
+      const annualSales = itemSales[item.id] || 0;
+      const averageInventory = item.quantity;
       const turnoverRate = averageInventory > 0 ? annualSales / averageInventory : 0;
 
       return {
-        productId: product.id,
-        productName: product.itemName,
+        itemId: item.id,
+        itemName: item.itemName,
         annualSales,
         averageInventory,
         turnoverRate: Math.round(turnoverRate * 100) / 100,
@@ -425,27 +425,27 @@ class AnalyticsController {
 
   // Reorder recommendations
   async getReorderRecommendations() {
-    const { Product } = getModels();
-    const products = await Product.findAll({
+    const { Item } = getModels();
+    const items = await Item.findAll({
       where: { isActive: true }
     });
 
-    const recommendations = products
-      .filter(product => product.quantity <= product.minLevel)
-      .map(product => {
-        const recommendedQuantity = product.maxLevel - product.quantity;
-        const urgency = product.quantity === 0 ? 'critical' : 
-                       product.quantity <= product.minLevel * 0.5 ? 'high' : 'medium';
+    const recommendations = items
+      .filter(item => item.quantity <= item.minLevel)
+      .map(item => {
+        const recommendedQuantity = item.maxLevel - item.quantity;
+        const urgency = item.quantity === 0 ? 'critical' : 
+                       item.quantity <= item.minLevel * 0.5 ? 'high' : 'medium';
 
         return {
-          productId: product.id,
-          productName: product.itemName,
-          currentStock: product.quantity,
-          minLevel: product.minLevel,
-          maxLevel: product.maxLevel,
+          itemId: item.id,
+          itemName: item.itemName,
+          currentStock: item.quantity,
+          minLevel: item.minLevel,
+          maxLevel: item.maxLevel,
           recommendedQuantity: Math.max(0, recommendedQuantity),
           urgency,
-          estimatedCost: Math.round(recommendedQuantity * parseFloat(product.price) * 100) / 100
+          estimatedCost: Math.round(recommendedQuantity * parseFloat(item.price) * 100) / 100
         };
       })
       .sort((a, b) => {

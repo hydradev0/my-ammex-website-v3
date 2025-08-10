@@ -21,7 +21,7 @@ const validateOrder = [
 ];
 
 const validateOrderItem = [
-  check('items.*.productId', 'Product ID is required').isInt({ min: 1 }),
+  check('items.*.itemId', 'Item ID is required').isInt({ min: 1 }),
   check('items.*.quantity', 'Quantity must be a positive integer').isInt({ min: 1 }),
   check('items.*.unitPrice', 'Unit price must be a positive number').isFloat({ min: 0 }),
   check('items.*.totalPrice', 'Item total price must be a positive number').isFloat({ min: 0 })

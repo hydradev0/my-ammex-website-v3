@@ -8,10 +8,10 @@ import { itemsData, generateLargeItemsData } from '../data/itemsData';
 const StockMovement = () => {
   const [isWellPerformingModalOpen, setIsWellPerformingModalOpen] = useState(false);
   const [isSlowMovingModalOpen, setIsSlowMovingModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [isAdjustPricingModalOpen, setIsAdjustPricingModalOpen] = useState(false);
-  const [selectedPricingProduct, setSelectedPricingProduct] = useState(null);
+  const [selectedPricingItem, setSelectedPricingItem] = useState(null);
   const [useLargeDataset, setUseLargeDataset] = useState(false);
 
   // Use large dataset for testing pagination (toggle this for testing)
@@ -44,38 +44,38 @@ const StockMovement = () => {
     return [...slowMoving].sort((a, b) => a.unitsSold - b.unitsSold); // Lowest to highest units sold
   }, [slowMoving]);
 
-  const handleReorder = (productId, quantity) => {
+  const handleReorder = (itemId, quantity) => {
     // TODO: Implement reorder logic
-    console.log(`Reordering ${quantity} units of product ${productId}`);
+    console.log(`Reordering ${quantity} units of item ${itemId}`);
     setIsReorderModalOpen(false);
-    setSelectedProduct(null);
+    setSelectedItem(null);
   };
 
   const openReorderModal = (item) => {
-    setSelectedProduct({
+    setSelectedItem({
       id: item.id,
-      productName: item.name,
+      itemName: item.name,
       sku: item.id.toString(), // Using ID as SKU for demo
       currentStock: item.currentStock,
       minimumStockLevel: Math.ceil(item.unitsSold * 1.5), // Setting minimum stock level based on sales
       reorderQuantity: Math.ceil(item.unitsSold * 2), // Setting reorder quantity based on sales
       monthlySales: item.unitsSold, // Adding monthly sales data
       setReorderQuantity: (quantity) => {
-        setSelectedProduct(prev => ({ ...prev, reorderQuantity: quantity }));
+        setSelectedItem(prev => ({ ...prev, reorderQuantity: quantity }));
       }
     });
     setIsReorderModalOpen(true);
   };
 
-  const handleAdjustPricing = (productId, pricingData) => {
+  const handleAdjustPricing = (itemId, pricingData) => {
     // TODO: Implement pricing adjustment logic
-    console.log(`Adjusting pricing for product ${productId}:`, pricingData);
+    console.log(`Adjusting pricing for item ${itemId}:`, pricingData);
     setIsAdjustPricingModalOpen(false);
-    setSelectedPricingProduct(null);
+    setSelectedPricingItem(null);
   };
 
   const openAdjustPricingModal = (item) => {
-    setSelectedPricingProduct({
+    setSelectedPricingItem({
       id: item.id,
       name: item.name,
       category: item.category,
@@ -279,9 +279,9 @@ const StockMovement = () => {
         isOpen={isReorderModalOpen}
         onClose={() => {
           setIsReorderModalOpen(false);
-          setSelectedProduct(null);
+          setSelectedItem(null);
         }}
-        product={selectedProduct}
+        item={selectedItem}
         onReorder={handleReorder}
       />
 
@@ -290,9 +290,9 @@ const StockMovement = () => {
         isOpen={isAdjustPricingModalOpen}
         onClose={() => {
           setIsAdjustPricingModalOpen(false);
-          setSelectedPricingProduct(null);
+          setSelectedPricingItem(null);
         }}
-        product={selectedPricingProduct}
+        item={selectedPricingItem}
         onAdjustPricing={handleAdjustPricing}
       />
     </div>

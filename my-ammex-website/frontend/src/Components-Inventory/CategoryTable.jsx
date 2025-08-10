@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
 import { categoryDropdownActions } from '../Components/dropdownActions';
+import { createCategory, updateCategory, deleteCategory } from '../services/inventoryService';
 
 function CategoryTable({ categories, setCategories }) {
   // State for new category input
@@ -15,6 +16,7 @@ function CategoryTable({ categories, setCategories }) {
   // State for error handling
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Auto-remove success message after 3 seconds
   useEffect(() => {
@@ -26,6 +28,16 @@ function CategoryTable({ categories, setCategories }) {
     }
   }, [success]);
 
+  // Auto-remove error message after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   // Define columns for the categories table
   const categoryColumns = [
     { 
@@ -34,7 +46,6 @@ function CategoryTable({ categories, setCategories }) {
     }
   ];
   
-  
   // Row click handler
   const handleRowClick = (category) => {
     console.log('Category selected:', category);
@@ -42,23 +53,111 @@ function CategoryTable({ categories, setCategories }) {
   };
 
   // Handle adding new category
-  const handleAddCategory = (e) => {
+  const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) {
       setError('Category name cannot be empty');
       return;
     }
     
-    const newCategory = {
-      id: categories.length + 1,
-      name: newCategoryName.trim()
-    };
-    
-    setCategories([...categories, newCategory]);
-    setNewCategoryName('');
-    setSuccess('Category added successfully');
-    setError(null);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await createCategory({ name: newCategoryName.trim() });
+      
+      if (response.success) {
+        // Add the new category to the list
+        setCategories([...categories, response.data]);
+        setNewCategoryName('');
+        setSuccess('Category added successfully');
+      } else {
+        setError(response.message || 'Failed to add category');
+      }
+    } catch (err) {
+      console.error('Error adding category:', err);
+      setError(err.message || 'Failed to add category');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Handle category update
+  const handleUpdateCategory = async (id, updatedData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await updateCategory(id, updatedData);
+      
+      if (response.success) {
+        // Update the category in the list
+        const updatedCategories = categories.map(cat => 
+          cat.id === id ? response.data : cat
+        );
+        setCategories(updatedCategories);
+        setSuccess('Category updated successfully');
+      } else {
+        setError(response.message || 'Failed to update category');
+      }
+    } catch (err) {
+      console.error('Error updating category:', err);
+      setError(err.message || 'Failed to update category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle category deletion
+  const handleDeleteCategory = async (id) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await deleteCategory(id);
+      
+      if (response.success) {
+        // Remove the category from the list
+        const updatedCategories = categories.filter(cat => cat.id !== id);
+        setCategories(updatedCategories);
+        setSuccess('Category deleted successfully');
+      } else {
+        setError(response.message || 'Failed to delete category');
+      }
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      setError(err.message || 'Failed to delete category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced dropdown actions with API integration
+  const enhancedDropdownActions = useMemo(() => {
+    return categoryDropdownActions.map(action => {
+      if (action.id === 'edit') {
+        return {
+          ...action,
+          onClick: (category) => {
+            // For now, just log. You can implement an edit modal later
+            console.log('Edit category:', category);
+            // TODO: Implement edit modal
+          }
+        };
+      }
+      if (action.id === 'delete') {
+        return {
+          ...action,
+          onClick: (category) => {
+            if (window.confirm(`Are you sure you want to delete "${category.name}"?`)) {
+              handleDeleteCategory(category.id);
+            }
+          }
+        };
+      }
+      return action;
+    });
+  }, []);
   
   // Filter categories based on search term
   const filteredCategories = useMemo(() => {
@@ -95,12 +194,16 @@ function CategoryTable({ categories, setCategories }) {
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="Enter new category..."
                   className="flex-1 w-xs px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                  disabled={loading}
                 />
                 <button 
                   type="submit"
-                  className="bg-blue-900 cursor-pointer hover:bg-blue-800 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors"
+                  className={`bg-blue-900 cursor-pointer hover:bg-blue-800 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors ${
+                    loading ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  disabled={loading}
                 >
-                  Add
+                  {loading ? 'Adding...' : 'Add'}
                 </button>
               </div>
             </form>
@@ -129,7 +232,7 @@ function CategoryTable({ categories, setCategories }) {
           emptyMessage="No categories found"
           className="mb-8"
           alternateRowColors={true}
-          dropdownActions={categoryDropdownActions}
+          dropdownActions={enhancedDropdownActions}
           width="max-w-7xl"
         />
       </div>
@@ -141,7 +244,7 @@ CategoryTable.propTypes = {
   categories: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.number.isRequired,
-      name: PropTypes.string.isRequired
+      name: PropTypes.string.isRequired 
     })
   ).isRequired,
   setCategories: PropTypes.func.isRequired

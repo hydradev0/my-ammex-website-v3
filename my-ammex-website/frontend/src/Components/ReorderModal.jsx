@@ -3,17 +3,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import ScrollLock from './ScrollLock';
 
-function ReorderModal({ isOpen, onClose, product, onReorder }) {
+function ReorderModal({ isOpen, onClose, item, onReorder }) {
   const [reorderQuantity, setReorderQuantity] = useState(0);
   const [stockDuration, setStockDuration] = useState(0);
   const modalRef = useRef(null);
 
-  // Initialize reorder quantity when product changes
+  // Initialize reorder quantity when item changes
   useEffect(() => {
-    if (product) {
-      setReorderQuantity(product.reorderQuantity);
+    if (item) {
+      setReorderQuantity(item.reorderQuantity);
     }
-  }, [product]);
+  }, [item]);
 
   // Handle click outside modal
   useEffect(() => {
@@ -37,25 +37,25 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
 
   // Update stock duration whenever reorder quantity changes
   useEffect(() => {
-    if (product) {
-      const duration = calculateStockDuration(reorderQuantity, product.monthlySales);
+    if (item) {
+      const duration = calculateStockDuration(reorderQuantity, item.monthlySales);
       setStockDuration(duration);
     }
-  }, [reorderQuantity, product]);
+  }, [reorderQuantity, item]);
 
   const handleReorder = () => {
-    onReorder(product.id, reorderQuantity);
+    onReorder(item.id, reorderQuantity);
   };
 
   const handleQuantityChange = (e) => {
     const value = parseInt(e.target.value) || 0;
     setReorderQuantity(value);
-    if (product?.setReorderQuantity) {
-      product.setReorderQuantity(value);
+    if (item?.setReorderQuantity) {
+      item.setReorderQuantity(value);
     }
   };
 
-  if (!isOpen || !product) return null;
+  if (!isOpen || !item) return null;
 
   const modalContent = (
     <div 
@@ -68,7 +68,7 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-800">Reorder Product</h2>
+          <h2 className="text-2xl font-semibold text-gray-800">Reorder Item</h2>
           <button
             onClick={onClose}
             className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
@@ -79,27 +79,27 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
         {/* Content */}
         <div className="p-6">
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Product Details</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Item Details</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-600">Product Name:</span>
-                <span className="font-medium">{product.productName}</span>
+                                  <span className="text-gray-600">Item Name:</span>
+                  <span className="font-medium">{item.itemName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">SKU:</span>
-                <span className="font-medium">{product.sku}</span>
+                                  <span className="font-medium">{item.itemCode}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Current Stock:</span>
-                <span className="font-medium text-red-600">{product.currentStock} units</span>
+                                  <span className="font-medium text-red-600">{item.quantity} units</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Minimum Stock Level:</span>
-                <span className="font-medium">{product.minimumStockLevel} units</span>
+                                  <span className="font-medium">{item.minLevel} units</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Monthly Sales:</span>
-                <span className="font-medium">{product.monthlySales || 0} units</span>
+                                  <span className="font-medium">{item.unitsSold || 0} units</span>
               </div>
             </div>
           </div>
@@ -113,7 +113,7 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
                 type="number"
                 id="reorderQuantity"
                 name="reorderQuantity"
-                value={reorderQuantity}
+                value={reorderQuantity || "null"}
                 onChange={handleQuantityChange}
                 min="1"
                 className="pl-4 pr-8 py-2 max-w-2xl border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent 
@@ -123,12 +123,12 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
             </div>
             <div className="mt-2 space-y-2">
               <p className="text-sm text-gray-500">
-                Recommended reorder quantity: {product.minimumStockLevel * 2} units
+                Recommended reorder quantity: {item.minLevel * 2} units
               </p>
               <div className="text-sm text-gray-600">
                 <p>Stock Duration: <span className="font-medium text-blue-600">{stockDuration} days</span></p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Based on current monthly sales of {product.monthlySales || 0} units
+                  Based on current monthly sales of {item.unitsSold || 0} units
                 </p>
               </div>
             </div>
@@ -139,20 +139,20 @@ function ReorderModal({ isOpen, onClose, product, onReorder }) {
               <div className="flex justify-between text-gray-600">
                 <span>Stock Status:</span>
                 <span className={`font-medium ${
-                  product.currentStock === 0 ? 'text-red-600' : 
-                  product.currentStock <= product.minimumStockLevel * 0.3 ? 'text-red-500' :
-                  product.currentStock <= product.minimumStockLevel * 0.5 ? 'text-orange-500' : 'text-yellow-600'
+                  item.quantity === 0 ? 'text-red-600' : 
+                  item.quantity <= item.minLevel * 0.3 ? 'text-red-500' :
+                  item.quantity <= item.minLevel * 0.5 ? 'text-orange-500' : 'text-yellow-600'
                 }`}>
-                  {product.currentStock === 0 ? 'Out of Stock' :
-                   product.currentStock <= product.minimumStockLevel * 0.3 ? 'Critical Low' :
-                   product.currentStock <= product.minimumStockLevel * 0.5 ? 'Very Low' :
-                   product.currentStock <= product.minimumStockLevel ? 'Low Stock' : 'In Stock'}
+                  {item.quantity === 0 ? 'Out of Stock' :
+                   item.quantity <= item.minLevel * 0.3 ? 'Critical Low' :
+                   item.quantity <= item.minLevel * 0.5 ? 'Very Low' :
+                   item.quantity <= item.minLevel ? 'Low Stock' : 'In Stock'}
                 </span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Stock Deficit:</span>
                 <span className="font-medium text-red-600">
-                  {Math.max(0, product.minimumStockLevel - product.currentStock)} units
+                  {Math.max(0, item.minLevel - item.quantity)} units
                 </span>
               </div>
             </div>

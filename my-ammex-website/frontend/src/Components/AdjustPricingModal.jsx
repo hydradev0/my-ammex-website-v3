@@ -3,7 +3,7 @@ import { X, } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from './ScrollLock';
 
-const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
+const AdjustPricingModal = ({ isOpen, onClose, item, onAdjustPricing }) => {
   const [currentPrice, setCurrentPrice] = useState(0);
   const [newPrice, setNewPrice] = useState(0);
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -12,16 +12,16 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
   const modalRef = useRef(null);
 
   useEffect(() => {
-    if (product) {
-      // Set initial values - in a real app, these would come from the product data
-      const initialPrice = product.currentPrice || 100;
+    if (item) {
+      // Set initial values - in a real app, these would come from the item data
+      const initialPrice = item.currentPrice || 100;
       setCurrentPrice(initialPrice);
       setNewPrice(initialPrice);
       setPriceChange(0);
       setPriceChangePercentage(0);
       setDiscountPercentage(0);
     }
-  }, [product]);
+  }, [item]);
 
   // Handle click outside modal
   useEffect(() => {
@@ -65,7 +65,7 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
 
   const handleAdjustPricing = () => {
     if (onAdjustPricing) {
-      onAdjustPricing(product.id, {
+      onAdjustPricing(item.id, {
         currentPrice,
         newPrice,
         discountPercentage,
@@ -88,7 +88,7 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
     return '→';
   };
 
-  if (!isOpen || !product) return null;
+  if (!isOpen || !item) return null;
 
   const modalContent = (
     <div 
@@ -104,7 +104,7 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
           <h2 className="text-2xl font-semibold text-gray-800">Adjust Pricing</h2>
           <button 
             onClick={onClose} 
-            className="hover:text-gray-400 text-gray-600 mb-4"
+            className="hover:text-gray-400 cursor-pointer text-gray-600 mb-4"
           >
             <X className="w-8 h-8" />
           </button>
@@ -112,28 +112,28 @@ const AdjustPricingModal = ({ isOpen, onClose, product, onAdjustPricing }) => {
         {/* Content */}
         <div className="p-6">
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Product Details</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Item Details</h3>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Product Name:</span>
-                <span className="font-medium">{product.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Category:</span>
-                <span className="font-medium">{product.category}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Current Stock:</span>
-                <span className="font-medium text-red-600">{product.currentStock} units</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Units Sold (Monthly):</span>
-                <span className="font-medium text-red-600">{product.unitsSold} units</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Growth Rate:</span>
-                <span className="font-medium text-red-600">{product.growth}</span>
-              </div>
+                              <div className="flex justify-between">
+                  <span className="text-gray-600">Item Name:</span>
+                  <span className="font-medium">{item.name}</span>
+                </div>
+                              <div className="flex justify-between">
+                  <span className="text-gray-600">Category:</span>
+                  <span className="font-medium">{item.category}</span>
+                </div>
+                              <div className="flex justify-between">
+                  <span className="text-gray-600">Current Stock:</span>
+                  <span className="font-medium text-red-600">{item.currentStock} units</span>
+                </div>
+                              <div className="flex justify-between">
+                  <span className="text-gray-600">Units Sold (Monthly):</span>
+                  <span className="font-medium text-red-600">{item.unitsSold} units</span>
+                </div>
+                              <div className="flex justify-between">
+                  <span className="text-gray-600">Growth Rate:</span>
+                  <span className="font-medium text-red-600">{item.growth}</span>
+                </div>
             </div>
           </div>
           {/* Pricing Section */}

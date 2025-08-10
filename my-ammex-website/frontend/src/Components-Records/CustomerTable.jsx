@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
 import RecordsModal from './RecordsModal';
-import ViewDetailsModal from '../Components/ViewDetailsModal';
+import ViewItemModal from '../Components/ViewItemModal';
 import { customerViewConfig } from '../Components/viewConfigs';
 import { baseDropdownActions } from '../Components/dropdownActions';
 import { Plus} from 'lucide-react';
@@ -247,7 +247,7 @@ function CustomerTable() {
         )}
 
         {/* View Customer Modal */}
-        <ViewDetailsModal
+        <ViewItemModal
           isOpen={isViewModalOpen}
           onClose={handleCloseViewModal}
           data={selectedCustomer}

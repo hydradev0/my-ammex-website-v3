@@ -172,7 +172,7 @@ const deleteUnit = async (req, res) => {
     }
 
     // Check if unit is being used by any items
-    const itemsUsingUnit = await models.Product.count({
+    const itemsUsingUnit = await models.Item.count({
       where: { unitId: req.params.id }
     });
 

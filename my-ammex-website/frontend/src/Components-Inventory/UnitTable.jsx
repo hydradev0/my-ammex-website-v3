@@ -1,34 +1,12 @@
 import React from 'react';
 import { useState, useMemo, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
 import { unitDropdownActions } from '../Components/dropdownActions';
+import { createUnit, updateUnit, deleteUnit } from '../services/inventoryService';
 
-function UnitTable() {
-  // State for units data
-  const [units, setUnits] = useState([
-    {
-      id: 1,
-      name: 'Piece',
-    },
-    {
-      id: 2,
-      name: 'Box',
-    },
-    {
-      id: 3,
-      name: 'Kilogram',
-    },
-    {
-      id: 4,
-      name: 'Liter',
-    },
-    {
-      id: 5,
-      name: 'Meter',
-    }
-  ]);
-
+function UnitTable({ units, setUnits }) {
   // State for new unit input
   const [newUnitName, setNewUnitName] = useState('');
 
@@ -39,6 +17,7 @@ function UnitTable() {
   // State for error handling
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Auto-remove success message after 3 seconds
   useEffect(() => {
@@ -50,6 +29,16 @@ function UnitTable() {
     }
   }, [success]);
 
+  // Auto-remove error message after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   // Define columns for the units table
   const unitColumns = [
     { 
@@ -58,7 +47,6 @@ function UnitTable() {
     }
   ];
   
-  
   // Row click handler
   const handleRowClick = (unit) => {
     console.log('Unit selected:', unit);
@@ -66,23 +54,111 @@ function UnitTable() {
   };
 
   // Handle adding new unit
-  const handleAddUnit = (e) => { 
+  const handleAddUnit = async (e) => { 
     e.preventDefault();
     if (!newUnitName.trim()) {
       setError('Unit name cannot be empty');
       return;
     }
     
-    const newUnit = {
-      id: units.length + 1,
-      name: newUnitName.trim()
-    };
-    
-    setUnits([...units, newUnit]);
-    setNewUnitName('');
-    setSuccess('Unit added successfully');
-    setError(null);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await createUnit({ name: newUnitName.trim() });
+      
+      if (response.success) {
+        // Add the new unit to the list
+        setUnits([...units, response.data]);
+        setNewUnitName('');
+        setSuccess('Unit added successfully');
+      } else {
+        setError(response.message || 'Failed to add unit');
+      }
+    } catch (err) {
+      console.error('Error adding unit:', err);
+      setError(err.message || 'Failed to add unit');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Handle unit update
+  const handleUpdateUnit = async (id, updatedData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await updateUnit(id, updatedData);
+      
+      if (response.success) {
+        // Update the unit in the list
+        const updatedUnits = units.map(unit => 
+          unit.id === id ? response.data : unit
+        );
+        setUnits(updatedUnits);
+        setSuccess('Unit updated successfully');
+      } else {
+        setError(response.message || 'Failed to update unit');
+      }
+    } catch (err) {
+      console.error('Error updating unit:', err);
+      setError(err.message || 'Failed to update unit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle unit deletion
+  const handleDeleteUnit = async (id) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await deleteUnit(id);
+      
+      if (response.success) {
+        // Remove the unit from the list
+        const updatedUnits = units.filter(unit => unit.id !== id);
+        setUnits(updatedUnits);
+        setSuccess('Unit deleted successfully');
+      } else {
+        setError(response.message || 'Failed to delete unit');
+      }
+    } catch (err) {
+      console.error('Error deleting unit:', err);
+      setError(err.message || 'Failed to delete unit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced dropdown actions with API integration
+  const enhancedDropdownActions = useMemo(() => {
+    return unitDropdownActions.map(action => {
+      if (action.id === 'edit') {
+        return {
+          ...action,
+          onClick: (unit) => {
+            // For now, just log. You can implement an edit modal later
+            console.log('Edit unit:', unit);
+            // TODO: Implement edit modal
+          }
+        };
+      }
+      if (action.id === 'delete') {
+        return {
+          ...action,
+          onClick: (unit) => {
+            if (window.confirm(`Are you sure you want to delete "${unit.name}"?`)) {
+              handleDeleteUnit(unit.id);
+            }
+          }
+        };
+      }
+      return action;
+    });
+  }, []);
   
   // Filter units based on search term
   const filteredUnits = useMemo(() => {
@@ -119,12 +195,16 @@ function UnitTable() {
                   onChange={(e) => setNewUnitName(e.target.value)}
                   placeholder="Enter new unit..."
                   className="flex-1 w-xs px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                  disabled={loading}
                 />
                 <button 
                   type="submit"
-                  className="bg-blue-900 cursor-pointer hover:bg-blue-800 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors"
+                  className={`bg-blue-900 cursor-pointer hover:bg-blue-800 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors ${
+                    loading ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  disabled={loading}
                 >
-                  Add
+                  {loading ? 'Adding...' : 'Add'}
                 </button>
               </div>
             </form>
@@ -153,12 +233,22 @@ function UnitTable() {
           emptyMessage="No units found"
           className="mb-8"
           alternateRowColors={true}
-          dropdownActions={unitDropdownActions}
+          dropdownActions={enhancedDropdownActions}
           width="max-w-7xl"
         />
       </div>
     </div>
   );
 }
+
+UnitTable.propTypes = {
+  units: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired
+    })
+  ).isRequired,
+  setUnits: PropTypes.func.isRequired
+};
 
 export default UnitTable;

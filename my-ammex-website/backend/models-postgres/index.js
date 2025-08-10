@@ -78,8 +78,8 @@ const initializeModels = (sequelize) => {
     }
   });
 
-  // Product Model
-  const Product = sequelize.define('Product', {
+  // Item Model
+  const Item = sequelize.define('Item', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -191,18 +191,18 @@ const initializeModels = (sequelize) => {
   }, {
     timestamps: true,
     hooks: {
-      beforeValidate: (product) => {
+      beforeValidate: (item) => {
         // Validate that ceiling price is greater than floor price
-        if (product.ceilingPrice && product.floorPrice && 
-            Number(product.ceilingPrice) <= Number(product.floorPrice)) {
+        if (item.ceilingPrice && item.floorPrice && 
+            Number(item.ceilingPrice) <= Number(item.floorPrice)) {
           throw new Error('Ceiling price must be greater than floor price');
         }
         
         // Validate that price is within floor and ceiling range
-        if (product.price && product.floorPrice && product.ceilingPrice) {
-          const price = Number(product.price);
-          const floorPrice = Number(product.floorPrice);
-          const ceilingPrice = Number(product.ceilingPrice);
+        if (item.price && item.floorPrice && item.ceilingPrice) {
+          const price = Number(item.price);
+          const floorPrice = Number(item.floorPrice);
+          const ceilingPrice = Number(item.ceilingPrice);
           
           if (price < floorPrice || price > ceilingPrice) {
             throw new Error('Price must be between floor price and ceiling price');
@@ -210,8 +210,8 @@ const initializeModels = (sequelize) => {
         }
         
         // Validate that max level is greater than min level
-        if (product.maxLevel && product.minLevel && 
-            Number(product.maxLevel) <= Number(product.minLevel)) {
+        if (item.maxLevel && item.minLevel && 
+            Number(item.maxLevel) <= Number(item.minLevel)) {
           throw new Error('Maximum level must be greater than minimum level');
         }
       }
@@ -314,6 +314,14 @@ const initializeModels = (sequelize) => {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
+    },
+    itemId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Item',
+        key: 'id'
+      },
+      allowNull: false
     },
     quantity: {
       type: DataTypes.INTEGER,
@@ -435,34 +443,34 @@ const initializeModels = (sequelize) => {
   });
 
   // Category relationships
-  Category.hasMany(Product, {
+  Category.hasMany(Item, {
     foreignKey: 'categoryId',
     as: 'items'
   });
 
-  Product.belongsTo(Category, {
+  Item.belongsTo(Category, {
     foreignKey: 'categoryId',
     as: 'category'
   });
 
   // Unit relationships
-  Unit.hasMany(Product, {
+  Unit.hasMany(Item, {
     foreignKey: 'unitId',
     as: 'items'
   });
-  Product.belongsTo(Unit, {
+  Item.belongsTo(Unit, {
     foreignKey: 'unitId',
     as: 'unit'
   });
 
-  Product.hasMany(OrderItem, {
-    foreignKey: 'productId',
+  Item.hasMany(OrderItem, {
+    foreignKey: 'itemId',
     as: 'orderItems'
   });
 
-  OrderItem.belongsTo(Product, {
-    foreignKey: 'productId',
-    as: 'product'
+  OrderItem.belongsTo(Item, {
+    foreignKey: 'itemId',
+    as: 'item'
   });
 
   Order.hasMany(OrderItem, {
@@ -494,7 +502,7 @@ const initializeModels = (sequelize) => {
 
   return {
     User,
-    Product,
+    Item,
     Category,
     Order,
     OrderItem,

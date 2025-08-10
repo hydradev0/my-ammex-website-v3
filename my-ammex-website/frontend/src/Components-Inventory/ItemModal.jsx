@@ -4,9 +4,19 @@ import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
-function ItemModal({ isOpen = true, onClose, onSubmit, categories, 
+function ItemModal({ 
+  isOpen = false, 
+  onClose, 
+  onSubmit, 
+  categories, 
+  units = [], 
   width = 'w-[1200px]',
-  maxHeight = 'max-h-[100vh]',}) {
+  maxHeight = 'max-h-[100vh]',
+  editMode = false,
+  initialData = null
+}) {
+  console.log('ItemModal props:', { isOpen, onClose, onSubmit, categories, units, editMode, initialData });
+  
   // State for form fields
   const [formData, setFormData] = useState({
     itemCode: '',
@@ -39,7 +49,36 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
   const vendorDropdownRef = useRef(null);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef(null);
+  const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
+  const unitDropdownRef = useRef(null);
   const modalRef = useRef(null);
+
+  // Initialize form data when editing or when modal opens
+  useEffect(() => {
+    console.log('ItemModal useEffect triggered:', { isOpen, initialData, editMode });
+    if (isOpen && initialData && editMode) {
+      console.log('Setting form data for edit mode:', initialData);
+      setFormData(initialData);
+    } else if (isOpen && !editMode) {
+      console.log('Resetting form for new item');
+      // Reset form when opening for new item
+      setFormData({
+        itemCode: '',
+        itemName: '',
+        vendor: '',
+        price: '',
+        floorPrice: '',
+        ceilingPrice: '',
+        unit: '',
+        quantity: '',
+        category: '',
+        description: '',
+        minLevel: '',
+        maxLevel: ''
+      });
+      setErrors({});
+    }
+  }, [isOpen, initialData, editMode]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -50,14 +89,17 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
         setCategoryDropdownOpen(false);
       }
+      if (unitDropdownRef.current && !unitDropdownRef.current.contains(event.target)) {
+        setUnitDropdownOpen(false);
+      }
     };
-    if (vendorDropdownOpen || categoryDropdownOpen) {
+    if (vendorDropdownOpen || categoryDropdownOpen || unitDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [vendorDropdownOpen, categoryDropdownOpen]);
+  }, [vendorDropdownOpen, categoryDropdownOpen, unitDropdownOpen]);
 
   // Handle click outside modal
   useEffect(() => {
@@ -72,8 +114,6 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onClose]);
-  
-  if (!isOpen) return null;
   
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -188,7 +228,9 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
         style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">Add New Item</h2>
+          <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">
+            {editMode ? 'Edit Item' : 'Add New Item'}
+          </h2>
           
           <button 
             className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
@@ -245,6 +287,7 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
                 onChange={handleInputChange}
                 error={errors.itemCode}
                 width="w-1/3"
+                disabled={editMode} // Disable editing item code in edit mode
               />
               <FormField
                 id="itemName"
@@ -271,6 +314,8 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
                 error={errors.price}
                 width="w-1/3"
                 prefix="₱"
+                step="0.01"
+                min="0"
               />
               <FormField
                 id="floorPrice"
@@ -281,6 +326,8 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
                 error={errors.floorPrice}
                 width="w-1/3"
                 prefix="₱"
+                step="0.01"
+                min="0"
               />
               <FormField
                 id="ceilingPrice"
@@ -291,53 +338,45 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
                 error={errors.ceilingPrice}
                 width="w-1/3"
                 prefix="₱"
+                step="0.01"
+                min="0"
               />
             </div>
             <div>
               <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Stock Information</h3>
-              <FormField
-                id="unit"
-                label="Unit"
-                type="text"
-                value={formData.unit}
-                onChange={handleInputChange}
-                error={errors.unit}
-                width="w-1/3"
-              />
-              <FormField
-                id="quantity"
-                label="Quantity"
-                type="number"
-                value={formData.quantity}
-                onChange={handleInputChange}
-                error={errors.quantity}
-                width="w-1/3"
-              />
-              <FormField
-                id="minLevel"
-                label="Minimum Level"
-                type="number"
-                value={formData.minLevel}
-                onChange={handleInputChange}
-                error={errors.minLevel}
-                width="w-1/3"
-              />
-              <FormField
-                id="maxLevel"
-                label="Maximum Level"
-                type="number"
-                value={formData.maxLevel}
-                onChange={handleInputChange}
-                error={errors.maxLevel}
-                width="w-1/3"
-              />
-            </div>
-          </div>
-
-          {/* Third Container */}
-          <div className="grid grid-cols-1 gap-4 mt-6 bg-white border border-gray-300 shadow-sm rounded-lg p-4">
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Additional Details</h3>
+              {/* Unit Dropdown */}
+              <div className="m-4">
+                <label className="block text-lg font-medium text-gray-700 mb-1">Unit</label>
+                <div className="relative w-1/2" ref={unitDropdownRef}>
+                  <button
+                    type="button"
+                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded border ${errors.unit ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center`}
+                    onClick={() => setUnitDropdownOpen((open) => !open)}
+                  >
+                    <span>{formData.unit || 'Select unit'}</span>
+                    <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${unitDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {unitDropdownOpen && (
+                    <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
+                      {units.map((unit) => (
+                        <li
+                          key={unit.id}
+                          className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.unit === unit.name ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
+                          onClick={() => {
+                            setFormData({ ...formData, unit: unit.name });
+                            setUnitDropdownOpen(false);
+                          }}
+                        >
+                          {unit.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {errors.unit && (
+                  <p className="text-red-500 text-md mt-1">{errors.unit}</p>
+                )}
+              </div>
               {/* Category Dropdown */}
               <div className="m-4">
                 <label className="block text-lg font-medium text-gray-700 mb-1">Category</label>
@@ -354,7 +393,7 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
                     <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
                       {categories.map(cat => (
                         <li
-                          key={cat.name}
+                          key={cat.id}
                           className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.category === cat.name ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
                           onClick={() => {
                             setFormData({ ...formData, category: cat.name });
@@ -371,6 +410,46 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
                   <p className="text-red-500 text-md mt-1">{errors.category}</p>
                 )}
               </div>
+              <FormField
+                id="quantity"
+                label="Quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={handleInputChange}
+                error={errors.quantity}
+                width="w-1/3"
+                min="0"
+                step="1"
+              />
+              <FormField
+                id="minLevel"
+                label="Minimum Level"
+                type="number"
+                value={formData.minLevel}
+                onChange={handleInputChange}
+                error={errors.minLevel}
+                width="w-1/3"
+                min="0"
+                step="1"
+              />
+              <FormField
+                id="maxLevel"
+                label="Maximum Level"
+                type="number"
+                value={formData.maxLevel}
+                onChange={handleInputChange}
+                error={errors.maxLevel}
+                width="w-1/3"
+                min="0"
+                step="1"
+              />
+            </div>
+          </div>
+
+          {/* Third Container */}
+          <div className="grid grid-cols-1 gap-4 mt-6 bg-white border border-gray-300 shadow-sm rounded-lg p-4">
+            <div>
+              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Additional Details</h3>
               {/* Description */}
               <FormField
                 id="description"
@@ -397,7 +476,7 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
             className="cursor-pointer px-4 py-3 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             onClick={handleSubmit}
           >
-            Add Item
+            {editMode ? 'Update Item' : 'Add Item'}
           </button>
         </div>
       </div>
@@ -407,12 +486,13 @@ function ItemModal({ isOpen = true, onClose, onSubmit, categories,
   return (
     <>
       <ScrollLock active={isOpen} />
-      {createPortal(modalContent, document.body)}
+      {isOpen && createPortal(modalContent, document.body)}
     </>
   );
 }
 
 ItemModal.propTypes = {
+  isOpen: PropTypes.bool,
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   categories: PropTypes.arrayOf(
@@ -420,10 +500,20 @@ ItemModal.propTypes = {
       id: PropTypes.number.isRequired,
       name: PropTypes.string.isRequired
     })
-  ).isRequired
+  ).isRequired,
+  units: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired
+    })
+  ).isRequired,
+  width: PropTypes.string,
+  maxHeight: PropTypes.string,
+  editMode: PropTypes.bool,
+  initialData: PropTypes.object
 };  
 
-function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', ...props }) {
+function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, ...props }) {
   return (
     <div className="m-4">
       <label htmlFor={id} className="block text-lg font-medium text-gray-700 mb-1">
@@ -433,9 +523,10 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
         {type === 'textarea' ? (
           <textarea
             id={id}
-            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white`}
+            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={value}
             onChange={onChange}
+            disabled={disabled}
             {...props}
           />
         ) : (
@@ -449,9 +540,10 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
               type={type} 
               id={id} 
               className={`${prefix ? 'pl-7' : 'px-3'} px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600
-               bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+               bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               value={value}
               onChange={onChange}
+              disabled={disabled}
               {...props}
             />
           </>

@@ -36,7 +36,7 @@ const getCategory = async (req, res) => {
     let includeOptions = [];
     if (include === 'items') {
       includeOptions.push({
-        model: models.Product,
+        model: models.Item,
         as: 'items',
         where: { isActive: true },
         required: false,

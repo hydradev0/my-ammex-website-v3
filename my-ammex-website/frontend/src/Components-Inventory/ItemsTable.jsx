@@ -4,15 +4,16 @@ import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
 import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
 import ItemModal from './ItemModal';
-import ViewDetailsModal from '../Components/ViewDetailsModal';
+import ViewItemModal from '../Components/ViewItemModal';
+import EditItemModal from '../Components/EditItemModal';
 import { itemViewConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
-import { itemsData } from '../data/itemsData';
+import { getItems, createItem, updateItem, deleteItem } from '../services/inventoryService';
 
 // Constants for category styling
 const CATEGORY_STYLES = {
-  'Raw Materials': 'bg-blue-100 text-blue-800',
-  'Machine': 'bg-green-100 text-green-800',
+  'Materials': 'bg-blue-100 text-blue-800',
+  'Machines': 'bg-green-100 text-green-800',
   'Marker': 'bg-purple-100 text-purple-800',
   'Drill': 'bg-orange-100 text-orange-800',
   'Tools': 'bg-red-100 text-red-800',
@@ -36,16 +37,49 @@ function mapStockDataToItemTableFormat(stockItem) {
   };
 }
 
-function ItemsTable({ categories, setCategories }) {
+function ItemsTable({ categories, setCategories, units }) {
   // State for items data
-  const [items, setItems] = useState(itemsData);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creatingItem, setCreatingItem] = useState(false);
+  const [updatingItem, setUpdatingItem] = useState(false);
+  const [deletingItem, setDeletingItem] = useState(false);
+  const [error, setError] = useState(null);
 
   // State for search and filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterValue, setFilterValue] = useState('Filter by...');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // Fetch items on component mount
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  // Fetch items from API
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await getItems();
+      
+      if (response.success) {
+        setItems(response.data);
+      } else {
+        setError(response.message || 'Failed to fetch items');
+      }
+    } catch (err) {
+      console.error('Error fetching items:', err);
+      setError(err.message || 'Failed to fetch items');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Define columns for the items table
   const itemColumns = [
@@ -64,19 +98,20 @@ function ItemsTable({ categories, setCategories }) {
     },
     { 
       key: 'unit', 
-      header: 'Unit'
+      header: 'Unit',
+      render: (value, item) => item.unit?.name || value
     },
     { 
       key: 'price', 
       header: 'Price',
-      render: (value) => `₱${value.toFixed(2)}`
+      render: (value) => `₱${Number(value).toFixed(2)}`
     },
     { 
       key: 'category', 
       header: 'Category',
-      render: (value) => (
-        <span className={`px-2 py-1 rounded-full text-sm ${CATEGORY_STYLES[value] || 'bg-gray-100 text-gray-800'}`}>
-          {value}
+      render: (value, item) => (
+        <span className={`px-2 py-1 rounded-full text-sm ${CATEGORY_STYLES[item.category?.name || value] || 'bg-gray-100 text-gray-800'}`}>
+          {item.category?.name || value}
         </span>
       )
     }
@@ -89,39 +124,107 @@ function ItemsTable({ categories, setCategories }) {
       const matchesSearch = 
         item.itemName.toLowerCase().includes(searchLower) ||
         item.itemCode.toLowerCase().includes(searchLower) ||
-        item.category.toLowerCase().includes(searchLower);
+        (item.category?.name || '').toLowerCase().includes(searchLower);
       
-      const matchesFilter = filterValue === 'Filter by...' || item.category === filterValue;
+      const matchesFilter = filterValue === 'Filter by...' || (item.category?.name || item.category) === filterValue;
       
       return matchesSearch && matchesFilter;
     });
   }, [items, searchTerm, filterValue]);
 
   // Handle new item submission
-  const handleNewItem = (newItem) => {
-    // Sanitize and match all fields from ItemModal
-    const sanitizedItem = {
-      itemCode: newItem.itemCode || '',
-      itemName: newItem.itemName || '',
-      vendor: newItem.vendor || '',
-      price: Number(newItem.price) || 0,
-      floorPrice: Number(newItem.floorPrice) || 0,
-      ceilingPrice: Number(newItem.ceilingPrice) || 0,
-      unit: newItem.unit || '',
-      quantity: Number(newItem.quantity) || 0,
-      category: newItem.category || '',
-      description: newItem.description || '',
-      minLevel: Number(newItem.minLevel) || 0,
-      maxLevel: Number(newItem.maxLevel) || 0
-    };
-    setItems([...items, sanitizedItem]);
-    setIsModalOpen(false);
+  const handleNewItem = async (newItem) => {
+    try {
+      setCreatingItem(true);
+      setError(null);
+      
+      // Transform form data to match API structure
+      const itemData = {
+        itemCode: newItem.itemCode,
+        itemName: newItem.itemName,
+        vendor: newItem.vendor,
+        price: Number(newItem.price),
+        floorPrice: Number(newItem.floorPrice),
+        ceilingPrice: Number(newItem.ceilingPrice),
+        unitId: units.find(u => u.name === newItem.unit)?.id,
+        quantity: Number(newItem.quantity),
+        categoryId: categories.find(c => c.name === newItem.category)?.id,
+        description: newItem.description,
+        minLevel: Number(newItem.minLevel),
+        maxLevel: Number(newItem.maxLevel)
+      };
+
+      const response = await createItem(itemData);
+      
+      if (response.success) {
+        setItems([response.data, ...items]);
+        setIsModalOpen(false);
+        // setSuccess('Item created successfully'); // Removed as per new_code
+      } else {
+        setError(response.message || 'Failed to create item');
+      }
+    } catch (err) {
+      console.error('Error creating item:', err);
+      setError(err.message || 'Failed to create item');
+    } finally {
+      setCreatingItem(false);
+    }
+  };
+
+  // Handle item update
+  const handleUpdateItem = async (updatedItem) => {
+    try {
+      setUpdatingItem(true);
+      setError(null);
+      
+      // Transform form data to match API structure
+      const itemData = {
+        itemCode: updatedItem.itemCode,
+        itemName: updatedItem.itemName,
+        vendor: updatedItem.vendor,
+        price: Number(updatedItem.price),
+        floorPrice: Number(updatedItem.floorPrice),
+        ceilingPrice: Number(updatedItem.ceilingPrice),
+        unitId: units.find(u => u.name === updatedItem.unit)?.id,
+        quantity: Number(updatedItem.quantity),
+        categoryId: categories.find(c => c.name === updatedItem.category)?.id,
+        description: updatedItem.description,
+        minLevel: Number(updatedItem.minLevel),
+        maxLevel: Number(updatedItem.maxLevel)
+      };
+
+      const response = await updateItem(selectedItem.id, itemData);
+      
+      if (response.success) {
+        setItems(items.map(item => 
+          item.id === selectedItem.id ? response.data : item
+        ));
+        setIsModalOpen(false);
+        // setSuccess('Item updated successfully'); // Removed as per new_code
+      } else {
+        setError(response.message || 'Failed to update item');
+      }
+    } catch (err) {
+      console.error('Error updating item:', err);
+      setError(err.message || 'Failed to update item');
+    } finally {
+      setUpdatingItem(false);
+    }
   };
 
   // Handle view item details
   const handleViewItem = (item) => {
     setSelectedItem(item);
     setIsViewModalOpen(true);
+  };
+
+  // Handle item updated from EditItemModal
+  const handleItemUpdated = (updatedItem) => {
+    setItems(items.map(item => 
+      item.id === updatedItem.id ? updatedItem : item
+    ));
+    setIsEditModalOpen(false);
+    setSelectedItem(null);
   };
 
   // Handle close view modal
@@ -145,14 +248,84 @@ function ItemsTable({ categories, setCategories }) {
           onClick: handleViewItem
         };
       }
+      if (action.id === 'edit') {
+        return {
+          ...action,
+          onClick: (item) => {
+            setSelectedItem(item);
+            setIsEditModalOpen(true);
+          }
+        };
+      }
+      if (action.id === 'delete') {
+        return {
+          ...action,
+          onClick: async (item) => {
+            if (window.confirm(`Are you sure you want to delete "${item.itemName}"?`)) {
+              try {
+                setDeletingItem(true);
+                const response = await deleteItem(item.id);
+                if (response.success) {
+                  setItems(items.filter(i => i.id !== item.id));
+                  // setSuccess('Item deleted successfully'); // Removed as per new_code
+                } else {
+                  setError(response.message || 'Failed to delete item');
+                }
+              } catch (err) {
+                console.error('Error deleting item:', err);
+                setError(err.message || 'Failed to delete item');
+              } finally {
+                setDeletingItem(false);
+              }
+            }
+          }
+        };
+      }
       return action;
     });
-  }, []);
+  }, [items]);
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    setSelectedItem(null);
+  };
+
+  // Handle new item button click
+  const handleNewItemClick = () => {
+    setIsEditMode(false);
+    setSelectedItem(null);
+    setIsModalOpen(true);
+  };
+
+  if (loading && items.length === 0) {
+    return (
+      <div className="bg-gray-100">
+        <div className="max-w-full mx-15 mt-8 px-5">   
+          <h1 className="text-3xl font-bold text-gray-800 mb-6">Items</h1>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading items...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-100">
       <div className="max-w-full mx-15 mt-8 px-5">   
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Items</h1>
+        
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
         
         {/* Search and Filter Section */}
         <div className="flex flex-col justify-between sm:flex-row items-start sm:items-center gap-4 mb-4">
@@ -168,14 +341,27 @@ function ItemsTable({ categories, setCategories }) {
           
           {/* New Item Button */}
           <button 
-            className="w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
+            className={`w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
             py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
-            flex items-center cursor-pointer justify-center gap-2"
-            onClick={() => setIsModalOpen(true)}
+            flex items-center cursor-pointer justify-center gap-2 ${
+              (loading || creatingItem || updatingItem) ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={handleNewItemClick}
+            disabled={loading || creatingItem || updatingItem}
           >
             <Plus className="h-6 w-6" />
             <span>New Item</span>
           </button>
+          
+          {/* Loading Status */}
+          {(creatingItem || updatingItem) && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span>
+                {creatingItem ? 'Creating item...' : updatingItem ? 'Updating item...' : ''}
+              </span>
+            </div>
+          )}
         </div>
         
         {/* Generic Table for Items */}
@@ -192,22 +378,38 @@ function ItemsTable({ categories, setCategories }) {
         />
 
         {/* Item Modal */}
-        {isModalOpen && (
-          <ItemModal
-            onClose={() => setIsModalOpen(false)}
-            onSubmit={handleNewItem}
-            categories={categories}
-          />
-        )}
+        <ItemModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onSubmit={isEditMode ? handleUpdateItem : handleNewItem}
+          categories={categories}
+          units={units}
+          editMode={isEditMode}
+          initialData={selectedItem}
+        />
 
         {/* View Item Modal */}
-        <ViewDetailsModal
+        <ViewItemModal
           isOpen={isViewModalOpen}
           onClose={handleCloseViewModal}
           data={selectedItem}
           title={itemViewConfig.title}
           sections={itemViewConfig.sections}
         />
+
+        {/* Edit Item Modal */}
+        <EditItemModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedItem(null);
+          }}
+          item={selectedItem}
+          categories={categories}
+          units={units}
+          onItemUpdated={handleItemUpdated}
+        />
+        
       </div>
     </div>
   );
@@ -220,7 +422,13 @@ ItemsTable.propTypes = {
       name: PropTypes.string.isRequired 
     })
   ).isRequired,
-  setCategories: PropTypes.func.isRequired
+  setCategories: PropTypes.func.isRequired,
+  units: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired
+    })
+  ).isRequired
 };
 
 export default ItemsTable;

@@ -44,7 +44,7 @@ const Dashboard = () => {
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('active');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const severityDropdownRef = useRef(null);
@@ -109,6 +109,11 @@ const Dashboard = () => {
   };
 
   const filteredAlerts = alerts.filter(alert => {
+    // Skip alerts with missing required properties
+    if (!alert.productName || !alert.sku) {
+      return false;
+    }
+    
     const matchesSeverity = filterSeverity === 'all' || alert.severity === filterSeverity;
     const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
     const matchesSearch = alert.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,24 +139,30 @@ const Dashboard = () => {
     }
   };
 
-  const handleReorder = (productId, quantity) => {
+  const handleReorder = (itemId, quantity) => {
     // TODO: Implement reorder logic
-    console.log(`Reordering ${quantity} units of product ${productId}`);
+    console.log(`Reordering ${quantity} units of item ${itemId}`);
     setIsReorderModalOpen(false);
-    setSelectedProduct(null);
+    setSelectedItem(null);
   };
 
   const openReorderModal = (alert) => {
-    setSelectedProduct({
+    // Ensure all required properties exist before opening modal
+    if (!alert.productName || !alert.sku || alert.currentStock === undefined || alert.minimumStockLevel === undefined) {
+      console.warn('Alert missing required properties:', alert);
+      return;
+    }
+    
+    setSelectedItem({
       id: alert.id,
-      productName: alert.productName,
+      itemName: alert.productName,
       sku: alert.sku,
       currentStock: alert.currentStock,
       minimumStockLevel: alert.minimumStockLevel,
       reorderQuantity: alert.minimumStockLevel * 2,
       monthlySales: alert.monthlySales || Math.ceil(alert.minimumStockLevel * 0.8),
       setReorderQuantity: (quantity) => {
-        setSelectedProduct(prev => ({ ...prev, reorderQuantity: quantity }));
+        setSelectedItem(prev => ({ ...prev, reorderQuantity: quantity }));
       }
     });
     setIsReorderModalOpen(true);
@@ -311,7 +322,7 @@ const Dashboard = () => {
                         <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
                           type="text"
-                          placeholder="Search products or SKUs..."
+                          placeholder="Search items or SKUs..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent"
@@ -356,37 +367,37 @@ const Dashboard = () => {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getSeverityColor(alert.severity)}`}>
-                                {getSeverityIcon(alert.severity)}
-                                {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getSeverityColor(alert.severity || 'medium')}`}>
+                                {getSeverityIcon(alert.severity || 'medium')}
+                                {(alert.severity || 'medium').charAt(0).toUpperCase() + (alert.severity || 'medium').slice(1)}
                               </span>
                             </div>
                             
                             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                              {alert.productName}
+                              {alert.productName || 'Unknown Item'}
                             </h3>
-                            <p className="text-sm text-gray-600 mb-2">SKU: {alert.sku}</p>
+                            <p className="text-sm text-gray-600 mb-2">SKU: {alert.sku || 'N/A'}</p>
                             
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div>
                                 <span className="text-gray-500">Current Stock:</span>
-                                <span className={`ml-2 font-semibold text-xl ${alert.currentStock < alert.minimumStockLevel ? 'text-red-600' : 'text-gray-900'}`}>
-                                  {alert.currentStock} units
+                                <span className={`ml-2 font-semibold text-xl ${(alert.currentStock || 0) < (alert.minimumStockLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
+                                  {alert.currentStock || 0} units
                                 </span>
                               </div>
                               <div>
                                 <span className="text-gray-500">Minimum Stock Level:</span>
-                                <span className="ml-2 font-semibold text-xl text-gray-900">{alert.minimumStockLevel} units</span>
+                                <span className="ml-2 font-semibold text-xl text-gray-900">{alert.minimumStockLevel || 0} units</span>
                               </div>
                             </div>
                             
                             <div className="mt-3 flex items-center gap-4">
                               <span className={`text-sm font-medium ${
-                                alert.currentStock === 0 ? 'text-red-600' : 
-                                alert.currentStock <= alert.minimumStockLevel * 0.3 ? 'text-red-500' :
-                                alert.currentStock <= alert.minimumStockLevel * 0.5 ? 'text-orange-500' : 'text-yellow-600'
+                                (alert.currentStock || 0) === 0 ? 'text-red-600' : 
+                                (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.3 ? 'text-red-500' :
+                                (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.5 ? 'text-orange-500' : 'text-yellow-600'
                               }`}>
-                                {getStockStatus(alert.currentStock, alert.minimumStockLevel)}
+                                {getStockStatus(alert.currentStock || 0, alert.minimumStockLevel || 0)}
                               </span>
                             </div>
                           </div>
@@ -422,9 +433,9 @@ const Dashboard = () => {
         isOpen={isReorderModalOpen}
         onClose={() => {
           setIsReorderModalOpen(false);
-          setSelectedProduct(null);
+          setSelectedItem(null);
         }}
-        product={selectedProduct}
+        item={selectedItem}
         onReorder={handleReorder}
       />
     </>

@@ -1,5 +1,5 @@
 // View configurations for different data types
-// These can be used with the generic ViewDetailsModal component
+// These can be used with the generic ViewItemModal component
 
 export const itemViewConfig = {
   title: 'Item Details',
@@ -58,7 +58,14 @@ export const itemViewConfig = {
         {
           label: 'Unit',
           key: 'unit',
-          width: 'w-1/3'
+          width: 'w-1/3',
+          getValue: (item) => item.unit?.name || 'N/A'
+        },
+        {
+          label: 'Category',
+          key: 'category',
+          width: 'w-1/3',
+          getValue: (item) => item.category?.name || 'N/A'
         },
         {
           label: 'Quantity',
@@ -84,13 +91,133 @@ export const itemViewConfig = {
       bgColor: 'bg-gray-100',
       fields: [
         {
-          label: 'Category',
-          key: 'category'
-        },
-        {
           label: 'Description',
           key: 'description',
           isTextArea: true
+        }
+      ]
+    }
+  ]
+};
+
+export const editItemConfig = {
+  title: 'Edit Item',
+  sections: [
+    {
+      title: 'Basic Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Item Code',
+          key: 'itemCode',
+          width: 'w-1/3',
+          disabled: true,
+          type: 'text'
+        },
+        {
+          label: 'Item Name',
+          key: 'itemName',
+          width: 'w-2/3',
+          type: 'text',
+          required: true
+        },
+        {
+          label: 'Vendor',
+          key: 'vendor',
+          width: 'w-2/3',
+          type: 'dropdown',
+          required: true
+        }
+      ]
+    },
+    {
+      title: 'Pricing Information',
+      gridCols: 'grid-cols-3',
+      bgColor: 'bg-gray-100',
+      fields: [
+        {
+          label: 'Price',
+          key: 'price',
+          width: 'w-1/3',
+          type: 'number',
+          prefix: '₱',
+          step: '0.01',
+          min: '0',
+          required: true
+        },
+        {
+          label: 'Floor Price',
+          key: 'floorPrice',
+          width: 'w-1/3',
+          type: 'number',
+          prefix: '₱',
+          step: '0.01',
+          min: '0'
+        },
+        {
+          label: 'Ceiling Price',
+          key: 'ceilingPrice',
+          width: 'w-1/3',
+          type: 'number',
+          prefix: '₱',
+          step: '0.01',
+          min: '0'
+        }
+      ]
+    },
+    {
+      title: 'Stock Information',
+      gridCols: 'grid-cols-2',
+      bgColor: 'bg-gray-100',
+      fields: [
+        {
+          label: 'Unit',
+          key: 'unit',
+          width: 'w-1/2',
+          type: 'dropdown',
+          required: true
+        },
+        {
+          label: 'Category',
+          key: 'category',
+          width: 'w-1/2',
+          type: 'dropdown',
+          required: true
+        },
+        {
+          label: 'Quantity',
+          key: 'quantity',
+          width: 'w-1/3',
+          type: 'number',
+          min: '0'
+        },
+        {
+          label: 'Minimum Level',
+          key: 'minLevel',
+          width: 'w-1/3',
+          type: 'number',
+          min: '0'
+        },
+        {
+          label: 'Maximum Level',
+          key: 'maxLevel',
+          width: 'w-1/3',
+          type: 'number',
+          min: '0'
+        }
+      ]
+    },
+    {
+      title: 'Additional Details',
+      gridCols: 'grid-cols-2',
+      bgColor: 'bg-gray-100',
+      fields: [
+        {
+          label: 'Description',
+          key: 'description',
+          type: 'textarea',
+          isTextArea: true,
+          width: 'w-full'
         }
       ]
     }
