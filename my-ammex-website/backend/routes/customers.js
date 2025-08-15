@@ -17,7 +17,27 @@ const validateCustomer = [
   check('customerName', 'Customer name is required').not().isEmpty().trim(),
   check('telephone1', 'Telephone 1 is required').not().isEmpty().trim(),
   check('email1', 'Email 1 is required').isEmail(),
-  check('email2').optional().isEmail()
+  check('email2').optional().custom((value) => {
+    if (value === '' || value === null || value === undefined) {
+      return true; // Allow empty values
+    }
+    // If value is provided, validate it's a valid email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      throw new Error('Please provide a valid email address');
+    }
+    return true;
+  }),
+  check('telephone2').optional().custom((value) => {
+    if (value === '' || value === null || value === undefined) {
+      return true; // Allow empty values
+    }
+    // If value is provided, validate it's not empty
+    if (value.trim() === '') {
+      throw new Error('Telephone 2 cannot be empty if provided');
+    }
+    return true;
+  })
 ];
 
 // @route   GET /api/customers

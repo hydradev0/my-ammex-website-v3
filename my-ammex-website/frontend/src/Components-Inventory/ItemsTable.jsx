@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
-import ItemModal from './ItemModal';
-import ViewItemModal from '../Components/ViewItemModal';
-import EditItemModal from '../Components/EditItemModal';
+import { Plus, AlertTriangle, X } from 'lucide-react';
+import NewItemModal from './NewItemModal';
+import ViewDetailsModal from '../Components/ViewDetailsModal';
+import EditDetailsModal from '../Components/EditDetailsModal';
+import SuccessModal from '../Components/SuccessModal';
 import { itemViewConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
 import { getItems, createItem, updateItem, deleteItem } from '../services/inventoryService';
@@ -54,6 +55,20 @@ function ItemsTable({ categories, setCategories, units }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // State for delete confirmation modal
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    itemName: '',
+    itemId: null
+  });
+  
+  // State for success modals
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
 
   // Fetch items on component mount
   useEffect(() => {
@@ -159,7 +174,11 @@ function ItemsTable({ categories, setCategories, units }) {
       if (response.success) {
         setItems([response.data, ...items]);
         setIsModalOpen(false);
-        // setSuccess('Item created successfully'); // Removed as per new_code
+        setSuccessModal({
+          isOpen: true,
+          title: 'Item Created Successfully!',
+          message: 'The new item has been added to your inventory. You can now view and manage it.'
+        });
       } else {
         setError(response.message || 'Failed to create item');
       }
@@ -169,6 +188,49 @@ function ItemsTable({ categories, setCategories, units }) {
     } finally {
       setCreatingItem(false);
     }
+  };
+
+  // Modern confirmation dialog for delete operations
+  const showDeleteConfirmation = (itemName, itemId) => {
+    setDeleteModal({
+      isOpen: true,
+      itemName,
+      itemId
+    });
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.itemId) return;
+
+    try {
+      setDeletingItem(true);
+      setError(null);
+      
+      const response = await deleteItem(deleteModal.itemId);
+      
+      if (response.success) {
+        setItems(prevItems => prevItems.filter(i => i.id !== deleteModal.itemId));
+        setDeleteModal({ isOpen: false, itemName: '', itemId: null });
+        setSuccessModal({
+          isOpen: true,
+          title: 'Item Deleted Successfully!',
+          message: 'The item has been permanently removed from your inventory.'
+        });
+      } else {
+        setError(response.message || 'Failed to delete item');
+      }
+    } catch (err) {
+      console.error('Error deleting item:', err);
+      setError(err.message || 'An unexpected error occurred while deleting the item');
+    } finally {
+      setDeletingItem(false);
+    }
+  };
+
+  // Handle delete cancellation
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, itemName: '', itemId: null });
   };
 
   // Handle item update
@@ -200,7 +262,11 @@ function ItemsTable({ categories, setCategories, units }) {
           item.id === selectedItem.id ? response.data : item
         ));
         setIsModalOpen(false);
-        // setSuccess('Item updated successfully'); // Removed as per new_code
+        setSuccessModal({
+          isOpen: true,
+          title: 'Item Updated Successfully!',
+          message: 'The item has been updated successfully. You can now view the changes in your inventory.'
+        });
       } else {
         setError(response.message || 'Failed to update item');
       }
@@ -218,13 +284,28 @@ function ItemsTable({ categories, setCategories, units }) {
     setIsViewModalOpen(true);
   };
 
-  // Handle item updated from EditItemModal
+  // Handle item updated from EditDetailsModal
   const handleItemUpdated = (updatedItem) => {
-    setItems(items.map(item => 
-      item.id === updatedItem.id ? updatedItem : item
-    ));
-    setIsEditModalOpen(false);
-    setSelectedItem(null);
+    try {
+      setUpdatingItem(true);
+      setError(null);
+      
+      setItems(items.map(item => 
+        item.id === updatedItem.id ? updatedItem : item
+      ));
+      setIsEditModalOpen(false);
+      setSelectedItem(null);
+      setSuccessModal({
+        isOpen: true,
+        title: 'Item Updated Successfully!',
+        message: 'The item has been updated successfully. You can now view the changes in your inventory.'
+      });
+    } catch (err) {
+      console.error('Error updating item:', err);
+      setError(err.message || 'Failed to update item');
+    } finally {
+      setUpdatingItem(false);
+    }
   };
 
   // Handle close view modal
@@ -260,30 +341,14 @@ function ItemsTable({ categories, setCategories, units }) {
       if (action.id === 'delete') {
         return {
           ...action,
-          onClick: async (item) => {
-            if (window.confirm(`Are you sure you want to delete "${item.itemName}"?`)) {
-              try {
-                setDeletingItem(true);
-                const response = await deleteItem(item.id);
-                if (response.success) {
-                  setItems(items.filter(i => i.id !== item.id));
-                  // setSuccess('Item deleted successfully'); // Removed as per new_code
-                } else {
-                  setError(response.message || 'Failed to delete item');
-                }
-              } catch (err) {
-                console.error('Error deleting item:', err);
-                setError(err.message || 'Failed to delete item');
-              } finally {
-                setDeletingItem(false);
-              }
-            }
+          onClick: (item) => {
+            showDeleteConfirmation(item.itemName, item.id);
           }
         };
       }
       return action;
     });
-  }, [items]);
+  }, []);
 
   // Handle close modal
   const handleCloseModal = () => {
@@ -346,8 +411,8 @@ function ItemsTable({ categories, setCategories, units }) {
             flex items-center cursor-pointer justify-center gap-2 ${
               (loading || creatingItem || updatingItem) ? 'opacity-50 cursor-not-allowed' : ''
             }`}
-            onClick={handleNewItemClick}
             disabled={loading || creatingItem || updatingItem}
+            onClick={handleNewItemClick}
           >
             <Plus className="h-6 w-6" />
             <span>New Item</span>
@@ -358,7 +423,8 @@ function ItemsTable({ categories, setCategories, units }) {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               <span>
-                {creatingItem ? 'Creating item...' : updatingItem ? 'Updating item...' : ''}
+                {creatingItem ? 'Creating item...' : 
+                 updatingItem ? 'Updating item...' : ''}
               </span>
             </div>
           )}
@@ -378,7 +444,7 @@ function ItemsTable({ categories, setCategories, units }) {
         />
 
         {/* Item Modal */}
-        <ItemModal
+        <NewItemModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSubmit={isEditMode ? handleUpdateItem : handleNewItem}
@@ -388,8 +454,8 @@ function ItemsTable({ categories, setCategories, units }) {
           initialData={selectedItem}
         />
 
-        {/* View Item Modal */}
-        <ViewItemModal
+        {/* View Details Modal */}
+        <ViewDetailsModal
           isOpen={isViewModalOpen}
           onClose={handleCloseViewModal}
           data={selectedItem}
@@ -397,17 +463,87 @@ function ItemsTable({ categories, setCategories, units }) {
           sections={itemViewConfig.sections}
         />
 
-        {/* Edit Item Modal */}
-        <EditItemModal
+        {/* Edit Details Modal */}
+        <EditDetailsModal
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
             setSelectedItem(null);
           }}
-          item={selectedItem}
+          data={selectedItem}
           categories={categories}
           units={units}
-          onItemUpdated={handleItemUpdated}
+          onDataUpdated={handleItemUpdated}
+          config={itemViewConfig}
+          updateService={updateItem}
+        />
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">Delete Item</h3>
+                </div>
+                <button
+                  onClick={handleDeleteCancel}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <p className="text-gray-700 mb-4">
+                  Are you sure you want to delete <span className="font-semibold text-gray-900">"{deleteModal.itemName}"</span>?
+                </p>
+                <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+                  ⚠️ This action cannot be undone. The item will be permanently removed from the system.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 p-6 border-t border-gray-100">
+                <button
+                  onClick={handleDeleteCancel}
+                  disabled={deletingItem}
+                  className="flex-1 px-4 py-3 cursor-pointer border-2 border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deletingItem}
+                  className="flex-1 px-4 py-3 cursor-pointer bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:opacity-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  {deletingItem ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Deleting...</span>
+                    </div>
+                  ) : (
+                    'Delete Item'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Success Modal */}
+        <SuccessModal
+          isOpen={successModal.isOpen}
+          onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+          title={successModal.title}
+          message={successModal.message}
+          autoClose={true}
+          autoCloseDelay={4000}
         />
         
       </div>

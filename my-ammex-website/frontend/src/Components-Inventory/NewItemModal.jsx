@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, Info, DollarSign, Boxes } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
-function ItemModal({ 
+function NewItemModal({ 
   isOpen = false, 
   onClose, 
   onSubmit, 
@@ -233,32 +233,35 @@ function ItemModal({
           </h2>
           
           <button 
-            className="hover:text-gray-400 text-gray-600 mb-4 cursor-pointer"
             onClick={onClose} 
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 text-gray-500 hover:text-gray-700"
           >
-            <X className="h-8 w-8" />
+            <X className="h-6 w-6" />
           </button>
         </div> 
         
         <div className="overflow-y-auto flex-grow p-6">
-          {/* First Container */}
-          <div className="grid grid-cols-1 gap-4 mb-6">
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4 ">Item Details</h3>
+          {/* Item Details Section */}
+          <div className="mb-8">
+            <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
+              <Info className=" w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+              Item Details
+            </h3>
+            <div className="grid grid-cols-3 gap-6">
               {/* Vendor Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Vendor</label>
-                <div className="relative w-2/3" ref={vendorDropdownRef}>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Vendor *</label>
+                <div className="relative w-full" ref={vendorDropdownRef}>
                   <button
                     type="button"
-                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded border ${errors.vendor ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center`}
+                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded-lg border ${errors.vendor ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
                     onClick={() => setVendorDropdownOpen((open) => !open)}
                   >
                     <span>{formData.vendor || 'Select vendor'}</span>
                     <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${vendorDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {vendorDropdownOpen && (
-                    <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                       {vendors.map((option) => (
                         <li
                           key={option}
@@ -278,86 +281,103 @@ function ItemModal({
                   <p className="text-red-500 text-md mt-1">{errors.vendor}</p>
                 )}
               </div>
-              {/* Item Code and Item Name */}
+              {/* Item Code */}
               <FormField
                 id="itemCode"
-                label="Item Code"
+                label="Item Code *"
                 type="text"
                 value={formData.itemCode}
                 onChange={handleInputChange}
                 error={errors.itemCode}
-                width="w-1/3"
+                width="w-2/3"
                 disabled={editMode} // Disable editing item code in edit mode
               />
+              {/* Item Name */}
               <FormField
                 id="itemName"
-                label="Item Name"
+                label="Item Name *"
                 type="text"
                 value={formData.itemName}
                 onChange={handleInputChange}
                 error={errors.itemName}
-                width="w-2/3"
+                width="w-full"
               />
             </div>
           </div>
 
-          {/* Second Container */}
-          <div className="grid grid-cols-2 gap-4 bg-white border border-gray-300 shadow-sm rounded-lg p-4">
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Pricing Information</h3>
+          {/* Divider */}
+          <div className="border-t border-gray-300 mb-4 md:mb-6"></div>
+
+          {/* Pricing Information Section */}
+          <div className="mb-8">
+            <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
+              <DollarSign className=" w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+              Pricing Information
+            </h3>
+            <div className="grid grid-cols-3 gap-6">
               <FormField
                 id="price"
-                label="Price"
+                label="Price *"
                 type="number"
                 value={formData.price}
                 onChange={handleInputChange}
                 error={errors.price}
-                width="w-1/3"
+                width="w-2/3"
                 prefix="₱"
                 step="0.01"
                 min="0"
               />
               <FormField
                 id="floorPrice"
-                label="Floor Price"
+                label="Floor Price *"
                 type="number"
                 value={formData.floorPrice}
                 onChange={handleInputChange}
                 error={errors.floorPrice}
-                width="w-1/3"
+                width="w-2/3"
                 prefix="₱"
                 step="0.01"
                 min="0"
               />
               <FormField
                 id="ceilingPrice"
-                label="Ceiling Price"
+                label="Ceiling Price *"
                 type="number"
                 value={formData.ceilingPrice}
                 onChange={handleInputChange}
                 error={errors.ceilingPrice}
-                width="w-1/3"
+                width="w-2/3"
                 prefix="₱"
                 step="0.01"
                 min="0"
               />
             </div>
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Stock Information</h3>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-300 mb-4 md:mb-6"></div>
+
+          {/* Stock Information Section */}
+          <div className="mb-8">
+            <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
+              <Boxes className=" w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+              Stock Information
+            </h3>
+            <div className="grid grid-cols-2 gap-6">
               {/* Unit Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Unit</label>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Unit *</label>
                 <div className="relative w-1/2" ref={unitDropdownRef}>
                   <button
                     type="button"
-                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded border ${errors.unit ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center`}
+                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded-lg border ${errors.unit ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
                     onClick={() => setUnitDropdownOpen((open) => !open)}
                   >
                     <span>{formData.unit || 'Select unit'}</span>
                     <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${unitDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {unitDropdownOpen && (
-                    <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                       {units.map((unit) => (
                         <li
                           key={unit.id}
@@ -379,18 +399,18 @@ function ItemModal({
               </div>
               {/* Category Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Category</label>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Category *</label>
                 <div className="relative w-1/2" ref={categoryDropdownRef}>
                   <button
                     type="button"
-                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded border ${errors.category ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center`}
+                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded-lg border ${errors.category ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
                     onClick={() => setCategoryDropdownOpen((open) => !open)}
                   >
                     <span>{formData.category || 'Select category'}</span>
                     <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {categoryDropdownOpen && (
-                    <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                       {categories.map(cat => (
                         <li
                           key={cat.id}
@@ -411,19 +431,8 @@ function ItemModal({
                 )}
               </div>
               <FormField
-                id="quantity"
-                label="Quantity"
-                type="number"
-                value={formData.quantity}
-                onChange={handleInputChange}
-                error={errors.quantity}
-                width="w-1/3"
-                min="0"
-                step="1"
-              />
-              <FormField
                 id="minLevel"
-                label="Minimum Level"
+                label="Minimum Level *"
                 type="number"
                 value={formData.minLevel}
                 onChange={handleInputChange}
@@ -433,8 +442,19 @@ function ItemModal({
                 step="1"
               />
               <FormField
+                id="quantity"
+                label="Quantity *"
+                type="number"
+                value={formData.quantity}
+                onChange={handleInputChange}
+                error={errors.quantity}
+                width="w-1/3"
+                min="0"
+                step="1"
+              />
+              <FormField
                 id="maxLevel"
-                label="Maximum Level"
+                label="Maximum Level *"
                 type="number"
                 value={formData.maxLevel}
                 onChange={handleInputChange}
@@ -446,10 +466,15 @@ function ItemModal({
             </div>
           </div>
 
-          {/* Third Container */}
-          <div className="grid grid-cols-1 gap-4 mt-6 bg-white border border-gray-300 shadow-sm rounded-lg p-4">
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Additional Details</h3>
+          {/* Divider */}
+          <div className="border-t border-gray-300 mb-4 md:mb-6"></div>
+
+          {/* Additional Details Section */}
+          <div className="mb-8">
+            <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
+              Additional Details
+            </h3>
+            <div className="grid grid-cols-2 gap-6">
               {/* Description */}
               <FormField
                 id="description"
@@ -458,6 +483,7 @@ function ItemModal({
                 value={formData.description}
                 onChange={handleInputChange}
                 error={errors.description}
+                width="w-full"
               />
             </div>
           </div>
@@ -491,7 +517,7 @@ function ItemModal({
   );
 }
 
-ItemModal.propTypes = {
+NewItemModal.propTypes = {
   isOpen: PropTypes.bool,
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
@@ -523,7 +549,7 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
         {type === 'textarea' ? (
           <textarea
             id={id}
-            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={value}
             onChange={onChange}
             disabled={disabled}
@@ -539,8 +565,7 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
             <input 
               type={type} 
               id={id} 
-              className={`${prefix ? 'pl-7' : 'px-3'} px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600
-               bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              className={`${prefix ? 'pl-7' : 'px-3'} px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               value={value}
               onChange={onChange}
               disabled={disabled}
@@ -556,4 +581,4 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
   );
 }
 
-export default ItemModal; 
+export default NewItemModal; 

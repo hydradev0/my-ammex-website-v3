@@ -1,12 +1,12 @@
 // View configurations for different data types
-// These can be used with the generic ViewItemModal component
+// These can be used with the generic ViewDetailsModal and EditDetailsModal component
 
 export const itemViewConfig = {
   title: 'Item Details',
   sections: [
     {
       title: 'Item Details',
-      gridCols: 'grid-cols-1',
+      gridCols: 'grid-cols-3',
       fields: [
         {
           label: 'Vendor',
@@ -28,7 +28,6 @@ export const itemViewConfig = {
     {
       title: 'Pricing Information',
       gridCols: 'grid-cols-3',
-      bgColor: 'bg-gray-100',
       fields: [
         {
           label: 'Price',
@@ -53,7 +52,6 @@ export const itemViewConfig = {
     {
       title: 'Stock Information',
       gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
       fields: [
         {
           label: 'Unit',
@@ -68,15 +66,15 @@ export const itemViewConfig = {
           getValue: (item) => item.category?.name || 'N/A'
         },
         {
+          label: 'Minimum Level',
+          key: 'minLevel',
+          width: 'w-1/3'
+        },
+        {
           label: 'Quantity',
           key: 'quantity',
           width: 'w-1/3',
           customRender: (value) => value ? value.toLocaleString() : 'N/A'
-        },
-        {
-          label: 'Minimum Level',
-          key: 'minLevel',
-          width: 'w-1/3'
         },
         {
           label: 'Maximum Level',
@@ -88,7 +86,6 @@ export const itemViewConfig = {
     {
       title: 'Additional Details',
       gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
       fields: [
         {
           label: 'Description',
@@ -104,15 +101,23 @@ export const editItemConfig = {
   title: 'Edit Item',
   sections: [
     {
-      title: 'Basic Information',
-      gridCols: 'grid-cols-2',
+      title: 'Item Details',
+      gridCols: 'grid-cols-3',
       fields: [
+        {
+          label: 'Vendor',
+          key: 'vendor',
+          width: 'w-2/3',
+          type: 'dropdown',
+          required: true
+        },
         {
           label: 'Item Code',
           key: 'itemCode',
-          width: 'w-1/3',
+          width: 'w-2/3',
           disabled: true,
-          type: 'text'
+          type: 'text',
+          required: true
         },
         {
           label: 'Item Name',
@@ -121,24 +126,16 @@ export const editItemConfig = {
           type: 'text',
           required: true
         },
-        {
-          label: 'Vendor',
-          key: 'vendor',
-          width: 'w-2/3',
-          type: 'dropdown',
-          required: true
-        }
       ]
     },
     {
       title: 'Pricing Information',
       gridCols: 'grid-cols-3',
-      bgColor: 'bg-gray-100',
       fields: [
         {
           label: 'Price',
           key: 'price',
-          width: 'w-1/3',
+          width: 'w-2/3',
           type: 'number',
           prefix: '₱',
           step: '0.01',
@@ -148,27 +145,28 @@ export const editItemConfig = {
         {
           label: 'Floor Price',
           key: 'floorPrice',
-          width: 'w-1/3',
+          width: 'w-2/3',
           type: 'number',
           prefix: '₱',
           step: '0.01',
-          min: '0'
+          min: '0',
+          required: true
         },
         {
           label: 'Ceiling Price',
           key: 'ceilingPrice',
-          width: 'w-1/3',
+          width: 'w-2/3',
           type: 'number',
           prefix: '₱',
           step: '0.01',
-          min: '0'
+          min: '0',
+          required: true
         }
       ]
     },
     {
       title: 'Stock Information',
       gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
       fields: [
         {
           label: 'Unit',
@@ -185,32 +183,34 @@ export const editItemConfig = {
           required: true
         },
         {
-          label: 'Quantity',
-          key: 'quantity',
-          width: 'w-1/3',
-          type: 'number',
-          min: '0'
-        },
-        {
           label: 'Minimum Level',
           key: 'minLevel',
           width: 'w-1/3',
           type: 'number',
-          min: '0'
+          min: '0',
+          required: true
+        },
+        {
+          label: 'Quantity',
+          key: 'quantity',
+          width: 'w-1/3',
+          type: 'number',
+          min: '0',
+          required: true
         },
         {
           label: 'Maximum Level',
           key: 'maxLevel',
           width: 'w-1/3',
           type: 'number',
-          min: '0'
+          min: '0',
+          required: true
         }
       ]
     },
     {
       title: 'Additional Details',
       gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
       fields: [
         {
           label: 'Description',
@@ -229,53 +229,37 @@ export const customerViewConfig = {
   sections: [
     {
       title: 'Basic Information',
-      gridCols: 'grid-cols-1',
+      gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Company Name',
-          key: 'name',
-          width: 'w-2/3'
-        },
-        {
-          label: 'Contact Person',
-          key: 'contactPerson',
-          width: 'w-1/3'
-        },
-        {
           label: 'Customer ID',
-          key: 'accountCode',
+          key: 'customerId',
           width: 'w-1/3'
         },
         {
-          label: 'Email',
-          key: 'email',
+          label: 'Customer Name',
+          key: 'customerName',
           width: 'w-2/3'
         },
         {
-          label: 'Phone',
-          key: 'telephone',
-          width: 'w-1/3'
-        },
+          label: 'Contact Name',
+          key: 'contactName',
+          width: 'w-1/2'
+        }
       ]
     },
     {
       title: 'Address Information',
       gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
       fields: [
         {
-          label: 'Street Address',
-          key: 'address',
+          label: 'Street',
+          key: 'street',
           width: 'w-full'
         },
         {
           label: 'City',
           key: 'city',
-          width: 'w-1/2'
-        },
-        {
-          label: 'State/Province',
-          key: 'state',
           width: 'w-1/2'
         },
         {
@@ -291,14 +275,45 @@ export const customerViewConfig = {
       ]
     },
     {
-      title: 'Additional Information',
+      title: 'Contact Information',
       gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
       fields: [
         {
-          label: 'Notes',
-          key: 'notes',
-          isTextArea: true
+          label: 'Telephone 1',
+          key: 'telephone1',
+          width: 'w-1/2'
+        },
+        {
+          label: 'Telephone 2',
+          key: 'telephone2',
+          width: 'w-1/2'
+        }
+      ]
+    },
+    {
+      title: 'Email Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Email 1',
+          key: 'email1',
+          width: 'w-1/2'
+        },
+        {
+          label: 'Email 2',
+          key: 'email2',
+          width: 'w-1/2'
+        }
+      ]
+    },
+    {
+      title: 'Status Information',
+      gridCols: 'grid-cols-1',
+      fields: [
+        {
+          label: 'Active Status',
+          key: 'isActive',
+          customRender: (value) => value ? 'Active' : 'Inactive'
         }
       ]
     }
@@ -387,6 +402,120 @@ export const supplierViewConfig = {
           label: 'Notes',
           key: 'notes',
           isTextArea: true
+        }
+      ]
+    }
+  ]
+};
+
+export const editCustomerConfig = {
+  title: 'Edit Customer',
+  sections: [
+    {
+      title: 'Basic Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Customer ID',
+          key: 'customerId',
+          width: 'w-1/3',
+          type: 'text',
+          disabled: true,
+          required: true
+        },
+        {
+          label: 'Customer Name',
+          key: 'customerName',
+          width: 'w-2/3',
+          type: 'text',
+          required: true
+        },
+        {
+          label: 'Contact Name',
+          key: 'contactName',
+          width: 'w-1/2',
+          type: 'text'
+        }
+      ]
+    },
+    {
+      title: 'Address Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Street',
+          key: 'street',
+          width: 'w-full',
+          type: 'text'
+        },
+        {
+          label: 'City',
+          key: 'city',
+          width: 'w-1/2',
+          type: 'text'
+        },
+        {
+          label: 'Postal Code',
+          key: 'postalCode',
+          width: 'w-1/2',
+          type: 'text'
+        },
+        {
+          label: 'Country',
+          key: 'country',
+          width: 'w-1/2',
+          type: 'text'
+        }
+      ]
+    },
+    {
+      title: 'Contact Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Telephone 1',
+          key: 'telephone1',
+          width: 'w-1/2',
+          type: 'tel',
+          required: true
+        },
+        {
+          label: 'Telephone 2',
+          key: 'telephone2',
+          width: 'w-1/2',
+          type: 'tel'
+        }
+      ]
+    },
+    {
+      title: 'Email Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Email 1',
+          key: 'email1',
+          width: 'w-1/2',
+          type: 'email',
+          required: true
+        },
+        {
+          label: 'Email 2',
+          key: 'email2',
+          width: 'w-1/2',
+          type: 'email'
+        }
+      ]
+    },
+    {
+      title: 'Status Information',
+      gridCols: 'grid-cols-1',
+      fields: [
+        {
+          label: 'Active Status',
+          key: 'isActive',
+          type: 'dropdown',
+          width: 'w-1/3',
+          options: ['Active', 'Inactive']
         }
       ]
     }
@@ -487,4 +616,5 @@ export const createSimpleViewConfig = (title, fields, gridCols = 'grid-cols-1') 
     }
   ]
 });
+
 

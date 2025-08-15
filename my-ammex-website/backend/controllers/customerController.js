@@ -27,7 +27,7 @@ const getAllCustomers = async (req, res, next) => {
       where: whereClause,
       limit: parseInt(limit),
       offset: (page - 1) * limit,
-      order: [['customerName', 'ASC']]
+      order: [['createdAt', 'DESC']]
     });
 
     res.json({

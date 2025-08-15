@@ -402,7 +402,14 @@ const initializeModels = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        isEmail: { msg: 'Please add a valid email' }
+        isEmailOrEmpty: function(value) {
+          if (value && value.trim() !== '') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+              throw new Error('Please add a valid email');
+            }
+          }
+        }
       }
     },
     isActive: {

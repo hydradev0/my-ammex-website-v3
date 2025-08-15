@@ -1,15 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, User, MapPin, Mail, Phone } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
-function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode,
-  width = 'w-[1200px]',
-  maxHeight = 'max-h-[100vh]',
- }) {
+function RecordsModal({ isOpen = true, onClose, onSubmit }) {
   // State for form fields
   const [formData, setFormData] = useState({
-    customerId: nextAccountCode,
     companyName: '',
     street: '',
     city: '',
@@ -40,10 +36,6 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode,
   // Validate form
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.customerId.trim()) {
-      newErrors.customerId = 'Customer ID is required';
-    }
 
     if (!formData.companyName.trim()) {
       newErrors.companyName = 'Company name is required';
@@ -91,184 +83,210 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, nextAccountCode,
   if (!isOpen) return null;
 
   const modalContent = (
-    <div 
-      ref={modalRef}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-    >
+    <>
+      {/* ScrollLock component to handle scroll locking properly */}
+      <ScrollLock active={isOpen} />
+      
       <div 
-        className={`bg-white rounded-lg p-6 ${width} flex flex-col ${maxHeight} overflow-hidden`}
-        style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+        ref={modalRef}
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">Add New Customer</h2>
+        <div 
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col max-h-screen overflow-hidden"
+          style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+        >
+          {/* Header */}
+          <div className="flex justify-between items-center p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-gray-800">Add New Customer</h2>
+            </div>
+            
+            <button 
+              onClick={onClose} 
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 text-gray-500 hover:text-gray-700"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div> 
           
-          <button 
-            onClick={onClose} 
-            className="hover:text-gray-400 cursor-pointer text-gray-600 mb-4"
-          >
-            <X className="h-8 w-8" />
-          </button>
-        </div> 
-        
-        <div className="overflow-y-auto flex-grow">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Account Details</h3>
-              <FormField
-                className="bg-gray-100 border border-gray-300 text-gray-800 rounded-md px-4 py-2  focus:border-gray-400 focus:outline-none "
-                id="customerId"
-                label="ID"
-                type="text"
-                value={formData.customerId}
-                onChange={handleInputChange}
-                error={errors.customerId}
-                width="w-1/3"
-                readOnly
-              />
-              <FormField
-                id="companyName"
-                label="Company Name"
-                type="text"
-                value={formData.companyName}
-                onChange={handleInputChange}
-                error={errors.companyName}
-              />
+          {/* Content */}
+          <div className="overflow-y-auto flex-grow p-6 mr-3 bg-white">
+            {/* Basic Information Section */}
+            <div className="mb-8">
+              {/* Section Header with Icon */}
+              <div className="flex items-center gap-2 mb-4">
+                <User className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Basic Information</h3>
+              </div>
+              
+              {/* Section Container */}
+              <div className="grid grid-cols-2 gap-6 bg-white rounded-xl p-4">
+                <FormField
+                  id="companyName"
+                  label="Company Name"
+                  type="text"
+                  value={formData.companyName}
+                  onChange={handleInputChange}
+                  error={errors.companyName}
+                  required
+                />
+                <FormField
+                  id="contactName"
+                  label="Contact Name"
+                  type="text"
+                  value={formData.contactName}
+                  onChange={handleInputChange}
+                  error={errors.contactName}
+                />
+              </div>
             </div>
-            
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Registered Address</h3>
-                <div>
-                  <FormField
-                    id="street"
-                    label="Street"
-                    type="text"
-                    value={formData.street}
-                    onChange={handleInputChange}
-                    error={errors.street}
-                    width="w-2/3"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      id="city"
-                      label="City"
-                      type="text"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      error={errors.city}
-                      width="w-full"
-                    />
-                    <FormField
-                      id="postalCode"
-                      label="Postal Code"
-                      type="text"
-                      value={formData.postalCode}
-                      onChange={handleInputChange}
-                      error={errors.postalCode}
-                      width="w-1/3"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <FormField
-                    id="country"
-                    label="Country"
-                    type="text"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    error={errors.country}
-                    width="w-2/3"
-                  />
-                </div>
+
+            {/* Address Information Section */}
+            <div className="mb-8">
+              {/* Section Header with Icon */}
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Address Information</h3>
+              </div>
+              
+              {/* Section Container */}
+              <div className="grid grid-cols-2 gap-6 rounded-xl p-4">
+                <FormField
+                  id="street"
+                  label="Street"
+                  type="text"
+                  value={formData.street}
+                  onChange={handleInputChange}
+                  error={errors.street}
+                  width="w-full"
+                />
+                <FormField
+                  id="city"
+                  label="City"
+                  type="text"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  error={errors.city}
+                  width="w-1/2"
+                />
+                <FormField
+                  id="postalCode"
+                  label="Postal Code"
+                  type="text"
+                  value={formData.postalCode}
+                  onChange={handleInputChange}
+                  error={errors.postalCode}
+                  width="w-0.5/2"
+                />
+                <FormField
+                  id="country"
+                  label="Country"
+                  type="text"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  error={errors.country}
+                  width="w-1/2"
+                />
+              </div>
             </div>
-            
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Contact Information</h3>
-              <FormField
-                id="contactName"
-                label="Contact Name"
-                type="text"
-                value={formData.contactName}
-                onChange={handleInputChange}
-                error={errors.contactName}
-                width="w-2/3"
-              />
-              <FormField
-                id="telephone1"
-                label="Telephone 1"
-                type="tel"
-                value={formData.telephone1}
-                onChange={handleInputChange}
-                error={errors.telephone1}
-                width="w-2/3"
-              />
-              <FormField
-                id="telephone2"
-                label="Telephone 2"
-                type="tel"
-                value={formData.telephone2}
-                onChange={handleInputChange}
-                error={errors.telephone2}
-                width="w-2/3"
-              />
+
+            {/* Contact Information Section */}
+            <div className="mb-8">
+              {/* Section Header with Icon */}
+              <div className="flex items-center gap-2 mb-4">
+                <Phone className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Contact Information</h3>
+              </div>
+              
+              {/* Section Container */}
+              <div className="grid grid-cols-2 gap-6 bg-white rounded-xl p-4">
+                <FormField
+                  id="telephone1"
+                  label="Telephone 1"
+                  type="tel"
+                  value={formData.telephone1}
+                  onChange={handleInputChange}
+                  error={errors.telephone1}
+                  required
+                  width="w-1/2"
+                />
+                <FormField
+                  id="telephone2"
+                  label="Telephone 2"
+                  type="tel"
+                  value={formData.telephone2}
+                  onChange={handleInputChange}
+                  error={errors.telephone2}
+                  width="w-1/2"
+                />
+              </div>
             </div>
-            
-            <div>
-              <h3 className="text-lg pl-4 font-bold text-gray-700 mb-4">Emails</h3>
-              <FormField
-                id="email1"
-                label="Email 1"
-                type="email"
-                value={formData.email1}
-                onChange={handleInputChange}
-                error={errors.email1}
-                width="w-2/3"
-              />
-              <FormField
-                id="email2"
-                label="Email 2"
-                type="email"
-                value={formData.email2}
-                onChange={handleInputChange}
-                error={errors.email2}
-                width="w-2/3"
-              />
+
+            {/* Email Information Section */}
+            <div className="mb-8">
+              {/* Section Header with Icon */}
+              <div className="flex items-center gap-2 mb-4">
+                <Mail className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Email Information</h3>
+              </div>
+              
+              {/* Section Container */}
+              <div className="grid grid-cols-2 gap-6 rounded-xl p-4">
+                <FormField
+                  id="email1"
+                  label="Email 1"
+                  type="email"
+                  value={formData.email1}
+                  onChange={handleInputChange}
+                  error={errors.email1}
+                  required
+                  width="w-1/2"
+                />
+                <FormField
+                  id="email2"
+                  label="Email 2"
+                  type="email"
+                  value={formData.email2}
+                  onChange={handleInputChange}
+                  error={errors.email2}
+                  width="w-1/2"
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="p-6 border-t border-gray-100 bg-white">
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                className="px-6 py-3 border-2 cursor-pointer border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-6 py-3 bg-gradient-to-r cursor-pointer from-blue-600 to-blue-700 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200 shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                Add Customer
+              </button>
             </div>
           </div>
         </div>
-        
-        <div className="pt-4 mt-2 border-t-2 border-gray-300 flex justify-end gap-3">
-          <button 
-            type="button" 
-            className="cursor-pointer px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button 
-            type="button" 
-            className="cursor-pointer px-4 py-3 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-            onClick={handleSubmit}
-          >
-            Add Customer
-          </button>
-        </div>
       </div>
-    </div>
-  );
-
-  return (
-    <>
-      <ScrollLock active={isOpen} />
-      {createPortal(modalContent, document.body)}
     </>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
-function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', ...props }) {
+function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', required = false, disabled = false, ...props }) {
   return (
     <div className="m-4">
-      <label htmlFor={id} className="block text-lg font-medium text-gray-700 mb-1">
-        {label}
+      <label htmlFor={id} className="block text-lg font-medium text-gray-700 mb-2">
+        {label}{required ? ' *' : ''}
       </label>
       <div className={`relative ${error ? 'mb-1' : ''}`}>
         {prefix && (
@@ -279,9 +297,10 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
         <input 
           type={type} 
           id={id} 
-          className={`${prefix ? 'pl-7' : 'px-3'} px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600`}
+          className={`${prefix ? 'pl-7' : 'px-3'} px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           value={value}
           onChange={onChange}
+          disabled={disabled}
           {...props}
         />
       </div>

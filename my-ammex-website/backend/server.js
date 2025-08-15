@@ -93,6 +93,75 @@ const initializeServer = async () => {
           data: {}
         });
       });
+
+      // Mock customer routes
+      app.get('/api/customers', (req, res) => {
+        res.json({
+          success: true,
+          data: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 0,
+            itemsPerPage: 10
+          }
+        });
+      });
+
+      app.post('/api/customers', (req, res) => {
+        // Mock customer creation with validation
+        const { customerName, telephone1, email1 } = req.body;
+        
+        // Basic validation
+        if (!customerName || !telephone1 || !email1) {
+          return res.status(400).json({
+            success: false,
+            message: 'Validation failed',
+            errors: [
+              ...(!customerName ? [{ field: 'customerName', message: 'Customer name is required' }] : []),
+              ...(!telephone1 ? [{ field: 'telephone1', message: 'Telephone 1 is required' }] : []),
+              ...(!email1 ? [{ field: 'email1', message: 'Email 1 is required' }] : [])
+            ]
+          });
+        }
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email1)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Validation failed',
+            errors: [{ field: 'email1', message: 'Please provide a valid email address' }]
+          });
+        }
+
+        // Success response
+        res.status(201).json({
+          success: true,
+          data: {
+            id: Date.now(),
+            customerId: `CUST${String(Date.now()).padStart(4, '0')}`,
+            customerName,
+            telephone1,
+            email1,
+            ...req.body,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        });
+      });
+
+      app.get('/api/customers/stats', (req, res) => {
+        res.json({
+          success: true,
+          data: {
+            totalCustomers: 0,
+            activeCustomers: 0,
+            newCustomersThisMonth: 0
+          }
+        });
+      });
     }
 
     // 404 handler
