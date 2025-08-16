@@ -110,7 +110,7 @@ const initializeServer = async () => {
 
       app.post('/api/customers', (req, res) => {
         // Mock customer creation with validation
-        const { customerName, telephone1, email1 } = req.body;
+        const { companyName, telephone1, email1 } = req.body;
         
         // Basic validation
         if (!customerName || !telephone1 || !email1) {

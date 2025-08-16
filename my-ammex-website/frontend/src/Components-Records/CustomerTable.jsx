@@ -233,7 +233,7 @@ function CustomerTable() {
     },
     { 
       key: 'customerName', 
-      header: 'Customer Name'
+      header: 'Company Name'
     },
     { 
       key: 'contactName', 
@@ -247,14 +247,6 @@ function CustomerTable() {
       key: 'telephone1', 
       header: 'Telephone'
     },
-    { 
-      key: 'city', 
-      header: 'City'
-    },
-    { 
-      key: 'country', 
-      header: 'Country'
-    }
   ];
   
   // Custom dropdown actions for customers with view, edit, and delete functionality

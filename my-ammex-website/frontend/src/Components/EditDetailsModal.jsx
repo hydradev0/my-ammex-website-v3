@@ -36,7 +36,16 @@ function EditDetailsModal({
       config.sections.forEach(section => {
         section.fields.forEach(field => {
           if (field.key) {
-            initialFormData[field.key] = data[field.key] || '';
+            // Handle nested objects for dropdown fields (category, unit)
+            if (field.type === 'dropdown' && field.key === 'category' && data[field.key] && typeof data[field.key] === 'object') {
+              initialFormData[field.key] = data[field.key].name || '';
+              initialFormData[`${field.key}Id`] = data[field.key].id || '';
+            } else if (field.type === 'dropdown' && field.key === 'unit' && data[field.key] && typeof data[field.key] === 'object') {
+              initialFormData[field.key] = data[field.key].name || '';
+              initialFormData[`${field.key}Id`] = data[field.key].id || '';
+            } else {
+              initialFormData[field.key] = data[field.key] || '';
+            }
           }
         });
       });
@@ -116,8 +125,21 @@ function EditDetailsModal({
     setErrors({});
 
     try {
+      // Prepare data for submission - use IDs for category and unit
+      const submissionData = { ...formData };
+      
+      // Convert category and unit names back to IDs for backend
+      if (submissionData.category && submissionData.categoryId) {
+        submissionData.categoryId = submissionData.categoryId;
+        delete submissionData.category; // Remove the name, keep only ID
+      }
+      if (submissionData.unit && submissionData.unitId) {
+        submissionData.unitId = submissionData.unitId;
+        delete submissionData.unit; // Remove the name, keep only ID
+      }
+
       // Use the provided update service
-      const response = await updateService(data.id, formData);
+      const response = await updateService(data.id, submissionData);
       
       if (response.success) {
         setSuccessMessage('Updated successfully!');
@@ -141,11 +163,20 @@ function EditDetailsModal({
   };
 
   // Handle dropdown selection
-  const handleDropdownSelect = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleDropdownSelect = (field, value, option) => {
+    // Store the name for display and ID for submission
+    if (field === 'category' || field === 'unit') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value, // Store the name for display
+        [`${field}Id`]: option.id // Store the ID for submission
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
     
     // Close the dropdown
     setDropdownStates(prev => ({ ...prev, [field]: false }));
@@ -207,7 +238,7 @@ function EditDetailsModal({
                     <li
                       key={optionKey}
                       className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${value === optionValue ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
-                      onClick={() => handleDropdownSelect(key, optionValue)}
+                      onClick={() => handleDropdownSelect(key, optionValue, option)}
                     >
                       {optionValue}
                     </li>

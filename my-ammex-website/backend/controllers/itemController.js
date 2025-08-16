@@ -113,21 +113,7 @@ const updateItem = async (req, res, next) => {
       });
     }
 
-    // Check for duplicate Name (excluding current item)
-    if (updateData.itemName && updateData.itemName !== currentItem.itemName) {
-      const existingItem = await Item.findOne({
-        where: {
-          itemName: updateData.itemName,
-          id: { [Op.ne]: id }
-        }
-      });
-      if (existingItem) {
-        return res.status(400).json({
-          success: false,
-          message: 'Item name already exists'
-        });
-      }
-    }
+
 
     // Check for duplicate Code (excluding current item)
     if (updateData.itemCode && updateData.itemCode !== currentItem.itemCode) {

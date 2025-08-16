@@ -356,7 +356,7 @@ const initializeModels = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        notEmpty: { msg: 'Customer name is required' }
+        notEmpty: { msg: 'Company name is required' }
       }
     },
     street: {

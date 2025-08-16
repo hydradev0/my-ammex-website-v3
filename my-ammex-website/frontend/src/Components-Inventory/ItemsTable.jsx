@@ -7,15 +7,16 @@ import NewItemModal from './NewItemModal';
 import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
-import { itemViewConfig } from '../Components/viewConfigs';
+import StockAdjustmentModal from './StockAdjustmentModal';
+import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
-import { getItems, createItem, updateItem, deleteItem } from '../services/inventoryService';
+import { getItems, createItem, updateItem, deleteItem, updateItemStock } from '../services/inventoryService';
 
 // Constants for category styling
 const CATEGORY_STYLES = {
   'Materials': 'bg-blue-100 text-blue-800',
   'Machines': 'bg-green-100 text-green-800',
-  'Marker': 'bg-purple-100 text-purple-800',
+  'Sanitary': 'bg-purple-100 text-purple-800',
   'Drill': 'bg-orange-100 text-orange-800',
   'Tools': 'bg-red-100 text-red-800',
 };
@@ -69,6 +70,13 @@ function ItemsTable({ categories, setCategories, units }) {
     title: '',
     message: ''
   });
+
+  // State for stock adjustment modal
+  const [stockAdjustmentModal, setStockAdjustmentModal] = useState({
+    isOpen: false,
+    item: null
+  });
+  const [adjustingStock, setAdjustingStock] = useState(false);
 
   // Fetch items on component mount
   useEffect(() => {
@@ -308,6 +316,50 @@ function ItemsTable({ categories, setCategories, units }) {
     }
   };
 
+  // Handle stock adjustment
+  const handleStockAdjustment = async (adjustmentData) => {
+    try {
+      setAdjustingStock(true);
+      setError(null);
+      
+      const { type, quantity, reason } = adjustmentData;
+      const itemId = stockAdjustmentModal.item.id;
+      
+      // Calculate new quantity
+      const currentQuantity = stockAdjustmentModal.item.quantity;
+      const newQuantity = type === 'add' 
+        ? currentQuantity + quantity
+        : Math.max(0, currentQuantity - quantity);
+      
+      // Update stock via API
+      const response = await updateItemStock(itemId, newQuantity);
+      
+      if (response.success) {
+        // Update local state
+        setItems(items.map(item => 
+          item.id === itemId 
+            ? { ...item, quantity: newQuantity }
+            : item
+        ));
+        
+        // Close modal and show success message
+        setStockAdjustmentModal({ isOpen: false, item: null });
+        setSuccessModal({
+          isOpen: true,
+          title: 'Stock Updated Successfully!',
+          message: `Stock has been ${type === 'add' ? 'added to' : 'removed from'} "${stockAdjustmentModal.item.itemName}". New quantity: ${newQuantity.toLocaleString()}`
+        });
+      } else {
+        setError(response.message || 'Failed to update stock');
+      }
+    } catch (err) {
+      console.error('Error adjusting stock:', err);
+      setError(err.message || 'Failed to adjust stock');
+    } finally {
+      setAdjustingStock(false);
+    }
+  };
+
   // Handle close view modal
   const handleCloseViewModal = () => {
     setIsViewModalOpen(false);
@@ -343,6 +395,14 @@ function ItemsTable({ categories, setCategories, units }) {
           ...action,
           onClick: (item) => {
             showDeleteConfirmation(item.itemName, item.id);
+          }
+        };
+      }
+      if (action.id === 'adjustStock') {
+        return {
+          ...action,
+          onClick: (item) => {
+            setStockAdjustmentModal({ isOpen: true, item });
           }
         };
       }
@@ -474,7 +534,7 @@ function ItemsTable({ categories, setCategories, units }) {
           categories={categories}
           units={units}
           onDataUpdated={handleItemUpdated}
-          config={itemViewConfig}
+          config={editItemConfig}
           updateService={updateItem}
         />
 
@@ -544,6 +604,15 @@ function ItemsTable({ categories, setCategories, units }) {
           message={successModal.message}
           autoClose={true}
           autoCloseDelay={4000}
+        />
+
+        {/* Stock Adjustment Modal */}
+        <StockAdjustmentModal
+          isOpen={stockAdjustmentModal.isOpen}
+          onClose={() => setStockAdjustmentModal({ isOpen: false, item: null })}
+          onSubmit={handleStockAdjustment}
+          item={stockAdjustmentModal.item}
+          isLoading={adjustingStock}
         />
         
       </div>

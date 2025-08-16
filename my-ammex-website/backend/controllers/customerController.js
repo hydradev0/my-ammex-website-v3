@@ -115,21 +115,6 @@ const updateCustomer = async (req, res, next) => {
       });
     }
 
-    // Check for duplicate name (excluding current customer)
-    if (updateData.customerName && updateData.customerName !== customer.customerName) {
-      const existingCustomer = await Customer.findOne({
-        where: {
-          customerName: updateData.customerName,
-          id: { [Op.ne]: id }
-        }
-      });
-      if (existingCustomer) {
-        return res.status(400).json({
-          success: false,
-          message: 'Customer name already exists'
-        });
-      }
-    }
 
     // Check for duplicate customerId (excluding current customer)
     if (updateData.customerId && updateData.customerId !== customer.customerId) {

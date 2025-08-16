@@ -1,4 +1,4 @@
-import { Eye, Edit, Trash2, Printer, FileText, FileSpreadsheet, Truck} from 'lucide-react';
+import { Eye, Edit, Trash2, Printer, FileText, FileSpreadsheet, Truck, Package} from 'lucide-react';
 
 // Generic base actions
 export const baseDropdownActions = [
@@ -96,7 +96,14 @@ export const salesInvoicesDropdownActions = [
 
 // Items specific actions - will be customized in ItemsTable
 export const itemsDropdownActions = [
-  ...baseDropdownActions
+  ...baseDropdownActions,
+  {
+    id: 'adjustStock',
+    label: 'Adjust Stock',
+    icon: Package,
+    onClick: null,
+    className: 'text-blue-600'
+  }
 ]; 
 
 export const unitDropdownActions = [
