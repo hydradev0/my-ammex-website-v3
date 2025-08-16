@@ -60,7 +60,7 @@ const Toast = ({ message, isVisible, onClose }) => {
   );
 };
 
-const IndustrialPOS = () => {
+const IndustrialPOS = ({ items = [], categories = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
@@ -70,35 +70,37 @@ const IndustrialPOS = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
 
-  // Sample product data - only showing a few items to avoid reaching max length
-  const products = [
-    { id: 1, name: 'Industrial Drill Press DP-500', category: 'Drills', price: 1299.99, image: '/Resource/icons8-purchase-order-80.png', alt:'drill press', stock: 5 },
-    { id: 2, name: 'CNC Milling Machine XL-200', category: 'Machines', price: 15999.99, image: '⚙️', stock: 2 },
-    { id: 3, name: 'Pneumatic Impact Drill', category: 'Drills', price: 459.99, image: '🔨', stock: 12 },
-    { id: 4, name: 'Hydraulic Press HP-1000', category: 'Machines', price: 3499.99, image: '🏭', stock: 3 },
-    { id: 5, name: 'Carbide Drill Bit Set', category: 'Accessories', price: 89.99, image: '🔩', stock: 25 },
-    { id: 6, name: 'Lathe Machine LT-300', category: 'Machines', price: 8999.99, image: '⚡', stock: 1 },
-    { id: 7, name: 'Cordless Hammer Drill', category: 'Drills', price: 249.99, image: '🔋', stock: 18 },
-    { id: 8, name: 'Band Saw BS-14', category: 'Machines', price: 1899.99, image: '⚔️', stock: 4 },
-    { id: 9, name: 'Safety Equipment Bundle', category: 'Safety', price: 199.99, image: '🦺', stock: 30 },
-    { id: 10, name: 'Precision Measuring Tools', category: 'Accessories', price: 159.99, image: '📏', stock: 15 },
-    { id: 11, name: 'Lathe Machine LT-300', category: 'Machines', price: 8999.99, image: '⚡', stock: 1 },
-    { id: 12, name: 'Cordless Hammer Drill', category: 'Drills', price: 249.99, image: '🔋', stock: 18 },
-    { id: 13, name: 'Band Saw BS-14', category: 'Machines', price: 1899.99, image: '⚔️', stock: 4 },
-    { id: 14, name: 'Safety Equipment Bundle', category: 'Safety', price: 199.99, image: '🦺', stock: 30 },
-    { id: 15, name: 'Precision Measuring Tools', category: 'Accessories', price: 159.99, image: '📏', stock: 15 },
-    // Note: In real implementation, you would load more products dynamically
-  ];
+  // Transform inventory items to product format
+  const products = useMemo(() => {
+    return items.map(item => ({
+      id: item.id,
+      name: item.itemName,
+      category: item.category?.name || 'Uncategorized',
+      price: parseFloat(item.price) || 0,
+      image: '/Resource/icons8-purchase-order-80.png', // Default image
+      alt: item.itemName,
+      stock: item.quantity || 0,
+      itemCode: item.itemCode,
+      vendor: item.vendor,
+      description: item.description || '',
+      unit: item.unit?.name || 'pcs'
+    }));
+  }, [items]);
 
-  const categories = ['All', 'Machines', 'Drills', 'Accessories', 'Safety'];
+  // Get unique categories for filtering
+  const availableCategories = useMemo(() => {
+    const cats = ['All', ...categories.map(cat => cat.name)];
+    return [...new Set(cats)]; // Remove duplicates
+  }, [categories]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.itemCode?.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [selectedCategory, searchTerm]);
+  }, [products, selectedCategory, searchTerm]);
 
   const paginatedProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * productsPerPage;
@@ -185,7 +187,7 @@ const IndustrialPOS = () => {
             setSearchTerm={setSearchTerm}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
-            categories={categories}
+            categories={availableCategories}
             cartItemCount={getTotalItems()}
           />
 

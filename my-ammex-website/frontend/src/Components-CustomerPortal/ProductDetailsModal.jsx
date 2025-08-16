@@ -36,8 +36,8 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
 
   // Mock variations data - in real app this would come from the product
   const variations = [
-    { id: 1, name: 'Size', options: ['Small', 'Medium', 'Large'] },
-    { id: 2, name: 'Color', options: ['Red', 'Blue', 'Black'] },
+    { id: 1, name: 'Model', options: ['ER32', 'BT40', 'CR2'] },
+    { id: 2, name: 'Accessories', options: ['4" disc', '5" disc', '6" disc'] },
   ];
 
   const handleAddToCart = () => {
