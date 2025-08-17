@@ -45,6 +45,7 @@ function Navigation() {
         { name: 'Items', link: '/Inventory/Items' },
         { name: 'Unit', link: '/Inventory/Unit' },
         { name: 'Category', link: '/Inventory/Category' },
+        { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
       ]
     },
     {

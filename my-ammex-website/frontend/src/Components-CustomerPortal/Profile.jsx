@@ -1,30 +1,94 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Edit, Save, X, User, Building, Phone, Mail, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ChevronRight, Edit, Save, X, User, Building, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
+import { getCustomers, getCustomerById, updateCustomer } from '../services/customerService';
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { customerId } = useParams(); // Get customer ID from URL params
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [updating, setUpdating] = useState(false);
 
-  // Mock user data - in a real app, this would come from authentication context or API
+  // Customer data state
   const [userData, setUserData] = useState({
-    customerId: 'AC1001',
-    companyName: 'ABC Corporation',
-    contactName: 'John Smith',
-    street: '123 Main St',
-    city: 'New York',
-    postalCode: '10001',
-    country: 'USA',
-    telephone1: '(555) 123-4567',
-    telephone2: '(555) 987-6543',
-    email1: 'accounts@abcmfg.com',
-    email2: 'contact@abcmfg.com',
-    balance: 1250.00,
-    notes: 'Preferred contact method: Email'
+    id: null, // Numeric primary key from database
+    customerId: '', // String customer ID like "CUST0001"
+    customerName: '',
+    contactName: '',
+    street: '',
+    city: '',
+    postalCode: '',
+    country: '',
+    telephone1: '',
+    telephone2: '',
+    email1: '',
+    email2: '',
+    balance: 0,
+    notes: '',
+    isActive: true
   });
 
   const [editData, setEditData] = useState({ ...userData });
+
+  // Fetch customer data on component mount
+  useEffect(() => {
+    const fetchCustomerData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use customer ID from URL params, or fallback to a default for demo
+        const customerIdToSearch = customerId || 'CUST0002';
+        
+        // First, search for the customer by customerId string
+        const searchResponse = await getCustomers({ search: customerIdToSearch });
+        
+        if (searchResponse.success && searchResponse.data.length > 0) {
+          // Find the exact match
+          const customer = searchResponse.data.find(c => 
+            c.customerId === customerIdToSearch
+          );
+          
+          if (customer) {
+            const formattedData = {
+              id: customer.id, // Numeric primary key
+              customerId: customer.customerId || '',
+              customerName: customer.customerName || '',
+              contactName: customer.contactName || '',
+              street: customer.street || '',
+              city: customer.city || '',
+              postalCode: customer.postalCode || '',
+              country: customer.country || '',
+              telephone1: customer.telephone1 || '',
+              telephone2: customer.telephone2 || '',
+              email1: customer.email1 || '',
+              email2: customer.email2 || '',
+              balance: customer.balance || 0,
+              notes: customer.notes || '',
+              isActive: customer.isActive !== undefined ? customer.isActive : true
+            };
+            
+            setUserData(formattedData);
+            setEditData(formattedData);
+          } else {
+            setError('Customer not found');
+          }
+        } else {
+          setError('Customer not found');
+        }
+      } catch (err) {
+        console.error('Error fetching customer data:', err);
+        setError(err.message || 'Failed to fetch customer data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomerData();
+  }, [customerId]);
 
   const handleBack = () => {
     navigate('/Products');
@@ -39,14 +103,48 @@ const Profile = () => {
     setIsEditing(true);
   };
 
-  const handleSave = () => {
-    setUserData({ ...editData });
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setUpdating(true);
+      setError(null);
+      
+      // Transform form data to match backend model
+      const updatePayload = {
+        customerName: editData.customerName,
+        street: editData.street,
+        city: editData.city,
+        postalCode: editData.postalCode,
+        country: editData.country,
+        contactName: editData.contactName,
+        telephone1: editData.telephone1,
+        telephone2: editData.telephone2,
+        email1: editData.email1,
+        email2: editData.email2,
+        notes: editData.notes
+      };
+      
+      // Use the numeric ID for the update
+      const response = await updateCustomer(userData.id, updatePayload);
+      
+      if (response.success) {
+        setUserData({ ...userData, ...editData });
+        setIsEditing(false);
+        // You could show a success message here
+      } else {
+        setError(response.message || 'Failed to update customer');
+      }
+    } catch (err) {
+      console.error('Error updating customer:', err);
+      setError(err.message || 'Failed to update customer');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleCancel = () => {
     setEditData({ ...userData });
     setIsEditing(false);
+    setError(null);
   };
 
   const handleInputChange = (field, value) => {
@@ -55,6 +153,49 @@ const Profile = () => {
       [field]: value
     }));
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <>
+        <TopBarPortal />
+        <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading profile...</p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <>
+        <TopBarPortal />
+        <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Profile</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -94,13 +235,21 @@ const Profile = () => {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={handleSave}
-                className="flex items-center justify-center gap-2 bg-[#48bb78] hover:bg-[#38a169] text-white px-4 py-2 rounded-3xl transition-colors w-full sm:w-auto"
+                disabled={updating}
+                className={`flex items-center justify-center gap-2 bg-[#48bb78] hover:bg-[#38a169] text-white px-4 py-2 rounded-3xl transition-colors w-full sm:w-auto ${
+                  updating ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                <Save className="w-4 h-4" />
-                Save
+                {updating ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {updating ? 'Saving...' : 'Save'}
               </button>
               <button
                 onClick={handleCancel}
+                disabled={updating}
                 className="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-3xl transition-colors w-full sm:w-auto"
               >
                 <X className="w-4 h-4" />
@@ -110,6 +259,16 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow p-4 sm:p-6 md:p-8 lg:p-10">
         {/* Account Information */}
@@ -122,6 +281,16 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Customer ID</label>
               <div className="text-gray-900 font-medium text-sm sm:text-base">{userData.customerId}</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Account Status</label>
+              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                userData.isActive 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {userData.isActive ? 'Active' : 'Inactive'}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Current Balance</label>
@@ -145,12 +314,12 @@ const Profile = () => {
               {isEditing ? (
                 <input
                   type="text"
-                  value={editData.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
+                  value={editData.customerName}
+                  onChange={(e) => handleInputChange('customerName', e.target.value)}
                   className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
-                <div className="text-gray-900 text-sm sm:text-base">{userData.companyName}</div>
+                <div className="text-gray-900 text-sm sm:text-base">{userData.customerName}</div>
               )}
             </div>
             <div>

@@ -15,6 +15,7 @@ import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
 import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
+import ProductSpecs from './Pages/Inventory/ProductSpecs';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
         <Route path="Sales/SalesInvoice" element={<SalesInvoice />} />
         {/* Inventory */}
         <Route path="Inventory/*" element={<Inventory />} />
+        <Route path="/Inventory/ProductSpecs" element={<ProductSpecs />} />
 
         {/* Purchasing */}
         <Route path="Purchasing/PurchaseQuotes" element={<PurchaseQuotes />} />
