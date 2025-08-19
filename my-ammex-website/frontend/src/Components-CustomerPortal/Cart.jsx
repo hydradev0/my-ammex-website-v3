@@ -13,11 +13,13 @@ const Cart = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const previewModalRef = useRef(null);
   const successModalRef = useRef(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Load cart from localStorage
   useEffect(() => {
     const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
     setCart(savedCart);
+    setSelectedIds(new Set(savedCart.map(item => item.id)));
   }, []);
 
   // Handle click outside preview modal
@@ -48,6 +50,23 @@ const Cart = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showSuccessToast, navigate]);
+
+  // Keep selection in sync with cart. New items become selected by default.
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      const cartIds = new Set(cart.map(item => item.id));
+      // Remove ids that no longer exist in cart
+      for (const id of Array.from(next)) {
+        if (!cartIds.has(id)) next.delete(id);
+      }
+      // Add any new ids (default selected)
+      cart.forEach(item => {
+        if (!next.has(item.id)) next.add(item.id);
+      });
+      return next;
+    });
+  }, [cart]);
 
   // Auto-hide success toast
   useEffect(() => {
@@ -82,6 +101,11 @@ const Cart = () => {
     localStorage.setItem('customerCart', JSON.stringify(updatedCart));
   };
 
+  const clearCart = () => {
+    setCart([]);
+    localStorage.setItem('customerCart', JSON.stringify([]));
+  };
+
   const getTotalPrice = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
@@ -90,8 +114,38 @@ const Cart = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
+  const getSelectedItems = () => {
+    return cart.filter(item => selectedIds.has(item.id));
+  };
+
+  const getSelectedTotalPrice = () => {
+    return getSelectedItems().reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const getSelectedTotalItems = () => {
+    return getSelectedItems().reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const toggleItemSelected = (itemId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const allSelected = cart.length > 0 && selectedIds.size === cart.length;
+  const handleToggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(cart.map(item => item.id)));
+  };
+
   const handleCheckout = () => {
     if (cart.length === 0) return;
+    if (getSelectedItems().length === 0) return;
     
     // Generate order number
     const now = new Date();
@@ -110,14 +164,14 @@ const Cart = () => {
     const order = {
       id: orderNumber,
       orderNumber: orderNumber,
-      items: cart.map(item => ({
+      items: getSelectedItems().map(item => ({
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
         total: item.price * item.quantity
       })),
-      totalAmount: getTotalPrice(),
+      totalAmount: getSelectedTotalPrice(),
       orderDate: new Date().toISOString(),
       status: 'pending',
       customerName: 'Customer',
@@ -129,9 +183,12 @@ const Cart = () => {
     existingOrders.unshift(order);
     localStorage.setItem('customerOrders', JSON.stringify(existingOrders));
 
-    // Clear cart
-    setCart([]);
-    localStorage.setItem('customerCart', JSON.stringify([]));
+    // Remove only the selected items from the cart; keep the rest
+    const remaining = cart.filter(item => !selectedIds.has(item.id));
+    setCart(remaining);
+    localStorage.setItem('customerCart', JSON.stringify(remaining));
+    // Reset selection to remaining items (select all by default)
+    setSelectedIds(new Set(remaining.map(item => item.id)));
 
     // Show success toast
     setShowSuccessToast(true);
@@ -189,7 +246,7 @@ const Cart = () => {
           <div className="p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Order Items</h3>
             <div className="space-y-3">
-              {cart.map((item, index) => (
+              {getSelectedItems().map((item, index) => (
                 <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900">{item.name}</h4>
@@ -209,7 +266,7 @@ const Cart = () => {
           <div className="border-b border-gray-200 pb-4 mb-4">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
-              <span className="text-xl font-bold text-gray-900">${getTotalPrice().toLocaleString()}</span>
+              <span className="text-xl font-bold text-gray-900">${getSelectedTotalPrice().toLocaleString()}</span>
             </div>
           </div>
 
@@ -323,16 +380,43 @@ const Cart = () => {
             {/* Cart Items List */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Cart Items ({getTotalItems()})
-                  </h2>
+                <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex flex-col items-center gap-4">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Cart Items ({getTotalItems()})
+                    </h2>
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={allSelected}
+                        onChange={handleToggleSelectAll}
+                      />
+                      <span> Select all ({getSelectedTotalItems()}/{getTotalItems()})</span>
+                    </label>
+                  </div>
+                  <button
+                    onClick={clearCart}
+                    className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-3xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    Remove All
+                  </button>
                 </div>
                 
                 <div className="divide-y divide-gray-200">
                   {cart.map((item) => (
                     <div key={item.id} className="p-4 sm:p-6">
                       <div className="flex items-start gap-4">
+                        {/* Select Checkbox */}
+                        <div className="pt-2">
+                          <input
+                            type="checkbox"
+                            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            checked={selectedIds.has(item.id)}
+                            onChange={() => toggleItemSelected(item.id)}
+                          />
+                        </div>
                         {/* Product Image Placeholder */}
                         <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <ShoppingBag size={24} className="text-gray-400" />
@@ -395,8 +479,8 @@ const Cart = () => {
                 
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
-                    <span>Subtotal ({getTotalItems()} items)</span>
-                    <span>${getTotalPrice().toLocaleString()}</span>
+                    <span>Selected ({getSelectedTotalItems()} items)</span>
+                    <span>${getSelectedTotalPrice().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
@@ -405,14 +489,15 @@ const Cart = () => {
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between text-lg font-semibold text-gray-900">
                       <span>Total</span>
-                      <span>${getTotalPrice().toLocaleString()}</span>
+                      <span>${getSelectedTotalPrice().toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
                 
                 <button
                   onClick={handleCheckout}
-                  className="w-full cursor-pointer bg-[#3182ce] text-white py-3 rounded-3xl font-medium hover:bg-[#2c5282] transition-colors"
+                  disabled={getSelectedItems().length === 0}
+                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#2c5282]'}`}
                 >
                   Proceed to Checkout
                 </button>

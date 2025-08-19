@@ -41,6 +41,7 @@ const initializeServer = async () => {
       app.use('/api/categories', require('./routes/categories'));
       app.use('/api/units', require('./routes/units'));
       app.use('/api/customers', require('./routes/customers'));
+      app.use('/api/cart', require('./routes/cart'));
       
       app.use('/api/orders', require('./routes/orders'));
       app.use('/api/analytics', require('./routes/analytics'));

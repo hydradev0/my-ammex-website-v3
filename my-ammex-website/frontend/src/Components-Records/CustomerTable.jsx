@@ -79,10 +79,10 @@ function CustomerTable() {
     }
   };
 
-  // Load customers on component mount and when search/filter changes
+  // Load customers on component mount and when filter changes (not search term)
   useEffect(() => {
-    fetchCustomers(searchTerm, filterValue);
-  }, [searchTerm, filterValue]);
+    fetchCustomers('', filterValue);
+  }, [filterValue]);
 
   // Handle adding a new customer
   const handleAddCustomer = async (customerData) => {
@@ -280,26 +280,28 @@ function CustomerTable() {
     // Add navigation or details view here if needed
   };
   
-  // Filter customers based on search term and filter value
-  const filteredCustomers = customers.filter(customer => {
-    // Search filter
-    const matchesSearch = 
-      (customer.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.customerId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.email1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.telephone1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.contactName || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Category filter
-    let matchesFilter = true;
-    if (filterValue === 'Active Accounts') {
-      matchesFilter = customer.isActive === true;
-    } else if (filterValue === 'Inactive Accounts') {
-      matchesFilter = customer.isActive === false;
-    }
-    
-    return matchesSearch && matchesFilter;
-  });
+  // Filter customers based on search term and filter value (local filtering)
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer => {
+      // Search filter
+      const matchesSearch = 
+        (customer.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.customerId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.email1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.telephone1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.contactName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Category filter
+      let matchesFilter = true;
+      if (filterValue === 'Active Accounts') {
+        matchesFilter = customer.isActive === true;
+      } else if (filterValue === 'Inactive Accounts') {
+        matchesFilter = customer.isActive === false;
+      }
+      
+      return matchesSearch && matchesFilter;
+    });
+  }, [customers, searchTerm, filterValue]);
 
   if (loading && customers.length === 0) {
     return (
@@ -346,9 +348,9 @@ function CustomerTable() {
             py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
             flex items-center cursor-pointer justify-center gap-2"
             ${
-              (loading || creatingCustomer || updatingCustomer) ? 'opacity-50 cursor-not-allowed' : ''
+              (creatingCustomer || updatingCustomer) ? 'opacity-50 cursor-not-allowed' : ''
             }`}
-            disabled={loading || creatingCustomer || updatingCustomer}
+            disabled={creatingCustomer || updatingCustomer}
             onClick={handleNewCustomerClick}
           >
             <Plus className="h-6 w-6 mr-2" />

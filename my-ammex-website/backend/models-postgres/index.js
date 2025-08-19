@@ -429,12 +429,97 @@ const initializeModels = (sequelize) => {
     }
   });
 
+  // Cart Model
+  const Cart = sequelize.define('Cart', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    customerId: {
+      type: DataTypes.INTEGER,
+      field: 'customer_id',
+      references: {
+        model: 'Customer',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Customer ID is required' }
+      }
+    },
+    status: {
+      type: DataTypes.ENUM('active', 'converted', 'abandoned'),
+      defaultValue: 'active'
+    },
+    lastUpdated: {
+      type: DataTypes.DATE,
+      field: 'last_updated',
+      defaultValue: DataTypes.NOW
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
+  }, {
+    timestamps: true
+  });
 
-
-
-
-
-
+  // CartItem Model
+  const CartItem = sequelize.define('CartItem', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    cartId: {
+      type: DataTypes.INTEGER,
+      field: 'cart_id',
+      references: {
+        model: 'Cart',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Cart ID is required' }
+      }
+    },
+    itemId: {
+      type: DataTypes.INTEGER,
+      field: 'item_id',
+      references: {
+        model: 'Item',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Item ID is required' }
+      }
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      validate: {
+        min: { args: [1], msg: 'Quantity must be a positive number' }
+      }
+    },
+    unitPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'unit_price',
+      allowNull: false,
+      validate: {
+        min: { args: [0], msg: 'Unit price must be a positive number' }
+      }
+    },
+    addedAt: {
+      type: DataTypes.DATE,
+      field: 'added_at',
+      defaultValue: DataTypes.NOW
+    }
+  }, {
+    timestamps: true
+  });
 
   /* ================================ */
 
@@ -501,6 +586,37 @@ const initializeModels = (sequelize) => {
     as: 'customer'
   });
 
+  // Cart relationships
+  Customer.hasOne(Cart, {
+    foreignKey: 'customerId',
+    as: 'cart'
+  });
+
+  Cart.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+
+  Cart.hasMany(CartItem, {
+    foreignKey: 'cartId',
+    as: 'items'
+  });
+
+  CartItem.belongsTo(Cart, {
+    foreignKey: 'cartId',
+    as: 'cart'
+  });
+
+  Item.hasMany(CartItem, {
+    foreignKey: 'itemId',
+    as: 'cartItems'
+  });
+
+  CartItem.belongsTo(Item, {
+    foreignKey: 'itemId',
+    as: 'item'
+  });
+
 
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
@@ -514,7 +630,9 @@ const initializeModels = (sequelize) => {
     Order,
     OrderItem,
     Customer,
-    Unit
+    Unit,
+    Cart,
+    CartItem
   };
 };
 
