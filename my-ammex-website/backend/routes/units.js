@@ -17,13 +17,13 @@ const validateUnit = [
   check('name', 'Unit name must be between 1 and 50 characters').isLength({ min: 1, max: 50 })
 ];
 
-// Public routes
-router.get('/', getUnits);
-router.get('/:id', getUnit);
+// Private routes (Admin, Warehouse Supervisor, Sales Marketing - read only)
+router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getUnits);
+router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getUnit);
 
-// Protected routes
-router.post('/', /* protect, authorize('admin'), */ validateUnit, handleValidationErrors, createUnit);
-router.put('/:id', /* protect, authorize('admin'), */ validateUnit, handleValidationErrors, updateUnit);
-router.delete('/:id', /* protect, authorize('admin'), */ deleteUnit);
+// Protected routes (Admin, Warehouse Supervisor)
+router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), validateUnit, handleValidationErrors, createUnit);
+router.put('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), validateUnit, handleValidationErrors, updateUnit);
+router.delete('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), deleteUnit);
 
 module.exports = router; 

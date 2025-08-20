@@ -3,7 +3,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 // Get customer's active cart
 export const getCustomerCart = async (customerId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/cart/${customerId}`);
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/cart/${customerId}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
     const data = await response.json();
     
     if (!response.ok) {
@@ -20,10 +25,12 @@ export const getCustomerCart = async (customerId) => {
 // Add item to cart
 export const addToCart = async (customerId, itemId, quantity = 1) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/cart/${customerId}/items`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ itemId, quantity }),
     });
@@ -44,10 +51,12 @@ export const addToCart = async (customerId, itemId, quantity = 1) => {
 // Update cart item quantity
 export const updateCartItem = async (cartItemId, quantity) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/cart/items/${cartItemId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ quantity }),
     });
@@ -68,8 +77,12 @@ export const updateCartItem = async (cartItemId, quantity) => {
 // Remove item from cart
 export const removeFromCart = async (cartItemId) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/cart/items/${cartItemId}`, {
       method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     
     const data = await response.json();
@@ -88,8 +101,12 @@ export const removeFromCart = async (cartItemId) => {
 // Clear customer's cart
 export const clearCart = async (customerId) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/cart/${customerId}/clear`, {
       method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     
     const data = await response.json();
@@ -108,8 +125,12 @@ export const clearCart = async (customerId) => {
 // Convert cart to order
 export const convertCartToOrder = async (customerId) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/cart/${customerId}/convert`, {
       method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     
     const data = await response.json();

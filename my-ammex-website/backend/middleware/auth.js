@@ -58,8 +58,35 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// Grant access to specific roles
+// Grant access to specific roles (case-insensitive with simple aliasing)
 exports.authorize = (...roles) => {
+  const normalizeRole = (role) => (role || '')
+    .toString()
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Simple alias map to reduce common mismatches
+  const toCanonical = (normalizedRole) => {
+    switch (normalizedRole) {
+      case 'sales':
+      case 'sales marketing':
+        return 'sales marketing';
+      case 'warehouse':
+      case 'warehouse supervisor':
+        return 'warehouse supervisor';
+      case 'admin':
+        return 'admin';
+      case 'client':
+        return 'client';
+      default:
+        return normalizedRole;
+    }
+  };
+
+  const allowedCanonical = roles.map((r) => toCanonical(normalizeRole(r)));
+
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
@@ -68,7 +95,8 @@ exports.authorize = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    const userCanonical = toCanonical(normalizeRole(req.user.role));
+    if (!allowedCanonical.includes(userCanonical)) {
       return res.status(403).json({
         success: false,
         message: `User role ${req.user.role} is not authorized to access this route`,

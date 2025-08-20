@@ -6,9 +6,11 @@ import { inventoryAlertsData } from '../data/inventoryAlertsData';
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
       ...options,

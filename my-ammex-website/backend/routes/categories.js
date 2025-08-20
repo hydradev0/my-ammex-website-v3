@@ -9,13 +9,13 @@ const {
   deleteCategory
 } = require('../controllers/categoryController');
 
-// Public routes
-router.get('/', getCategories);
-router.get('/:id', getCategory);
+// Private routes (Admin, Warehouse Supervisor, Sales Marketing - read only)
+router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getCategories);
+router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getCategory);
 
-// Protected routes
-router.post('/', /* protect, authorize('admin'), */ createCategory);
-router.put('/:id', /* protect, authorize('admin'), */ updateCategory);
-router.delete('/:id', /* protect, authorize('admin'), */ deleteCategory);
+// Protected routes (Admin, Warehouse Supervisor)
+router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), createCategory);
+router.put('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), updateCategory);
+router.delete('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), deleteCategory);
 
 module.exports = router; 

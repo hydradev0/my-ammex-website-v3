@@ -30,39 +30,39 @@ const validateItem = [
 
 // @route   GET /api/items
 // @desc    Get all items
-// @access  Private
-router.get('/', /* protect, */ getAllItems);
+// @access  Private (Admin, Warehouse Supervisor, Sales Marketing(Read Only))
+router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getAllItems);
 
 // @route   GET /api/items/low-stock
 // @desc    Get low stock items
-// @access  Private
-router.get('/low-stock', /* protect, */ getLowStockItems);
+// @access  Private (Admin, Warehouse Supervisor)
+router.get('/low-stock', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getLowStockItems);
 
 // @route   GET /api/items/:id
 // @desc    Get single item by ID
-// @access  Private
-router.get('/:id', /* protect, */ getItemById);
+// @access  Private (Admin, Warehouse Supervisor)
+router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getItemById);
 
 // @route   POST /api/items
-// @desc    Create new item (admin only)
-// @access  Private/Admin
-router.post('/', /* protect, authorize('admin'), */ validateItem, handleValidationErrors, createItem);
+// @desc    Create new item
+// @access  Private (Admin, Warehouse Supervisor)
+router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), validateItem, handleValidationErrors, createItem);
 
 // @route   PUT /api/items/:id
-// @desc    Update item (admin only)
-// @access  Private/Admin
-router.put('/:id', /* protect, authorize('admin'), */ updateItem);
+// @desc    Update item
+// @access  Private (Admin, Warehouse Supervisor)
+router.put('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), updateItem);
 
 // @route   PATCH /api/items/:id/stock
 // @desc    Update item stock
-// @access  Private
-router.patch('/:id/stock', /* protect, */ [
+// @access  Private (Admin, Warehouse Supervisor)
+router.patch('/:id/stock', protect, authorize('Admin', 'Warehouse Supervisor'), [
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 })
 ], handleValidationErrors, updateItemStock);
 
 // @route   DELETE /api/items/:id
-// @desc    Delete item (admin only)
-// @access  Private/Admin
-router.delete('/:id', /* protect, authorize('admin'), */ deleteItem);
+// @desc    Delete item
+// @access  Private (Admin, Warehouse Supervisor)
+router.delete('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), deleteItem);
 
 module.exports = router; 

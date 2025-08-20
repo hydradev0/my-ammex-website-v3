@@ -42,32 +42,32 @@ const validateCustomer = [
 
 // @route   GET /api/customers
 // @desc    Get all customers
-// @access  Private
-router.get('/', /* protect, */ getAllCustomers);
+// @access  Private (Admin, Sales Marketing)
+router.get('/', protect, authorize('Admin', 'Sales Marketing'), getAllCustomers);
 
 // @route   GET /api/customers/stats
 // @desc    Get customer statistics
-// @access  Private
-router.get('/stats', /* protect, */ getCustomerStats);
+// @access  Private (Admin, Sales Marketing)
+router.get('/stats', protect, authorize('Admin', 'Sales Marketing'), getCustomerStats);
 
 // @route   GET /api/customers/:id
 // @desc    Get single customer by ID
-// @access  Private
-router.get('/:id', /* protect, */ getCustomerById);
+// @access  Private (Admin, Sales Marketing)
+router.get('/:id', protect, authorize('Admin', 'Sales Marketing'), getCustomerById);
 
 // @route   POST /api/customers
 // @desc    Create new customer
-// @access  Private
-router.post('/', /* protect, authorize('admin', 'sales'), */ validateCustomer, handleValidationErrors, createCustomer);
+// @access  Private (Admin, Sales Marketing)
+router.post('/', protect, authorize('Admin', 'Sales Marketing'), validateCustomer, handleValidationErrors, createCustomer);
 
 // @route   PUT /api/customers/:id
 // @desc    Update customer
-// @access  Private
-router.put('/:id', /* protect, authorize('admin', 'sales'), */ updateCustomer);
+// @access  Private (Admin, Sales Marketing)
+router.put('/:id', protect, authorize('Admin', 'Sales Marketing'), updateCustomer);
 
 // @route   DELETE /api/customers/:id
-// @desc    Delete customer (admin only)
-// @access  Private/Admin
-router.delete('/:id', /* protect, authorize('admin'), */ deleteCustomer);
+// @desc    Delete customer
+// @access  Private (Admin, Sales Marketing)
+router.delete('/:id', protect, authorize('Admin', 'Sales Marketing'), deleteCustomer);
 
 module.exports = router; 

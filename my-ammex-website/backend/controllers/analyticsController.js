@@ -167,7 +167,7 @@ class AnalyticsController {
 
     // Get customer data
     const customers = await User.findAll({
-      where: { role: 'sales' } // Assuming sales users are customers
+      where: { role: 'Sales Marketing' } // Match frontend role naming
     });
 
     const currentMonthOrders = await Order.findAll({
@@ -304,7 +304,7 @@ class AnalyticsController {
   async segmentCustomers() {
     const { User, Order } = getModels();
     const customers = await User.findAll({
-      where: { role: 'sales' }
+      where: { role: 'Sales Marketing' }
     });
 
     const customerOrders = await Order.findAll({

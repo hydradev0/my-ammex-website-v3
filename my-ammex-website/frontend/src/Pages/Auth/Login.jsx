@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -9,20 +10,62 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const validateField = (name, value) => {
+    let error = '';
+    
+    if (!value.trim()) {
+      error = `${name === 'email' ? 'Email' : 'Password'} is required`;
+    } else if (name === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        error = 'Please enter a valid email address';
+      }
+    } else if (name === 'password' && value.length < 6) {
+      error = 'Password must be at least 6 characters';
+    }
+    
+    return error;
+  };
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
-    // Clear error when user starts typing
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear general error when user starts typing
     if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate all fields
+    const errors = {};
+    errors.email = validateField('email', formData.email);
+    errors.password = validateField('password', formData.password);
+    
+    setFieldErrors(errors);
+    
+    // Check if there are any validation errors
+    if (errors.email || errors.password) {
+      return;
+    }
+    
     setLoading(true);
     setError('');
 
@@ -75,14 +118,20 @@ const Login = () => {
                 <input
                   id="email"
                   name="email"
-                  type="email"
+                  type="text"
                   autoComplete="email"
-                  required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className={`appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm ${
+                    fieldErrors.email 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-gray-50' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-gray-50'
+                  }`}
                   placeholder="Enter your email"
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+                )}
               </div>
             </div>
 
@@ -91,17 +140,36 @@ const Login = () => {
                 Password
               </label>
               <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter your password"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`appearance-none block w-full pr-10 px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm ${
+                      fieldErrors.password 
+                        ? 'border-red-300 focus:ring-red-500 focus:border-gray-50' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-gray-50'
+                    }`}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+                )}
               </div>
             </div>
 

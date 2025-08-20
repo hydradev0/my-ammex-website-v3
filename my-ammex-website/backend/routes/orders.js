@@ -29,37 +29,37 @@ const validateOrderItem = [
 
 // @route   GET /api/orders
 // @desc    Get all orders
-// @access  Private
-router.get('/', /* protect, */ getAllOrders);
+// @access  Private (Admin, Sales Marketing)
+router.get('/', protect, authorize('Admin', 'Sales Marketing'), getAllOrders);
 
 // @route   GET /api/orders/status/:status
 // @desc    Get orders by status
-// @access  Private
-router.get('/status/:status', /* protect, */ getOrdersByStatus);
+// @access  Private (Admin, Sales Marketing)
+router.get('/status/:status', protect, authorize('Admin', 'Sales Marketing'), getOrdersByStatus);
 
 // @route   GET /api/orders/:id
 // @desc    Get single order by ID
-// @access  Private
-router.get('/:id', /* protect, */ getOrderById);
+// @access  Private (Admin, Sales Marketing)
+router.get('/:id', protect, authorize('Admin', 'Sales Marketing'), getOrderById);
 
 // @route   POST /api/orders
 // @desc    Create new order
-// @access  Private
-router.post('/', /* protect, */ validateOrder, validateOrderItem, handleValidationErrors, createOrder);
+// @access  Private (Admin, Sales Marketing)
+router.post('/', protect, authorize('Admin', 'Sales Marketing'), validateOrder, validateOrderItem, handleValidationErrors, createOrder);
 
 // @route   PUT /api/orders/:id
 // @desc    Update order
-// @access  Private
-router.put('/:id', /* protect, */ updateOrder);
+// @access  Private (Admin, Sales Marketing)
+router.put('/:id', protect, authorize('Admin', 'Sales Marketing'), updateOrder);
 
 // @route   PATCH /api/orders/:id/status
 // @desc    Update order status
-// @access  Private
-router.patch('/:id/status', /* protect, */ updateOrderStatus);
+// @access  Private (Admin, Sales Marketing)
+router.patch('/:id/status', protect, authorize('Admin', 'Sales Marketing'), updateOrderStatus);
 
 // @route   DELETE /api/orders/:id
-// @desc    Delete order (admin only)
-// @access  Private/Admin
-router.delete('/:id', /* protect, authorize('admin'), */ deleteOrder);
+// @desc    Delete order
+// @access  Private (Admin, Sales Marketing)
+router.delete('/:id', protect, authorize('Admin', 'Sales Marketing'), deleteOrder);
 
 module.exports = router; 
