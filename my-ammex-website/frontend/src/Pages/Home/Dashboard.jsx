@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import TopBar from '../../Components/TopBar';
-import Navigation from '../../Components/Navigation';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, Loader } from 'lucide-react';
 // import { getInventoryAlerts } from '../../services/inventoryService';
 import { getDashboardMetrics } from '../../services/dashboardService';
@@ -270,8 +269,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <>
-        <TopBar />
-        <Navigation />
+        <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex flex-col items-center justify-center">
           <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
           <div className="text-gray-600 text-lg">Loading Dashboard Data...</div>
@@ -283,8 +281,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <>
-        <TopBar />
-        <Navigation />
+        <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex items-center justify-center">
           <div className="text-red-600">Error loading dashboard data: {error}</div>
         </div>
@@ -294,8 +291,7 @@ const Dashboard = () => {
 
   return (
     <>
-      <TopBar />
-      <Navigation />
+      <RoleBasedLayout />
       <div className="w-full min-h-[calc(100vh-140px)]">
         <div className="w-full mt-8 px-20 pb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>

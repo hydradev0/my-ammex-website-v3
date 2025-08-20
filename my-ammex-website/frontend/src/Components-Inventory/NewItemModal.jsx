@@ -11,11 +11,9 @@ function NewItemModal({
   categories, 
   units = [], 
   width = 'w-[1200px]',
-  maxHeight = 'max-h-[100vh]',
-  editMode = false,
-  initialData = null
+  maxHeight = 'max-h-[100vh]'
 }) {
-  console.log('ItemModal props:', { isOpen, onClose, onSubmit, categories, units, editMode, initialData });
+  console.log('ItemModal props:', { isOpen, onClose, onSubmit, categories, units });
   
   // State for form fields
   const [formData, setFormData] = useState({
@@ -35,6 +33,8 @@ function NewItemModal({
   
   // State for validation errors
   const [errors, setErrors] = useState({});
+  // State for loading
+  const [isLoading, setIsLoading] = useState(false);
   
   // Sample vendor list - you can replace this with your actual vendor data
   const vendors = [
@@ -53,15 +53,10 @@ function NewItemModal({
   const unitDropdownRef = useRef(null);
   const modalRef = useRef(null);
 
-  // Initialize form data when editing or when modal opens
+  // Reset form when modal opens
   useEffect(() => {
-    console.log('ItemModal useEffect triggered:', { isOpen, initialData, editMode });
-    if (isOpen && initialData && editMode) {
-      console.log('Setting form data for edit mode:', initialData);
-      setFormData(initialData);
-    } else if (isOpen && !editMode) {
+    if (isOpen) {
       console.log('Resetting form for new item');
-      // Reset form when opening for new item
       setFormData({
         itemCode: '',
         itemName: '',
@@ -78,7 +73,7 @@ function NewItemModal({
       });
       setErrors({});
     }
-  }, [isOpen, initialData, editMode]);
+  }, [isOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -212,9 +207,16 @@ function NewItemModal({
   };
   
   // Handle form submission
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      onSubmit(formData);
+      setIsLoading(true);
+      try {
+        await onSubmit(formData);
+      } catch (error) {
+        console.error('Error submitting form:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -229,7 +231,7 @@ function NewItemModal({
       >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 pl-4 py-4">
-            {editMode ? 'Edit Item' : 'Add New Item'}
+            Add New Item
           </h2>
           
           <button 
@@ -290,7 +292,6 @@ function NewItemModal({
                 onChange={handleInputChange}
                 error={errors.itemCode}
                 width="w-2/3"
-                disabled={editMode} // Disable editing item code in edit mode
               />
               {/* Item Name */}
               <FormField
@@ -494,15 +495,28 @@ function NewItemModal({
             type="button" 
             className="cursor-pointer px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
             onClick={onClose}
+            disabled={isLoading}
           >
             Cancel
           </button>
-          <button 
-            type="button" 
-            className="cursor-pointer px-4 py-3 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+          <button
+            type="button"
+            className={`px-6 py-3 rounded-xl cursor-pointer font-medium focus:outline-none focus:ring-4 transition-all duration-200 ${
+              isLoading 
+                ? 'bg-gray-400 cursor-not-allowed text-white' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-200'
+            }`}
             onClick={handleSubmit}
+            disabled={isLoading}
           >
-            {editMode ? 'Update Item' : 'Add Item'}
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Adding Item...</span>
+              </div>
+            ) : (
+              'Add Item'
+            )}
           </button>
         </div>
       </div>
@@ -534,9 +548,7 @@ NewItemModal.propTypes = {
     })
   ).isRequired,
   width: PropTypes.string,
-  maxHeight: PropTypes.string,
-  editMode: PropTypes.bool,
-  initialData: PropTypes.object
+  maxHeight: PropTypes.string
 };  
 
 function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, ...props }) {

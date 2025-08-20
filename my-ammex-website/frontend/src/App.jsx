@@ -16,44 +16,140 @@ import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
 import ProductSpecs from './Pages/Inventory/ProductSpecs';
+import ProtectedRoute from './Components/ProtectedRoute';
+import Login from './Pages/Auth/Login';
 
 function App() {
   return (
     <>
     <BrowserRouter>
       <div className="app-scale-wrapper">
-      <div className='bg-gray-100 min-h-screen'>
+      <div className='text-gray-900 min-h-screen '>
       <Routes>
-        {/* Home */}
-        <Route path="Home/Dashboard" element={<Dashboard />} />
-        <Route path="Home/Analytics" element={<Analytics />} />
-
-        {/* Business Partners */} 
-        <Route path="BusinessPartners/Customers" element={<Customers />} />
-
-        {/* Sales */}
-        <Route path="Sales/CustomerOrders" element={<CustomerOrders />} />
-        <Route path="Sales/SalesQuotes" element={<SalesQuotes />} />
-        <Route path="Sales/SalesOrder" element={<SalesOrder />} />
-        <Route path="Sales/SalesInvoice" element={<SalesInvoice />} />
-        {/* Inventory */}
-        <Route path="Inventory/*" element={<Inventory />} />
-        <Route path="/Inventory/ProductSpecs" element={<ProductSpecs />} />
-
-        {/* Purchasing */}
-        <Route path="Purchasing/PurchaseQuotes" element={<PurchaseQuotes />} />
-        <Route path="Purchasing/PurchaseOrder" element={<PurchaseOrder />} />
-        {/* Administration */}
-        <Route path="Admin/EmployeeManagement" element={<EmployeeManagement />} />
+        {/* Auth */}
+        <Route path="/login" element={<Login />} />
         
-        {/* Customer Portal */}
-        <Route path="Products" element={<CustomerPortal />} />
-        <Route path="Products/Cart" element={<Cart />} />
-        <Route path="Products/Profile" element={<Profile />} />
-        <Route path="Products/Orders" element={<Orders />} />
+        {/* Home */}
+        <Route path="Home/Dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="Home/Analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+
+        {/* Business Partners - Admin and Sales Marketing */} 
+        <Route
+          path="BusinessPartners/Customers"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <Customers />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Sales - Admin and Sales Marketing */}
+        <Route
+          path="Sales/CustomerOrders"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <CustomerOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Sales/SalesQuotes"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <SalesQuotes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Sales/SalesOrder"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <SalesOrder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Sales/SalesInvoice"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <SalesInvoice />
+            </ProtectedRoute>
+          }
+        />
+        {/* Inventory - Admin, Warehouse Supervisor, Sales Marketing (read-only for Sales) */}
+        <Route
+          path="Inventory/*"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor", "Sales Marketing"]}>
+              <Inventory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/Inventory/ProductSpecs"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor"]}>
+              <ProductSpecs />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Purchasing - Admin and Sales Marketing */}
+        <Route
+          path="Purchasing/PurchaseQuotes"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <PurchaseQuotes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Purchasing/PurchaseOrder"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <PurchaseOrder />
+            </ProtectedRoute>
+          }
+        />
+        {/* Administration */}
+        <Route path="Admin/EmployeeManagement" element={<ProtectedRoute requiredRole="Admin"><EmployeeManagement /></ProtectedRoute>} />
+        
+        {/* Customer Portal - Client role only */}
+        <Route
+          path="Products"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <CustomerPortal />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Products/Cart"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <Cart />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Products/Profile"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Products/Orders"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <Orders />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Default Page */}
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Login />} />
       </Routes>
         </div>
       </div>

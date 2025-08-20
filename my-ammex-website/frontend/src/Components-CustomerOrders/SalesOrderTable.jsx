@@ -162,7 +162,6 @@ function SalesOrderTable() {
   }, [salesOrders, searchTerm, filterValue]);
 
   return (
-    <div className="bg-gray-100">
       <div className="max-w-full mx-15 mt-8 px-5">   
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Sales Order</h1>
         
@@ -240,7 +239,7 @@ function SalesOrderTable() {
           </OrdersModal>
         )}
       </div>
-    </div>
+    
   );
 }
 

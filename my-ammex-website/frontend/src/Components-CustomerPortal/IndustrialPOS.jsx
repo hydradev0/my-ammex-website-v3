@@ -178,7 +178,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
         onAddToCart={addToCart}
       />
       
-      <div className="bg-gray-100 flex flex-col">
+      <div className="bg-gray-50 flex flex-col">
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {/* Search and Filters */}

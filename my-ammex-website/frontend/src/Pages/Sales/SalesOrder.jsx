@@ -1,13 +1,11 @@
 import React from 'react';
-import TopBar from '../../Components/TopBar';
-import Navigation from '../../Components/Navigation';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import SalesOrderComponent from '../../Components-CustomerOrders/SalesOrderTable';
 
 const SalesOrder = () => {
   return (
     <>
-      <TopBar />
-      <Navigation />
+      <RoleBasedLayout />
       <SalesOrderComponent />
     </>
   );

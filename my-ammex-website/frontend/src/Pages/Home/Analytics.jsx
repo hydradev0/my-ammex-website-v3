@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import TopBar from '../../Components/TopBar';
-import Navigation from '../../Components/Navigation';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import { Loader } from 'lucide-react';
 
 // Import new components
@@ -50,8 +49,7 @@ const Analytics = () => {
   if (loading) {
     return (
       <>
-        <TopBar />
-        <Navigation />
+        <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex flex-col items-center justify-center">
           <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
           <div className="text-gray-600 text-lg">Loading Analytics Data...</div>
@@ -63,8 +61,7 @@ const Analytics = () => {
   if (error) {
     return (
       <>
-        <TopBar />
-        <Navigation />
+        <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex items-center justify-center">
           <div className="text-red-600">Error loading analytics data: {error}</div>
         </div>
@@ -74,8 +71,7 @@ const Analytics = () => {
 
   return (
     <>
-      <TopBar />
-      <Navigation />
+      <RoleBasedLayout />
       
       <div className="w-full min-h-[calc(100vh-140px)]">
         <div className="w-full mt-8 px-20 pb-8">

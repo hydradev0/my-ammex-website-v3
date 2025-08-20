@@ -1,13 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { models } = require('../config/db');
-
-// Get models instance
-const getModels = () => {
-  if (!models) {
-    throw new Error('Database models not initialized. Please ensure database connection is established.');
-  }
-  return models;
-};
+const { getModels } = require('../config/db');
 
 // Protect routes
 exports.protect = async (req, res, next) => {

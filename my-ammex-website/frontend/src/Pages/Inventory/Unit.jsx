@@ -1,14 +1,12 @@
 import React from 'react';
-import TopBar from '../../Components/TopBar';
-import Navigation from '../../Components/Navigation';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 
 import UnitComponent from '../../Components-Inventory/UnitTable';
 
 const Unit = () => {
   return (
     <>
-      <TopBar />
-      <Navigation />
+      <RoleBasedLayout />
       <UnitComponent />
     </>
   );

@@ -17,8 +17,8 @@ const validateRegistration = [
   check('name', 'Name is required').not().isEmpty(),
   check('email', 'Please include a valid email').isEmail(),
   check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 }),
-  check('role', 'Valid role is required').isIn(['admin', 'sales', 'inventory']),
-  check('department', 'Valid department is required').isIn(['Sales', 'Inventory', 'Administration'])
+  check('role', 'Valid role is required').isIn(['Admin', 'Client', 'Warehouse Supervisor', 'Sales Marketing']),
+  check('department', 'Valid department is required').isIn(['Sales', 'Warehouse', 'Administration', 'Client Services'])
 ];
 
 const validateLogin = [
@@ -29,7 +29,7 @@ const validateLogin = [
 // @route   POST /api/auth/register
 // @desc    Register new user (admin only)
 // @access  Private/Admin
-router.post('/register', protect, authorize('admin'), validateRegistration, handleValidationErrors, registerUser);
+router.post('/register', protect, authorize('Admin'), validateRegistration, handleValidationErrors, registerUser);
 
 // @route   POST /api/auth/login
 // @desc    Login user
@@ -44,16 +44,16 @@ router.get('/me', protect, getCurrentUser);
 // @route   GET /api/auth/users
 // @desc    Get all users (admin only)
 // @access  Private/Admin
-router.get('/users', protect, authorize('admin'), getAllUsers);
+router.get('/users', protect, authorize('Admin'), getAllUsers);
 
 // @route   PUT /api/auth/users/:id
 // @desc    Update user (admin only)
 // @access  Private/Admin
-router.put('/users/:id', protect, authorize('admin'), updateUser);
+router.put('/users/:id', protect, authorize('Admin'), updateUser);
 
 // @route   DELETE /api/auth/users/:id
 // @desc    Delete user (admin only)
 // @access  Private/Admin
-router.delete('/users/:id', protect, authorize('admin'), deleteUser);
+router.delete('/users/:id', protect, authorize('Admin'), deleteUser);
 
 module.exports = router; 

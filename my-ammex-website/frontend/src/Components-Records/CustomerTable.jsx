@@ -305,7 +305,6 @@ function CustomerTable() {
 
   if (loading && customers.length === 0) {
     return (
-      <div className="bg-gray-100">
         <div className="max-w-full mx-15 mt-8 px-5">   
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Customers</h1>
           <div className="flex items-center justify-center py-20">
@@ -315,12 +314,10 @@ function CustomerTable() {
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="bg-gray-100 ">
       <div className="max-w-full mx-15 mt-8 px-5">   
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Customers</h1>
         
@@ -348,25 +345,16 @@ function CustomerTable() {
             py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
             flex items-center cursor-pointer justify-center gap-2"
             ${
-              (creatingCustomer || updatingCustomer) ? 'opacity-50 cursor-not-allowed' : ''
+              (loading ||creatingCustomer || updatingCustomer) ? 'opacity-50 cursor-not-allowed' : ''
             }`}
-            disabled={creatingCustomer || updatingCustomer}
+            disabled={loading || creatingCustomer || updatingCustomer}
             onClick={handleNewCustomerClick}
           >
             <Plus className="h-6 w-6 mr-2" />
             <span>New Customer</span>
           </button>
           
-          {/* Loading Status */}
-          {(creatingCustomer || updatingCustomer) && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span>
-                {creatingCustomer ? 'Creating customer...' : 
-                 updatingCustomer ? 'Updating customer...' :  ''}
-              </span>
-            </div>
-          )}
+          
         </div>
         
         {/* Generic Table for Customers */}
@@ -479,7 +467,6 @@ function CustomerTable() {
         />
         
       </div>
-    </div>
   );
 }
 

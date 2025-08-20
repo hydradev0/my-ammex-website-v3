@@ -37,11 +37,11 @@ const initializeModels = (sequelize) => {
       }
     },
     role: {
-      type: DataTypes.ENUM('admin', 'sales', 'logistics'),
-      defaultValue: 'sales'
+      type: DataTypes.ENUM('Admin', 'Client', 'Warehouse Supervisor', 'Sales Marketing'),
+      defaultValue: 'Client'
     },
     department: {
-      type: DataTypes.ENUM('Sales', 'Logistics', 'Administration'),
+      type: DataTypes.ENUM('Sales', 'Warehouse', 'Administration', 'Client Services'),
       allowNull: false
     },
     isActive: {

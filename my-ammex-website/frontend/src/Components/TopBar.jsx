@@ -1,8 +1,23 @@
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Bell, LogOut, User, Settings } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 function TopBar() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="bg-blue-900 h-15 w-full flex items-center px-5 text-white text-sm relative">
@@ -16,10 +31,50 @@ function TopBar() {
           </button>
         </div>
       </div>
-      <div className="absolute right-8">
+      <div className="absolute right-8 flex items-center space-x-4">
+        
+        {user && (
+          <div className="flex items-center space-x-2 text-sm">
+            <User size={16} />
+            <span>{user.name}</span>
+            <span className="text-blue-200">({user.role})</span>
+          </div>
+        )}
         <button className="p-2 hover:bg-blue-800 rounded-full transition-colors">
           <Bell size={20} />
         </button>
+        {user && (
+          <div className="relative" ref={menuRef}>
+            <button 
+              onClick={() => setMenuOpen((o) => !o)}
+              className="p-2 hover:bg-blue-800 rounded-full transition-colors"
+              title="Settings"
+            >
+              <Settings size={20} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded-md shadow-lg ring-1 ring-black/5 py-1">
+                <button
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <User size={16} /> Profile
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Settings size={16} /> Account settings
+                </button>
+                <div className="my-1 border-t border-gray-200" />
+                <button
+                  onClick={() => { setMenuOpen(false); logout(); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
+                >
+                  <LogOut size={16} /> Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

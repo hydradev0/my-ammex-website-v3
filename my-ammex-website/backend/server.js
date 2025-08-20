@@ -54,7 +54,7 @@ const initializeServer = async () => {
             id: 'dev-user-id',
             name: 'Development User',
             email: 'dev@example.com',
-            role: 'admin',
+            role: 'Admin',
             department: 'Administration'
           }
         });
@@ -68,7 +68,7 @@ const initializeServer = async () => {
             id: 'dev-user-id',
             name: 'Development User',
             email: 'dev@example.com',
-            role: 'admin',
+            role: 'Admin',
             department: 'Administration'
           }
         });

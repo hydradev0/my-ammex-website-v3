@@ -6,7 +6,10 @@
     "scripts": {
       "start": "node server.js",
       "dev": "nodemon server.js",
-      "setup-db": "node setup-database.js",
+      "setup-db": "node scripts/setupDatabase.js",
+      "create-admin": "node scripts/createAdminUser.js",
+      "seed:roles": "node scripts/createRoleUsers.js",
+      "test-db": "node scripts/testDatabaseConnection.js",
       "db:sync": "node -e \"require('./config/db').connectDB().then(() => require('./models-postgres').sequelize.sync({force: false, alter: true})).then(() => process.exit(0))\"",
       "test:cart": "node scripts/testCartAPI.js",
       "create:cart-tables": "node scripts/createCartTables.js"

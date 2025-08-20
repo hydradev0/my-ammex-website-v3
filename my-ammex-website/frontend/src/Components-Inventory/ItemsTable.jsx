@@ -11,6 +11,7 @@ import StockAdjustmentModal from './StockAdjustmentModal';
 import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
 import { getItems, createItem, updateItem, deleteItem, updateItemStock } from '../services/inventoryService';
+import { useAuth } from '../contexts/AuthContext';
 
 // Constants for category styling
 const CATEGORY_STYLES = {
@@ -40,6 +41,9 @@ function mapStockDataToItemTableFormat(stockItem) {
 }
 
 function ItemsTable({ categories, setCategories, units }) {
+  const { user } = useAuth();
+  const role = user?.role;
+  const isReadOnly = role === 'Sales Marketing';
   // State for items data
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -374,6 +378,12 @@ function ItemsTable({ categories, setCategories, units }) {
 
   // Custom dropdown actions for items with view functionality
   const customItemsDropdownActions = useMemo(() => {
+    if (isReadOnly) {
+      return itemsDropdownActions.filter(a => a.id === 'view').map(action => ({
+        ...action,
+        onClick: handleViewItem
+      }));
+    }
     return itemsDropdownActions.map(action => {
       if (action.id === 'view') {
         return {
@@ -408,7 +418,7 @@ function ItemsTable({ categories, setCategories, units }) {
       }
       return action;
     });
-  }, []);
+  }, [isReadOnly]);
 
   // Handle close modal
   const handleCloseModal = () => {
@@ -426,7 +436,6 @@ function ItemsTable({ categories, setCategories, units }) {
 
   if (loading && items.length === 0) {
     return (
-      <div className="bg-gray-100">
         <div className="max-w-full mx-15 mt-8 px-5">   
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Items</h1>
           <div className="flex items-center justify-center py-20">
@@ -436,12 +445,10 @@ function ItemsTable({ categories, setCategories, units }) {
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="bg-gray-100">
       <div className="max-w-full mx-15 mt-8 px-5">   
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Items</h1>
         
@@ -464,30 +471,22 @@ function ItemsTable({ categories, setCategories, units }) {
             placeholder="Search items..."
           />
           
-          {/* New Item Button */}
-          <button 
-            className={`w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
-            py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
-            flex items-center cursor-pointer justify-center gap-2 ${
-              (loading || creatingItem || updatingItem) ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-            disabled={loading || creatingItem || updatingItem}
-            onClick={handleNewItemClick}
-          >
-            <Plus className="h-6 w-6" />
-            <span>New Item</span>
-          </button>
-          
-          {/* Loading Status */}
-          {(creatingItem || updatingItem) && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span>
-                {creatingItem ? 'Creating item...' : 
-                 updatingItem ? 'Updating item...' : ''}
-              </span>
-            </div>
+          {/* New Item Button (hidden in read-only mode) */}
+          {!isReadOnly && (
+            <button 
+              className={`w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
+              py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
+              flex items-center cursor-pointer justify-center gap-2 ${
+                (loading || creatingItem || updatingItem) ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={loading || creatingItem || updatingItem}
+              onClick={handleNewItemClick}
+            >
+              <Plus className="h-6 w-6" />
+              <span>New Item</span>
+            </button>
           )}
+          
         </div>
         
         {/* Generic Table for Items */}
@@ -503,16 +502,18 @@ function ItemsTable({ categories, setCategories, units }) {
           dropdownActions={customItemsDropdownActions}
         />
 
-        {/* Item Modal */}
-        <NewItemModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onSubmit={isEditMode ? handleUpdateItem : handleNewItem}
-          categories={categories}
-          units={units}
-          editMode={isEditMode}
-          initialData={selectedItem}
-        />
+        {/* Item Modal (disabled in read-only mode) */}
+        {!isReadOnly && (
+          <NewItemModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            onSubmit={isEditMode ? handleUpdateItem : handleNewItem}
+            categories={categories}
+            units={units}
+            editMode={isEditMode}
+            initialData={selectedItem}
+          />
+        )}
 
         {/* View Details Modal */}
         <ViewDetailsModal
@@ -523,20 +524,22 @@ function ItemsTable({ categories, setCategories, units }) {
           sections={itemViewConfig.sections}
         />
 
-        {/* Edit Details Modal */}
-        <EditDetailsModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedItem(null);
-          }}
-          data={selectedItem}
-          categories={categories}
-          units={units}
-          onDataUpdated={handleItemUpdated}
-          config={editItemConfig}
-          updateService={updateItem}
-        />
+        {/* Edit Details Modal (disabled in read-only mode) */}
+        {!isReadOnly && (
+          <EditDetailsModal
+            isOpen={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedItem(null);
+            }}
+            data={selectedItem}
+            categories={categories}
+            units={units}
+            onDataUpdated={handleItemUpdated}
+            config={editItemConfig}
+            updateService={updateItem}
+          />
+        )}
 
         {/* Delete Confirmation Modal */}
         {deleteModal.isOpen && (
@@ -606,17 +609,18 @@ function ItemsTable({ categories, setCategories, units }) {
           autoCloseDelay={4000}
         />
 
-        {/* Stock Adjustment Modal */}
-        <StockAdjustmentModal
-          isOpen={stockAdjustmentModal.isOpen}
-          onClose={() => setStockAdjustmentModal({ isOpen: false, item: null })}
-          onSubmit={handleStockAdjustment}
-          item={stockAdjustmentModal.item}
-          isLoading={adjustingStock}
-        />
+        {/* Stock Adjustment Modal (disabled in read-only mode) */}
+        {!isReadOnly && (
+          <StockAdjustmentModal
+            isOpen={stockAdjustmentModal.isOpen}
+            onClose={() => setStockAdjustmentModal({ isOpen: false, item: null })}
+            onSubmit={handleStockAdjustment}
+            item={stockAdjustmentModal.item}
+            isLoading={adjustingStock}
+          />
+        )}
         
       </div>
-    </div>
   );
 }
 

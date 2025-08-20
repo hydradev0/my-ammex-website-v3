@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Settings, FileText, Globe, Tag, Layers } from 'lucide-react';
-import TopBar from '../../Components/TopBar';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import {
   ProductSpecsTab,
   GlobalTemplatesTab,
@@ -41,8 +41,8 @@ function ProductSpecs() {
 
   return (
     <>
-    <TopBar />
-    <div className="min-h-screen bg-gray-100">
+    <RoleBasedLayout />
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -70,7 +70,7 @@ function ProductSpecs() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white">
+      <div className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-10">
           <nav className="flex space-x-8">
             {tabs.map((tab) => {

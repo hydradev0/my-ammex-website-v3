@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
 const { getModels } = require('../config/db');
 
 // Generate JWT token
@@ -53,9 +54,10 @@ const loginUser = async (req, res, next) => {
   try {
     const { User } = getModels();
     const { email, password } = req.body;
+    const emailTrimmed = (email || '').trim();
 
     // Check if user exists
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email: { [Op.iLike]: emailTrimmed } } });
     if (!user) {
       return res.status(400).json({
         success: false,

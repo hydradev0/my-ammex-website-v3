@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import TopBar from '../../Components/TopBar';
-import Navigation from '../../Components/Navigation';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import Categories from '../../Components-Inventory/CategoryTable';
 import Items from '../../Components-Inventory/ItemsTable';
 import Units from '../../Components-Inventory/UnitTable';
 import { getCategories, getUnits } from '../../services/inventoryService';
+import { useAuth } from '../../contexts/AuthContext';
 
 function Inventory() {
+  const { user } = useAuth();
+  const role = user?.role;
+  const isSalesReadOnly = role === 'Sales Marketing';
   // Shared state for categories and units
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -58,8 +61,7 @@ function Inventory() {
   if (loading) {
     return (
       <>
-        <TopBar />
-        <Navigation />
+        <RoleBasedLayout />
         <div className="flex items-center justify-center min-h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
@@ -73,8 +75,7 @@ function Inventory() {
   if (error) {
     return (
       <>
-        <TopBar />
-        <Navigation />
+        <RoleBasedLayout />
         <div className="flex items-center justify-center min-h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="text-red-500 text-xl mb-4">⚠️</div>
@@ -93,37 +94,55 @@ function Inventory() {
 
   return (
     <>
-      <TopBar />
-      <Navigation />
+      <RoleBasedLayout />
       <Routes>
-        <Route 
-          path="/Category" 
-          element={
-            <Categories 
-              categories={categories} 
-              setCategories={handleCategoryUpdate} 
+        {isSalesReadOnly ? (
+          <>
+            <Route 
+              path="/Items" 
+              element={
+                <Items 
+                  categories={categories} 
+                  setCategories={handleCategoryUpdate}
+                  units={units}
+                />
+              } 
             />
-          } 
-        />
-        <Route 
-          path="/Items" 
-          element={
-            <Items 
-              categories={categories} 
-              setCategories={handleCategoryUpdate}
-              units={units}
+            {/* Redirect any other inventory paths to Items */}
+            <Route path="*" element={<Navigate to="/Inventory/Items" replace />} />
+          </>
+        ) : (
+          <>
+            <Route 
+              path="/Category" 
+              element={
+                <Categories 
+                  categories={categories} 
+                  setCategories={handleCategoryUpdate} 
+                />
+              } 
             />
-          } 
-        />
-        <Route 
-          path="/Unit" 
-          element={
-            <Units 
-              units={units}
-              setUnits={handleUnitUpdate}
+            <Route 
+              path="/Items" 
+              element={
+                <Items 
+                  categories={categories} 
+                  setCategories={handleCategoryUpdate}
+                  units={units}
+                />
+              } 
             />
-          } 
-        />
+            <Route 
+              path="/Unit" 
+              element={
+                <Units 
+                  units={units}
+                  setUnits={handleUnitUpdate}
+                />
+              } 
+            />
+          </>
+        )}
       </Routes>
     </>
   );

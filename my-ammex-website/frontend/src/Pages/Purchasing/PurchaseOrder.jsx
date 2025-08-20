@@ -1,13 +1,11 @@
 import React from 'react';
-import TopBar from '../../Components/TopBar';
-import Navigation from '../../Components/Navigation';
+import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import PurchaseOrderComponent from '../../Components-SupplierOrders/PurchaseOrderTable';   
 
 const PurchaseOrder = () => {
   return (
     <>
-      <TopBar /> 
-      <Navigation />
+      <RoleBasedLayout />
       <PurchaseOrderComponent />
     </>
   );

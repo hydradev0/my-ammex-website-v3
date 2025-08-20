@@ -20,6 +20,8 @@ function RecordsModal({ isOpen = true, onClose, onSubmit }) {
   
   // State for validation errors
   const [errors, setErrors] = useState({});
+  // State for loading
+  const [isLoading, setIsLoading] = useState(false);
   const modalRef = useRef(null);
   
   // Handle form input changes
@@ -60,9 +62,16 @@ function RecordsModal({ isOpen = true, onClose, onSubmit }) {
   };
   
   // Handle form submission
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      onSubmit(formData);
+      setIsLoading(true);
+      try {
+        await onSubmit(formData);
+      } catch (error) {
+        console.error('Error submitting form:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -262,15 +271,28 @@ function RecordsModal({ isOpen = true, onClose, onSubmit }) {
                 type="button"
                 className="px-6 py-3 border-2 cursor-pointer border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-200"
                 onClick={onClose}
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 type="button"
+                className={`px-6 py-3 rounded-xl cursor-pointer font-medium focus:outline-none focus:ring-4 transition-all duration-200 ${
+                  isLoading 
+                    ? 'bg-gray-400 cursor-not-allowed text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-200'
+                }`}
                 onClick={handleSubmit}
-                className="px-6 py-3 bg-gradient-to-r cursor-pointer from-blue-600 to-blue-700 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200 shadow-lg hover:shadow-xl transition-all duration-200"
+                disabled={isLoading}
               >
-                Add Customer
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Adding Customer...</span>
+                  </div>
+                ) : (
+                  'Add Customer'
+                )}
               </button>
             </div>
           </div>

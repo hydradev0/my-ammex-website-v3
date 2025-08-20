@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 function Navigation() {
   const [hoveredItem, setHoveredItem] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const role = user?.role;
+  const isInventoryAllowed = role === 'Admin' || role === 'Warehouse Supervisor' || role === 'Sales Marketing';
+  const isSalesAllowed = role === 'Admin' || role === 'Sales Marketing';
+  const isBusinessPartnersAllowed = role === 'Admin' || role === 'Sales Marketing';
+  const isPurchasingAllowed = role === 'Admin' || role === 'Sales Marketing';
 
   const navItems = [
     {
@@ -15,14 +22,14 @@ function Navigation() {
         { name: 'Analytics', link: '/Home/Analytics' },
       ]
     },
-    {
+    isBusinessPartnersAllowed ? {
       name: 'Business Partners',
       dropdownItems: [
         { name: 'Customers', link: '/BusinessPartners/Customers' },
         { name: 'Suppliers', link: '/BusinessPartners/Suppliers' }
       ]
-    },
-    {
+    } : null,
+    isSalesAllowed ? {
       name: 'Sales',
       dropdownItems: [
         { name: 'Customer Orders', link: '/Sales/CustomerOrders' },
@@ -31,39 +38,47 @@ function Navigation() {
         { name: 'Sales Invoice', link: '/Sales/SalesInvoice' },
         { name: 'Delivery', link: '/Sales/Delivery' }
       ]
-    },
-    {
+    } : null,
+    isPurchasingAllowed ? {
       name: 'Purchasing',
       dropdownItems: [
         { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
         { name: 'Purchase Order', link: '/Purchasing/PurchaseOrder' },
       ]
-    },
-    {
+    } : null,
+    isInventoryAllowed ? {
       name: 'Inventory',
-      dropdownItems: [
-        { name: 'Items', link: '/Inventory/Items' },
-        { name: 'Unit', link: '/Inventory/Unit' },
-        { name: 'Category', link: '/Inventory/Category' },
-        { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
-      ]
-    },
-    {
-      name: 'Financial',
-      dropdownItems: [
-        { name: 'Collection', link: '/Financial/Collection' },
-        { name: 'Voucher', link: '/Financial/Voucher' },
-      ]
-    },
-    {
-      name: 'Reports',
-      dropdownItems: [
-        { name: 'Sales Report', link: '/Reports/Sales' },
-        { name: 'Purchase Report', link: '/Reports/Purchase' },
-        { name: 'Sales per Item', link: '/Reports/SalesPerItem' }
-      ]
-    }
+      dropdownItems: (
+        role === 'Sales Marketing'
+          ? [
+              { name: 'Items', link: '/Inventory/Items' }
+            ]
+          : [
+              { name: 'Items', link: '/Inventory/Items' },
+              { name: 'Unit', link: '/Inventory/Unit' },
+              { name: 'Category', link: '/Inventory/Category' },
+              { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
+            ]
+      )
+    } : null,
+    // {
+    //   name: 'Financial',
+    //   dropdownItems: [
+    //     { name: 'Collection', link: '/Financial/Collection' },
+    //     { name: 'Voucher', link: '/Financial/Voucher' },
+    //   ]
+    // },
+    // {
+    //   name: 'Reports',
+    //   dropdownItems: [
+    //     { name: 'Sales Report', link: '/Reports/Sales' },
+    //     { name: 'Purchase Report', link: '/Reports/Purchase' },
+    //     { name: 'Sales per Item', link: '/Reports/SalesPerItem' }
+    //   ]
+    // }
   ];
+
+  const filteredNavItems = navItems.filter(Boolean);
 
   const handleNavigate = (link) => {
     setHoveredItem(null); // Close dropdown
@@ -79,7 +94,7 @@ function Navigation() {
     <nav className="bg-white shadow-md h-18 flex items-center">
       <div className="w-full max-w-7xl mx-auto px-0 flex justify-start items-center ml-15">
         <ul className="flex list-none ">
-          {navItems.map((item, index) => {
+          {filteredNavItems.map((item, index) => {
             const isActive = isItemActive(item.dropdownItems);
             return (
               <li
