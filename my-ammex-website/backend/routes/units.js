@@ -17,9 +17,9 @@ const validateUnit = [
   check('name', 'Unit name must be between 1 and 50 characters').isLength({ min: 1, max: 50 })
 ];
 
-// Private routes (Admin, Warehouse Supervisor, Sales Marketing - read only)
-router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getUnits);
-router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getUnit);
+// Private routes (Admin, Warehouse Supervisor, Sales Marketing & Client (Read Only))
+router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getUnits);
+router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getUnit);
 
 // Protected routes (Admin, Warehouse Supervisor)
 router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), validateUnit, handleValidationErrors, createUnit);

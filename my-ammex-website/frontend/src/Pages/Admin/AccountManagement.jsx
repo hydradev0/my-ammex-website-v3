@@ -2,16 +2,16 @@ import React from 'react';
 import TopBar from '../../Components/TopBar';
 import Navigation from '../../Components/Navigation';
 
-import EmployeeManagementComponent from '../../Components-ManageEmployee/ManageEmployeeTable';
+import ManageAccountTable from '../../Components-ManageAccount/ManageAccountTable';
 
-const EmployeeManagement = () => {
+const AccountManagement = () => {
   return (
     <>
       <TopBar />
       <Navigation />
-      <EmployeeManagementComponent/>
+      <ManageAccountTable/>
     </>
   );
 };
 
-export default EmployeeManagement;
+export default AccountManagement;

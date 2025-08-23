@@ -56,4 +56,34 @@ router.put('/users/:id', protect, authorize('Admin'), updateUser);
 // @access  Private/Admin
 router.delete('/users/:id', protect, authorize('Admin'), deleteUser);
 
+// @route   GET /api/auth/roles
+// @desc    Get available user roles
+// @access  Public
+router.get('/roles', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { value: 'Admin', label: 'Administrator' },
+      { value: 'Sales Marketing', label: 'Sales Marketing' },
+      { value: 'Warehouse Supervisor', label: 'Warehouse Supervisor' },
+      { value: 'Client', label: 'Client' }
+    ]
+  });
+});
+
+// @route   GET /api/auth/departments
+// @desc    Get available departments
+// @access  Public
+router.get('/departments', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { value: 'Sales', label: 'Sales' },
+      { value: 'Warehouse', label: 'Warehouse' },
+      { value: 'Administration', label: 'Administration' },
+      { value: 'Client Services', label: 'Client Services' }
+    ]
+  });
+});
+
 module.exports = router; 

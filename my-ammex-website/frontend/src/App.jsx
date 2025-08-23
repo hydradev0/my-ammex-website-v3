@@ -10,7 +10,7 @@ import Inventory from './Pages/Inventory/Inventory';
 import SalesOrder from './Pages/Sales/SalesOrder';
 import SalesInvoice from './Pages/Sales/SalesInvoice';
 import CustomerOrders from './Pages/Sales/CustomerOrders';
-import EmployeeManagement from './Pages/Admin/EmployeeManagement';
+import AccountManagement from './Pages/Admin/AccountManagement';
 import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
 import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
@@ -112,7 +112,7 @@ function App() {
           }
         />
         {/* Administration */}
-        <Route path="Admin/EmployeeManagement" element={<ProtectedRoute requiredRole="Admin"><EmployeeManagement /></ProtectedRoute>} />
+        <Route path="Admin/AccountManagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
         
         {/* Customer Portal - Client role only */}
         <Route

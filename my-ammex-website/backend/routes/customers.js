@@ -42,18 +42,18 @@ const validateCustomer = [
 
 // @route   GET /api/customers
 // @desc    Get all customers
-// @access  Private (Admin, Sales Marketing)
-router.get('/', protect, authorize('Admin', 'Sales Marketing'), getAllCustomers);
+// @access  Private (Admin, Sales Marketing, Client (Read Only))
+router.get('/', protect, authorize('Admin', 'Sales Marketing', 'Client'), getAllCustomers);
 
 // @route   GET /api/customers/stats
 // @desc    Get customer statistics
-// @access  Private (Admin, Sales Marketing)
-router.get('/stats', protect, authorize('Admin', 'Sales Marketing'), getCustomerStats);
+// @access  Private (Admin, Sales Marketing, Client (Read Only))
+router.get('/stats', protect, authorize('Admin', 'Sales Marketing', 'Client'), getCustomerStats);
 
 // @route   GET /api/customers/:id
 // @desc    Get single customer by ID
-// @access  Private (Admin, Sales Marketing)
-router.get('/:id', protect, authorize('Admin', 'Sales Marketing'), getCustomerById);
+// @access  Private (Admin, Sales Marketing, Client (Read Only))
+router.get('/:id', protect, authorize('Admin', 'Sales Marketing', 'Client'), getCustomerById);
 
 // @route   POST /api/customers
 // @desc    Create new customer

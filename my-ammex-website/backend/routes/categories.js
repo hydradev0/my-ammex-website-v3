@@ -9,9 +9,9 @@ const {
   deleteCategory
 } = require('../controllers/categoryController');
 
-// Private routes (Admin, Warehouse Supervisor, Sales Marketing - read only)
-router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getCategories);
-router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getCategory);
+// Private routes (Admin, Warehouse Supervisor, Sales Marketing & Client (Read Only))
+router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getCategories);
+router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getCategory);
 
 // Protected routes (Admin, Warehouse Supervisor)
 router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), createCategory);

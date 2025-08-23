@@ -9,6 +9,8 @@ const {
   createItem,
   updateItem,
   deleteItem,
+  getArchivedItems,
+  restoreItem,
   getLowStockItems,
   updateItemStock
 } = require('../controllers/itemController');
@@ -30,18 +32,23 @@ const validateItem = [
 
 // @route   GET /api/items
 // @desc    Get all items
-// @access  Private (Admin, Warehouse Supervisor, Sales Marketing(Read Only))
-router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getAllItems);
+// @access  Private (Admin, Warehouse Supervisor, Sales Marketing & Client (Read Only))
+router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getAllItems);
+
+// @route   GET /api/items/archived
+// @desc    Get archived (deleted) items
+// @access  Private (Admin, Warehouse Supervisor)
+router.get('/archived', protect, authorize('Admin', 'Warehouse Supervisor'), getArchivedItems);
 
 // @route   GET /api/items/low-stock
 // @desc    Get low stock items
-// @access  Private (Admin, Warehouse Supervisor)
-router.get('/low-stock', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getLowStockItems);
+// @access  Private (Admin, Warehouse Supervisor, Sales Marketing & Client (Read Only))
+router.get('/low-stock', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getLowStockItems);
 
 // @route   GET /api/items/:id
 // @desc    Get single item by ID
-// @access  Private (Admin, Warehouse Supervisor)
-router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getItemById);
+// @access  Private (Admin, Warehouse Supervisor, Sales Marketing & Client (Read Only))
+router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getItemById);
 
 // @route   POST /api/items
 // @desc    Create new item
@@ -64,5 +71,10 @@ router.patch('/:id/stock', protect, authorize('Admin', 'Warehouse Supervisor'), 
 // @desc    Delete item
 // @access  Private (Admin, Warehouse Supervisor)
 router.delete('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), deleteItem);
+
+// @route   POST /api/items/:id/restore
+// @desc    Restore archived item
+// @access  Private (Admin, Warehouse Supervisor)
+router.post('/:id/restore', protect, authorize('Admin', 'Warehouse Supervisor'), restoreItem);
 
 module.exports = router; 

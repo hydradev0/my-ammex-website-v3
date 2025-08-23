@@ -12,6 +12,7 @@ import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
 import { getItems, createItem, updateItem, deleteItem, updateItemStock } from '../services/inventoryService';
 import { useAuth } from '../contexts/AuthContext';
+import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 
 // Constants for category styling
 const CATEGORY_STYLES = {
@@ -108,6 +109,8 @@ function ItemsTable({ categories, setCategories, units }) {
     }
   };
 
+  
+
   // Define columns for the items table
   const itemColumns = [
     { 
@@ -144,7 +147,7 @@ function ItemsTable({ categories, setCategories, units }) {
     }
   ];
 
-  // Filter items based on search term and filter value
+  // Choose data source based on toggle and filter by search and filter value
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       const searchLower = searchTerm.toLowerCase();
@@ -223,11 +226,12 @@ function ItemsTable({ categories, setCategories, units }) {
       
       if (response.success) {
         setItems(prevItems => prevItems.filter(i => i.id !== deleteModal.itemId));
+        
         setDeleteModal({ isOpen: false, itemName: '', itemId: null });
         setSuccessModal({
           isOpen: true,
-          title: 'Item Deleted Successfully!',
-          message: 'The item has been permanently removed from your inventory.'
+          title: 'Item Archived Successfully!',
+          message: 'The item has been moved to the archive and can be restored later.'
         });
       } else {
         setError(response.message || 'Failed to delete item');
@@ -420,6 +424,8 @@ function ItemsTable({ categories, setCategories, units }) {
     });
   }, [isReadOnly]);
 
+  
+
   // Handle close modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -450,7 +456,9 @@ function ItemsTable({ categories, setCategories, units }) {
 
   return (
       <div className="max-w-full mx-15 mt-8 px-5">   
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Items</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Items</h1>
+        </div>
         
         {/* Error Message */}
         {error && (
@@ -496,7 +504,7 @@ function ItemsTable({ categories, setCategories, units }) {
           onRowClick={handleRowClick}
           pagination={true}
           itemsPerPage={7}
-          emptyMessage="No items found"
+          emptyMessage={'No items found'}
           className="mb-8"
           alternateRowColors={true}
           dropdownActions={customItemsDropdownActions}
@@ -541,63 +549,17 @@ function ItemsTable({ categories, setCategories, units }) {
           />
         )}
 
-        {/* Delete Confirmation Modal */}
-        {deleteModal.isOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertTriangle className="h-6 w-6 text-red-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800">Delete Item</h3>
-                </div>
-                <button
-                  onClick={handleDeleteCancel}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                <p className="text-gray-700 mb-4">
-                  Are you sure you want to delete <span className="font-semibold text-gray-900">"{deleteModal.itemName}"</span>?
-                </p>
-                <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
-                  ⚠️ This action cannot be undone. The item will be permanently removed from the system.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 p-6 border-t border-gray-100">
-                <button
-                  onClick={handleDeleteCancel}
-                  disabled={deletingItem}
-                  className="flex-1 px-4 py-3 cursor-pointer border-2 border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-200 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  disabled={deletingItem}
-                  className="flex-1 px-4 py-3 cursor-pointer bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-xl hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:opacity-50 transition-all duration-200 shadow-lg hover:shadow-xl"
-                >
-                  {deletingItem ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Deleting...</span>
-                    </div>
-                  ) : (
-                    'Delete Item'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmDeleteModal
+          isOpen={deleteModal.isOpen}
+          title="Delete Item"
+          entityName={deleteModal.itemName}
+          description="Are you sure you want to delete this item? The item will be removed from the system."
+          confirmLabel={deletingItem ? 'Deleting...' : 'Delete Item'}
+          cancelLabel="Cancel"
+          loading={deletingItem}
+          onCancel={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+        />
         
         {/* Success Modal */}
         <SuccessModal

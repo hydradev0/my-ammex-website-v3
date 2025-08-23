@@ -427,9 +427,15 @@ const Cart = () => {
                           <h3 className="text-lg font-medium text-gray-900 mb-1">
                             {item.name}
                           </h3>
+                          <div className="flex justify-between">
                           <p className="text-gray-600 mb-3">
-                            ${item.price.toLocaleString()}
+                            ₱{item.price.toLocaleString()}
                           </p>
+                          <p className="text-gray-600 mb-3">
+                            Stock: {item.stock} 
+                          </p>
+                          </div>
+                    
                           
                           {/* Quantity Controls */}
                           <div className="flex items-center justify-between">

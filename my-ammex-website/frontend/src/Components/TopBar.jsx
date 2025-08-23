@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import ArchiveModal from './ArchiveModal';
 
 function TopBar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -59,10 +61,20 @@ function TopBar() {
                 >
                   <User size={16} /> Profile
                 </button>
-                <button
+
+                {user.role === 'Admin' && (<button
+                  onClick={() => navigate('/Admin/AccountManagement')}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
-                  <Settings size={16} /> Account settings
+                  <Settings size={16} /> Manage Accounts
+                </button>
+                )}
+
+                <button
+                  onClick={() => { setMenuOpen(false); setArchiveOpen(true); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Archive size={16} /> Archive
                 </button>
                 <div className="my-1 border-t border-gray-200" />
                 <button
@@ -76,6 +88,7 @@ function TopBar() {
           </div>
         )}
       </div>
+      <ArchiveModal isOpen={archiveOpen} onClose={() => setArchiveOpen(false)} />
     </div>
   );
 }

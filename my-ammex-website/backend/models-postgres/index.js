@@ -50,15 +50,6 @@ const initializeModels = (sequelize) => {
     },
     lastLogin: {
       type: DataTypes.DATE
-    },
-    phoneNumber: {
-      type: DataTypes.STRING,
-      validate: {
-        is: {
-          args: /^[0-9+\-() ]+$/,
-          msg: 'Please add a valid phone number'
-        }
-      }
     }
   }, {
     timestamps: true,
@@ -187,6 +178,18 @@ const initializeModels = (sequelize) => {
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
+    },
+    archivedAt: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    archivedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
     }
   }, {
     timestamps: true,

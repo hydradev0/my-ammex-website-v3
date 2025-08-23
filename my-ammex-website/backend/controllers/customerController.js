@@ -209,7 +209,10 @@ const getCustomerStats = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+  
 };
+
+
 
 module.exports = {
   getAllCustomers,
@@ -217,5 +220,6 @@ module.exports = {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  getCustomerStats
+  getCustomerStats,
+
 }; 

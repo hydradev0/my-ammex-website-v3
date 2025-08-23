@@ -150,7 +150,7 @@ const updateItem = async (req, res, next) => {
   }
 };
 
-// Delete item (soft delete)
+// Delete item (soft delete + archive metadata)
 const deleteItem = async (req, res, next) => {
   try {
     const { Item } = getModels();
@@ -164,11 +164,84 @@ const deleteItem = async (req, res, next) => {
       });
     }
 
-    await item.update({ isActive: false });
+    await item.update({ 
+      isActive: false,
+      archivedAt: new Date(),
+      archivedBy: req.user?.id || null
+    });
 
     res.json({
       success: true,
-      message: 'Item deleted successfully'
+      message: 'Item archived successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get archived items
+const getArchivedItems = async (req, res, next) => {
+  try {
+    const { Item, Category, Unit } = getModels();
+    const { page = 1, limit = 10, search } = req.query;
+
+    const whereClause = { isActive: false };
+    if (search) {
+      whereClause.itemName = { [require('sequelize').Op.iLike]: `%${search}%` };
+    }
+
+    const items = await Item.findAndCountAll({
+      where: whereClause,
+      include: [
+        { model: Category, as: 'category' },
+        { model: Unit, as: 'unit' }
+      ],
+      limit: parseInt(limit),
+      offset: (page - 1) * limit,
+      order: [['archivedAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: items.rows,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(items.count / limit),
+        totalItems: items.count,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Restore archived item
+const restoreItem = async (req, res, next) => {
+  try {
+    const { Item } = getModels();
+    const { id } = req.params;
+
+    const item = await Item.findByPk(id);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item not found'
+      });
+    }
+
+    if (item.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Item is already active'
+      });
+    }
+
+    await item.update({ isActive: true, archivedAt: null, archivedBy: null });
+
+    res.json({
+      success: true,
+      message: 'Item restored successfully'
     });
   } catch (error) {
     next(error);
@@ -247,6 +320,8 @@ module.exports = {
   createItem,
   updateItem,
   deleteItem,
+  getArchivedItems,
+  restoreItem,
   getLowStockItems,
   updateItemStock
 }; 

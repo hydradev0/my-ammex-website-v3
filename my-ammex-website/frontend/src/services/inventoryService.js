@@ -67,6 +67,23 @@ export const deleteItem = async (id) => {
   });
 };
 
+export const getArchivedItems = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.page) queryParams.append('page', params.page);
+  if (params.limit) queryParams.append('limit', params.limit);
+  if (params.search) queryParams.append('search', params.search);
+
+  const queryString = queryParams.toString();
+  const endpoint = `/items/archived${queryString ? `?${queryString}` : ''}`;
+  return await apiCall(endpoint);
+};
+
+export const restoreItem = async (id) => {
+  return await apiCall(`/items/${id}/restore`, {
+    method: 'POST',
+  });
+};
+
 export const getLowStockItems = async () => {
   return await apiCall('/items/low-stock');
 };
