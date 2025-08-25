@@ -432,6 +432,95 @@ const initializeModels = (sequelize) => {
     }
   });
 
+  // Supplier Model
+  const Supplier = sequelize.define('Supplier', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    supplierId: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: true, // Will be set automatically
+    },
+    companyName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Company name is required' }
+      }
+    },
+    street: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    city: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    postalCode: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    country: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    contactName: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    telephone1: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Telephone 1 is required' }
+      }
+    },
+    telephone2: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    email1: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        isEmail: { msg: 'Please add a valid email' },
+        notEmpty: { msg: 'Email 1 is required' }
+      }
+    },
+    email2: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isEmailOrEmpty: function(value) {
+          if (value && value.trim() !== '') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+              throw new Error('Please add a valid email');
+            }
+          }
+        }
+      }
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    }
+  }, {
+    timestamps: true,
+    hooks: {
+      afterCreate: async (supplier, options) => {
+        if (!supplier.supplierId) {
+          const paddedId = String(supplier.id).padStart(4, '0');
+          supplier.supplierId = `SUP${paddedId}`;
+          await supplier.save({ transaction: options.transaction });
+        }
+      }
+    }
+  });
+
   // Cart Model
   const Cart = sequelize.define('Cart', {
     id: {
@@ -633,6 +722,7 @@ const initializeModels = (sequelize) => {
     Order,
     OrderItem,
     Customer,
+    Supplier,
     Unit,
     Cart,
     CartItem

@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 import ProductGrid from './ProductGrid';
 import SearchFilters from './SearchFilters';
 import Pagination from './Pagination';
 import ScrollLock from '../Components/ScrollLock';
 import ProductDetailsModal from './ProductDetailsModal';
+import { addToCart, getLocalCart, initializeCartFromDatabase, cleanCart } from '../services/cartService';
+import { useAuth } from '../contexts/AuthContext';
 
 // Modern Toast Component - Improved for better visibility
 const Toast = ({ message, isVisible, onClose }) => {
@@ -61,6 +63,7 @@ const Toast = ({ message, isVisible, onClose }) => {
 };
 
 const IndustrialPOS = ({ items = [], categories = [] }) => {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
@@ -114,40 +117,94 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
     setCurrentPage(1);
   }, [selectedCategory, searchTerm]);
 
-  const addToCart = (product) => {
-    const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
-    const existing = savedCart.find(item => item.id === product.id);
-    
-    let updatedCart;
-    if (existing) {
-      updatedCart = savedCart.map(item =>
-        item.id === product.id 
-          ? { ...item, quantity: Math.min(item.quantity + 1, product.stock) }
-          : item
-      );
-    } else {
-      updatedCart = [...savedCart, { ...product, quantity: 1 }];
+  const handleAddToCart = async (product) => {
+    try {
+      if (!user?.id) {
+        setToast({ 
+          show: true, 
+          message: 'Please log in to add items to cart' 
+        });
+        return;
+      }
+
+      // Use hybrid cart service
+      const result = await addToCart(user.id, product.id, 1, product);
+      
+      if (result.success) {
+        setCart(result.cart);
+        
+        // Show success toast
+        setToast({ 
+          show: true, 
+          message: `${product.name} added to cart!` 
+        });
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setToast({ 
+        show: true, 
+        message: 'Error adding item to cart' 
+      });
     }
-    
-    setCart(updatedCart);
-    localStorage.setItem('customerCart', JSON.stringify(updatedCart));
-    
-    // Show success toast with enhanced feedback
-    setToast({ 
-      show: true, 
-      message: `${product.name} added to cart!` 
-    });
   };
 
-  const getTotalItems = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
+  const getItemCount = () => {
+    return cart.length;
   };
+  
 
-  // Load cart from localStorage on component mount
-  React.useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
-    setCart(savedCart);
-  }, []);
+  // Initialize cart on component mount
+  useEffect(() => {
+    const initializeCart = async () => {
+      if (user?.id) {
+        try {
+          // Try to load from database first, fallback to localStorage
+          const dbCart = await initializeCartFromDatabase(user.id);
+          if (dbCart.length > 0) {
+            const cleanedCart = cleanCart(dbCart);
+            setCart(cleanedCart);
+            // Update localStorage with cleaned cart
+            localStorage.setItem('customerCart', JSON.stringify(cleanedCart));
+          } else {
+            // Fallback to localStorage
+            const localCart = getLocalCart();
+            const cleanedLocalCart = cleanCart(localCart);
+            setCart(cleanedLocalCart);
+            // Update localStorage with cleaned cart
+            localStorage.setItem('customerCart', JSON.stringify(cleanedLocalCart));
+          }
+        } catch (error) {
+          console.error('Error initializing cart:', error);
+          // Fallback to localStorage
+          const localCart = getLocalCart();
+          const cleanedLocalCart = cleanCart(localCart);
+          setCart(cleanedLocalCart);
+          // Update localStorage with cleaned cart
+          localStorage.setItem('customerCart', JSON.stringify(cleanedLocalCart));
+        }
+      } else {
+        // No user logged in, use localStorage only
+        const localCart = getLocalCart();
+        const cleanedLocalCart = cleanCart(localCart);
+        setCart(cleanedLocalCart);
+        // Update localStorage with cleaned cart
+        localStorage.setItem('customerCart', JSON.stringify(cleanedLocalCart));
+      }
+    };
+
+    initializeCart();
+  }, [user?.id]);
+
+  // Clean up cart on unmount
+  useEffect(() => {
+    return () => {
+      // Ensure cart is cleaned before component unmounts
+      if (cart.length > 0) {
+        const cleanedCart = cleanCart(cart);
+        localStorage.setItem('customerCart', JSON.stringify(cleanedCart));
+      }
+    };
+  }, [cart]);
 
   const handleCardClick = (product) => {
     setSelectedProduct(product);
@@ -175,7 +232,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
         product={selectedProduct}
         isOpen={showProductModal}
         onClose={handleCloseProductModal}
-        onAddToCart={addToCart}
+        onAddToCart={handleAddToCart}
       />
       
       <div className="bg-gray-50 flex flex-col">
@@ -188,7 +245,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
             categories={availableCategories}
-            cartItemCount={getTotalItems()}
+            cartItemCount={getItemCount()}
           />
 
           {/* Product Grid */}

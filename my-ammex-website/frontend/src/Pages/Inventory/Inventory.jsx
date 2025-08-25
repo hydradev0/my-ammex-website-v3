@@ -5,15 +5,17 @@ import Categories from '../../Components-Inventory/CategoryTable';
 import Items from '../../Components-Inventory/ItemsTable';
 import Units from '../../Components-Inventory/UnitTable';
 import { getCategories, getUnits } from '../../services/inventoryService';
+import { getSuppliers } from '../../services/supplierService';
 import { useAuth } from '../../contexts/AuthContext';
 
 function Inventory() {
   const { user } = useAuth();
   const role = user?.role;
   const isSalesReadOnly = role === 'Sales Marketing';
-  // Shared state for categories and units
+  // Shared state for categories, units, and suppliers
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,10 +26,11 @@ function Inventory() {
         setLoading(true);
         setError(null);
         
-        // Fetch categories and units in parallel
-        const [categoriesResponse, unitsResponse] = await Promise.all([
+        // Fetch categories, units, and suppliers in parallel
+        const [categoriesResponse, unitsResponse, suppliersResponse] = await Promise.all([
           getCategories(),
-          getUnits()
+          getUnits(),
+          getSuppliers()
         ]);
 
         if (categoriesResponse.success) {
@@ -36,6 +39,10 @@ function Inventory() {
         
         if (unitsResponse.success) {
           setUnits(unitsResponse.data);
+        }
+
+        if (suppliersResponse.success) {
+          setSuppliers(suppliersResponse.data);
         }
       } catch (err) {
         console.error('Error fetching initial data:', err);
@@ -105,6 +112,7 @@ function Inventory() {
                   categories={categories} 
                   setCategories={handleCategoryUpdate}
                   units={units}
+                  suppliers={suppliers}
                 />
               } 
             />
@@ -129,6 +137,7 @@ function Inventory() {
                   categories={categories} 
                   setCategories={handleCategoryUpdate}
                   units={units}
+                  suppliers={suppliers}
                 />
               } 
             />

@@ -4,9 +4,12 @@ import { ArrowLeft, Plus, Minus, Trash2, Package, Check, ShoppingBag, ChevronRig
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
+import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase } from '../services/cartService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Cart = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [cart, setCart] = useState([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -14,13 +17,59 @@ const Cart = () => {
   const previewModalRef = useRef(null);
   const successModalRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load cart from localStorage
+  // Initialize cart on component mount
   useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
-    setCart(savedCart);
-    setSelectedIds(new Set(savedCart.map(item => item.id)));
-  }, []);
+    const initializeCart = async () => {
+      setIsLoading(true);
+      try {
+        if (user?.id) {
+          try {
+            // Try to load from database first, fallback to localStorage
+            const dbCart = await initializeCartFromDatabase(user.id);
+            if (dbCart.length > 0) {
+              // Remove any duplicate items by ID
+              const uniqueCart = dbCart.filter((item, index, self) => 
+                index === self.findIndex(t => t.id === item.id)
+              );
+              setCart(uniqueCart);
+              setSelectedIds(new Set(uniqueCart.map(item => item.id)));
+            } else {
+              // Fallback to localStorage
+              const localCart = getLocalCart();
+              const uniqueLocalCart = localCart.filter((item, index, self) => 
+                index === self.findIndex(t => t.id === item.id)
+              );
+              setCart(uniqueLocalCart);
+              setSelectedIds(new Set(uniqueLocalCart.map(item => item.id)));
+            }
+          } catch (error) {
+            console.error('Error initializing cart:', error);
+            // Fallback to localStorage
+            const localCart = getLocalCart();
+            const uniqueLocalCart = localCart.filter((item, index, self) => 
+              index === self.findIndex(t => t.id === item.id)
+            );
+            setCart(uniqueLocalCart);
+            setSelectedIds(new Set(uniqueLocalCart.map(item => item.id)));
+          }
+        } else {
+          // No user logged in, use localStorage only
+          const localCart = getLocalCart();
+          const uniqueLocalCart = localCart.filter((item, index, self) => 
+            index === self.findIndex(t => t.id === item.id)
+          );
+          setCart(uniqueLocalCart);
+          setSelectedIds(new Set(uniqueLocalCart.map(item => item.id)));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeCart();
+  }, [user?.id]);
 
   // Handle click outside preview modal
   useEffect(() => {
@@ -79,31 +128,57 @@ const Cart = () => {
     }
   }, [showSuccessToast, navigate]);
 
-  const updateQuantity = (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      // Remove item if quantity is 0 or less
-      const updatedCart = cart.filter(item => item.id !== itemId);
-      setCart(updatedCart);
-      localStorage.setItem('customerCart', JSON.stringify(updatedCart));
-    } else {
-      // Update quantity
-      const updatedCart = cart.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      );
-      setCart(updatedCart);
-      localStorage.setItem('customerCart', JSON.stringify(updatedCart));
+  const updateQuantity = async (itemId, newQuantity) => {
+    try {
+      if (newQuantity <= 0) {
+        // Remove item if quantity is 0 or less
+        const result = await removeFromCart(itemId, user?.id);
+        if (result.success) {
+          setCart(result.cart);
+          setSelectedIds(prev => {
+            const next = new Set(prev);
+            next.delete(itemId);
+            return next;
+          });
+        }
+      } else {
+        // Update quantity
+        const result = await updateCartItem(itemId, newQuantity, user?.id);
+        if (result.success) {
+          setCart(result.cart);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
     }
   };
 
-  const removeItem = (itemId) => {
-    const updatedCart = cart.filter(item => item.id !== itemId);
-    setCart(updatedCart);
-    localStorage.setItem('customerCart', JSON.stringify(updatedCart));
+  const removeItem = async (itemId) => {
+    try {
+      const result = await removeFromCart(itemId, user?.id);
+      if (result.success) {
+        setCart(result.cart);
+        setSelectedIds(prev => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
   };
 
-  const clearCart = () => {
-    setCart([]);
-    localStorage.setItem('customerCart', JSON.stringify([]));
+  const handleClearCart = async () => {
+    try {
+      const result = await clearCart(user?.id);
+      if (result.success) {
+        setCart(result.cart);
+        setSelectedIds(new Set());
+      }
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+    }
   };
 
   const getTotalPrice = () => {
@@ -361,7 +436,14 @@ const Cart = () => {
           <h1 className="text-2xl sm:text-2xl md:text-2xl lg:text-2xl font-bold text-gray-800 text-center sm:text-left sm:-ml-4 -md:ml-2 -lg:ml-2 xl:ml-2">Shopping Cart</h1>
         </div>
 
-        {cart.length === 0 ? (
+        {isLoading ? (
+          /* Loading State */
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="animate-spin w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your cart...</h3>
+            <p className="text-gray-500">Please wait while we fetch your cart items</p>
+          </div>
+        ) : cart.length === 0 ? (
           /* Empty Cart State */
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -396,7 +478,7 @@ const Cart = () => {
                     </label>
                   </div>
                   <button
-                    onClick={clearCart}
+                    onClick={handleClearCart}
                     className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-3xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                   >
                     <Trash2 size={16} />
@@ -405,8 +487,8 @@ const Cart = () => {
                 </div>
                 
                 <div className="divide-y divide-gray-200">
-                  {cart.map((item) => (
-                    <div key={item.id} className="p-4 sm:p-6">
+                  {cart.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="p-4 sm:p-6">
                       <div className="flex items-start gap-4">
                         {/* Select Checkbox */}
                         <div className="pt-2">

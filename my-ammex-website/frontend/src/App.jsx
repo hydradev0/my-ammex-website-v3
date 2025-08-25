@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Dashboard from './Pages/Home/Dashboard'; // Update this path to where your Dashboard component is located
 import Analytics from './Pages/Home/Analytics';
 import Customers from './Pages/BusinessPartners/Customers';
+import Suppliers from './Pages/BusinessPartners/Suppliers';
 import SalesQuotes from './Pages/Sales/SalesQuotes';
 import PurchaseQuotes from './Pages/Purchasing/PurchaseQuotes';
 import PurchaseOrder from './Pages/Purchasing/PurchaseOrder';
@@ -39,6 +40,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <Customers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="BusinessPartners/Suppliers"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <Suppliers />
             </ProtectedRoute>
           }
         />

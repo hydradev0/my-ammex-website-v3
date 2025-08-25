@@ -41,7 +41,7 @@ function mapStockDataToItemTableFormat(stockItem) {
   };
 }
 
-function ItemsTable({ categories, setCategories, units }) {
+function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   const { user } = useAuth();
   const role = user?.role;
   const isReadOnly = role === 'Sales Marketing';
@@ -52,6 +52,7 @@ function ItemsTable({ categories, setCategories, units }) {
   const [updatingItem, setUpdatingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // State for search and filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -167,6 +168,7 @@ function ItemsTable({ categories, setCategories, units }) {
     try {
       setCreatingItem(true);
       setError(null);
+      setFieldErrors({});
       
       // Transform form data to match API structure
       const itemData = {
@@ -199,7 +201,24 @@ function ItemsTable({ categories, setCategories, units }) {
       }
     } catch (err) {
       console.error('Error creating item:', err);
-      setError(err.message || 'Failed to create item');
+      
+      // Parse error message to identify field-specific errors
+      const errorMessage = err.message || 'Failed to create item';
+      
+      if (errorMessage.includes('item_code') && errorMessage.includes('unique')) {
+        // This is an item code uniqueness error
+        const fieldError = 'Code already exists. Please use a different item code.';
+        setFieldErrors({ itemCode: fieldError });
+        setError(null); // Clear general error since we have field-specific error
+      } else if (errorMessage.includes('itemCode')) {
+        // Other item code related errors
+        setFieldErrors({ itemCode: errorMessage });
+        setError(null);
+      } else {
+        // General error
+        setError(errorMessage);
+        setFieldErrors({});
+      }
     } finally {
       setCreatingItem(false);
     }
@@ -254,6 +273,7 @@ function ItemsTable({ categories, setCategories, units }) {
     try {
       setUpdatingItem(true);
       setError(null);
+      setFieldErrors({});
       
       // Transform form data to match API structure
       const itemData = {
@@ -289,6 +309,27 @@ function ItemsTable({ categories, setCategories, units }) {
     } catch (err) {
       console.error('Error updating item:', err);
       setError(err.message || 'Failed to update item');
+      // // Parse error message to identify field-specific errors
+      // const errorMessage = err.message || 'Failed to update item';
+      // console.log('Backend error received (update):', errorMessage);
+      
+      // if (errorMessage.includes('item_code') && errorMessage.includes('unique')) {
+      //   // This is an item code uniqueness error
+      //   const fieldError = 'Code already exists. Please use a different item code.';
+      //   console.log('Setting field error for itemCode (update):', fieldError);
+      //   setFieldErrors({ itemCode: fieldError });
+      //   setError(null); // Clear general error since we have field-specific error
+      // } else if (errorMessage.includes('itemCode')) {
+      //   // Other item code related errors
+      //   console.log('Setting field error for itemCode (update):', errorMessage);
+      //   setFieldErrors({ itemCode: errorMessage });
+      //   setError(null);
+      // } else {
+      //   // General error
+      //   console.log('Setting general error (update):', errorMessage);
+      //   setError(errorMessage);
+      //   setFieldErrors({});
+      // }
     } finally {
       setUpdatingItem(false);
     }
@@ -431,12 +472,14 @@ function ItemsTable({ categories, setCategories, units }) {
     setIsModalOpen(false);
     setIsEditMode(false);
     setSelectedItem(null);
+    setFieldErrors({});
   };
 
   // Handle new item button click
   const handleNewItemClick = () => {
     setIsEditMode(false);
     setSelectedItem(null);
+    setFieldErrors({});
     setIsModalOpen(true);
   };
 
@@ -459,13 +502,7 @@ function ItemsTable({ categories, setCategories, units }) {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Items</h1>
         </div>
-        
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
+       
         
         {/* Search and Filter Section */}
         <div className="flex flex-col justify-between sm:flex-row items-start sm:items-center gap-4 mb-4">
@@ -518,8 +555,10 @@ function ItemsTable({ categories, setCategories, units }) {
             onSubmit={isEditMode ? handleUpdateItem : handleNewItem}
             categories={categories}
             units={units}
+            suppliers={suppliers}
             editMode={isEditMode}
             initialData={selectedItem}
+            errors={fieldErrors}
           />
         )}
 
@@ -599,7 +638,16 @@ ItemsTable.propTypes = {
       id: PropTypes.number.isRequired,
       name: PropTypes.string.isRequired
     })
-  ).isRequired
+  ).isRequired,
+  suppliers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      companyName: PropTypes.string.isRequired,
+      contactName: PropTypes.string,
+      email1: PropTypes.string,
+      telephone1: PropTypes.string
+    })
+  )
 };
 
 export default ItemsTable;

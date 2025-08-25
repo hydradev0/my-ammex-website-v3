@@ -1,239 +1,426 @@
-// SupplierList.jsx
-import { useState } from 'react';
-import { Plus, MoreHorizontal, Eye, Phone } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import SearchFilter from '../Components/SearchFilter';
-import GenericTable from './GenericTable';
+import GenericTable from '../Components/GenericTable';
 import RecordsModal from './RecordsModal';
+import ViewDetailsModal from '../Components/ViewDetailsModal';
+import EditDetailsModal from '../Components/EditDetailsModal';
+import SuccessModal from '../Components/SuccessModal';
+import { supplierViewConfig, editSupplierConfig } from '../Components/viewConfigs';
+import { baseDropdownActions } from '../Components/dropdownActions';
+import { Plus } from 'lucide-react';
+import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
+import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from '../services/supplierService';
+
 function SupplierTable() {
   // State for suppliers data
-  const [suppliers, setSuppliers] = useState([
-    {
-      id: 'SUP001',
-      companyName: 'Tech Components Ltd',
-      contactPerson: 'David Miller',
-      category: 'Electronics',
-      rating: 4.8,
-      email: 'david@techcomponents.com',
-      telephone: '(555) 111-2233'
-    },
-    {
-      id: 'SUP002',
-      companyName: 'Office Supplies Co',
-      contactPerson: 'Amanda Chen',
-      category: 'Office Supplies',
-      rating: 4.2,
-      email: 'amanda@officesupplies.com',
-      telephone: '(555) 222-3344'
-    },
-    {
-      id: 'SUP003',
-      companyName: 'Global Logistics',
-      contactPerson: 'James Wilson',
-      category: 'Transportation',
-      rating: 3.9,
-      email: 'jwilson@globallogistics.com',
-      telephone: '(555) 333-4455'
-    },
-    {
-      id: 'SUP004',
-      companyName: 'Fresh Produce Inc',
-      contactPerson: 'Maria Rodriguez',
-      category: 'Food & Beverage',
-      rating: 4.6,
-      email: 'maria@freshproduce.com',
-      telephone: '(555) 444-5566'
-    },
-    {
-      id: 'SUP005',
-      companyName: 'Industrial Parts Co',
-      contactPerson: 'Thomas Zhang',
-      category: 'Manufacturing',
-      rating: 4.1,
-      email: 'tzhang@industrialparts.com',
-      telephone: '(555) 555-6677'
-    }
-  ]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [updatingSupplier, setUpdatingSupplier] = useState(false);
+  const [deletingSupplier, setDeletingSupplier] = useState(false);
 
   // State for modal visibility
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // State for delete confirmation modal
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    supplierName: '',
+    supplierId: null
+  });
   
-  // State for search
+  // State for success modals
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+  
+  // State for search and filter
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterValue, setFilterValue] = useState('Filter by...');
   
-  // State for category filter
-  const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  // Fetch suppliers from API
+  const fetchSuppliers = async (search = '', filter = '') => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = {
+        search: search || undefined,
+        isActive: filter === 'Active Accounts' ? true : filter === 'Inactive Accounts' ? false : undefined
+      };
+      
+      const response = await getSuppliers(params);
+      
+      if (response.success) {
+        // Backend should return suppliers sorted by createdAt DESC (newest first)
+        // But we'll add a fallback sort just in case
+        const sortedSuppliers = response.data.sort((a, b) => {
+          if (a.createdAt && b.createdAt) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          // Fallback to ID sorting if no creation date
+          return b.id - a.id;
+        });
+        setSuppliers(sortedSuppliers);
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching suppliers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load suppliers on component mount and when filter changes (not search term)
+  useEffect(() => {
+    fetchSuppliers('', filterValue);
+  }, [filterValue]);
+
+  // Handle adding a new supplier
+  const handleAddSupplier = async (supplierData) => {
+    try {
+      setCreatingSupplier(true);
+      setError(null);
+      
+      // Transform form data to match backend model
+      const supplierPayload = {
+        companyName: supplierData.companyName,
+        street: supplierData.street,
+        city: supplierData.city,
+        postalCode: supplierData.postalCode,
+        country: supplierData.country,
+        contactName: supplierData.contactName,
+        telephone1: supplierData.telephone1,
+        telephone2: supplierData.telephone2,
+        email1: supplierData.email1,
+        email2: supplierData.email2
+      };
+      
+      const response = await createSupplier(supplierPayload);
+      
+      if (response.success) {
+        // Add new supplier to the top of the list
+        setSuppliers([response.data, ...suppliers]);
+        setIsModalOpen(false);
+        setSuccessModal({
+          isOpen: true,
+          title: 'Supplier Added Successfully!',
+          message: 'The new supplier has been added to your records. You can now view and manage their information.'
+        });
+      } else {
+        setError(response.message || 'Failed to create supplier');
+      }
+    } catch (err) {
+      console.error('Error creating supplier:', err);
+      setError(err.message || 'Failed to create supplier');
+    } finally {
+      setCreatingSupplier(false);
+    }
+  };
+
+  // Handle view supplier details
+  const handleViewSupplier = (supplier) => {
+    setSelectedSupplier(supplier);
+    setIsViewModalOpen(true);
+  };
+
+  // Handle close view modal
+  const handleCloseViewModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedSupplier(null);
+  };
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    setSelectedSupplier(null);
+  };
+
+  // Handle new supplier button click
+  const handleNewSupplierClick = () => {
+    setIsEditMode(false);
+    setSelectedSupplier(null);
+    setIsModalOpen(true);
+  };
+
+  // Modern confirmation dialog for delete operations
+  const showDeleteConfirmation = (supplierName, supplierId) => {
+    setDeleteModal({
+      isOpen: true,
+      supplierName,
+      supplierId
+    });
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.supplierId) return;
+
+    try {
+      setDeletingSupplier(true);
+      setError(null);
+      
+      const response = await deleteSupplier(deleteModal.supplierId);
+      
+      if (response.success) {
+        setSuppliers(prevSuppliers => prevSuppliers.filter(s => s.id !== deleteModal.supplierId));
+        setDeleteModal({ isOpen: false, supplierName: '', supplierId: null });
+        setSuccessModal({
+          isOpen: true,
+          title: 'Supplier Archived Successfully!',
+          message: 'The supplier has been moved to archive and can be restored later.'
+        });
+      } else {
+        setError(response.message || 'Failed to delete supplier');
+      }
+    } catch (err) {
+      console.error('Error deleting supplier:', err);
+      setError(err.message || 'An unexpected error occurred while deleting the supplier');
+    } finally {
+      setDeletingSupplier(false);
+    }
+  };
+
+  // Handle delete cancellation
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, supplierName: '', supplierId: null });
+  };
+
+  // Handle edit supplier
+  const handleEditSupplier = (supplier) => {
+    setSelectedSupplier(supplier);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle supplier updated from EditDetailsModal
+  const handleSupplierUpdated = (updatedSupplier) => {
+    try {
+      setUpdatingSupplier(true);
+      setError(null);
+      
+      setSuppliers(suppliers.map(supplier => 
+        supplier.id === updatedSupplier.id ? updatedSupplier : supplier
+      ));
+      setIsEditModalOpen(false);
+      setSelectedSupplier(null);
+      setSuccessModal({
+        isOpen: true,
+        title: 'Supplier Updated Successfully!',
+        message: 'The supplier information has been updated successfully. You can now view the changes.'
+      });
+    } catch (err) {
+      console.error('Error updating supplier:', err);
+      setError(err.message || 'Failed to update supplier');
+    } finally {
+      setUpdatingSupplier(false);
+    }
+  };
   
   // Define columns for the supplier table
   const supplierColumns = [
     { 
-      key: 'id', 
-      header: 'ID'
+      key: 'supplierId', 
+      header: 'Supplier ID'
     },
     { 
       key: 'companyName', 
       header: 'Company Name'
     },
     { 
-      key: 'contactPerson', 
-      header: 'Contact Person'
+      key: 'contactName', 
+      header: 'Contact Name'
     },
     { 
-      key: 'category', 
-      header: 'Category',
-      render: (value) => (
-        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-          {value}
-        </span>
-      )
+      key: 'email1', 
+      header: 'Email'
     },
     { 
-      key: 'rating', 
-      header: 'Rating',
-      render: (value) => (
-        <div className="flex items-center">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span key={star} className={star <= Math.floor(value) ? "text-yellow-500" : "text-gray-300"}>
-              ★
-            </span>
-          ))}
-          <span className="ml-1 text-sm text-gray-600">({value})</span>
-        </div>
-      )
-    }
+      key: 'telephone1', 
+      header: 'Telephone'
+    },
   ];
   
-  // Custom row actions for supplier table
-  const customRowAction = (supplier) => (
-    <div className="flex items-center space-x-3">
-      <button 
-        className="text-blue-700 hover:text-blue-800"
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log('View supplier details:', supplier);
-        }}
-      >
-        <Eye className="h-4 w-4" />
-      </button>
-      <button 
-        className="text-green-700 hover:text-green-800"
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log('Call supplier:', supplier);
-        }}
-      >
-        <Phone className="h-4 w-4" />
-      </button>
-      <button 
-        className="text-gray-700 hover:text-gray-800"
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log('More options for:', supplier);
-        }}
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
-    </div>
-  );
+  // Custom dropdown actions for suppliers with view, edit, and delete functionality
+  const customSupplierDropdownActions = useMemo(() => {
+    return baseDropdownActions.map(action => {
+      if (action.id === 'view') {
+        return {
+          ...action,
+          onClick: handleViewSupplier
+        };
+      } else if (action.id === 'edit') {
+        return {
+          ...action,
+          onClick: handleEditSupplier
+        };
+      } else if (action.id === 'delete') {
+        return {
+          ...action,
+          onClick: (supplier) => {
+            showDeleteConfirmation(supplier.companyName, supplier.id);
+          }
+        };
+      }
+      return action;
+    });
+  }, []);
   
-  // Get unique categories for filter
-  const categories = ['All Categories', ...new Set(suppliers.map(supplier => supplier.category))];
-  
-  // Handle adding a new supplier (placeholder)
-  const handleAddSupplier = () => {
-    setIsModalOpen(true);
-    // Add implementation for new supplier modal
+  // Row click handler (optional)
+  const handleRowClick = (supplier) => {
+    console.log('Supplier selected:', supplier);
+    // Add navigation or details view here if needed
   };
   
-  // Filter suppliers based on search term and category filter
-  const filteredSuppliers = suppliers.filter(supplier => {
-    // Search filter
-    const matchesSearch = 
-      supplier.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Category filter
-    const matchesCategory = categoryFilter === 'All Categories' || supplier.category === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
+  // Filter suppliers based on search term and filter value (local filtering)
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(supplier => {
+      // Search filter
+      const matchesSearch = 
+        (supplier.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (supplier.supplierId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (supplier.email1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (supplier.telephone1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (supplier.contactName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Category filter
+      let matchesFilter = true;
+      if (filterValue === 'Active Accounts') {
+        matchesFilter = supplier.isActive === true;
+      } else if (filterValue === 'Inactive Accounts') {
+        matchesFilter = supplier.isActive === false;
+      }
+      
+      return matchesSearch && matchesFilter;
+    });
+  }, [suppliers, searchTerm, filterValue]);
+
+  if (loading && suppliers.length === 0) {
+    return (
+        <div className="max-w-full mx-15 mt-8 px-5">   
+          <h1 className="text-3xl font-bold text-gray-800 mb-6">Suppliers</h1>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading suppliers...</p>
+            </div>
+          </div>
+        </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-100">
       <div className="max-w-full mx-15 mt-8 px-5">   
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Suppliers</h1>
         
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <span className="text-red-800">Error: {error}</span>
+          </div>
+        )}
+        
         {/* Search and Filter Section */}
         <div className="flex flex-col justify-between sm:flex-row items-start sm:items-center gap-4 mb-4">
-          <div className="flex flex-1 flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            {/* Search */}
-            <div className="relative w-full sm:w-64">
-              <input
-                type="text"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search suppliers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            {/* Category Filter */}
-            <select
-              className="w-full sm:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            
-            <div className="text-sm text-gray-600 self-center hidden sm:block">
-              {filteredSuppliers.length} suppliers found
-            </div>
-          </div>
+          <SearchFilter 
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            filterValue={filterValue}
+            setFilterValue={setFilterValue}
+            customerCount={filteredSuppliers.length}
+            filterOptions={['Filter by...', 'Active Accounts', 'Inactive Accounts']}
+            placeholder="Search suppliers..."
+          />
           
           {/* New Supplier Button */}
           <button 
-            className="w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
+            className={`w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
             py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
             flex items-center cursor-pointer justify-center gap-2"
-            onClick={handleAddSupplier}
+            ${
+              (loading ||creatingSupplier || updatingSupplier) ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={loading || creatingSupplier || updatingSupplier}
+            onClick={handleNewSupplierClick}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-6 w-6 mr-2" />
             <span>New Supplier</span>
           </button>
-        </div>
-        
-        {/* Supplier count for mobile */}
-        <div className="text-sm text-gray-600 mb-3 sm:hidden">
-          {filteredSuppliers.length} suppliers found
+          
+          
         </div>
         
         {/* Generic Table for Suppliers */}
         <GenericTable 
           data={filteredSuppliers}
           columns={supplierColumns}
-          customRowAction={customRowAction}
+          onRowClick={handleRowClick}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={7}
           emptyMessage="No suppliers found"
           className="mb-8"
           alternateRowColors={true}
+          dropdownActions={customSupplierDropdownActions}
+        />
+
+        {/* New Supplier Modal */}
+        <RecordsModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onSubmit={handleAddSupplier}
+        />
+
+        {/* View Supplier Modal */}
+        <ViewDetailsModal
+          isOpen={isViewModalOpen}
+          onClose={handleCloseViewModal}
+          data={selectedSupplier}
+          title={supplierViewConfig.title}
+          sections={supplierViewConfig.sections}
+        />
+
+        {/* Edit Supplier Modal */}
+        <EditDetailsModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedSupplier(null);
+          }}
+          data={selectedSupplier}
+          onDataUpdated={handleSupplierUpdated}
+          config={editSupplierConfig}
+          updateService={updateSupplier}
+        />
+
+        <ConfirmDeleteModal
+          isOpen={deleteModal.isOpen}
+          title="Delete Supplier"
+          entityName={deleteModal.supplierName}
+          description="Are you sure you want to delete this supplier? The supplier will be removed from the system."
+          confirmLabel={deletingSupplier ? 'Deleting...' : 'Delete Supplier'}
+          cancelLabel="Cancel"
+          loading={deletingSupplier}
+          onCancel={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
         />
         
-        {/* New Supplier Modal */}
-        {isModalOpen && (
-          <RecordsModal 
-            onClose={() => setIsModalOpen(false)}
-            onSubmit={handleAddSupplier}
-          />
-        )}
+        {/* Success Modal */}
+        <SuccessModal
+          isOpen={successModal.isOpen}
+          onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+          title={successModal.title}
+          message={successModal.message}
+          autoClose={true}
+          autoCloseDelay={4000}
+        />
+        
       </div>
-    </div>
   );
 }
 

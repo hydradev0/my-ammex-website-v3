@@ -115,7 +115,7 @@ export const editItemConfig = {
           label: 'Item Code',
           key: 'itemCode',
           width: 'w-2/3',
-          disabled: true,
+          disabled: true, // Item code is not editable
           type: 'text',
           required: true
         },
@@ -320,93 +320,7 @@ export const customerViewConfig = {
   ]
 };
 
-export const supplierViewConfig = {
-  title: 'Supplier Details',
-  sections: [
-    {
-      title: 'Basic Information',
-      gridCols: 'grid-cols-1',
-      fields: [
-        {
-          label: 'Supplier Name',
-          key: 'name',
-          width: 'w-2/3'
-        },
-        {
-          label: 'Supplier Code',
-          key: 'code',
-          width: 'w-1/3'
-        },
-        {
-          label: 'Email',
-          key: 'email',
-          width: 'w-2/3'
-        },
-        {
-          label: 'Phone',
-          key: 'phone',
-          width: 'w-1/3'
-        }
-      ]
-    },
-    {
-      title: 'Address Information',
-      gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
-      fields: [
-        {
-          label: 'Street Address',
-          key: 'address',
-          width: 'w-full'
-        },
-        {
-          label: 'City',
-          key: 'city',
-          width: 'w-1/2'
-        },
-        {
-          label: 'State/Province',
-          key: 'state',
-          width: 'w-1/2'
-        },
-        {
-          label: 'Postal Code',
-          key: 'postalCode',
-          width: 'w-1/2'
-        },
-        {
-          label: 'Country',
-          key: 'country',
-          width: 'w-1/2'
-        }
-      ]
-    },
-    {
-      title: 'Business Information',
-      gridCols: 'grid-cols-2',
-      bgColor: 'bg-gray-100',
-      fields: [
-        {
-          label: 'Contact Person',
-          key: 'contactPerson'
-        },
-        {
-          label: 'Payment Terms',
-          key: 'paymentTerms'
-        },
-        {
-          label: 'Tax ID',
-          key: 'taxId'
-        },
-        {
-          label: 'Notes',
-          key: 'notes',
-          isTextArea: true
-        }
-      ]
-    }
-  ]
-};
+
 
 export const editCustomerConfig = {
   title: 'Edit Customer',
@@ -593,6 +507,205 @@ export const orderViewConfig = {
               `${item.name} - Qty: ${item.quantity} | Price: ₱${Number(item.price).toFixed(2)} | Total: ₱${Number(item.quantity * item.price).toFixed(2)}`
             ).join('\n');
           }
+        }
+      ]
+    }
+  ]
+};
+
+// ==================== SUPPLIER VIEW CONFIGS ====================
+
+export const supplierViewConfig = {
+  title: 'Supplier Details',
+  sections: [
+    {
+      title: 'Basic Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Supplier ID',
+          key: 'supplierId',
+          width: 'w-1/3'
+        },
+        {
+          label: 'Company Name',
+          key: 'companyName',
+          width: 'w-2/3'
+        },
+        {
+          label: 'Contact Name',
+          key: 'contactName',
+          width: 'w-1/2'
+        }
+      ]
+    },
+    {
+      title: 'Address Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Street',
+          key: 'street',
+          width: 'w-full'
+        },
+        {
+          label: 'City',
+          key: 'city',
+          width: 'w-1/2'
+        },
+        {
+          label: 'Postal Code',
+          key: 'postalCode',
+          width: 'w-1/2'
+        },
+        {
+          label: 'Country',
+          key: 'country',
+          width: 'w-1/2'
+        }
+      ]
+    },
+    {
+      title: 'Contact Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Telephone 1',
+          key: 'telephone1',
+          width: 'w-1/2'
+        },
+        {
+          label: 'Telephone 2',
+          key: 'telephone2',
+          width: 'w-1/2'
+        }
+      ]
+    },
+    {
+      title: 'Email Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Email 1',
+          key: 'email1',
+          width: 'w-1/2'
+        },
+        {
+          label: 'Email 2',
+          key: 'email2',
+          width: 'w-1/2'
+        }
+      ]
+    },
+    {
+      title: 'Status Information',
+      gridCols: 'grid-cols-1',
+      fields: [
+        {
+          label: 'Active Status',
+          key: 'isActive',
+          customRender: (value) => value ? 'Active' : 'Inactive'
+        }
+      ]
+    }
+  ]
+};
+
+export const editSupplierConfig = {
+  title: 'Edit Supplier',
+  sections: [
+    {
+      title: 'Basic Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Supplier ID',
+          key: 'supplierId',
+          width: 'w-1/3',
+          type: 'text',
+          disabled: true,
+          required: true
+        },
+        {
+          label: 'Company Name',
+          key: 'companyName',
+          width: 'w-2/3',
+          type: 'text',
+          required: true
+        },
+        {
+          label: 'Contact Name',
+          key: 'contactName',
+          width: 'w-1/2',
+          type: 'text'
+        }
+      ]
+    },
+    {
+      title: 'Address Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Street',
+          key: 'street',
+          width: 'w-full',
+          type: 'text'
+        },
+        {
+          label: 'City',
+          key: 'city',
+          width: 'w-1/2',
+          type: 'text'
+        },
+        {
+          label: 'Postal Code',
+          key: 'postalCode',
+          width: 'w-1/2',
+          type: 'text'
+        },
+        {
+          label: 'Country',
+          key: 'country',
+          width: 'w-1/2',
+          type: 'text'
+        }
+      ]
+    },
+    {
+      title: 'Contact Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Telephone 1',
+          key: 'telephone1',
+          width: 'w-1/2',
+          type: 'tel',
+          required: true
+        },
+        {
+          label: 'Telephone 2',
+          key: 'telephone2',
+          width: 'w-1/2',
+          type: 'tel'
+        }
+      ]
+    },
+    {
+      title: 'Email Information',
+      gridCols: 'grid-cols-2',
+      fields: [
+        {
+          label: 'Email 1',
+          key: 'email1',
+          width: 'w-1/2',
+          type: 'email',
+          required: true
+        },
+        {
+          label: 'Email 2',
+          key: 'email2',
+          width: 'w-1/2',
+          type: 'email'
         }
       ]
     }

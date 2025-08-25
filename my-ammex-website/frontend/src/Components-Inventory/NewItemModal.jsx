@@ -10,10 +10,11 @@ function NewItemModal({
   onSubmit, 
   categories, 
   units = [], 
+  suppliers = [],
   width = 'w-[1200px]',
-  maxHeight = 'max-h-[100vh]'
+  maxHeight = 'max-h-[100vh]',
+  errors: backendErrors = {}
 }) {
-  console.log('ItemModal props:', { isOpen, onClose, onSubmit, categories, units });
   
   // State for form fields
   const [formData, setFormData] = useState({
@@ -36,13 +37,10 @@ function NewItemModal({
   // State for loading
   const [isLoading, setIsLoading] = useState(false);
   
-  // Sample vendor list - you can replace this with your actual vendor data
-  const vendors = [
-    'Vendor A',
-    'Vendor B',
-    'Vendor C',
-    'Vendor D'
-  ];
+  // Use suppliers data for vendor dropdown
+  const vendors = suppliers.length > 0 
+    ? suppliers.map(supplier => supplier.companyName)
+    : ['No suppliers available'];
   
   // Dropdown open states and refs
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
@@ -74,6 +72,13 @@ function NewItemModal({
       setErrors({});
     }
   }, [isOpen]);
+
+  // Update errors when backend errors change
+  useEffect(() => {
+    if (Object.keys(backendErrors).length > 0) {
+      setErrors(backendErrors);
+    }
+  }, [backendErrors]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -126,7 +131,7 @@ function NewItemModal({
     const newErrors = {};
     
     if (!formData.itemCode.trim()) {
-      newErrors.itemCode = 'Item code is required';
+      newErrors.itemCode = 'Item code is required'; // Item code is not filled in the form
     }
 
     if (!formData.itemName.trim()) {
@@ -252,7 +257,7 @@ function NewItemModal({
             <div className="grid grid-cols-3 gap-6">
               {/* Vendor Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Vendor *</label>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Vendor <span className="text-red-500">*</span></label>
                 <div className="relative w-full" ref={vendorDropdownRef}>
                   <button
                     type="button"
@@ -286,7 +291,7 @@ function NewItemModal({
               {/* Item Code */}
               <FormField
                 id="itemCode"
-                label="Item Code *"
+                label={<span>Item Code <span className="text-red-500">*</span></span>}
                 type="text"
                 value={formData.itemCode}
                 onChange={handleInputChange}
@@ -296,7 +301,7 @@ function NewItemModal({
               {/* Item Name */}
               <FormField
                 id="itemName"
-                label="Item Name *"
+                label={<span>Item Name <span className="text-red-500">*</span></span>}
                 type="text"
                 value={formData.itemName}
                 onChange={handleInputChange}
@@ -318,7 +323,7 @@ function NewItemModal({
             <div className="grid grid-cols-3 gap-6">
               <FormField
                 id="price"
-                label="Price *"
+                label={<span>Price <span className="text-red-500">*</span></span>}
                 type="number"
                 value={formData.price}
                 onChange={handleInputChange}
@@ -330,7 +335,7 @@ function NewItemModal({
               />
               <FormField
                 id="floorPrice"
-                label="Floor Price *"
+                label={<span>Floor Price <span className="text-red-500">*</span></span>}
                 type="number"
                 value={formData.floorPrice}
                 onChange={handleInputChange}
@@ -342,7 +347,7 @@ function NewItemModal({
               />
               <FormField
                 id="ceilingPrice"
-                label="Ceiling Price *"
+                label={<span>Ceiling Price <span className="text-red-500">*</span></span>}
                 type="number"
                 value={formData.ceilingPrice}
                 onChange={handleInputChange}
@@ -367,7 +372,7 @@ function NewItemModal({
             <div className="grid grid-cols-2 gap-6">
               {/* Unit Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Unit *</label>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Unit <span className="text-red-500">*</span></label>
                 <div className="relative w-1/2" ref={unitDropdownRef}>
                   <button
                     type="button"
@@ -400,7 +405,7 @@ function NewItemModal({
               </div>
               {/* Category Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Category *</label>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Category <span className="text-red-500">*</span></label>
                 <div className="relative w-1/2" ref={categoryDropdownRef}>
                   <button
                     type="button"
@@ -433,7 +438,7 @@ function NewItemModal({
               </div>
               <FormField
                 id="minLevel"
-                label="Minimum Level *"
+                label={<span>Minimum Level <span className="text-red-500">*</span></span>}
                 type="number"
                 value={formData.minLevel}
                 onChange={handleInputChange}
@@ -444,7 +449,7 @@ function NewItemModal({
               />
               <FormField
                 id="quantity"
-                label="Quantity *"
+                label={<span>Quantity <span className="text-red-500">*</span></span>}
                 type="number"
                 value={formData.quantity}
                 onChange={handleInputChange}
@@ -455,7 +460,7 @@ function NewItemModal({
               />
               <FormField
                 id="maxLevel"
-                label="Maximum Level *"
+                label={<span>Maximum Level <span className="text-red-500">*</span></span>}
                 type="number"
                 value={formData.maxLevel}
                 onChange={handleInputChange}
@@ -547,8 +552,18 @@ NewItemModal.propTypes = {
       name: PropTypes.string.isRequired
     })
   ).isRequired,
+  suppliers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      companyName: PropTypes.string.isRequired,
+      contactName: PropTypes.string,
+      email1: PropTypes.string,
+      telephone1: PropTypes.string
+    })
+  ),
   width: PropTypes.string,
-  maxHeight: PropTypes.string
+  maxHeight: PropTypes.string,
+  errors: PropTypes.object
 };  
 
 function FormField({ id, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, ...props }) {
