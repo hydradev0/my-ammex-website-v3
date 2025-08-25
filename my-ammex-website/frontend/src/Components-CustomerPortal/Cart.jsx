@@ -16,60 +16,47 @@ const Cart = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const previewModalRef = useRef(null);
   const successModalRef = useRef(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const confirmModalRef = useRef(null);
+  const [confirmOptions, setConfirmOptions] = useState({ title: '', message: '', onConfirm: null });
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize cart on component mount
-  useEffect(() => {
-    const initializeCart = async () => {
-      setIsLoading(true);
-      try {
-        if (user?.id) {
-          try {
-            // Try to load from database first, fallback to localStorage
-            const dbCart = await initializeCartFromDatabase(user.id);
-            if (dbCart.length > 0) {
-              // Remove any duplicate items by ID
-              const uniqueCart = dbCart.filter((item, index, self) => 
-                index === self.findIndex(t => t.id === item.id)
-              );
-              setCart(uniqueCart);
-              setSelectedIds(new Set(uniqueCart.map(item => item.id)));
-            } else {
-              // Fallback to localStorage
-              const localCart = getLocalCart();
-              const uniqueLocalCart = localCart.filter((item, index, self) => 
-                index === self.findIndex(t => t.id === item.id)
-              );
-              setCart(uniqueLocalCart);
-              setSelectedIds(new Set(uniqueLocalCart.map(item => item.id)));
-            }
-          } catch (error) {
-            console.error('Error initializing cart:', error);
-            // Fallback to localStorage
-            const localCart = getLocalCart();
-            const uniqueLocalCart = localCart.filter((item, index, self) => 
-              index === self.findIndex(t => t.id === item.id)
-            );
-            setCart(uniqueLocalCart);
-            setSelectedIds(new Set(uniqueLocalCart.map(item => item.id)));
-          }
-        } else {
-          // No user logged in, use localStorage only
-          const localCart = getLocalCart();
-          const uniqueLocalCart = localCart.filter((item, index, self) => 
-            index === self.findIndex(t => t.id === item.id)
-          );
-          setCart(uniqueLocalCart);
-          setSelectedIds(new Set(uniqueLocalCart.map(item => item.id)));
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Initialize cart on component mount (prefer local, then background-merge DB)
+useEffect(() => {
+  const init = async () => {
+    setIsLoading(true);
 
-    initializeCart();
-  }, [user?.id]);
+    // 1) Show local immediately
+    const local = getLocalCart();
+    const uniqueLocal = local.filter((it, i, arr) => i === arr.findIndex(t => t.id === it.id));
+    setCart(uniqueLocal);
+    setSelectedIds(new Set(uniqueLocal.map(it => it.id)));
+    setIsLoading(false);
+
+    // 2) Background merge with DB (only add items that aren't in local; don't reduce/overwrite local)
+    if (!user?.id) return;
+    try {
+      const dbCart = await initializeCartFromDatabase(user.id); // returns array, but don't overwrite localStorage here
+      if (!Array.isArray(dbCart) || dbCart.length === 0) return;
+
+      const localIds = new Set(uniqueLocal.map(it => it.id));
+      const toAppend = dbCart.filter(dbIt => !localIds.has(dbIt.id));
+      if (toAppend.length === 0) return;
+
+      const merged = [...uniqueLocal, ...toAppend];
+      localStorage.setItem('customerCart', JSON.stringify(merged));
+      setCart(merged);
+      setSelectedIds(new Set(merged.map(it => it.id)));
+    } catch (_) {
+      // ignore; keep local
+    }
+  };
+
+  init();
+}, [user?.id]);
 
   // Handle click outside preview modal
   useEffect(() => {
@@ -99,6 +86,27 @@ const Cart = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showSuccessToast, navigate]);
+
+  // Handle click outside confirm modal
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (confirmLoading) return;
+      if (showConfirmModal && confirmModalRef.current && event.target === confirmModalRef.current) {
+        setShowConfirmModal(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showConfirmModal, confirmLoading]);
+
+  const openConfirm = ({ title, message, onConfirm }) => {
+    setConfirmOptions({ title, message, onConfirm });
+    setConfirmLoading(false);
+    setShowConfirmModal(true);
+  };
 
   // Keep selection in sync with cart. New items become selected by default.
   useEffect(() => {
@@ -131,16 +139,22 @@ const Cart = () => {
   const updateQuantity = async (itemId, newQuantity) => {
     try {
       if (newQuantity <= 0) {
-        // Remove item if quantity is 0 or less
-        const result = await removeFromCart(itemId, user?.id);
-        if (result.success) {
-          setCart(result.cart);
-          setSelectedIds(prev => {
-            const next = new Set(prev);
-            next.delete(itemId);
-            return next;
-          });
-        }
+        openConfirm({
+          title: 'Remove Item',
+          message: 'Setting quantity to 0 will remove this item from your cart. Continue?',
+          onConfirm: async () => {
+            const result = await removeFromCart(itemId, user?.id);
+            if (result.success) {
+              setCart(result.cart);
+              setSelectedIds(prev => {
+                const next = new Set(prev);
+                next.delete(itemId);
+                return next;
+              });
+            }
+          }
+        });
+        return;
       } else {
         // Update quantity
         const result = await updateCartItem(itemId, newQuantity, user?.id);
@@ -169,13 +183,28 @@ const Cart = () => {
     }
   };
 
+  const handleRemoveItemClick = async (itemId) => {
+    try {
+      setRemovingItemId(itemId);
+      await removeItem(itemId);
+    } finally {
+      setRemovingItemId(null);
+    }
+  };
+
   const handleClearCart = async () => {
     try {
-      const result = await clearCart(user?.id);
-      if (result.success) {
-        setCart(result.cart);
-        setSelectedIds(new Set());
-      }
+      openConfirm({
+        title: 'Remove All Items',
+        message: 'Remove all items from your cart? This action cannot be undone.',
+        onConfirm: async () => {
+          const result = await clearCart(user?.id);
+          if (result.success) {
+            setCart(result.cart);
+            setSelectedIds(new Set());
+          }
+        }
+      });
     } catch (error) {
       console.error('Error clearing cart:', error);
     }
@@ -409,6 +438,52 @@ const Cart = () => {
     </div>
   ) : null;
 
+  const confirmModalContent = showConfirmModal ? (
+    <div
+      ref={confirmModalRef}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+        style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}
+      >
+        <h3 className="text-lg font-semibold text-gray-900">{confirmOptions.title || 'Confirm Action'}</h3>
+        <p className="text-gray-600 mt-2">{confirmOptions.message}</p>
+        <div className="mt-6 flex gap-3 justify-end">
+          <button
+            onClick={() => setShowConfirmModal(false)}
+            disabled={confirmLoading}
+            className="px-4 py-2 cursor-pointer rounded-3xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                if (typeof confirmOptions.onConfirm === 'function') {
+                  setConfirmLoading(true);
+                  await confirmOptions.onConfirm();
+                }
+              } finally {
+                setConfirmLoading(false);
+                setShowConfirmModal(false);
+              }
+            }}
+            disabled={confirmLoading}
+            className={`px-4 py-2 cursor-pointer rounded-3xl text-white transition-colors ${confirmLoading ? 'bg-red-400' : 'bg-red-600 hover:bg-red-700'}`}
+          >
+            {confirmLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
+                Processing...
+              </span>
+            ) : 'Confirm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <TopBarPortal />
@@ -545,10 +620,18 @@ const Cart = () => {
                                 ${(item.price * item.quantity).toLocaleString()}
                               </span>
                               <button
-                                onClick={() => removeItem(item.id)}
-                                className="text-red-500 hover:text-red-700 transition-colors"
+                                onClick={() => handleRemoveItemClick(item.id)}
+                                disabled={removingItemId === item.id}
+                                className={`text-red-500 hover:text-red-700 transition-colors ${removingItemId === item.id ? 'opacity-60 cursor-not-allowed' : ''}`}
                               >
-                                <Trash2 size={18} />
+                                {removingItemId === item.id ? (
+                                  <span className="inline-flex items-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-red-500/70 border-t-transparent rounded-full animate-spin"></span>
+                                    Removing
+                                  </span>
+                                ) : (
+                                  <Trash2 size={18} />
+                                )}
                               </button>
                             </div>
                           </div>
@@ -603,9 +686,10 @@ const Cart = () => {
       </div>
 
       {/* Modals */}
-      <ScrollLock active={showPreviewModal || showSuccessToast} />
+      <ScrollLock active={showPreviewModal || showSuccessToast || showConfirmModal} />
       {createPortal(previewModalContent, document.body)}
       {createPortal(successModalContent, document.body)}
+      {createPortal(confirmModalContent, document.body)}
     </>
   );
 };

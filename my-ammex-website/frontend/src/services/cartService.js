@@ -4,7 +4,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 // Debounce mechanism to prevent too many database calls
 let syncTimeout = null;
-const DEBOUNCE_DELAY = 1000; // 1 second delay
+const DEBOUNCE_DELAY = 500; // 0.5 second delay
+
+const cancelDebouncedSync = () => {
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+    syncTimeout = null;
+  }
+};
 
 const debouncedSync = (customerId, cartItems) => {
   if (syncTimeout) {
@@ -138,12 +145,30 @@ export const removeFromCart = async (cartItemId, customerId) => {
     const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
     const updatedCart = savedCart.filter(item => item.id !== cartItemId);
     localStorage.setItem('customerCart', JSON.stringify(updatedCart));
-    
-    // 2. Sync to database in background
+
+    // 2. Ensure DB removal happens immediately (no debounce) to avoid flash-back
     if (customerId) {
-      debouncedSync(customerId, updatedCart);
+      cancelDebouncedSync();
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // Look up the CartItem in DB by matching Item ID
+          const dbCart = await getCustomerCart(customerId);
+          const existing = dbCart?.data?.items?.find(ci => ci?.item?.id === cartItemId);
+          if (existing?.id) {
+            await fetch(`${API_BASE_URL}/cart/items/${existing.id}`, {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Immediate DB remove failed (will be reconciled on next sync):', err);
+        }
+      }
     }
-    
+
     return { success: true, cart: updatedCart };
   } catch (error) {
     console.error('Error removing item from cart:', error);
@@ -157,9 +182,19 @@ export const clearCart = async (customerId) => {
     // 1. Immediate UI update with localStorage
     localStorage.setItem('customerCart', JSON.stringify([]));
     
-    // 2. Sync to database in background
+    // 2. Ensure DB is cleared immediately (no debounce) to avoid flash-back
     if (customerId) {
-      debouncedSync(customerId, []);
+      // Cancel any pending debounced syncs which might re-push items
+      cancelDebouncedSync();
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${API_BASE_URL}/cart/${customerId}/clear`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+      }
     }
     
     return { success: true, cart: [] };
