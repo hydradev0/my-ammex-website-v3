@@ -91,6 +91,13 @@ const initializeModels = (sequelize) => {
         notEmpty: { msg: 'Item name is required' }
       }
     },
+    modelNo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Model number is required' }
+      }
+    },
     vendor: {
       type: DataTypes.STRING,
       allowNull: false,

@@ -172,7 +172,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       
       // Transform form data to match API structure
       const itemData = {
-        itemCode: newItem.itemCode,
+        modelNo: newItem.modelNo,
         itemName: newItem.itemName,
         vendor: newItem.vendor,
         price: Number(newItem.price),
@@ -207,12 +207,12 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       
       if (errorMessage.includes('item_code') && errorMessage.includes('unique')) {
         // This is an item code uniqueness error
-        const fieldError = 'Code already exists. Please use a different item code.';
-        setFieldErrors({ itemCode: fieldError });
+        const fieldError = 'Code already exists. Please check your model number.';
+        setFieldErrors({ modelNo: fieldError });
         setError(null); // Clear general error since we have field-specific error
-      } else if (errorMessage.includes('itemCode')) {
+      } else if (errorMessage.includes('modelNo')) {
         // Other item code related errors
-        setFieldErrors({ itemCode: errorMessage });
+        setFieldErrors({ modelNo: errorMessage });
         setError(null);
       } else {
         // General error

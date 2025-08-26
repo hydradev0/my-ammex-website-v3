@@ -18,7 +18,7 @@ const {
 // Validation middleware
 const validateItem = [
   check('itemName', 'Item name is required').not().isEmpty(),
-  check('itemCode', 'Item code is required').not().isEmpty(),
+  check('modelNo', 'Model number is required').not().isEmpty(),
   check('vendor', 'Vendor is required').not().isEmpty(),
   check('price', 'Price must be a positive number').isFloat({ min: 0 }),
   check('floorPrice', 'Floor price must be a positive number').isFloat({ min: 0 }),

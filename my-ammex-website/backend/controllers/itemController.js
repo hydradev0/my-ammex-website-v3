@@ -74,7 +74,39 @@ const createItem = async (req, res, next) => {
     const { Item, Category, Unit } = getModels();
     const itemData = req.body;
 
-    const item = await Item.create(itemData);
+    // Expect: vendor (company name string), categoryId (number), modelNo (string)
+    const vendorName = (itemData.vendor || '').toString().trim();
+    const categoryId = itemData.categoryId;
+    const modelNo = (itemData.modelNo || '').toString().trim();
+
+    // Fetch category to get its name
+    const category = await Category.findByPk(categoryId);
+    if (!category) {
+      return res.status(400).json({ success: false, message: 'Invalid categoryId' });
+    }
+
+    // Build code parts
+    const vendorCode = vendorName.substring(0, 3).toUpperCase();
+    const categoryCode = (category.name || '').substring(0, 3).toUpperCase();
+
+    // Running number: global sequential across all items
+    const latestItem = await Item.findOne({
+      order: [['createdAt', 'DESC']]
+    });
+    let nextNumber = 1;
+    if (latestItem && latestItem.itemCode) {
+      const parts = latestItem.itemCode.split('-');
+      const maybeNum = parts[2];
+      const parsed = parseInt(maybeNum, 10);
+      if (!isNaN(parsed)) {
+        nextNumber = parsed + 1;
+      }
+    }
+    const runningNumber = String(nextNumber).padStart(3, '0');
+
+    const generatedCode = `${vendorCode}-${categoryCode}-${runningNumber}-${modelNo}`;
+
+    const item = await Item.create({ ...itemData, itemCode: generatedCode });
     
     // Fetch the created item with related data
     const createdItem = await Item.findByPk(item.id, {

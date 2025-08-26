@@ -196,7 +196,7 @@ useEffect(() => {
     try {
       openConfirm({
         title: 'Remove All Items',
-        message: 'Remove all items from your cart? This action cannot be undone.',
+        message: 'Are you sure you want to remove all items from your cart?.',
         onConfirm: async () => {
           const result = await clearCart(user?.id);
           if (result.success) {
@@ -514,9 +514,9 @@ useEffect(() => {
         {isLoading ? (
           /* Loading State */
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <div className="animate-spin w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your cart...</h3>
-            <p className="text-gray-500">Please wait while we fetch your cart items</p>
+            <p className="text-gray-600">Please wait while we fetch your cart items</p>
           </div>
         ) : cart.length === 0 ? (
           /* Empty Cart State */

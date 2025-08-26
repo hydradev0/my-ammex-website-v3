@@ -18,7 +18,7 @@ function NewItemModal({
   
   // State for form fields
   const [formData, setFormData] = useState({
-    itemCode: '',
+    modelNo: '',
     itemName: '',
     vendor: '',
     price: '',
@@ -56,7 +56,7 @@ function NewItemModal({
     if (isOpen) {
       console.log('Resetting form for new item');
       setFormData({
-        itemCode: '',
+        modelNo: '',
         itemName: '',
         vendor: '',
         price: '',
@@ -130,8 +130,8 @@ function NewItemModal({
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.itemCode.trim()) {
-      newErrors.itemCode = 'Item code is required'; // Item code is not filled in the form
+    if (!formData.modelNo.trim()) {
+      newErrors.modelNo = 'Model number is required';
     }
 
     if (!formData.itemName.trim()) {
@@ -288,14 +288,14 @@ function NewItemModal({
                   <p className="text-red-500 text-md mt-1">{errors.vendor}</p>
                 )}
               </div>
-              {/* Item Code */}
+              {/* Model No. */}
               <FormField
-                id="itemCode"
-                label={<span>Item Code <span className="text-red-500">*</span></span>}
+                id="modelNo"
+                label={<span>Model No. <span className="text-red-500">*</span></span>}
                 type="text"
-                value={formData.itemCode}
+                value={formData.modelNo}
                 onChange={handleInputChange}
-                error={errors.itemCode}
+                error={errors.modelNo}
                 width="w-2/3"
               />
               {/* Item Name */}
