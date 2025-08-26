@@ -43,7 +43,10 @@ function UnitTable({ units, setUnits }) {
   const unitColumns = [
     { 
       key: 'name', 
-      header: 'Name'
+      header: 'Name',
+      width: 'w-180',
+      cellClassName: 'w-180',
+      truncate: true
     }
   ];
   

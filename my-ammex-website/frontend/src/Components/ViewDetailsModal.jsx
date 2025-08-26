@@ -1,4 +1,4 @@
-import { X, Boxes, DollarSign, Info, User, MapPin, Shield } from 'lucide-react';
+import { X, Boxes, DollarSign, Info, User, MapPin, Shield, Mail } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import ScrollLock from './ScrollLock';
@@ -37,7 +37,7 @@ function ViewDetailsModal({
           </div> 
           
           {/* Content */}
-          <div className="overflow-y-auto flex-grow p-6 mr-3 bg-white">
+          <div className="overflow-y-auto flex-grow p-6 mr-3 bg-white leading-relaxed">
             {/* Original sections */}
             {sections.map((section, sectionIndex) => (
               <div key={sectionIndex} className="mb-8">
@@ -54,12 +54,13 @@ function ViewDetailsModal({
                     {section.title === 'Customer Details' && <User className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
                     {section.title === 'Contact Information' && <Info className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
                     {section.title === 'Business Information' && <Info className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
+                    {section.title === 'Email Information' && <Mail className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
                     <h3 className="text-xl font-bold text-gray-800 mb-2">{section.title}</h3>
                   </div>
                 )}
                 
                 {/* Section Container - removed borders and shadows */}
-                <div className={`grid ${section.gridCols || 'grid-cols-1'} gap-6 ${section.bgColor || 'bg-white'} rounded-xl p-4`}>
+                <div className={`grid ${section.gridCols || 'grid-cols-1'} gap-6 ${section.bgColor || 'bg-white'} rounded-xl p-4`}> 
                   {section.fields.map((field, fieldIndex) => (
                     <ViewField
                       key={fieldIndex}
@@ -131,16 +132,16 @@ function ViewField({ label, value, width = 'w-full', isTextArea = false, customR
   
   return (
     <div className="m-4">
-      <label className="block text-xl font-semibold text-gray-900 mb-2">
+      <label className="block text-xl font-semibold text-gray-800 tracking-wide mb-2">
         {label}
       </label>
-      <div className={`${width} py-1 bg-white min-h-[40px] items-center`}>
+      <div className={`${width} py-2 bg-white min-h-[44px] items-center`}> 
         {isTextArea ? (
-          <div className="w-full min-h-[100px] whitespace-pre-wrap block text-lg text-gray-700 leading-relaxed">
+          <div className="w-full min-h-[120px] whitespace-pre-wrap block text-[17px] text-gray-700 leading-relaxed">
             {displayValue}
           </div>
         ) : (
-          <span className="block text-md font-medium text-gray-700">{displayValue}</span>
+          <span className="block text-[16px] font-medium text-gray-700">{displayValue}</span>
         )}
       </div>
     </div>

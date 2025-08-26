@@ -121,29 +121,44 @@ function PurchaseOrderTable() {
   const purchaseOrderColumns = [
     { 
       key: 'docNo', 
-      header: 'Doc. No.'
+      header: 'Doc. No.',
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'name', 
-      header: 'Supplier Name'
+      header: 'Supplier Name',
+      width: 'w-80',
+      cellClassName: 'w-80',
+      truncate: true
     },
     { 
       key: 'amount', 
       header: 'Amount',
-      render: (value) => `₱${value.toFixed(2)}`
+      render: (value) => `₱${value.toFixed(2)}`,
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'status', 
-      header: 'Status',
+    header: 'Status'
       render: (value) => (
         <span className={`px-2 py-1 rounded-full text-sm ${STATUS_STYLES[value] || STATUS_STYLES.Pending}`}>
           {value}
         </span>
-      )
+      ),
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'date', 
-      header: 'Date'
+      header: 'Date',
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     }
   ];
   

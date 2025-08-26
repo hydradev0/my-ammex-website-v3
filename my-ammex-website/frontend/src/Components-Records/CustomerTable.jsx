@@ -230,23 +230,38 @@ function CustomerTable() {
   const customerColumns = [
     { 
       key: 'customerId', 
-      header: 'Customer ID'
+      header: 'Customer ID',
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'customerName', 
-      header: 'Company Name'
+      header: 'Company Name',
+      width: 'w-80',
+      cellClassName: 'w-80',
+      truncate: true
     },
     { 
       key: 'contactName', 
-      header: 'Contact Name'
+      header: 'Contact Name',
+      width: 'w-56',
+      cellClassName: 'w-56',
+      truncate: true
     },
     { 
       key: 'email1', 
-      header: 'Email'
+      header: 'Email',
+      width: 'w-56',
+      cellClassName: 'w-56',
+      truncate: true
     },
     { 
       key: 'telephone1', 
-      header: 'Telephone'
+      header: 'Telephone',
+      width: 'w-56',
+      cellClassName: 'w-56',
+      truncate: true
     },
   ];
   

@@ -123,19 +123,19 @@ const GenericTable = ({
 
   return (
     <div className={`generic-table-container ${className}`}>
-      {title && <h2 className="text-xl font-bold my-4">{title}</h2>}
+      {title && <h2 className="text-2xl font-bold my-4 text-gray-800 leading-snug">{title}</h2>}
       
       <div className={`overflow-x-auto bg-white rounded-md shadow-md ${width}`}>
-        <table className="w-full divide-y divide-gray-200">
+        <table className="w-full table-fixed divide-y divide-gray-200 leading-relaxed">
           <thead className="bg-blue-900">
             <tr>
               {columns.map((column, index) => (
                 <th 
                   key={column.key} 
                   scope="col" 
-                  className={`px-6 py-3 text-left text-md font-medium text-white uppercase tracking-wider ${
+                  className={`px-6 py-3 text-left text-[15px] font-semibold text-white uppercase tracking-wide ${
                     index > 0 ? 'border-l border-white' : ''
-                  } ${sortConfig.key === column.key ? 'bg-blue-800' : ''}`}
+                  } ${sortConfig.key === column.key ? 'bg-blue-800' : ''} ${column.headerClassName || column.width || ''}`}
                   onClick={() => handleSort(column.key)}
                 >
                   <div className="flex items-center">
@@ -148,7 +148,7 @@ const GenericTable = ({
                   </div>
                 </th>
               ))}
-              <th scope="col" className="px-6 py-3 text-left text-md font-medium text-white uppercase tracking-wider w-20">
+              <th scope="col" className="px-6 py-3 text-left text-[15px] font-semibold text-white uppercase tracking-wide w-20">
                 Action
               </th>
             </tr>
@@ -176,12 +176,12 @@ const GenericTable = ({
                       }
                       
                       return (
-                        <td key={column.key} className="px-6 py-4 whitespace-nowrap text-lg text-gray-500">
+                        <td key={column.key} className={`px-6 py-4 whitespace-nowrap text-[16px] text-gray-700 ${column.cellClassName || column.width || ''} ${column.truncate ? 'truncate' : ''}`}>
                           {cellContent}
                         </td>
                       );
                     })}
-                    <td className="px-6 py-4 whitespace-nowrap text-lg text-gray-500 w-20">
+                    <td className="px-6 py-4 whitespace-nowrap text-[16px] text-gray-700 w-20">
                       <div className="flex justify-center relative action-dropdown">
                         {customRowAction ? (
                           customRowAction(item)
@@ -221,7 +221,7 @@ const GenericTable = ({
               <tr>
                 <td 
                   colSpan={columns.length + 1} 
-                  className="px-6 py-4 text-center text-lg text-gray-500"
+                  className="px-6 py-4 text-center text-[16px] text-gray-600"
                 >
                   {emptyMessage}
                 </td>

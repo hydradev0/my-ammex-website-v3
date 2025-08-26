@@ -42,7 +42,10 @@ function CategoryTable({ categories, setCategories }) {
   const categoryColumns = [
     { 
       key: 'name', 
-      header: 'Name'
+      header: 'Name',
+      width: 'w-180',
+      cellClassName: 'w-180',
+      truncate: true
     }
   ];
   

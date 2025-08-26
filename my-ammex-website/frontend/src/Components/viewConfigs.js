@@ -13,9 +13,14 @@ export const itemViewConfig = {
           key: 'vendor',
           width: 'w-2/3'
         },
+        // {
+        //   label: 'Item Code',
+        //   key: 'itemCode',
+        //   width: 'w-1/3'
+        // },
         {
-          label: 'Item Code',
-          key: 'itemCode',
+          label: 'Model No.',
+          key: 'modelNo',
           width: 'w-1/3'
         },
         {
@@ -112,10 +117,9 @@ export const editItemConfig = {
           required: true
         },
         {
-          label: 'Item Code',
-          key: 'itemCode',
+          label: 'Model No.',
+          key: 'modelNo',
           width: 'w-2/3',
-          disabled: true, // Item code is not editable
           type: 'text',
           required: true
         },
@@ -229,7 +233,7 @@ export const customerViewConfig = {
   sections: [
     {
       title: 'Basic Information',
-      gridCols: 'grid-cols-2',
+      gridCols: 'grid-cols-3',
       fields: [
         {
           label: 'Customer ID',
@@ -306,17 +310,6 @@ export const customerViewConfig = {
         }
       ]
     },
-    {
-      title: 'Status Information',
-      gridCols: 'grid-cols-1',
-      fields: [
-        {
-          label: 'Active Status',
-          key: 'isActive',
-          customRender: (value) => value ? 'Active' : 'Inactive'
-        }
-      ]
-    }
   ]
 };
 
@@ -420,19 +413,6 @@ export const editCustomerConfig = {
         }
       ]
     },
-    {
-      title: 'Status Information',
-      gridCols: 'grid-cols-1',
-      fields: [
-        {
-          label: 'Active Status',
-          key: 'isActive',
-          type: 'dropdown',
-          width: 'w-1/3',
-          options: ['Active', 'Inactive']
-        }
-      ]
-    }
   ]
 };
 

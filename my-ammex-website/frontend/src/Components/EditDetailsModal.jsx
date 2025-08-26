@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, Boxes, DollarSign, Info, User, MapPin, Shield } from 'lucide-react';
+import { X, ChevronDown, Boxes, DollarSign, Info, User, MapPin, Shield, Mail } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
-import { updateItem } from '../services/inventoryService';
-import { editItemConfig } from './viewConfigs';
+
 import ScrollLock from './ScrollLock';
 
 function EditDetailsModal({
@@ -351,6 +350,7 @@ function EditDetailsModal({
                   {section.title === 'Customer Details' && <User className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
                   {section.title === 'Contact Information' && <Info className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
                   {section.title === 'Business Information' && <Info className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
+                  {section.title === 'Email Information' && <Mail className="mb-2 w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />}
                   <h3 className="text-xl font-bold text-gray-800 mb-2">{section.title}</h3>
                 </div>
               )}

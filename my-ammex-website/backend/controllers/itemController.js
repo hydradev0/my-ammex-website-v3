@@ -163,6 +163,29 @@ const updateItem = async (req, res, next) => {
       }
     }
 
+    // If vendor/category/modelNo provided, regenerate itemCode while preserving running number
+    if (updateData.vendor || updateData.categoryId || updateData.modelNo) {
+      const vendorName = (updateData.vendor || currentItem.vendor || '').toString().trim();
+      const categoryId = updateData.categoryId || currentItem.categoryId;
+      const category = await Category.findByPk(categoryId);
+      const categoryName = (category?.name || '').toString().trim();
+
+      // Extract running number from existing code (3rd part)
+      const parts = (currentItem.itemCode || '').split('-');
+      const existingNumber = parts[2] && /^\d{3,}$/.test(parts[2]) ? parts[2] : '001';
+
+      const vendorCode = vendorName.substring(0, 3).toUpperCase();
+      const categoryCode = categoryName.substring(0, 3).toUpperCase();
+      const modelNo = (updateData.modelNo || parts[3] || '').toString().trim();
+
+      const newCode = `${vendorCode}-${categoryCode}-${existingNumber}-${modelNo}`;
+      updateData.itemCode = newCode;
+      // Do not attempt to persist modelNo if not part of the ORM model
+      if (Object.prototype.hasOwnProperty.call(updateData, 'modelNo')) {
+        delete updateData.modelNo;
+      }
+    }
+
     await currentItem.update(updateData);
     
     // Fetch the updated item with related data

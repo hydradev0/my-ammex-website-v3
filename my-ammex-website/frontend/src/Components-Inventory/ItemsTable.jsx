@@ -116,26 +116,41 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   const itemColumns = [
     { 
       key: 'itemCode', 
-      header: 'Item Code'
+      header: 'Item Code',
+      width: 'w-64',
+      cellClassName: 'w-64',
+      truncate: true
     },
     { 
       key: 'itemName', 
-      header: 'Item Name'
+      header: 'Item Name',
+      width: 'w-80',
+      cellClassName: 'w-80',
+      truncate: true
     },
     { 
       key: 'quantity', 
       header: 'Quantity',
-      render: (value) => value.toLocaleString()
+      render: (value) => value.toLocaleString(),
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'unit', 
       header: 'Unit',
-      render: (value, item) => item.unit?.name || value
+      render: (value, item) => item.unit?.name || value,
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'price', 
       header: 'Price',
-      render: (value) => `₱${Number(value).toFixed(2)}`
+      render: (value) => `₱${Number(value).toFixed(2)}`,
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     },
     { 
       key: 'category', 
@@ -144,7 +159,10 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
         <span className={`px-2 py-1 rounded-full text-sm ${CATEGORY_STYLES[item.category?.name || value] || 'bg-gray-100 text-gray-800'}`}>
           {item.category?.name || value}
         </span>
-      )
+      ),
+      width: 'w-40',
+      cellClassName: 'w-40',
+      truncate: true
     }
   ];
 
@@ -277,7 +295,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       
       // Transform form data to match API structure
       const itemData = {
-        itemCode: updatedItem.itemCode,
+        modelNo: updatedItem.modelNo,
         itemName: updatedItem.itemName,
         vendor: updatedItem.vendor,
         price: Number(updatedItem.price),
@@ -500,7 +518,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   return (
       <div className="max-w-full mx-15 mt-8 px-5">   
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Items</h1>
+          <h1 className="text-3xl font-bold text-gray-800 ">Items</h1>
         </div>
        
         
