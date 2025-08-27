@@ -210,15 +210,7 @@ const Dashboard = () => {
           />
         );
       
-      case "Today's Customers":
-        return (
-          <MetricsCard
-            key={title}
-            title={title}
-            value={metrics.customers.active}
-            subtitle={`${metrics.customers.newSignups} new signups`}
-          />
-        );
+      
       
       case "Total Stock Value":
         return (

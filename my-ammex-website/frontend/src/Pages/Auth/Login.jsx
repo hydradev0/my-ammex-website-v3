@@ -77,7 +77,7 @@ const Login = () => {
         navigate('/Home/Dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError(err.response?.data?.message || 'Failed to load resource. Please try again.');
     } finally {
       setLoading(false);
     }

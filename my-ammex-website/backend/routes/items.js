@@ -12,7 +12,8 @@ const {
   getArchivedItems,
   restoreItem,
   getLowStockItems,
-  updateItemStock
+  updateItemStock,
+  updateItemPrice
 } = require('../controllers/itemController');
 
 // Validation middleware
@@ -66,6 +67,14 @@ router.put('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), updateIt
 router.patch('/:id/stock', protect, authorize('Admin', 'Warehouse Supervisor'), [
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 })
 ], handleValidationErrors, updateItemStock);
+
+// @route   PATCH /api/items/:id/price
+// @desc    Update item price
+// @access  Private (Admin, Warehouse Supervisor)
+router.patch('/:id/price', protect, authorize('Admin', 'Warehouse Supervisor'), [
+  check('price', 'Price must be a positive number').isFloat({ min: 0 }),
+  check('reason', 'Reason is required').not().isEmpty()
+], handleValidationErrors, updateItemPrice);
 
 // @route   DELETE /api/items/:id
 // @desc    Delete item

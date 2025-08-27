@@ -16,6 +16,7 @@ import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
 import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
+import Invoice from './Components-CustomerPortal/Invoice';
 import ProductSpecs from './Pages/Inventory/ProductSpecs';
 import ProtectedRoute from './Components/ProtectedRoute';
 import Login from './Pages/Auth/Login';
@@ -153,6 +154,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Orders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Products/Invoices"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <Invoice />
             </ProtectedRoute>
           }
         />

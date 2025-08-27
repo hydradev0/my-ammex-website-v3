@@ -8,9 +8,10 @@ import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
 import StockAdjustmentModal from './StockAdjustmentModal';
+import PriceAdjustmentModal from './PriceAdjustmentModal';
 import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
-import { getItems, createItem, updateItem, deleteItem, updateItemStock } from '../services/inventoryService';
+import { getItems, createItem, updateItem, deleteItem, updateItemStock, updateItemPrice } from '../services/inventoryService';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 
@@ -83,6 +84,13 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
     item: null
   });
   const [adjustingStock, setAdjustingStock] = useState(false);
+
+  // State for price adjustment modal
+  const [priceAdjustmentModal, setPriceAdjustmentModal] = useState({
+    isOpen: false,
+    item: null
+  });
+  const [adjustingPrice, setAdjustingPrice] = useState(false);
 
   // Fetch items on component mount
   useEffect(() => {
@@ -427,6 +435,44 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
     }
   };
 
+  // Handle price adjustment
+  const handlePriceAdjustment = async (adjustmentData) => {
+    try {
+      setAdjustingPrice(true);
+      setError(null);
+      
+      const { newPrice, reason } = adjustmentData;
+      const itemId = priceAdjustmentModal.item.id;
+      
+      // Update price via API
+      const response = await updateItemPrice(itemId, newPrice, reason);
+      
+      if (response.success) {
+        // Update local state
+        setItems(items.map(item => 
+          item.id === itemId 
+            ? { ...item, price: newPrice }
+            : item
+        ));
+        
+        // Close modal and show success message
+        setPriceAdjustmentModal({ isOpen: false, item: null });
+        setSuccessModal({
+          isOpen: true,
+          title: 'Price Updated Successfully!',
+          message: `Price has been updated for "${priceAdjustmentModal.item.itemName}". New price: ₱${newPrice.toFixed(2)}`
+        });
+      } else {
+        setError(response.message || 'Failed to update price');
+      }
+    } catch (err) {
+      console.error('Error adjusting price:', err);
+      setError(err.message || 'Failed to adjust price');
+    } finally {
+      setAdjustingPrice(false);
+    }
+  };
+
   // Handle close view modal
   const handleCloseViewModal = () => {
     setIsViewModalOpen(false);
@@ -476,6 +522,14 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
           ...action,
           onClick: (item) => {
             setStockAdjustmentModal({ isOpen: true, item });
+          }
+        };
+      }
+      if (action.id === 'adjustPrice') {
+        return {
+          ...action,
+          onClick: (item) => {
+            setPriceAdjustmentModal({ isOpen: true, item });
           }
         };
       }
@@ -636,6 +690,17 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
             onSubmit={handleStockAdjustment}
             item={stockAdjustmentModal.item}
             isLoading={adjustingStock}
+          />
+        )}
+
+        {/* Price Adjustment Modal (disabled in read-only mode) */}
+        {!isReadOnly && (
+          <PriceAdjustmentModal
+            isOpen={priceAdjustmentModal.isOpen}
+            onClose={() => setPriceAdjustmentModal({ isOpen: false, item: null })}
+            onSubmit={handlePriceAdjustment}
+            item={priceAdjustmentModal.item}
+            isLoading={adjustingPrice}
           />
         )}
         

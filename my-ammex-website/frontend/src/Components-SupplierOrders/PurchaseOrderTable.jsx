@@ -143,7 +143,7 @@ function PurchaseOrderTable() {
     },
     { 
       key: 'status', 
-    header: 'Status'
+      header: 'Status',
       render: (value) => (
         <span className={`px-2 py-1 rounded-full text-sm ${STATUS_STYLES[value] || STATUS_STYLES.Pending}`}>
           {value}

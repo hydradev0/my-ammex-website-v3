@@ -369,6 +369,60 @@ const updateItemStock = async (req, res, next) => {
   }
 };
 
+// Update item price
+const updateItemPrice = async (req, res, next) => {
+  try {
+    const { Item, Category, Unit } = getModels();
+    const { id } = req.params;
+    const { price, reason } = req.body;
+
+    const item = await Item.findByPk(id, {
+      include: [
+        { model: Category, as: 'category' },
+        { model: Unit, as: 'unit' }
+      ]
+    });
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item not found'
+      });
+    }
+
+    // Validate price is within floor/ceiling bounds if they exist
+    if (item.floorPrice && parseFloat(price) < parseFloat(item.floorPrice)) {
+      return res.status(400).json({
+        success: false,
+        message: `New price (₱${price}) cannot be below floor price (₱${item.floorPrice})`
+      });
+    }
+    if (item.ceilingPrice && parseFloat(price) > parseFloat(item.ceilingPrice)) {
+      return res.status(400).json({
+        success: false,
+        message: `New price (₱${price}) cannot exceed ceiling price (₱${item.ceilingPrice})`
+      });
+    }
+
+    await item.update({ price });
+    
+    // Fetch the updated item with related data
+    const updatedItem = await Item.findByPk(id, {
+      include: [
+        { model: Category, as: 'category' },
+        { model: Unit, as: 'unit' }
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: updatedItem,
+      message: `Price updated successfully from ₱${item.price} to ₱${price}`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllItems,
   getItemById,
@@ -378,5 +432,6 @@ module.exports = {
   getArchivedItems,
   restoreItem,
   getLowStockItems,
-  updateItemStock
+  updateItemStock,
+  updateItemPrice
 }; 

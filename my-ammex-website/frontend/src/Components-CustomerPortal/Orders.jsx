@@ -89,14 +89,14 @@ const Orders = () => {
       minute: '2-digit'
     });
   };
-
+// Order Details Modal
   const modalContent = showOrderModal && selectedOrder ? (
     <div 
       ref={modalRef}
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[120vh] sm:max-h-[120vh] overflow-y-auto"
         style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
       >
         <div className="p-4 sm:p-6 border-b border-gray-200">
@@ -111,7 +111,7 @@ const Orders = () => {
           </div>
         </div>
         
-        <div className="p-4 sm:p-6">
+        <div className="p-4 sm:p-6 ">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
               <h3 className="text-xs sm:text-sm font-medium text-gray-500">Order Number</h3>
@@ -136,7 +136,7 @@ const Orders = () => {
 
           <div className="border-t border-gray-200 pt-4 sm:pt-6">
             <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Order Items</h3>
-            <div className="space-y-2 sm:space-y-3">
+            <div className="max-h-60 overflow-y-auto pr-2 space-y-2 sm:space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {selectedOrder.items.map((item, index) => (
                 <div key={index} className="flex justify-between items-start sm:items-center p-2 sm:p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
@@ -171,10 +171,10 @@ const Orders = () => {
           <span className="text-gray-700 font-medium">Orders</span>
         </div>
         
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 md:gap-8 lg:gap-12 mb-6 sm:mt-8 sm:-mx-1 md:-mx-25 lg:-mx-30 xl:-mx-35">
+        <div className="flex gap-8 md:gap-8 lg:gap-12 mb-6 mt-8 mx-1 md:-mx-15 lg:-mx-30 xl:-mx-35">
           <button 
             onClick={handleBack}
-            className="flex items-center justify-center cursor-pointer bg-[#3182ce] hover:bg-[#4992d6] text-white px-3 py-2 rounded-3xl gap-1 transition-colors whitespace-nowrap w-full sm:w-auto"
+            className="flex items-center justify-center cursor-pointer bg-[#3182ce] hover:bg-[#4992d6] text-white px-3 py-2 rounded-3xl gap-1 transition-colors whitespace-nowrap w-20"
           >
             <ArrowLeft className="w-5 h-5" />
             Back
@@ -232,12 +232,12 @@ const Orders = () => {
                           <span className="ml-1 capitalize">{order.status}</span>
                         </span>
                       </td>
-                      <td className="px-3 sm:px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 sm:px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                         <button
                           onClick={() => handleViewOrder(order)}
                           className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-6 h-6 md:w-4 md:h-4" />
                           <span className="hidden sm:inline">View</span>
                         </button>
                       </td>

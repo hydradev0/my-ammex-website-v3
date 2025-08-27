@@ -86,6 +86,15 @@ const SearchFilters = ({
             >
               My Orders
             </button>
+            <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+              onClick={() => {
+                setShowProfileDropdown(false);
+                navigate('/Products/Invoices');
+              }}
+            >
+              Invoices
+            </button>
           </div>
         </div>
 
@@ -158,6 +167,15 @@ const SearchFilters = ({
                   }}
                 >
                   My Orders
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    navigate('/Products/Invoices');
+                  }}
+                >
+                  Invoices
                 </button>
               </div>
             )}

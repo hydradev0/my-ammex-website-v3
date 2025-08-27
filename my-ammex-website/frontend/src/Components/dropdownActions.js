@@ -1,4 +1,4 @@
-import { Eye, Edit, Trash2, Printer, FileText, FileSpreadsheet, Truck, Package} from 'lucide-react';
+import { Eye, Edit, Trash2, Printer, FileText, FileSpreadsheet, Truck, Package, DollarSign} from 'lucide-react';
 
 // Generic base actions
 export const baseDropdownActions = [
@@ -103,6 +103,13 @@ export const itemsDropdownActions = [
     icon: Package,
     onClick: null,
     className: 'text-blue-600'
+  },
+  {
+    id: 'adjustPrice',
+    label: 'Adjust Price',
+    icon: DollarSign,
+    onClick: null,
+    className: 'text-green-600'
   }
 ]; 
 

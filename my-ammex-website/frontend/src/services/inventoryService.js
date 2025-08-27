@@ -95,6 +95,13 @@ export const updateItemStock = async (id, quantity) => {
   });
 };
 
+export const updateItemPrice = async (id, price, reason) => { 
+  return await apiCall(`/items/${id}/price`, {
+    method: 'PATCH',
+    body: JSON.stringify({ price, reason }),
+  });
+};
+
 // ==================== CATEGORIES API ====================
 
 export const getCategories = async () => {
