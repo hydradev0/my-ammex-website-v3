@@ -113,7 +113,7 @@ const SmartReorder = () => {
     <div className="bg-white rounded-xl border border-gray-300 p-5 flex flex-col gap-6 min-h-[500px]">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-yellow-400"/>Smart Reorder Recommendations
+          <Sparkles className="h-6 w-6 text-yellow-400"/>Reorder Recommendations
         </h3>
         
         {/* Toggle for testing large datasets */}

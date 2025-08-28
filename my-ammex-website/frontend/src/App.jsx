@@ -20,6 +20,7 @@ import Invoice from './Components-CustomerPortal/Invoice';
 import ProductSpecs from './Pages/Inventory/ProductSpecs';
 import ProtectedRoute from './Components/ProtectedRoute';
 import Login from './Pages/Auth/Login';
+import CustomerPayments from './Pages/Sales/CustomerPayments';
 
 function App() {
   return (
@@ -59,6 +60,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <CustomerOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Sales/CustomerPayments"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <CustomerPayments />
             </ProtectedRoute>
           }
         />

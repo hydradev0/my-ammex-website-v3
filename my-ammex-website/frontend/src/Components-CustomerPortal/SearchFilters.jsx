@@ -34,20 +34,21 @@ const SearchFilters = ({
               className="w-full pl-10 pr-4 py-2 border border-gray-400 rounded-3xl focus:ring-2 focus:outline-none focus:ring-gray-500 focus:border-transparent"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-3 sm:px-4 py-2 rounded-3xl transition-colors cursor-pointer text-sm whitespace-nowrap ${
-                  selectedCategory === category
-                    ? "bg-[#3182ce] text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+                      {/* Categories */}
+            <div className="flex gap-2 flex-wrap">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-3 sm:px-4 py-2 rounded-3xl transition-colors cursor-pointer text-[15px] whitespace-nowrap ${
+                    selectedCategory === category
+                      ? "bg-[#3182ce] text-white"
+                      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
           </div>
         </div>
         {/* Profile Dropdown Button */}
@@ -57,7 +58,7 @@ const SearchFilters = ({
           onMouseLeave={() => setShowProfileDropdown(false)}
         >
           <button
-            className="text-gray-700 cursor-pointer px-3 py-2 rounded-3xl flex items-center gap-2 transition-colors whitespace-nowrap"
+            className="text-gray-600 cursor-pointer px-3 py-2 rounded-3xl flex items-center gap-2 transition-colors whitespace-nowrap"
           >
             <User size={28} />
           </button>
@@ -69,7 +70,7 @@ const SearchFilters = ({
             }`}
           >
             <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+              className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
                 navigate('/Products/profile');
@@ -78,7 +79,7 @@ const SearchFilters = ({
               My Profile
             </button>
             <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+              className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
                 navigate('/Products/orders');
@@ -87,7 +88,7 @@ const SearchFilters = ({
               My Orders
             </button>
             <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+              className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
                 navigate('/Products/Invoices');
@@ -151,7 +152,7 @@ const SearchFilters = ({
             {showProfileDropdown && (
               <div className="absolute left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[160px] z-50">
                 <button
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                  className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
                   onClick={() => {
                     setShowProfileDropdown(false);
                     navigate('/Products/Profile');
@@ -160,7 +161,7 @@ const SearchFilters = ({
                   My Profile
                 </button>
                 <button
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                  className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
                   onClick={() => {
                     setShowProfileDropdown(false);
                     navigate('/Products/Orders');
@@ -169,7 +170,7 @@ const SearchFilters = ({
                   My Orders
                 </button>
                 <button
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                  className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
                   onClick={() => {
                     setShowProfileDropdown(false);
                     navigate('/Products/Invoices');
@@ -200,7 +201,7 @@ const SearchFilters = ({
         {showMobileFilters && (
           <div className="border-t border-gray-200 pt-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-[15px] font-semibold text-gray-800">
                 Categories:
               </span>
               <button
@@ -218,10 +219,10 @@ const SearchFilters = ({
                     setSelectedCategory(category);
                     setShowMobileFilters(false);
                   }}
-                  className={`px-3 py-1.5 rounded-3xl transition-colors cursor-pointer text-xs whitespace-nowrap ${
+                  className={`px-3 py-2 rounded-3xl transition-colors cursor-pointer text-[14px] whitespace-nowrap ${
                     selectedCategory === category
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-[#3182ce] text-white"
+                      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
                   }`}
                 >
                   {category}

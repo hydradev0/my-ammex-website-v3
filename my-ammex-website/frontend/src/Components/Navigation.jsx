@@ -33,6 +33,7 @@ function Navigation() {
       name: 'Sales',
       dropdownItems: [
         { name: 'Customer Orders', link: '/Sales/CustomerOrders' },
+        { name: 'Customer Payments', link: '/Sales/CustomerPayments' },
         // { name: 'Sales Quotes', link: '/Sales/SalesQuotes' },
         // { name: 'Sales Order', link: '/Sales/SalesOrder' },
         // { name: 'Sales Invoice', link: '/Sales/SalesInvoice' },
