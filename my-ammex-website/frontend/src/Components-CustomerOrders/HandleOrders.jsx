@@ -1,40 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import ViewOrderModal from './ViewOrderModal';
 import ProcessOrderModal from './ProcessOrderModal';
 import PaginationTable from '../Components/PaginationTable';
+import ModernSearchFilter from '../Components/ModernSearchFilter';
 //test
 function HandleOrders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-  const statusDropdownRef = useRef(null);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-
-  // Close status dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
-        setStatusDropdownOpen(false);
-      }
-    };
-
-    if (statusDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [statusDropdownOpen]);
 
   // Mock data - replace with actual API calls
   const orders = [
@@ -83,12 +66,7 @@ function HandleOrders() {
     // Add more mock data as needed
   ];
 
-  const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' }
-  ];
+
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -128,12 +106,42 @@ function HandleOrders() {
     handleCloseProcessModal();
   };
 
-  // Filter orders based on search term and selected status
+  // Configure dropdown filters for SearchFilters component
+  const dropdownFilters = [
+    {
+      id: 'status',
+      value: selectedStatus,
+      setValue: setSelectedStatus,
+      options: [
+        { value: 'all', label: 'All Status' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'completed', label: 'Completed' },
+        { value: 'cancelled', label: 'Cancelled' }
+      ]
+    }
+  ];
+
+  // Filter orders based on search term, selected status, and date range
   const filteredOrders = orders.filter(order => {
     const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
     const matchesSearch = order.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+    
+    // Date range filtering
+    let matchesDateRange = true;
+    if (dateRange.start || dateRange.end) {
+      const orderDate = new Date(order.date);
+      if (dateRange.start) {
+        const startDate = new Date(dateRange.start);
+        matchesDateRange = matchesDateRange && orderDate >= startDate;
+      }
+      if (dateRange.end) {
+        const endDate = new Date(dateRange.end);
+        matchesDateRange = matchesDateRange && orderDate <= endDate;
+      }
+    }
+    
+    return matchesStatus && matchesSearch && matchesDateRange;
   });
 
   // Sort filtered orders
@@ -176,48 +184,18 @@ function HandleOrders() {
       <h1 className="text-3xl font-bold text-gray-800 mb-4">Orders</h1>
 
       {/* Filters and Search Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-300 p-5 mb-6">
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search orders..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent"
-              />
-            </div>
-          </div>
-          <div className="relative" ref={statusDropdownRef}>
-            <button
-              type="button"
-              className="px-4 py-2 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center w-full"
-              onClick={() => setStatusDropdownOpen((open) => !open)}
-            >
-              <span>{statusOptions.find(option => option.value === selectedStatus)?.label || 'All Status'}</span>
-              <ChevronDown className={`w-6 h-6 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {statusDropdownOpen && (
-              <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg">
-                {statusOptions.map((option) => (
-                  <li
-                    key={option.value}
-                    className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${option.value === selectedStatus ? 'bg-blue-600 text-white hover:bg-blue-700 hover:text-white font-semibold' : ''}`}
-                    onClick={() => {
-                      setSelectedStatus(option.value);
-                      setStatusDropdownOpen(false);
-                    }}
-                  >
-                    {option.label}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </div>
+      <ModernSearchFilter
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        searchPlaceholder="Search orders, customers, order IDs..."
+        dropdownFilters={dropdownFilters}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        showDateRange={true}
+        filteredCount={filteredOrders.length}
+        totalCount={orders.length}
+        itemLabel="orders"
+      />
 
       {/* Orders Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">

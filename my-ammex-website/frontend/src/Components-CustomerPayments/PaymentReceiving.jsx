@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import PaymentFilters from './PaymentFilters';
+import ModernSearchFilter from '../Components/ModernSearchFilter';
 import PaymentTable from './PaymentTable';
 import PaymentApprovalModal from './PaymentApprovalModal';
 import PaymentMethodsManager from './PaymentMethodsManager';
@@ -222,8 +222,21 @@ const PaymentReceiving = () => {
     return methodObj ? methodObj.name : method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-
-
+  // Configure dropdown filters for ModernSearchFilter component
+  const dropdownFilters = [
+    {
+      id: 'paymentMethod',
+      value: selectedPaymentMethod,
+      setValue: setSelectedPaymentMethod,
+      options: [
+        { value: 'all', label: 'All Payment Methods' },
+        ...paymentMethods.map(method => ({
+          value: method.name.toLowerCase().replace(/\s+/g, '_'),
+          label: method.name
+        }))
+      ]
+    }
+  ];
 
   return (
     <>
@@ -232,11 +245,11 @@ const PaymentReceiving = () => {
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap- mt-2">
             <div>
-              <h1 className="text-3xl -mx-32 font-bold text-gray-90 ">Payments</h1>
+              <h1 className="text-3xl font-bold text-gray-90 ">Payments</h1>
             </div>
             <button
               onClick={handleManagePaymentMethods}
-              className="bg-gray-600 -mx-40 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+              className="bg-gray-600  text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
             >
               <Settings className="w-4 h-4" />
               Manage Payment Methods
@@ -245,16 +258,17 @@ const PaymentReceiving = () => {
         </div>
 
         {/* Search and Filters */}
-        <PaymentFilters
+        <ModernSearchFilter
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          selectedPaymentMethod={selectedPaymentMethod}
-          setSelectedPaymentMethod={setSelectedPaymentMethod}
+          searchPlaceholder="Search customer, invoice, or reference..."
+          dropdownFilters={dropdownFilters}
           dateRange={dateRange}
           setDateRange={setDateRange}
-          paymentMethods={paymentMethods}
+          showDateRange={true}
           filteredCount={filteredPayments.length}
           totalCount={pendingPayments.length}
+          itemLabel="payments"
         />
 
         {/* Pending Payments Table */}

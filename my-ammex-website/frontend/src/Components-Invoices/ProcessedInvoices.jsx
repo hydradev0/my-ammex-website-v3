@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, FileText, Send, CheckCircle } from 'lucide-react';
-import InvoiceFilters from './InvoiceFilters';
+import ModernSearchFilter from '../Components/ModernSearchFilter';
 import InvoiceTable from './InvoiceTable';
 import InvoiceDetailsModal from './InvoiceDetailsModal';
 import InvoiceActionsModal from './InvoiceActionsModal';
@@ -285,6 +285,22 @@ const ProcessedInvoices = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Configure dropdown filters for ModernSearchFilter component
+  const dropdownFilters = [
+    {
+      id: 'status',
+      value: selectedStatus,
+      setValue: setSelectedStatus,
+      options: [
+        { value: 'all', label: 'All Status' },
+        { value: 'paid', label: 'Paid' },
+        { value: 'partially_paid', label: 'Partially Paid' },
+        { value: 'unpaid', label: 'Unpaid' },
+        { value: 'overdue', label: 'Overdue' }
+      ]
+    },
+  ];
+
   return (
     <>
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -307,17 +323,17 @@ const ProcessedInvoices = () => {
         </div>
 
         {/* Search and Filters */}
-        <InvoiceFilters
+        <ModernSearchFilter
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          selectedStatus={selectedStatus}
-          setSelectedStatus={setSelectedStatus}
-          balanceFilter={balanceFilter}
-          setBalanceFilter={setBalanceFilter}
+          searchPlaceholder="Search invoices, customers, order IDs..."
+          dropdownFilters={dropdownFilters}
           dateRange={dateRange}
           setDateRange={setDateRange}
+          showDateRange={true}
           filteredCount={filteredInvoices.length}
           totalCount={invoices.length}
+          itemLabel="invoices"
         />
 
         {/* Invoices Table */}
