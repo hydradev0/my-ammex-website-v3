@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import ScrollLock from '../Components/ScrollLock';
 
 // Account Creation/Editing Modal
@@ -8,38 +8,14 @@ export const AccountModal = ({
   open,
   editMode,
   formData,
-  availableRoles,
-  availableDepartments,
-  isLoading,
   error,
   success,
+  fieldErrors,
+  isSubmitting,
   onClose,
   onSubmit,
   onChange
 }) => {
-  // Dropdown open states and refs
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  const roleDropdownRef = useRef(null);
-  const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
-  const departmentDropdownRef = useRef(null);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (roleDropdownRef.current && !roleDropdownRef.current.contains(event.target)) {
-        setRoleDropdownOpen(false);
-      }
-      if (departmentDropdownRef.current && !departmentDropdownRef.current.contains(event.target)) {
-        setDepartmentDropdownOpen(false);
-      }
-    };
-    if (roleDropdownOpen || departmentDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [roleDropdownOpen, departmentDropdownOpen]);
 
   if (!open) return null;
 
@@ -89,21 +65,36 @@ export const AccountModal = ({
                 name="name"
                 value={formData.name}
                 onChange={onChange}
-                required
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  fieldErrors?.name 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                    : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                }`}
+                placeholder="Enter full name"
               />
+              {fieldErrors?.name && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+              )}
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700">Email</label>
               <input
-                type="email"
+                type="text"
                 name="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={onChange}
-                required
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  fieldErrors?.email 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                    : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                }`}
+                placeholder="Enter email address"
               />
+              {fieldErrors?.email && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
             
             {!editMode && (
@@ -112,74 +103,65 @@ export const AccountModal = ({
                 <input
                   type="password"
                   name="password"
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={onChange}
-                  required
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    fieldErrors?.password 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                      : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                  }`}
+                  placeholder="Enter password (min. 6 characters)"
                 />
+                {fieldErrors?.password && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+                )}
+              </div>
+            )}
+            {!editMode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  autoComplete="new-password"
+                  value={formData.confirmPassword || ''}
+                  onChange={onChange}
+                  className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    fieldErrors?.confirmPassword 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                      : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                  }`}
+                  placeholder="Confirm your password"
+                />
+                {fieldErrors?.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+                )}
               </div>
             )}
             
             <div>
               <label className="block text-sm font-medium text-gray-700">Role</label>
-              <div className="relative w-full" ref={roleDropdownRef}>
-                <button
-                  type="button"
-                  className="cursor-pointer w-full text-sm pl-3 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center"
-                  onClick={() => setRoleDropdownOpen((open) => !open)}
-                  disabled={isLoading}
-                >
-                  <span>{formData.role || 'Select role'}</span>
-                  <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${roleDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {roleDropdownOpen && !isLoading && (
-                  <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {availableRoles.map((role) => (
-                      <li
-                        key={role.value}
-                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 hover:text-black ${formData.role === role.value ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
-                        onClick={() => {
-                          onChange({ target: { name: 'role', value: role.value } });
-                          setRoleDropdownOpen(false);
-                        }}
-                      >
-                        {role.label}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <input
+                type="text"
+                name="role"
+                value={formData.role}
+                readOnly
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm text-gray-700 cursor-not-allowed"
+                placeholder="Role will be set based on department"
+              />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700">Department</label>
-              <div className="relative w-full" ref={departmentDropdownRef}>
-                <button
-                  type="button"
-                  className="cursor-pointer w-full text-sm pl-3 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center"
-                  onClick={() => setDepartmentDropdownOpen((open) => !open)}
-                  disabled={isLoading}
-                >
-                  <span>{formData.department || 'Select department'}</span>
-                  <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${departmentDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {departmentDropdownOpen && !isLoading && (
-                  <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {availableDepartments.map((dept) => (
-                      <li
-                        key={dept.value}
-                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 hover:text-black ${formData.department === dept.value ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
-                        onClick={() => {
-                          onChange({ target: { name: 'department', value: dept.value } });
-                          setDepartmentDropdownOpen(false);
-                        }}
-                      >
-                        {dept.label}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <input
+                type="text"
+                name="department"
+                value={formData.department}
+                readOnly
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm text-gray-700 cursor-not-allowed"
+                placeholder="Department will be set based on tab"
+              />
             </div>
             
             <div className="mt-6 flex items-center justify-end gap-3">
@@ -192,9 +174,21 @@ export const AccountModal = ({
               </button>
               <button
                 type="submit"
-                className="rounded-lg cursor-pointer bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                disabled={isSubmitting}
+                className={`rounded-lg px-4 py-2 text-sm font-medium shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                  isSubmitting 
+                    ? 'bg-blue-400 text-white cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                }`}
               >
-                {editMode ? 'Update' : 'Create'}
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {editMode ? 'Updating...' : 'Creating...'}
+                  </div>
+                ) : (
+                  editMode ? 'Update' : 'Create'
+                )}
               </button>
             </div>
           </form>
@@ -213,6 +207,7 @@ export const PasswordChangeModal = ({
   formData,
   error,
   success,
+  fieldErrors,
   onClose,
   onSubmit,
   onChange
@@ -229,7 +224,7 @@ export const PasswordChangeModal = ({
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Change Password</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Change password for {user?.name} ({user?.email})
+              Change password for "{user?.name}" ({user?.email})
             </p>
           </div>
           <button
@@ -260,12 +255,20 @@ export const PasswordChangeModal = ({
               <input
                 type="password"
                 name="newPassword"
+                autoComplete="new-password"
                 value={formData.newPassword}
                 onChange={onChange}
-                required
                 minLength={6}
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  fieldErrors?.newPassword 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                    : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                }`}
+                placeholder="Enter new password (min. 6 characters)"
               />
+              {fieldErrors?.newPassword && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.newPassword}</p>
+              )}
             </div>
             
             <div>
@@ -273,12 +276,20 @@ export const PasswordChangeModal = ({
               <input
                 type="password"
                 name="confirmPassword"
+                autoComplete="new-password"
                 value={formData.confirmPassword}
                 onChange={onChange}
-                required
                 minLength={6}
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  fieldErrors?.confirmPassword 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                    : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                }`}
+                placeholder="Confirm new password"
               />
+              {fieldErrors?.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+              )}
             </div>
             
             <div className="mt-6 flex items-center justify-end gap-3">

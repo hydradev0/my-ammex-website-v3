@@ -51,7 +51,7 @@ const PaymentFilters = ({
 
   return (
     <div className="bg-white rounded-lg shadow p-6 mb-6 -mx-38 relative"
-    style={{ transform: 'translateX(1.5%)', zIndex: 1000 }}>
+    style={{ transform: 'translateX(1.5%)', zIndex: 200 }}>
       <div className="grid grid-cols-12 gap-4">
         {/* Search - takes up more space */}
         <div className="relative col-span-12 md:col-span-4">
@@ -66,7 +66,7 @@ const PaymentFilters = ({
         </div>
 
         {/* Payment Method Filter - positioned to the right */}
-        <div className="relative col-span-12 md:col-span-2 md:col-start-5" ref={paymentMethodDropdownRef} style={{ zIndex: 1001 }}>
+        <div className="relative col-span-12 md:col-span-2 md:col-start-5" ref={paymentMethodDropdownRef} style={{ zIndex: 201 }}>
           <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           <button
             type="button"
@@ -77,7 +77,7 @@ const PaymentFilters = ({
             <ChevronDown className={`w-6 h-6 transition-transform ${paymentMethodDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           {paymentMethodDropdownOpen && (
-            <ul className="absolute z-[9999] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto"
+            <ul className="absolute z-[300] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto"
                 style={{ position: 'absolute', top: '100%', left: '0' }}>
               {paymentMethodOptions.map((option) => (
                 <li

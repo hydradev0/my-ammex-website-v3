@@ -1,31 +1,41 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { Search, Filter, X, ChevronDown } from 'lucide-react';
-import { TabNavigation, StaffAccountsTab, ClientAccountsTab } from './AccountTabs';
+import { TabNavigation, SalesDepartmentTab, WarehouseDepartmentTab, ClientServicesTab } from './AccountTabs';
 import { AccountModal, PasswordChangeModal } from './AccountModals';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
+import SuccessModal from '../Components/SuccessModal';
 
 const ManageAccountTable = () => {
   // Available roles and departments - fetched from API
   const [availableRoles, setAvailableRoles] = useState([]);
   const [availableDepartments, setAvailableDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('staff'); // 'staff' or 'clients'
+  const [activeTab, setActiveTab] = useState('sales'); // 'sales', 'warehouse', or 'clients'
 
-  const [employees, setEmployees] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [salesAccounts, setSalesAccounts] = useState([]);
+  const [warehouseAccounts, setWarehouseAccounts] = useState([]);
+  const [clientAccounts, setClientAccounts] = useState([]);
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     role: 'Sales Marketing',
     department: 'Sales',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successTitle, setSuccessTitle] = useState('');
 
   // Password change modal state
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -36,6 +46,7 @@ const ManageAccountTable = () => {
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({});
 
   // Delete confirmation modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -72,10 +83,9 @@ const ManageAccountTable = () => {
     };
   }, [roleFilterDropdownOpen, departmentFilterDropdownOpen]);
 
-  // Fetch employees, roles, and departments on component mount
+  // Fetch users, roles, and departments on component mount
   useEffect(() => {
-    fetchEmployees();
-    fetchClients();
+    fetchAllUsers();
     fetchRolesAndDepartments();
   }, []);
 
@@ -96,37 +106,43 @@ const ManageAccountTable = () => {
     }
   };
 
-  const fetchEmployees = async () => {
+  const fetchAllUsers = async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('/api/auth/users', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Filter for non-client users (staff)
-      const staffUsers = response.data.data.filter(user => user.role !== 'Client');
-      setEmployees(staffUsers);
+      const allUsers = response.data.data;
+      
+      // Filter users by department/role, excluding Admin
+      const salesUsers = allUsers.filter(user => 
+        user.department === 'Sales' && user.role !== 'Admin'
+      );
+      const warehouseUsers = allUsers.filter(user => 
+        user.department === 'Warehouse' && user.role !== 'Admin'
+      );
+      const clientUsers = allUsers.filter(user => 
+        user.role === 'Client' || user.department === 'Client Services'
+      );
+      
+      setSalesAccounts(salesUsers);
+      setWarehouseAccounts(warehouseUsers);
+      setClientAccounts(clientUsers);
     } catch (err) {
-      setError('Failed to fetch employees');
-    }
-  };
-
-  const fetchClients = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/auth/users', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // Filter for client users only
-      const clientUsers = response.data.data.filter(user => user.role === 'Client');
-      setClients(clientUsers);
-    } catch (err) {
-      setError('Failed to fetch clients');
+      setError('Failed to fetch users');
     }
   };
 
   // Filtered data based on search and filters
   const filteredData = useMemo(() => {
-    const currentData = activeTab === 'staff' ? employees : clients;
+    let currentData = [];
+    if (activeTab === 'sales') {
+      currentData = salesAccounts;
+    } else if (activeTab === 'warehouse') {
+      currentData = warehouseAccounts;
+    } else if (activeTab === 'clients') {
+      currentData = clientAccounts;
+    }
     
     return currentData.filter(user => {
       // Search filter
@@ -142,7 +158,7 @@ const ManageAccountTable = () => {
       
       return matchesSearch && matchesRole && matchesDepartment;
     });
-  }, [activeTab, employees, clients, searchTerm, selectedRoleFilter, selectedDepartmentFilter]);
+  }, [activeTab, salesAccounts, warehouseAccounts, clientAccounts, searchTerm, selectedRoleFilter, selectedDepartmentFilter]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -154,15 +170,42 @@ const ManageAccountTable = () => {
   // Check if any filters are active
   const hasActiveFilters = searchTerm || selectedRoleFilter || selectedDepartmentFilter;
 
-  const handleOpen = () => {
+  const handleCreateSalesAccount = () => {
     setOpen(true);
     setEditMode(false);
     setFormData({
       name: '',
       email: '',
       password: '',
+      confirmPassword: '',
       role: 'Sales Marketing',
       department: 'Sales',
+    });
+  };
+
+  const handleCreateWarehouseAccount = () => {
+    setOpen(true);
+    setEditMode(false);
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      role: 'Warehouse Supervisor',
+      department: 'Warehouse',
+    });
+  };
+
+  const handleCreateClientAccount = () => {
+    setOpen(true);
+    setEditMode(false);
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      role: 'Client',
+      department: 'Client Services',
     });
   };
 
@@ -170,6 +213,8 @@ const ManageAccountTable = () => {
     setOpen(false);
     setError('');
     setSuccess('');
+    setFieldErrors({});
+    setIsSubmitting(false);
   };
 
   const handleEdit = (employee) => {
@@ -180,6 +225,7 @@ const ManageAccountTable = () => {
       role: employee.role,
       department: employee.department,
       password: '', // This will be excluded when submitting
+      confirmPassword: '', // Not used in edit mode
     });
     setEditMode(true);
     setOpen(true);
@@ -191,20 +237,40 @@ const ManageAccountTable = () => {
   };
 
   const confirmDelete = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete) {
+      setError('Error: No user selected for deletion.');
+      return;
+    }
+    
+    // Get the user ID - check for different possible ID field names
+    const userId = userToDelete.id || userToDelete._id || userToDelete.userId;
+    
+    if (!userId) {
+      setError('Error: User ID is missing. Cannot delete user.');
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
+      return;
+    }
     
     setIsDeleting(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/auth/users/${userToDelete.id}`, {
+      await axios.delete(`/api/auth/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSuccess('Account deleted successfully');
-      // Refresh both lists
-      fetchEmployees();
-      fetchClients();
+      
+      // Clear any existing errors
+      setError('');
       setDeleteModalOpen(false);
+      
+      // Show success modal for deletion
+      setSuccessTitle('Account Deleted!');
+      setSuccessMessage(`${userToDelete.name}'s account has been successfully removed from the system.`);
+      setShowSuccessModal(true);
       setUserToDelete(null);
+      
+      // Refresh data to get updated list (without inactive users)
+      await fetchAllUsers();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete account');
       setDeleteModalOpen(false);
@@ -222,40 +288,114 @@ const ManageAccountTable = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setError('');
+    setFieldErrors({});
+    
+    // Validation for both create and edit modes
+    const errors = {};
+    
+    // Name validation (required for both modes)
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    // Email validation (required for both modes)
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    // Password validation (only for create mode)
+    if (!editMode) {
+      if (!formData.password) {
+        errors.password = 'Password is required';
+      } else if (formData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters long';
+      }
+      
+      // Confirm password validation (only for create mode)
+      if (!formData.confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password';
+      } else if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    
+    setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       if (editMode) {
-        // When editing, exclude password from the update since it's not shown/required
-        const { password, ...updateData } = formData;
+        // Get the user ID - check for different possible ID field names
+        const userId = selectedEmployee.id || selectedEmployee._id || selectedEmployee.userId;
+        
+        if (!userId) {
+          setError('Error: Cannot update user - ID is missing.');
+          return;
+        }
+        
+        // When editing, exclude password and confirmPassword from the update
+        const { password, confirmPassword, ...updateData } = formData;
         await axios.put(
-          `/api/auth/users/${selectedEmployee.id}`,
+          `/api/auth/users/${userId}`,
           updateData,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setSuccess('Account updated successfully');
+        
+        // Show success modal for updates
+        setSuccessTitle('Account Updated!');
+        setSuccessMessage(`${formData.name}'s account has been updated successfully.`);
+        setShowSuccessModal(true);
       } else {
-        // When creating, include password as it's required for new accounts
-        await axios.post('/api/auth/register', formData, {
+        // When creating, exclude confirmPassword from the API call
+        const { confirmPassword, ...createData } = formData;
+        await axios.post('/api/auth/register', createData, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setSuccess('Account created successfully');
+        
+        // Show success modal for creation
+        setSuccessTitle('Account Created!');
+        setSuccessMessage(`${formData.name}'s account has been created successfully.`);
+        setShowSuccessModal(true);
       }
       handleClose();
-      // Refresh both lists
-      fetchEmployees();
-      fetchClients();
+      // Refresh all user lists
+      fetchAllUsers();
     } catch (err) {
       setError(err.response?.data?.message || 'Operation failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear general error when user starts typing
+    if (error) setError('');
   };
 
   // Password change functions
@@ -267,6 +407,7 @@ const ManageAccountTable = () => {
     });
     setPasswordError('');
     setPasswordSuccess('');
+    setPasswordFieldErrors({});
     setPasswordModalOpen(true);
   };
 
@@ -279,33 +420,71 @@ const ManageAccountTable = () => {
     });
     setPasswordError('');
     setPasswordSuccess('');
+    setPasswordFieldErrors({});
   };
 
   const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    
     setPasswordFormData({
       ...passwordFormData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    
+    // Clear field error when user starts typing
+    if (passwordFieldErrors[name]) {
+      setPasswordFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear general error when user starts typing
+    if (passwordError) setPasswordError('');
   };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     
+    // Clear previous errors
+    setPasswordError('');
+    setPasswordFieldErrors({});
+    
     // Validation
-    if (passwordFormData.newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters long');
-      return;
+    const errors = {};
+    
+    // New password validation
+    if (!passwordFormData.newPassword) {
+      errors.newPassword = 'New password is required';
+    } else if (passwordFormData.newPassword.length < 6) {
+      errors.newPassword = 'Password must be at least 6 characters long';
     }
     
-    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
-      setPasswordError('Passwords do not match');
+    // Confirm password validation
+    if (!passwordFormData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setPasswordFieldErrors(errors);
       return;
     }
 
     try {
+      // Get the user ID - check for different possible ID field names
+      const userId = selectedUserForPassword.id || selectedUserForPassword._id || selectedUserForPassword.userId;
+      
+      if (!userId) {
+        setPasswordError('Error: Cannot change password - user ID is missing.');
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       await axios.put(
-        `/api/auth/users/${selectedUserForPassword.id}`,
+        `/api/auth/users/${userId}`,
         {
           password: passwordFormData.newPassword
         },
@@ -314,26 +493,17 @@ const ManageAccountTable = () => {
         }
       );
       
-      setPasswordSuccess('Password changed successfully');
-      setTimeout(() => {
-        closePasswordModal();
-      }, 1500);
+      // Show success modal for password change
+      setSuccessTitle('Password Changed!');
+      setSuccessMessage(`${selectedUserForPassword.name}'s password has been updated successfully.`);
+      setShowSuccessModal(true);
+      closePasswordModal();
     } catch (err) {
       setPasswordError(err.response?.data?.message || 'Failed to change password');
     }
   };
 
-  const handleCreateClient = () => {
-    setFormData({
-      name: '',
-      email: '',
-      password: '',
-      role: 'Client',
-      department: 'Client Services',
-    });
-    setOpen(true);
-    setEditMode(false);
-  };
+
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -347,11 +517,7 @@ const ManageAccountTable = () => {
         </div>
       )}
 
-      {success && (
-        <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          {success}
-        </div>
-      )}
+
 
       {/* Search and Filters Section */}
       <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
@@ -489,7 +655,11 @@ const ManageAccountTable = () => {
               {/* Results Count */}
               <div className="flex justify-end items-center">
                 <div className="text-sm text-gray-600">
-                  Showing {filteredData.length} of {(activeTab === 'staff' ? employees : clients).length} accounts
+                  Showing {filteredData.length} of {
+                    activeTab === 'sales' ? salesAccounts.length :
+                    activeTab === 'warehouse' ? warehouseAccounts.length :
+                    clientAccounts.length
+                  } accounts
                 </div>
               </div>
             </div>
@@ -497,25 +667,36 @@ const ManageAccountTable = () => {
         )}
       </div>
 
-      {/* Staff Accounts Tab */}
-      {activeTab === 'staff' && (
-        <StaffAccountsTab
-          employees={filteredData}
+      {/* Sales Department Tab */}
+      {activeTab === 'sales' && (
+        <SalesDepartmentTab
+          accounts={filteredData}
           onEdit={handleEdit}
           onPasswordChange={openPasswordModal}
           onDelete={handleDelete}
-          onCreateNew={handleOpen}
+          onCreateNew={handleCreateSalesAccount}
         />
       )}
 
-      {/* Client Accounts Tab */}
-      {activeTab === 'clients' && (
-        <ClientAccountsTab
-          clients={filteredData}
+      {/* Warehouse Department Tab */}
+      {activeTab === 'warehouse' && (
+        <WarehouseDepartmentTab
+          accounts={filteredData}
           onEdit={handleEdit}
           onPasswordChange={openPasswordModal}
           onDelete={handleDelete}
-          onCreateNew={handleCreateClient}
+          onCreateNew={handleCreateWarehouseAccount}
+        />
+      )}
+
+      {/* Client Services Tab */}
+      {activeTab === 'clients' && (
+        <ClientServicesTab
+          accounts={filteredData}
+          onEdit={handleEdit}
+          onPasswordChange={openPasswordModal}
+          onDelete={handleDelete}
+          onCreateNew={handleCreateClientAccount}
         />
       )}
 
@@ -524,11 +705,10 @@ const ManageAccountTable = () => {
         open={open}
         editMode={editMode}
         formData={formData}
-        availableRoles={availableRoles}
-        availableDepartments={availableDepartments}
-        isLoading={isLoading}
         error={error}
         success={success}
+        fieldErrors={fieldErrors}
+        isSubmitting={isSubmitting}
         onClose={handleClose}
         onSubmit={handleSubmit}
         onChange={handleChange}
@@ -541,6 +721,7 @@ const ManageAccountTable = () => {
         formData={passwordFormData}
         error={passwordError}
         success={passwordSuccess}
+        fieldErrors={passwordFieldErrors}
         onClose={closePasswordModal}
         onSubmit={handlePasswordSubmit}
         onChange={handlePasswordChange}
@@ -557,6 +738,16 @@ const ManageAccountTable = () => {
         loading={isDeleting}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title={successTitle}
+        message={successMessage}
+        autoClose={true}
+        autoCloseDelay={4000}
       />
     </div>
   );

@@ -32,8 +32,9 @@ function Navigation() {
     isSalesAllowed ? {
       name: 'Sales',
       dropdownItems: [
-        { name: 'Customer Orders', link: '/Sales/CustomerOrders' },
-        { name: 'Customer Payments', link: '/Sales/CustomerPayments' },
+        { name: 'Orders', link: '/Sales/Orders' },
+        { name: 'Invoices', link: '/Sales/Invoices' },
+        { name: 'Payments', link: '/Sales/Payments' },
         // { name: 'Sales Quotes', link: '/Sales/SalesQuotes' },
         // { name: 'Sales Order', link: '/Sales/SalesOrder' },
         // { name: 'Sales Invoice', link: '/Sales/SalesInvoice' },
@@ -43,7 +44,7 @@ function Navigation() {
     isPurchasingAllowed ? {
       name: 'Purchasing',
       dropdownItems: [
-        { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
+        // { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
         { name: 'Purchase Order', link: '/Purchasing/PurchaseOrder' },
       ]
     } : null,
@@ -58,7 +59,7 @@ function Navigation() {
               { name: 'Items', link: '/Inventory/Items' },
               { name: 'Unit', link: '/Inventory/Unit' },
               { name: 'Category', link: '/Inventory/Category' },
-              { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
+              // { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
             ]
       )
     } : null,
@@ -111,7 +112,7 @@ function Navigation() {
                   {item.name} <ChevronDown className={`ml-1 mt-1 transition-transform duration-300 ${hoveredItem === index ? 'rotate-180' : ''}`} size={24} />
                 </button>
                 <ul
-                  className={`absolute top-full left-0 bg-white w-56 rounded-md shadow-lg transform transition-all duration-300 z-50 ${
+                  className={`absolute top-full left-0 bg-white w-56 rounded-md shadow-lg transform transition-all duration-300 z-[400] ${
                     hoveredItem === index ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
                   }`}
                 >

@@ -125,14 +125,36 @@ const getCurrentUser = async (req, res, next) => {
 const getAllUsers = async (req, res, next) => {
   try {
     const { User } = getModels();
-    const users = await User.findAll({
+    const { includeInactive, page = 1, limit = 50 } = req.query;
+    
+    // Build where clause based on includeInactive parameter
+    const whereClause = includeInactive === 'true' ? {} : { isActive: true };
+    
+    // Calculate pagination
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    const { count, rows: users } = await User.findAndCountAll({
       attributes: { exclude: ['password'] },
-      order: [['createdAt', 'DESC']]
+      where: whereClause,
+      order: [['createdAt', 'DESC']],
+      limit: limitNum,
+      offset: offset
     });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(count / limitNum);
 
     res.json({
       success: true,
-      data: users
+      data: users,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: totalPages,
+        totalItems: count,
+        itemsPerPage: limitNum
+      }
     });
   } catch (error) {
     next(error);

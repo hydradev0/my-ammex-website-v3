@@ -232,7 +232,7 @@ const PaymentReceiving = () => {
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap- mt-2">
             <div>
-              <h1 className="text-3xl -mx-32 font-bold text-gray-90 ">Customer Payments</h1>
+              <h1 className="text-3xl -mx-32 font-bold text-gray-90 ">Payments</h1>
             </div>
             <button
               onClick={handleManagePaymentMethods}

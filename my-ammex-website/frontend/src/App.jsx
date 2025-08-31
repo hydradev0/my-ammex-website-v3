@@ -10,7 +10,6 @@ import PurchaseOrder from './Pages/Purchasing/PurchaseOrder';
 import Inventory from './Pages/Inventory/Inventory';
 import SalesOrder from './Pages/Sales/SalesOrder';
 import SalesInvoice from './Pages/Sales/SalesInvoice';
-import CustomerOrders from './Pages/Sales/CustomerOrders';
 import AccountManagement from './Pages/Admin/AccountManagement';
 import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
 import Cart from './Components-CustomerPortal/Cart';
@@ -20,7 +19,10 @@ import Invoice from './Components-CustomerPortal/Invoice';
 import ProductSpecs from './Pages/Inventory/ProductSpecs';
 import ProtectedRoute from './Components/ProtectedRoute';
 import Login from './Pages/Auth/Login';
+
+import CustomerOrders from './Pages/Sales/CustomerOrders';
 import CustomerPayments from './Pages/Sales/CustomerPayments';
+import Invoices from './Pages/Sales/Invoices';
 
 function App() {
   return (
@@ -56,7 +58,7 @@ function App() {
 
         {/* Sales - Admin and Sales Marketing */}
         <Route
-          path="Sales/CustomerOrders"
+          path="Sales/Orders"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <CustomerOrders />
@@ -64,7 +66,15 @@ function App() {
           }
         />
         <Route
-          path="Sales/CustomerPayments"
+          path="Sales/Invoices"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <Invoices />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Sales/Payments"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <CustomerPayments />

@@ -16,7 +16,7 @@ const ActionButtons = ({ user, onEdit, onPasswordChange, onDelete }) => {
         Password
       </button>
       <button
-        onClick={() => onDelete(user.id)}
+        onClick={() => onDelete(user)}
         className="rounded-md px-2 py-1 text-red-600 hover:bg-blue-50 hover:text-red-700"
       >
         Delete
