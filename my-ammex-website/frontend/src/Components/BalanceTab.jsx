@@ -1,0 +1,383 @@
+import React, { useState, useEffect } from 'react';
+import { Send, Calendar, DollarSign, CheckCircle } from 'lucide-react';
+import ModernSearchFilter from './ModernSearchFilter';
+import PaginationTable from './PaginationTable';
+import AdvanceActionsDropdown from './AdvanceActionsDropdown';
+import PaymentActionsModal from '../Components-CustomerPayments/PaymentActionsModal';
+
+const BalanceTab = ({ 
+  historyData = [], 
+  searchPlaceholder = "Search balance history...",
+  itemLabel = "balance records",
+  formatCurrency,
+  formatDateTime,
+  onSendReminder,
+  onMarkAsPaid,
+//  customActions = [], // Array of custom action objects
+  onCustomAction // Handler for custom actions  
+}) => {
+  // State management
+  const [filteredHistory, setFilteredHistory] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAction, setSelectedAction] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  
+  // Modal state
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    actionType: null,
+    selectedItem: null
+  });
+
+  // Default formatters if not provided
+  const defaultFormatCurrency = (amount) => `₱${amount.toFixed(2)}`;
+  const defaultFormatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  // Use provided functions or defaults
+  const currencyFn = formatCurrency || defaultFormatCurrency;
+  const dateTimeFn = formatDateTime || defaultFormatDateTime;
+
+  // Balance-specific action color function
+  const getBalanceActionColor = (action) => {
+    switch (action) {
+      case 'Partially paid': return 'text-yellow-600 bg-yellow-100';
+      case 'Overdue': return 'text-red-600 bg-red-100';
+      case 'Unpaid': return 'text-blue-600 bg-blue-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  // Extract unique actions for filtering
+  const uniqueActions = [...new Set(historyData.map(item => item.action))].filter(Boolean);
+
+  // Filter history data
+  useEffect(() => {
+    let filtered = historyData || [];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(item => {
+        const searchFields = [
+          item.customerName,
+          item.invoiceNumber,
+          item.action
+        ].filter(Boolean);
+
+        return searchFields.some(field => 
+          field.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      });
+    }
+
+    // Action filter
+    if (selectedAction !== 'all') {
+      filtered = filtered.filter(item => item.action === selectedAction);
+    }
+
+    // Date range filter
+    if (dateRange.start && dateRange.end) {
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.timestamp);
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        return itemDate >= startDate && itemDate <= endDate;
+      });
+    }
+
+    // Sort by timestamp (most recent first)
+    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    setFilteredHistory(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [historyData, searchTerm, selectedAction, dateRange]);
+
+  // Configure dropdown filters
+  const dropdownFilters = [
+    ...(uniqueActions.length > 0 ? [{
+      id: 'action',
+      value: selectedAction,
+      setValue: setSelectedAction,
+      options: [
+        { value: 'all', label: 'All Actions' },
+        ...uniqueActions.map(action => ({ value: action, label: action }))
+      ]
+    }] : [])
+  ];
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedHistory = filteredHistory.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  // Modal handlers
+  const openModal = (actionType, item) => {
+    setModalState({
+      isOpen: true,
+      actionType,
+      selectedItem: item
+    });
+  };
+
+  const closeModal = () => {
+    setModalState({
+      isOpen: false,
+      actionType: null,
+      selectedItem: null
+    });
+  };
+
+  // Action handler
+  const handleAction = (item, action) => {
+    switch (action) {
+      case 'send_reminder':
+        openModal('send_reminder', item);
+        break;
+      case 'mark_as_paid':
+        openModal('mark_as_paid', item);
+        break;
+      case 'download_pdf':
+        openModal('download_pdf', item);
+        break;
+      default:
+        // Handle custom actions
+        if (onCustomAction) {
+          onCustomAction(item, action);
+        } else {
+          console.log('Unknown action:', action, 'for item:', item);
+        }
+    }
+  };
+
+  // Handle modal confirmations
+  const handleModalConfirm = async (actionType, data) => {
+    try {
+      switch (actionType) {
+        case 'send_reminder':
+          if (onSendReminder) {
+            await onSendReminder(data);
+          }
+          break;
+        case 'mark_as_paid':
+          if (onMarkAsPaid) {
+            await onMarkAsPaid(data);
+          }
+          break;
+        default:
+          console.log('Unknown action type:', actionType);
+      }
+    } catch (error) {
+      console.error('Action failed:', error);
+      throw error; // Re-throw to let the modal handle the error
+    }
+  };
+
+  // Configure quick actions (buttons that appear outside dropdown)
+  const getQuickActions = () => [
+    {
+      key: 'send_reminder',
+      icon: Send,
+      label: 'Send Reminder',
+      title: 'Send Reminder',
+      className: 'text-blue-600 hover:text-blue-900 p-1 rounded transition-colors',
+      condition: (item) => item.action === 'Unpaid' || item.action === 'Overdue' 
+    },
+    {
+      key: 'mark_as_paid',
+      icon: CheckCircle,
+      label: 'Mark as Paid',
+      title: 'Mark as Paid',
+      className: 'text-green-600 hover:text-green-900 p-1 rounded transition-colors ',
+      condition: (item) => item.action === 'Unpaid' || item.action === 'Overdue' || item.action === 'Partially paid'
+    }
+  ];
+
+  return (
+    <div>
+      {/* Search and Filters */}
+      <ModernSearchFilter
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        searchPlaceholder={searchPlaceholder}
+        dropdownFilters={dropdownFilters}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        showDateRange={true}
+        filteredCount={filteredHistory.length}
+        totalCount={historyData.length}
+        itemLabel={itemLabel}
+      />
+
+      {/* Balance Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto ">
+          <table className="min-w-full divide-y divide-gray-200 ">
+            <thead className="bg-gradient-to-bl from-gray-200 to-gray-300 ">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                  Customer & Status
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                  Balance Details
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                  Dates
+                </th>
+                <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {paginatedHistory.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <DollarSign className="w-12 h-12 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No {itemLabel} found</h3>
+                      <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedHistory.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                    {/* Customer & Status */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full inline-flex w-fit mb-2 ${getBalanceActionColor(item.action)}`}>
+                          {item.action}
+                        </span>
+                        <div className="text-sm font-medium text-blue-600">
+                          {item.invoiceNumber}
+                          <div className="text-xs text-gray-600 mt-1">{item.customerName}</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Balance Details */}
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600 space-y-1">
+                        {item.details && (
+                          <>
+                            {item.details.amount && (
+                              <div className="flex items-center">
+                                <span className="font-medium text-green-600">
+                                  Amount: {currencyFn(item.details.amount)}
+                                </span>
+                              </div>
+                            )}
+                            {item.details.previousBalance && item.details.newBalance !== undefined && (
+                              <div className="text-xs">
+                                Balance: {currencyFn(item.details.previousBalance)} → {currencyFn(item.details.newBalance)}
+                              </div>
+                            )}
+                            {item.details.paymentMethod && (
+                              <div className="text-xs">Method: {item.details.paymentMethod}</div>
+                            )}
+                            {item.details.reference && (
+                              <div className="text-xs">Ref: {item.details.reference}</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Dates */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col space-y-1">
+                        
+                        {/* Invoice Date */}
+                        <div className="flex items-center text-xs text-gray-600">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          <span>Invoice: {new Date(item.timestamp).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}</span>
+                        </div>
+                        
+                            {/* Due Date */}
+                            {item.dueDate ? (
+                              <div className="flex items-center text-xs text-gray-600">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                <span>Due: {new Date(item.dueDate).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center text-xs text-gray-400">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                <span>Due: Not set</span>
+                              </div>
+                            )} 
+                            
+                        {/* Overdue indicator */}
+                        {item.dueDate && new Date(item.dueDate) < new Date() && (
+                          <div className="text-xs text-red-600 font-medium">
+                            {Math.ceil((new Date() - new Date(item.dueDate)) / (1000 * 60 * 60 * 24))} days overdue
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                      <AdvanceActionsDropdown
+                        item={item}
+                        quickActions={getQuickActions()}
+                        onAction={handleAction}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {filteredHistory.length > 0 && (
+        <PaginationTable
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredHistory.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          itemsPerPageOptions={[5, 10, 20, 30, 50]}
+          className="mt-4"
+        />
+      )}
+
+      {/* Payment Actions Modal */}
+      <PaymentActionsModal
+        item={modalState.selectedItem}
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        actionType={modalState.actionType}
+        onConfirm={handleModalConfirm}
+        formatCurrency={currencyFn}
+      />
+    </div>
+  );
+};
+
+export default BalanceTab;

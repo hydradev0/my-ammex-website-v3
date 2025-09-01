@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, FileText, Send, CheckCircle } from 'lucide-react';
+import { Settings, FileText, Send, CheckCircle, Clock, Receipt } from 'lucide-react';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import InvoiceTable from './InvoiceTable';
 import InvoiceDetailsModal from './InvoiceDetailsModal';
 import InvoiceActionsModal from './InvoiceActionsModal';
+import HistoryTab from '../Components/HistoryTab';
 
 const ProcessedInvoices = () => {
+  // Tab state
+  const [activeTab, setActiveTab] = useState('current'); // 'current' or 'history'
+  
   // State for invoices - initialize as empty array
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
+  const [invoiceHistory, setInvoiceHistory] = useState([]);
   
-  // Search and filter states
+  // Search and filter states for current invoices
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [balanceFilter, setBalanceFilter] = useState('all'); // all, with_balance, paid
+
   
   // Modal states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -31,13 +35,10 @@ const ProcessedInvoices = () => {
         orderId: 'ORD001',
         customerName: 'ABC Manufacturing Corp',
         customerEmail: 'purchasing@abcmfg.com',
+        customerAddress: '123 Industrial Ave, Manufacturing District, Metro Manila',
         invoiceDate: new Date('2024-01-20').toISOString(),
         dueDate: new Date('2024-02-20').toISOString(),
         totalAmount: 1500.00,
-        paidAmount: 1000.00,
-        balance: 500.00,
-        status: 'partially_paid',
-        paymentStatus: 'Partially Paid',
         items: [
           {
             name: 'Product A',
@@ -57,7 +58,6 @@ const ProcessedInvoices = () => {
           }
         ],
         discountApplied: 0.00,
-        notes: 'Processed from order ORD001 with standard terms',
         createdDate: new Date('2024-01-20').toISOString(),
         lastUpdated: new Date('2024-01-25').toISOString()
       },
@@ -67,13 +67,10 @@ const ProcessedInvoices = () => {
         orderId: 'ORD002',
         customerName: 'XYZ Healthcare Services',
         customerEmail: 'orders@xyzhealthcare.com',
+        customerAddress: '456 Medical Center Blvd, Healthcare Hub, Quezon City',
         invoiceDate: new Date('2024-01-22').toISOString(),
         dueDate: new Date('2024-02-22').toISOString(),
         totalAmount: 2300.00,
-        paidAmount: 0.00,
-        balance: 2300.00,
-        status: 'unpaid',
-        paymentStatus: 'Unpaid',
         items: [
           {
             name: 'Product C',
@@ -93,7 +90,6 @@ const ProcessedInvoices = () => {
           }
         ],
         discountApplied: 0.00,
-        notes: 'Processed from order ORD002 - urgent delivery required',
         createdDate: new Date('2024-01-22').toISOString(),
         lastUpdated: new Date('2024-01-22').toISOString()
       },
@@ -103,13 +99,10 @@ const ProcessedInvoices = () => {
         orderId: 'ORD003',
         customerName: 'DEF Construction Ltd',
         customerEmail: 'procurement@defconstruction.com',
+        customerAddress: '789 Construction Way, Building Complex, Makati City',
         invoiceDate: new Date('2024-01-18').toISOString(),
         dueDate: new Date('2024-02-18').toISOString(),
         totalAmount: 1200.00,
-        paidAmount: 1200.00,
-        balance: 0.00,
-        status: 'paid',
-        paymentStatus: 'Paid',
         items: [
           {
             name: 'Construction Tool A',
@@ -129,7 +122,6 @@ const ProcessedInvoices = () => {
           }
         ],
         discountApplied: 0.00,
-        notes: 'Processed from order ORD003 - bulk discount applied',
         createdDate: new Date('2024-01-18').toISOString(),
         lastUpdated: new Date('2024-01-30').toISOString()
       },
@@ -139,13 +131,10 @@ const ProcessedInvoices = () => {
         orderId: 'ORD004',
         customerName: 'GHI Technology Solutions',
         customerEmail: 'finance@ghitech.com',
+        customerAddress: '321 Tech Park Drive, Innovation Center, Taguig City',
         invoiceDate: new Date('2024-01-25').toISOString(),
         dueDate: new Date('2024-02-25').toISOString(),
         totalAmount: 3500.00,
-        paidAmount: 0.00,
-        balance: 3500.00,
-        status: 'overdue',
-        paymentStatus: 'Overdue',
         items: [
           {
             name: 'Tech Equipment X',
@@ -165,14 +154,89 @@ const ProcessedInvoices = () => {
           }
         ],
         discountApplied: 0.00,
-        notes: 'Processed from order ORD004 - payment overdue, follow up required',
         createdDate: new Date('2024-01-25').toISOString(),
         lastUpdated: new Date('2024-01-25').toISOString()
       }
     ];
 
+    const mockInvoiceHistory = [
+      {
+        id: 'HIST-002',
+        invoiceId: 'INV-001',
+        invoiceNumber: 'INV-2024-001',
+        action: 'Fully Paid',
+        description: 'Full payment of ₱1,500.00 received via Bank Transfer',
+        timestamp: new Date('2024-01-25T14:15:00').toISOString(),
+        details: { amount: 1500.00, paymentMethod: 'Bank Transfer', reference: 'TXN-ABC-001' }
+      },
+      {
+        id: 'HIST-003',
+        invoiceId: 'INV-001',
+        invoiceNumber: 'INV-2024-001',
+        action: 'Marked as Paid',
+        description: 'Invoice marked as paid - full payment received',
+        timestamp: new Date('2024-01-25T14:20:00').toISOString(),
+        details: { previousStatus: 'unpaid', newStatus: 'paid' }
+      },
+      {
+        id: 'HIST-005',
+        invoiceId: 'INV-002',
+        invoiceNumber: 'INV-2024-002',
+        action: 'Fully Paid',
+        description: 'Full payment of ₱2,300.00 received via GCash',
+        timestamp: new Date('2024-02-08T11:30:00').toISOString(),
+        details: { amount: 2300.00, paymentMethod: 'GCash', reference: 'GCASH-XYZ-001' }
+      },
+      {
+        id: 'HIST-006',
+        invoiceId: 'INV-002',
+        invoiceNumber: 'INV-2024-002',
+        action: 'Marked as Paid',
+        description: 'Invoice marked as paid - full payment received',
+        timestamp: new Date('2024-02-08T11:35:00').toISOString(),
+        details: { previousStatus: 'unpaid', newStatus: 'paid' }
+      },
+      {
+        id: 'HIST-008',
+        invoiceId: 'INV-003',
+        invoiceNumber: 'INV-2024-003',
+        action: 'Fully Paid',
+        description: 'Full payment of ₱1,200.00 received via Check',
+        timestamp: new Date('2024-01-30T13:45:00').toISOString(),
+        details: { amount: 1200.00, paymentMethod: 'Check', reference: 'CHK-DEF-001' }
+      },
+      {
+        id: 'HIST-009',
+        invoiceId: 'INV-003',
+        invoiceNumber: 'INV-2024-003',
+        action: 'Marked as Paid',
+        description: 'Invoice marked as paid - full payment received',
+        timestamp: new Date('2024-01-30T13:50:00').toISOString(),
+        details: { previousStatus: 'unpaid', newStatus: 'paid' }
+      },
+      {
+        id: 'HIST-011',
+        invoiceId: 'INV-004',
+        invoiceNumber: 'INV-2024-004',
+        action: 'Fully Paid',
+        description: 'Full payment of ₱3,500.00 received via Maya',
+        timestamp: new Date('2024-02-20T10:15:00').toISOString(),
+        details: { amount: 3500.00, paymentMethod: 'Maya', reference: 'MAYA-GHI-001' }
+      },
+      {
+        id: 'HIST-012',
+        invoiceId: 'INV-004',
+        invoiceNumber: 'INV-2024-004',
+        action: 'Marked as Paid',
+        description: 'Invoice marked as paid - full payment received',
+        timestamp: new Date('2024-02-20T10:20:00').toISOString(),
+        details: { previousStatus: 'unpaid', newStatus: 'paid' }
+      }
+    ];
+
     setInvoices(mockInvoices);
     setFilteredInvoices(mockInvoices);
+    setInvoiceHistory(mockInvoiceHistory);
   }, []);
 
   // Filter invoices based on search and filters
@@ -189,17 +253,7 @@ const ProcessedInvoices = () => {
       );
     }
 
-    // Status filter
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(invoice => invoice.status === selectedStatus);
-    }
 
-    // Balance filter
-    if (balanceFilter === 'with_balance') {
-      filtered = filtered.filter(invoice => invoice.balance > 0);
-    } else if (balanceFilter === 'paid') {
-      filtered = filtered.filter(invoice => invoice.balance === 0);
-    }
 
     // Date range filter
     if (dateRange.start && dateRange.end) {
@@ -212,7 +266,7 @@ const ProcessedInvoices = () => {
     }
 
     setFilteredInvoices(filtered);
-  }, [invoices, searchTerm, selectedStatus, balanceFilter, dateRange]);
+  }, [invoices, searchTerm, dateRange]);
 
   // Invoice action handlers
   const handleViewInvoice = (invoice) => {
@@ -226,34 +280,6 @@ const ProcessedInvoices = () => {
     setShowActionsModal(true);
   };
 
-  const handleMarkAsPaid = (invoiceId) => {
-    const updatedInvoices = invoices.map(invoice => 
-      invoice.id === invoiceId 
-        ? { 
-            ...invoice, 
-            status: 'paid', 
-            paymentStatus: 'Paid',
-            paidAmount: invoice.totalAmount,
-            balance: 0,
-            lastUpdated: new Date().toISOString()
-          } 
-        : invoice
-    );
-    setInvoices(updatedInvoices);
-    closeActionsModal();
-  };
-
-  const handleSendReminder = (invoiceId) => {
-    // In a real app, this would send an email reminder
-    console.log(`Sending reminder for invoice ${invoiceId}`);
-    const updatedInvoices = invoices.map(invoice => 
-      invoice.id === invoiceId 
-        ? { ...invoice, lastUpdated: new Date().toISOString() }
-        : invoice
-    );
-    setInvoices(updatedInvoices);
-    closeActionsModal();
-  };
 
   const closeDetailsModal = () => {
     setShowDetailsModal(false);
@@ -266,16 +292,7 @@ const ProcessedInvoices = () => {
     setActionType('');
   };
 
-  // Utility functions
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'paid': return 'text-green-600 bg-green-100';
-      case 'partially_paid': return 'text-yellow-600 bg-yellow-100';
-      case 'unpaid': return 'text-blue-600 bg-blue-100';
-      case 'overdue': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
+
 
   const formatCurrency = (amount) => {
     return `₱${amount.toFixed(2)}`;
@@ -285,21 +302,22 @@ const ProcessedInvoices = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // History-specific utility functions
+  const getInvoiceActionColor = (action) => {
+    switch (action) {
+      case 'Fully Paid': return 'text-green-600 bg-green-100';
+      case 'Marked as Paid': return 'text-orange-600 bg-orange-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
   // Configure dropdown filters for ModernSearchFilter component
-  const dropdownFilters = [
-    {
-      id: 'status',
-      value: selectedStatus,
-      setValue: setSelectedStatus,
-      options: [
-        { value: 'all', label: 'All Status' },
-        { value: 'paid', label: 'Paid' },
-        { value: 'partially_paid', label: 'Partially Paid' },
-        { value: 'unpaid', label: 'Unpaid' },
-        { value: 'overdue', label: 'Overdue' }
-      ]
-    },
-  ];
+  const dropdownFilters = [];
 
   return (
     <>
@@ -322,29 +340,81 @@ const ProcessedInvoices = () => {
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <ModernSearchFilter
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          searchPlaceholder="Search invoices, customers, order IDs..."
-          dropdownFilters={dropdownFilters}
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-          showDateRange={true}
-          filteredCount={filteredInvoices.length}
-          totalCount={invoices.length}
-          itemLabel="invoices"
-        />
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('current')}
+                className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'current'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Receipt className="w-4 h-4" />
+                Current Invoices
+                <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs">
+                  {filteredInvoices.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'history'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                Invoice History
+              </button>
+            </nav>
+          </div>
+        </div>
 
-        {/* Invoices Table */}
-        <InvoiceTable
-          invoices={filteredInvoices}
-          onViewInvoice={handleViewInvoice}
-          onInvoiceAction={handleInvoiceAction}
-          getStatusColor={getStatusColor}
-          formatCurrency={formatCurrency}
-          formatDate={formatDate}
-        />
+        {/* Current Invoices Tab Content */}
+        {activeTab === 'current' && (
+          <>
+            {/* Search and Filters */}
+            <ModernSearchFilter
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              searchPlaceholder="Search invoices, customers, order IDs..."
+              dropdownFilters={dropdownFilters}
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              showDateRange={true}
+              filteredCount={filteredInvoices.length}
+              totalCount={invoices.length}
+              itemLabel="invoices"
+            />
+
+            {/* Invoices Table */}
+            <InvoiceTable
+              invoices={filteredInvoices}
+              onViewInvoice={handleViewInvoice}
+              onInvoiceAction={handleInvoiceAction}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+            />
+          </>
+        )}
+
+        {/* History Tab Content */}
+        {activeTab === 'history' && (
+          <HistoryTab
+            historyData={invoiceHistory}
+            title="Invoice History"
+            searchPlaceholder="Search invoice history..."
+            itemLabel="invoice history"
+            getActionColor={getInvoiceActionColor}
+            formatCurrency={formatCurrency}
+            formatDateTime={formatDateTime}
+            entityTypes={[...new Set(invoiceHistory.map(item => item.invoiceNumber))]}
+            actionTypes={[...new Set(invoiceHistory.map(item => item.action))]}
+          />
+        )}
       </div>
 
       {/* Modals */}
@@ -354,7 +424,6 @@ const ProcessedInvoices = () => {
         onClose={closeDetailsModal}
         formatCurrency={formatCurrency}
         formatDate={formatDate}
-        getStatusColor={getStatusColor}
       />
       
       <InvoiceActionsModal
@@ -362,9 +431,6 @@ const ProcessedInvoices = () => {
         isOpen={showActionsModal}
         onClose={closeActionsModal}
         actionType={actionType}
-        onMarkAsPaid={handleMarkAsPaid}
-        onSendReminder={handleSendReminder}
-        formatCurrency={formatCurrency}
       />
     </>
   );

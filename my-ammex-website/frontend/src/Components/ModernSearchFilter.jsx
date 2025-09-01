@@ -140,7 +140,7 @@ const ModernSearchFilter = ({
                     {filter.options.find(option => option.value === filter.value)?.label || filter.options[0]?.label}
                   </span>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${openDropdowns[filter.id] ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openDropdowns[filter.id] ? 'rotate-180' : ''}`} />
               </button>
               
               {openDropdowns[filter.id] && (
