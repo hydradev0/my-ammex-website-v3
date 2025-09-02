@@ -3,7 +3,7 @@ import { X, User, MapPin, Mail, Phone } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
-function RecordsModal({ isOpen = true, onClose, onSubmit }) {
+function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
   // State for form fields
   const [formData, setFormData] = useState({
     companyName: '',
@@ -107,7 +107,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit }) {
           {/* Header */}
           <div className="flex justify-between items-center p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-gray-800">Add New Customer</h2>
+              <h2 className="text-2xl font-bold text-gray-800">Add New {title}</h2>
             </div>
             
             <button 

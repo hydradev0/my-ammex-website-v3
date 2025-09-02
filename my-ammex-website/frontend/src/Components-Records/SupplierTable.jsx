@@ -389,6 +389,7 @@ function SupplierTable() {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSubmit={handleAddSupplier}
+          title="Supplier"
         />
 
         {/* View Supplier Modal */}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Calendar, DollarSign, CheckCircle } from 'lucide-react';
-import ModernSearchFilter from './ModernSearchFilter';
-import PaginationTable from './PaginationTable';
-import AdvanceActionsDropdown from './AdvanceActionsDropdown';
-import PaymentActionsModal from '../Components-CustomerPayments/PaymentActionsModal';
+import ModernSearchFilter from '../Components/ModernSearchFilter';
+import PaginationTable from '../Components/PaginationTable';
+import AdvanceActionsDropdown from '../Components/AdvanceActionsDropdown';
+import PaymentActionsModal from './PaymentActionsModal';
 
 const BalanceTab = ({ 
   historyData = [], 
@@ -13,8 +13,7 @@ const BalanceTab = ({
   formatDateTime,
   onSendReminder,
   onMarkAsPaid,
-//  customActions = [], // Array of custom action objects
-  onCustomAction // Handler for custom actions  
+  onCustomAction
 }) => {
   // State management
   const [filteredHistory, setFilteredHistory] = useState([]);
@@ -224,9 +223,9 @@ const BalanceTab = ({
 
       {/* Balance Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto ">
-          <table className="min-w-full divide-y divide-gray-200 ">
-            <thead className="bg-gradient-to-bl from-gray-200 to-gray-300 ">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
                   Customer & Status
@@ -300,7 +299,6 @@ const BalanceTab = ({
                     {/* Dates */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col space-y-1">
-                        
                         {/* Invoice Date */}
                         <div className="flex items-center text-xs text-gray-600">
                           <Calendar className="w-3 h-3 mr-1" />
@@ -311,23 +309,23 @@ const BalanceTab = ({
                             })}</span>
                         </div>
                         
-                            {/* Due Date */}
-                            {item.dueDate ? (
-                              <div className="flex items-center text-xs text-gray-600">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                <span>Due: {new Date(item.dueDate).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center text-xs text-gray-400">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                <span>Due: Not set</span>
-                              </div>
-                            )} 
-                            
+                        {/* Due Date */}
+                        {item.dueDate ? (
+                          <div className="flex items-center text-xs text-gray-600">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            <span>Due: {new Date(item.dueDate).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-xs text-gray-400">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            <span>Due: Not set</span>
+                          </div>
+                        )} 
+                        
                         {/* Overdue indicator */}
                         {item.dueDate && new Date(item.dueDate) < new Date() && (
                           <div className="text-xs text-red-600 font-medium">

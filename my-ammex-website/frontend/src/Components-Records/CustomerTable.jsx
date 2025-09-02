@@ -391,6 +391,7 @@ function CustomerTable() {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSubmit={handleAddCustomer}
+          title="Customer"
         />
 
         {/* View Customer Modal */}

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, FileText, Send, CheckCircle, Clock, Receipt } from 'lucide-react';
+import { FileText, Clock, Receipt } from 'lucide-react';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import InvoiceTable from './InvoiceTable';
 import InvoiceDetailsModal from './InvoiceDetailsModal';
 import InvoiceActionsModal from './InvoiceActionsModal';
-import HistoryTab from '../Components/HistoryTab';
+import InvoiceHistoryTab from './InvoiceHistoryTab';
 
 const ProcessedInvoices = () => {
   // Tab state
@@ -13,11 +13,16 @@ const ProcessedInvoices = () => {
   // State for invoices - initialize as empty array
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [invoiceHistory, setInvoiceHistory] = useState([]);
+  const [completedInvoices, setCompletedInvoices] = useState([]);
   
   // Search and filter states for current invoices
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  
+  // Search and filter states for history tab
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
+  const [historyDateRange, setHistoryDateRange] = useState({ start: '', end: '' });
+  const [filteredCompletedInvoices, setFilteredCompletedInvoices] = useState([]);
 
   
   // Modal states
@@ -154,89 +159,21 @@ const ProcessedInvoices = () => {
           }
         ],
         discountApplied: 0.00,
-        createdDate: new Date('2024-01-25').toISOString(),
+                createdDate: new Date('2024-01-25').toISOString(),
         lastUpdated: new Date('2024-01-25').toISOString()
       }
     ];
 
-    const mockInvoiceHistory = [
-      {
-        id: 'HIST-002',
-        invoiceId: 'INV-001',
-        invoiceNumber: 'INV-2024-001',
-        action: 'Fully Paid',
-        description: 'Full payment of ₱1,500.00 received via Bank Transfer',
-        timestamp: new Date('2024-01-25T14:15:00').toISOString(),
-        details: { amount: 1500.00, paymentMethod: 'Bank Transfer', reference: 'TXN-ABC-001' }
-      },
-      {
-        id: 'HIST-003',
-        invoiceId: 'INV-001',
-        invoiceNumber: 'INV-2024-001',
-        action: 'Marked as Paid',
-        description: 'Invoice marked as paid - full payment received',
-        timestamp: new Date('2024-01-25T14:20:00').toISOString(),
-        details: { previousStatus: 'unpaid', newStatus: 'paid' }
-      },
-      {
-        id: 'HIST-005',
-        invoiceId: 'INV-002',
-        invoiceNumber: 'INV-2024-002',
-        action: 'Fully Paid',
-        description: 'Full payment of ₱2,300.00 received via GCash',
-        timestamp: new Date('2024-02-08T11:30:00').toISOString(),
-        details: { amount: 2300.00, paymentMethod: 'GCash', reference: 'GCASH-XYZ-001' }
-      },
-      {
-        id: 'HIST-006',
-        invoiceId: 'INV-002',
-        invoiceNumber: 'INV-2024-002',
-        action: 'Marked as Paid',
-        description: 'Invoice marked as paid - full payment received',
-        timestamp: new Date('2024-02-08T11:35:00').toISOString(),
-        details: { previousStatus: 'unpaid', newStatus: 'paid' }
-      },
-      {
-        id: 'HIST-008',
-        invoiceId: 'INV-003',
-        invoiceNumber: 'INV-2024-003',
-        action: 'Fully Paid',
-        description: 'Full payment of ₱1,200.00 received via Check',
-        timestamp: new Date('2024-01-30T13:45:00').toISOString(),
-        details: { amount: 1200.00, paymentMethod: 'Check', reference: 'CHK-DEF-001' }
-      },
-      {
-        id: 'HIST-009',
-        invoiceId: 'INV-003',
-        invoiceNumber: 'INV-2024-003',
-        action: 'Marked as Paid',
-        description: 'Invoice marked as paid - full payment received',
-        timestamp: new Date('2024-01-30T13:50:00').toISOString(),
-        details: { previousStatus: 'unpaid', newStatus: 'paid' }
-      },
-      {
-        id: 'HIST-011',
-        invoiceId: 'INV-004',
-        invoiceNumber: 'INV-2024-004',
-        action: 'Fully Paid',
-        description: 'Full payment of ₱3,500.00 received via Maya',
-        timestamp: new Date('2024-02-20T10:15:00').toISOString(),
-        details: { amount: 3500.00, paymentMethod: 'Maya', reference: 'MAYA-GHI-001' }
-      },
-      {
-        id: 'HIST-012',
-        invoiceId: 'INV-004',
-        invoiceNumber: 'INV-2024-004',
-        action: 'Marked as Paid',
-        description: 'Invoice marked as paid - full payment received',
-        timestamp: new Date('2024-02-20T10:20:00').toISOString(),
-        details: { previousStatus: 'unpaid', newStatus: 'paid' }
-      }
-    ];
+    // Create completed invoices from the mock data (marking them as completed)
+    const mockCompletedInvoices = mockInvoices.map(invoice => ({
+      ...invoice,
+      status: 'completed'
+    }));
 
     setInvoices(mockInvoices);
     setFilteredInvoices(mockInvoices);
-    setInvoiceHistory(mockInvoiceHistory);
+    setCompletedInvoices(mockCompletedInvoices);
+    setFilteredCompletedInvoices(mockCompletedInvoices);
   }, []);
 
   // Filter invoices based on search and filters
@@ -253,8 +190,6 @@ const ProcessedInvoices = () => {
       );
     }
 
-
-
     // Date range filter
     if (dateRange.start && dateRange.end) {
       filtered = filtered.filter(invoice => {
@@ -267,6 +202,33 @@ const ProcessedInvoices = () => {
 
     setFilteredInvoices(filtered);
   }, [invoices, searchTerm, dateRange]);
+
+  // Filter completed invoices based on search and filters
+  useEffect(() => {
+    let filtered = completedInvoices || [];
+
+    // Search filter
+    if (historySearchTerm) {
+      filtered = filtered.filter(invoice => 
+        invoice.customerName.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
+        invoice.invoiceNumber.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
+        invoice.orderId.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
+        invoice.customerEmail.toLowerCase().includes(historySearchTerm.toLowerCase())
+      );
+    }
+
+    // Date range filter
+    if (historyDateRange.start && historyDateRange.end) {
+      filtered = filtered.filter(invoice => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        const startDate = new Date(historyDateRange.start);
+        const endDate = new Date(historyDateRange.end);
+        return invoiceDate >= startDate && invoiceDate <= endDate;
+      });
+    }
+
+    setFilteredCompletedInvoices(filtered);
+  }, [completedInvoices, historySearchTerm, historyDateRange]);
 
   // Invoice action handlers
   const handleViewInvoice = (invoice) => {
@@ -302,22 +264,12 @@ const ProcessedInvoices = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // History-specific utility functions
-  const getInvoiceActionColor = (action) => {
-    switch (action) {
-      case 'Fully Paid': return 'text-green-600 bg-green-100';
-      case 'Marked as Paid': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  };
 
   // Configure dropdown filters for ModernSearchFilter component
   const dropdownFilters = [];
+
+
 
   return (
     <>
@@ -403,17 +355,30 @@ const ProcessedInvoices = () => {
 
         {/* History Tab Content */}
         {activeTab === 'history' && (
-          <HistoryTab
-            historyData={invoiceHistory}
-            title="Invoice History"
-            searchPlaceholder="Search invoice history..."
-            itemLabel="invoice history"
-            getActionColor={getInvoiceActionColor}
-            formatCurrency={formatCurrency}
-            formatDateTime={formatDateTime}
-            entityTypes={[...new Set(invoiceHistory.map(item => item.invoiceNumber))]}
-            actionTypes={[...new Set(invoiceHistory.map(item => item.action))]}
-          />
+          <>
+            {/* Search and Filters for History */}
+            <ModernSearchFilter
+              searchTerm={historySearchTerm}
+              setSearchTerm={setHistorySearchTerm}
+              searchPlaceholder="Search completed invoices..."
+              dropdownFilters={dropdownFilters}
+              dateRange={historyDateRange}
+              setDateRange={setHistoryDateRange}
+              showDateRange={true}
+              filteredCount={filteredCompletedInvoices.length}
+              totalCount={completedInvoices.length}
+              itemLabel="completed invoices"
+            />
+
+            {/* Completed Invoices Table */}
+            <InvoiceHistoryTab
+              invoices={filteredCompletedInvoices}
+              onViewInvoice={handleViewInvoice}
+              onInvoiceAction={handleInvoiceAction}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+            />
+          </>
         )}
       </div>
 
@@ -424,6 +389,7 @@ const ProcessedInvoices = () => {
         onClose={closeDetailsModal}
         formatCurrency={formatCurrency}
         formatDate={formatDate}
+        action
       />
       
       <InvoiceActionsModal

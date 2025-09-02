@@ -80,7 +80,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
       name: item.itemName,
       category: item.category?.name || 'Uncategorized',
       price: parseFloat(item.price) || 0,
-      image: '/Resource/icons8-purchase-order-80.png', // Default image
+      image: 'Undefined', // Default image
       alt: item.itemName,
       stock: item.quantity || 0,
       itemCode: item.itemCode,

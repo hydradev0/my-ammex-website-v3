@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Eye, Calendar, DollarSign, Download, Printer } from 'lucide-react';
+import { Eye, Calendar, DollarSign, CheckCircle, Download } from 'lucide-react';
 import PaginationTable from '../Components/PaginationTable';
 import AdvanceActionsDropdown from '../Components/AdvanceActionsDropdown';
 
-const InvoiceTable = ({
+const InvoiceHistoryTab = ({
   invoices = [],
   onViewInvoice,
   onInvoiceAction,
@@ -48,9 +48,8 @@ const InvoiceTable = ({
 
   // Configure dropdown actions
   const getDropdownActions = () => [
-    { key: 'print', label: 'Print', icon: Printer },
+    { key: 'download_pdf', label: 'Download PDF', icon: Download },
   ];
-
 
   return (
     <>
@@ -71,6 +70,9 @@ const InvoiceTable = ({
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
                   Amount
                 </th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                  Status
+                </th>
                 <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
                   Actions
                 </th>
@@ -79,11 +81,11 @@ const InvoiceTable = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center">
                       <DollarSign className="w-12 h-12 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No invoices found</h3>
-                      <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No completed invoices found</h3>
+                      <p className="text-gray-500">No invoice history available.</p>
                     </div>
                   </td>
                 </tr>
@@ -129,7 +131,6 @@ const InvoiceTable = ({
                             <Calendar className="w-3 h-3 mr-1" />
                             <span>Due: {formatDate(invoice.dueDate)}</span>
                           </div>
-                          
                         </div>
                       </td>
 
@@ -142,6 +143,14 @@ const InvoiceTable = ({
                           <div className="text-xs text-gray-500">
                             {invoice.items.length} items
                           </div>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                          <span className="text-sm font-medium text-green-700">Completed</span>
                         </div>
                       </td>
 
@@ -178,4 +187,4 @@ const InvoiceTable = ({
   );
 };
 
-export default InvoiceTable;
+export default InvoiceHistoryTab;

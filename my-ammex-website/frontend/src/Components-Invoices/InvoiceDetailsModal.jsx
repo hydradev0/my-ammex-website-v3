@@ -18,7 +18,7 @@ const InvoiceDetailsModal = ({
     <>
       <ScrollLock active={isOpen} />
       <div className="fixed inset-0 bg-black/50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-                 <div 
+        <div 
            className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh]"
            style={{ transform: 'scale(0.80)', transformOrigin: 'center' }}
          >
@@ -39,8 +39,8 @@ const InvoiceDetailsModal = ({
             </button>
           </div>
 
-                     {/* Content */}
-           <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+          {/* Content */}
+           <div className="p-6 space-y-6 overflow-y-auto mr-1 max-h-[calc(90vh-100px)]">
             {/* Invoice Summary Card */}
             <div className="bg-blue-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
@@ -207,11 +207,6 @@ const InvoiceDetailsModal = ({
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               Close
-            </button>
-            <button
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              Download PDF
             </button>
           </div>
         </div>

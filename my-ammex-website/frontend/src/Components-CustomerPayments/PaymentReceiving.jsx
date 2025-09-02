@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Clock, DollarSign, Receipt, Download } from 'lucide-react';
+import { Settings, Clock, DollarSign, Receipt } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import PaymentTable from './PaymentTable';
 import PaymentApprovalModal from './PaymentApprovalModal';
 import PaymentMethodsManager from './PaymentMethodsManager';
-import BalanceTab from '../Components/BalanceTab';
-import HistoryTab from '../Components/HistoryTab';
+import PaymentHistoryTab from './PaymentHistoryTab';
+import BalanceTab from './BalanceTab';
 
 const PaymentReceiving = () => {
   // Tab state
@@ -388,16 +388,6 @@ const PaymentReceiving = () => {
     // Add logic to download PDF
   };
 
-  // Action color function for payment history
-  const getPaymentHistoryActionColor = (action) => {
-    switch (action) {
-      case 'Payment Completed': return 'text-green-600 bg-green-100';
-      case 'Payment Approved': return 'text-blue-600 bg-blue-100';
-      case 'Payment Processed': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
   // Configure dropdown filters for ModernSearchFilter component
   const dropdownFilters = [
     {
@@ -413,6 +403,16 @@ const PaymentReceiving = () => {
       ]
     }
   ];
+
+  const handlePaymentHistoryAction = (item, action) => {
+    if (action === 'download_pdf') {
+      handleDownloadPDF(item);
+    } else if (action === 'view_details') {
+      console.log('Viewing payment details:', item);
+    } else if (action === 'export_record') {
+      console.log('Exporting payment record:', item);
+    }
+  };
 
   return (
     <>
@@ -522,21 +522,14 @@ const PaymentReceiving = () => {
 
           {/* Payment History Tab Content */}
           {activeTab === 'history' && (
-            <HistoryTab
+            <PaymentHistoryTab
               historyData={paymentHistory}
               searchPlaceholder="Search payment history..."
               itemLabel="payment records"
               formatCurrency={formatCurrency}
               formatDateTime={formatDateTime}
-              getActionColor={getPaymentHistoryActionColor}
-              actions={[
-                {
-                  icon: Download,
-                  label: 'Download PDF',
-                  onClick: handleDownloadPDF,
-                  className: 'text-green-600 hover:text-green-900'
-                }
-              ]}
+              onCustomAction={handlePaymentHistoryAction}
+              tabType="history"
             />
           )}
       </div>

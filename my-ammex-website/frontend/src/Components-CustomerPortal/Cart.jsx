@@ -354,10 +354,10 @@ useEffect(() => {
                 <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900">{item.name}</h4>
-                    <p className="text-sm text-gray-500">Qty: {item.quantity} × ${item.price.toLocaleString()}</p>
+                    <p className="text-sm text-gray-500">Qty: {item.quantity} × {item.price.toLocaleString()}</p>
                   </div>
                   <div className="text-right ml-4">
-                    <p className="font-semibold text-gray-900">${(item.price * item.quantity).toLocaleString()}</p>
+                    <p className="font-semibold text-gray-900">₱{(item.price * item.quantity).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -370,7 +370,7 @@ useEffect(() => {
           <div className="border-b border-gray-200 pb-4 mb-4">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
-              <span className="text-xl font-bold text-gray-900">${getSelectedTotalPrice().toLocaleString()}</span>
+              <span className="text-xl font-bold text-gray-900">₱{getSelectedTotalPrice().toLocaleString()}</span>
             </div>
           </div>
 
@@ -617,7 +617,7 @@ useEffect(() => {
                             
                             <div className="flex items-center gap-4">
                               <span className="text-lg font-semibold text-gray-900">
-                                ${(item.price * item.quantity).toLocaleString()}
+                                ₱{(item.price * item.quantity).toLocaleString()}
                               </span>
                               <button
                                 onClick={() => handleRemoveItemClick(item.id)}
@@ -651,7 +651,7 @@ useEffect(() => {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
                     <span>Selected ({getSelectedTotalItems()} items)</span>
-                    <span>${getSelectedTotalPrice().toLocaleString()}</span>
+                    <span>₱{getSelectedTotalPrice().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
@@ -660,7 +660,7 @@ useEffect(() => {
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between text-lg font-semibold text-gray-900">
                       <span>Total</span>
-                      <span>${getSelectedTotalPrice().toLocaleString()}</span>
+                      <span>₱{getSelectedTotalPrice().toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

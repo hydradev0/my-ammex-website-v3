@@ -134,7 +134,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
 
                   {/* Price */}
                   <div className="flex items-center space-x-3 lg:space-x-4">
-                    <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">${product.price.toLocaleString()}</span>
+                    <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">₱{product.price.toLocaleString()}</span>
                     {/* Discounted Price */}
                     {/* <span className="text-sm text-gray-500 line-through">${(product.price * 1.2).toLocaleString()}</span>
                     <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-semibold">20% OFF</span> */}
@@ -207,7 +207,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
                   <div className="space-y-2 lg:space-y-3 pt-2 lg:pt-4 border-t border-gray-200">
                     <div className="flex items-center space-x-2 lg:space-x-3">
                       <RotateCcw className="w-3 h-3 lg:w-5 lg:h-5 text-orange-600" />
-                      <span className="text-xs lg:text-sm text-gray-600">30-day return policy</span>
+                     <span className="text-xs lg:text-sm text-gray-600"></span>
                     </div>
                   </div>
 
