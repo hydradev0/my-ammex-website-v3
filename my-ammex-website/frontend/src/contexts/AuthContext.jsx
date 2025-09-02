@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { initializeCartFromDatabase } from '../services/cartService';
 
 // Set axios base URL to point to backend
 axios.defaults.baseURL = 'http://localhost:5000';
@@ -33,7 +34,16 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.get('/api/auth/me');
       if (response.data.success) {
-        setUser(response.data.data);
+        const currentUser = response.data.data;
+        setUser(currentUser);
+        // Initialize cart from DB for clients
+        if (currentUser?.role === 'Client' && currentUser?.customerPk) {
+          try {
+            // Clear any stale local cart first
+            localStorage.removeItem('customerCart');
+            await initializeCartFromDatabase(currentUser.customerPk);
+          } catch (_) {}
+        }
       } else {
         logout();
       }
@@ -62,6 +72,14 @@ export const AuthProvider = ({ children }) => {
         setToken(newToken);
         setUser(userData);
         
+        // On login, clear any stale cart and initialize from DB for clients
+        try {
+          localStorage.removeItem('customerCart');
+          if (userData?.role === 'Client' && userData?.customerPk) {
+            await initializeCartFromDatabase(userData.customerPk);
+          }
+        } catch (_) {}
+        
         return { success: true, user: userData };
       }
     } catch (error) {
@@ -73,6 +91,7 @@ export const AuthProvider = ({ children }) => {
     // Clear localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('customerCart');
     
     // Clear axios header
     delete axios.defaults.headers.common['Authorization'];

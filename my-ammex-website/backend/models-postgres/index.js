@@ -364,7 +364,7 @@ const initializeModels = (sequelize) => {
     },
     customerName: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       validate: {
         notEmpty: { msg: 'Company name is required' }
       }
@@ -391,7 +391,7 @@ const initializeModels = (sequelize) => {
     },
     telephone1: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       validate: {
         notEmpty: { msg: 'Telephone 1 is required' }
       }
@@ -402,7 +402,7 @@ const initializeModels = (sequelize) => {
     },
     email1: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       validate: {
         isEmail: { msg: 'Please add a valid email' },
         notEmpty: { msg: 'Email 1 is required' }
@@ -425,6 +425,19 @@ const initializeModels = (sequelize) => {
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
+    },
+    profileCompleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      unique: true,
+      allowNull: true,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
     }
   }, {
     timestamps: true,
@@ -675,6 +688,16 @@ const initializeModels = (sequelize) => {
   });
 
   // Customer relationships
+  User.hasOne(Customer, {
+    foreignKey: 'userId',
+    as: 'customer'
+  });
+
+  Customer.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'user'
+  });
+
   Customer.hasMany(Order, {
     foreignKey: 'customerId',
     as: 'orders'

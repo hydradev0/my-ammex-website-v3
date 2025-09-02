@@ -1,5 +1,20 @@
 const { getModels } = require('../config/db');
 const { Op } = require('sequelize');
+// Get current user's customer
+const getMyCustomer = async (req, res, next) => {
+  try {
+    const { Customer } = getModels();
+    const customer = await Customer.findOne({ where: { userId: req.user.id } });
+
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    res.json({ success: true, data: customer });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Get all customers
 const getAllCustomers = async (req, res, next) => {
@@ -105,7 +120,7 @@ const updateCustomer = async (req, res, next) => {
   try {
     const { Customer } = getModels();
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = req.body || {};
 
     const customer = await Customer.findByPk(id);
     if (!customer) {
@@ -132,7 +147,28 @@ const updateCustomer = async (req, res, next) => {
       }
     }
 
-    await customer.update(updateData);
+    // Sanitize: convert empty strings to null to satisfy allowNull validators
+    const fields = [
+      'customerName','street','city','postalCode','country','contactName',
+      'telephone1','telephone2','email1','email2','notes'
+    ];
+    const sanitized = {};
+    for (const key of fields) {
+      if (Object.prototype.hasOwnProperty.call(updateData, key)) {
+        const value = updateData[key];
+        sanitized[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
+      }
+    }
+
+    // Compute profileCompleted on server based on required fields
+    const computedCompleted = !!(
+      (sanitized.customerName ?? customer.customerName) &&
+      (sanitized.telephone1 ?? customer.telephone1) &&
+      (sanitized.email1 ?? customer.email1)
+    );
+    sanitized.profileCompleted = computedCompleted;
+
+    await customer.update(sanitized);
 
     res.json({
       success: true,
@@ -221,5 +257,6 @@ module.exports = {
   updateCustomer,
   deleteCustomer,
   getCustomerStats,
+  getMyCustomer,
 
 }; 

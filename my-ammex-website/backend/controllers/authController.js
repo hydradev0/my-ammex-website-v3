@@ -13,7 +13,7 @@ const generateToken = (id) => {
 // Register new user (admin only)
 const registerUser = async (req, res, next) => {
   try {
-    const { User } = getModels();
+    const { User, Customer } = getModels();
     const { name, email, password, role, department } = req.body;
 
     // Check if user exists
@@ -34,6 +34,16 @@ const registerUser = async (req, res, next) => {
       department
     });
 
+    // If role is Client, auto-create linked Customer stub
+    let customer = null;
+    if (user.role === 'Client') {
+      customer = await Customer.create({
+        userId: user.id,
+        // allow stub with mostly nulls; customerId will be set by hook
+        isActive: true
+      });
+    }
+
     res.status(201).json({
       success: true,
       data: {
@@ -41,7 +51,9 @@ const registerUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        department: user.department
+        department: user.department,
+        customerPk: customer ? customer.id : null,
+        customerId: customer ? customer.customerId : null
       }
     });
   } catch (error) {
@@ -52,7 +64,7 @@ const registerUser = async (req, res, next) => {
 // Login user
 const loginUser = async (req, res, next) => {
   try {
-    const { User } = getModels();
+    const { User, Customer } = getModels();
     const { email, password } = req.body;
     const emailTrimmed = (email || '').trim();
 
@@ -88,6 +100,9 @@ const loginUser = async (req, res, next) => {
     // Create token
     const token = generateToken(user.id);
 
+    // Load linked customer
+    const customer = await Customer.findOne({ where: { userId: user.id } });
+
     res.json({
       success: true,
       token,
@@ -96,7 +111,9 @@ const loginUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        department: user.department
+        department: user.department,
+        customerPk: customer ? customer.id : null,
+        customerId: customer ? customer.customerId : null
       }
     });
   } catch (error) {
@@ -107,14 +124,30 @@ const loginUser = async (req, res, next) => {
 // Get current user
 const getCurrentUser = async (req, res, next) => {
   try {
-    const { User } = getModels();
+    const { User, Customer } = getModels();
     const user = await User.findByPk(req.user.id, {
       attributes: { exclude: ['password'] }
     });
 
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const customer = await Customer.findOne({ where: { userId: user.id } });
+
     res.json({
       success: true,
-      data: user
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin,
+        customerPk: customer ? customer.id : null,
+        customerId: customer ? customer.customerId : null
+      }
     });
   } catch (error) {
     next(error);

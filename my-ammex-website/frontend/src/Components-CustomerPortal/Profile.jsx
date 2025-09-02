@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Edit, Save, X, User, Building, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
-import { getCustomers, getCustomerById, updateCustomer } from '../services/customerService';
+import { getCustomers, getCustomerById, updateCustomer, getMyCustomer } from '../services/customerService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { customerId } = useParams(); // Get customer ID from URL params
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,51 +35,79 @@ const Profile = () => {
 
   const [editData, setEditData] = useState({ ...userData });
 
-  // Fetch customer data on component mount
+  // Fetch customer data on component mount (client loads own record; admin uses URL param)
   useEffect(() => {
     const fetchCustomerData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Use customer ID from URL params, or fallback to a default for demo
-        const customerIdToSearch = customerId || 'CUST0002';
-        
-        // First, search for the customer by customerId string
-        const searchResponse = await getCustomers({ search: customerIdToSearch });
-        
-        if (searchResponse.success && searchResponse.data.length > 0) {
-          // Find the exact match
-          const customer = searchResponse.data.find(c => 
-            c.customerId === customerIdToSearch
-          );
-          
-          if (customer) {
+
+        if (user?.role === 'Client') {
+          const me = await getMyCustomer();
+          if (me.success && me.data) {
+            const c = me.data;
             const formattedData = {
-              id: customer.id, // Numeric primary key
-              customerId: customer.customerId || '',
-              customerName: customer.customerName || '',
-              contactName: customer.contactName || '',
-              street: customer.street || '',
-              city: customer.city || '',
-              postalCode: customer.postalCode || '',
-              country: customer.country || '',
-              telephone1: customer.telephone1 || '',
-              telephone2: customer.telephone2 || '',
-              email1: customer.email1 || '',
-              email2: customer.email2 || '',
-              balance: customer.balance || 0,
-              notes: customer.notes || '',
-              isActive: customer.isActive !== undefined ? customer.isActive : true
+              id: c.id,
+              customerId: c.customerId || '',
+              customerName: c.customerName || '',
+              contactName: c.contactName || '',
+              street: c.street || '',
+              city: c.city || '',
+              postalCode: c.postalCode || '',
+              country: c.country || '',
+              telephone1: c.telephone1 || '',
+              telephone2: c.telephone2 || '',
+              email1: c.email1 || '',
+              email2: c.email2 || '',
+              balance: c.balance || 0,
+              notes: c.notes || '',
+              isActive: c.isActive !== undefined ? c.isActive : true
             };
-            
             setUserData(formattedData);
             setEditData(formattedData);
+            // Force edit mode if required fields are missing
+            if (!formattedData.customerName || !formattedData.telephone1 || !formattedData.email1) {
+              setIsEditing(true);
+            }
           } else {
             setError('Customer not found');
           }
         } else {
-          setError('Customer not found');
+          // Admin/staff path via URL param
+          const customerIdToSearch = customerId;
+          if (!customerIdToSearch) {
+            setError('Customer not specified');
+            return;
+          }
+          const searchResponse = await getCustomers({ search: customerIdToSearch });
+          if (searchResponse.success && searchResponse.data.length > 0) {
+            const customer = searchResponse.data.find(c => c.customerId === customerIdToSearch);
+            if (customer) {
+              const formattedData = {
+                id: customer.id,
+                customerId: customer.customerId || '',
+                customerName: customer.customerName || '',
+                contactName: customer.contactName || '',
+                street: customer.street || '',
+                city: customer.city || '',
+                postalCode: customer.postalCode || '',
+                country: customer.country || '',
+                telephone1: customer.telephone1 || '',
+                telephone2: customer.telephone2 || '',
+                email1: customer.email1 || '',
+                email2: customer.email2 || '',
+                balance: customer.balance || 0,
+                notes: customer.notes || '',
+                isActive: customer.isActive !== undefined ? customer.isActive : true
+              };
+              setUserData(formattedData);
+              setEditData(formattedData);
+            } else {
+              setError('Customer not found');
+            }
+          } else {
+            setError('Customer not found');
+          }
         }
       } catch (err) {
         console.error('Error fetching customer data:', err);
@@ -88,7 +118,7 @@ const Profile = () => {
     };
 
     fetchCustomerData();
-  }, [customerId]);
+  }, [customerId, user]);
 
   const handleBack = () => {
     navigate('/Products');
@@ -107,6 +137,7 @@ const Profile = () => {
     try {
       setUpdating(true);
       setError(null);
+     
       
       // Transform form data to match backend model
       const updatePayload = {
@@ -120,7 +151,8 @@ const Profile = () => {
         telephone2: editData.telephone2,
         email1: editData.email1,
         email2: editData.email2,
-        notes: editData.notes
+        notes: editData.notes,
+        profileCompleted: user?.role === 'Client' ? true : undefined
       };
       
       // Use the numeric ID for the update

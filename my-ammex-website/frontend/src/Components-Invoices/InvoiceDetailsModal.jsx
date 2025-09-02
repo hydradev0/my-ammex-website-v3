@@ -123,7 +123,7 @@ const InvoiceDetailsModal = ({
               </div>
             </div>
 
-                         {/* Items Table */}
+            {/* Items Table */}
              <div className="space-y-4">
                <h3 className="text-lg font-semibold text-gray-900">Invoice Items</h3>
                <div className="overflow-x-auto max-h-64 overflow-y-auto border border-gray-200 rounded-lg">

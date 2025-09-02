@@ -285,8 +285,33 @@ const clearCart = async (req, res) => {
 // Convert cart to order (mark cart as converted)
 const convertCartToOrder = async (req, res) => {
   try {
-    const { Cart } = getModels();
+    const { Cart, Customer } = getModels();
     const { customerId } = req.params;
+
+    // Validate required customer profile fields before checkout
+    const customer = await Customer.findByPk(customerId);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+    const requiredFields = {
+      customerName: 'Customer name',
+      street: 'Street',
+      city: 'City',
+      postalCode: 'Postal code',
+      country: 'Country',
+      telephone1: 'Telephone 1',
+      email1: 'Email 1'
+    };
+    const missing = Object.keys(requiredFields).filter(
+      (key) => !customer[key] || String(customer[key]).trim() === ''
+    );
+    if (missing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please complete your profile before checkout.',
+        missingFields: missing.map((k) => requiredFields[k])
+      });
+    }
 
     const cart = await Cart.findOne({
       where: { customerId, status: 'active' }

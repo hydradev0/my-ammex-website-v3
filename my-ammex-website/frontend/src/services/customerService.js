@@ -68,3 +68,8 @@ export const deleteCustomer = async (id) => {
 export const getCustomerStats = async () => {
   return await apiCall('/customers/stats');
 };
+
+// Get the authenticated user's customer record
+export const getMyCustomer = async () => {
+  return await apiCall('/customers/me');
+};

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ActionDropdown from './ActionDropdown';
 import { MoreVertical } from 'lucide-react';
 
 const AdvanceActionsDropdown = ({
@@ -35,6 +36,7 @@ const AdvanceActionsDropdown = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
@@ -80,31 +82,36 @@ const AdvanceActionsDropdown = ({
           >
             <MoreVertical className="w-4 h-4" />
           </button>
-          
-          {isOpen && (
-            <div ref={dropdownRef} className={dropdownClassName}>
-              <div className="py-1">
-                {actions.map((action) => {
-                  // Check if action should be shown based on condition
-                  if (action.condition && !action.condition(item)) {
-                    return null;
-                  }
 
-                  const IconComponent = action.icon;
-                  return (
-                    <button
-                      key={action.key}
-                      onClick={() => handleAction(action)}
-                      className={actionItemClassName}
-                      title={action.title}
-                    >
-                      {IconComponent && <IconComponent className="w-4 h-4 mr-2" />}
-                      {action.label}
-                    </button>
-                  );
-                })}
+          {isOpen && (
+            <ActionDropdown
+              anchorRef={buttonRef}
+              open={isOpen}
+              onClose={() => setIsOpen(false)}
+            >
+              <div ref={dropdownRef} className={`${dropdownClassName} max-h-[60vh] overflow-auto`}>
+                <div className="py-1">
+                  {actions.map((action) => {
+                    if (action.condition && !action.condition(item)) {
+                      return null;
+                    }
+
+                    const IconComponent = action.icon;
+                    return (
+                      <button
+                        key={action.key}
+                        onClick={() => handleAction(action)}
+                        className={actionItemClassName}
+                        title={action.title}
+                      >
+                        {IconComponent && <IconComponent className="w-4 h-4 mr-2" />}
+                        {action.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </ActionDropdown>
           )}
         </div>
       )}

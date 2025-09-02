@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const { getModels } = require('../config/db');
 const { handleValidationErrors } = require('../middleware/validation');
 const {
   getAllCustomers,
@@ -9,7 +10,8 @@ const {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  getCustomerStats
+  getCustomerStats,
+  getMyCustomer
 } = require('../controllers/customerController');
 
 // Validation middleware
@@ -50,6 +52,30 @@ router.get('/', protect, authorize('Admin', 'Sales Marketing', 'Client'), getAll
 // @access  Private (Admin, Sales Marketing, Client (Read Only))
 router.get('/stats', protect, authorize('Admin', 'Sales Marketing', 'Client'), getCustomerStats);
 
+// @route   GET /api/customers/me
+// @desc    Get current user's customer
+// @access  Private (Any authenticated user)
+router.get('/me', protect, getMyCustomer);
+
+// Ownership guard for client updating their own customer only
+const ensureOwnCustomerByParam = async (req, res, next) => {
+  try {
+    // Admins/Sales can pass
+    if (req.user.role === 'Admin' || req.user.role === 'Sales Marketing') return next();
+    const { Customer } = getModels();
+    const customer = await Customer.findByPk(req.params.id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+    if (customer.userId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Forbidden: cannot modify another customer' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @route   GET /api/customers/:id
 // @desc    Get single customer by ID
 // @access  Private (Admin, Sales Marketing, Client (Read Only))
@@ -61,9 +87,9 @@ router.get('/:id', protect, authorize('Admin', 'Sales Marketing', 'Client'), get
 router.post('/', protect, authorize('Admin', 'Sales Marketing'), validateCustomer, handleValidationErrors, createCustomer);
 
 // @route   PUT /api/customers/:id
-// @desc    Update customer
-// @access  Private (Admin, Sales Marketing)
-router.put('/:id', protect, authorize('Admin', 'Sales Marketing'), updateCustomer);
+// @desc    Update customer (Admins/Sales can update any; Clients only their own)
+// @access  Private
+router.put('/:id', protect, authorize('Admin', 'Sales Marketing', 'Client'), ensureOwnCustomerByParam, updateCustomer);
 
 // @route   DELETE /api/customers/:id
 // @desc    Delete customer
