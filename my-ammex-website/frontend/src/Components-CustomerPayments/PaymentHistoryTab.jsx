@@ -40,6 +40,7 @@ const PaymentHistoryTab = ({
   const getPaymentHistoryActionColor = (action) => {
     switch (action) {
       case 'Payment Completed': return 'text-green-600 bg-green-100';
+      case 'Marked as Paid': return 'text-white bg-green-600';
       default: return 'text-gray-600 bg-gray-100';
     }
   };

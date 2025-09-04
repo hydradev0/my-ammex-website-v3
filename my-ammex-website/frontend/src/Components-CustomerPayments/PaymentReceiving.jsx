@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Clock, DollarSign, Receipt } from 'lucide-react';
+import { Settings, Clock, DollarSign, Receipt, XCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import PaymentTable from './PaymentTable';
+import RejectedPaymentsTable from './RejectedPaymentsTable';
 import PaymentApprovalModal from './PaymentApprovalModal';
 import PaymentMethodsManager from './PaymentMethodsManager';
 import PaymentHistoryTab from './PaymentHistoryTab';
@@ -10,20 +11,29 @@ import BalanceTab from './BalanceTab';
 
 const PaymentReceiving = () => {
   // Tab state
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'balance', 'history'
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'balance', 'history', 'rejected'
   
   // State for pending payments
   const [pendingPayments, setPendingPayments] = useState([]);
   const [filteredPayments, setFilteredPayments] = useState([]);
   
+  // State for rejected payments
+  const [rejectedPayments, setRejectedPayments] = useState([]);
+  const [filteredRejectedPayments, setFilteredRejectedPayments] = useState([]);
+  
   // State for balance tracking and payment history
   const [balanceHistory, setBalanceHistory] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
   
-  // Search and filter states
+  // Search and filter states for pending payments
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  
+  // Search and filter states for rejected payments
+  const [rejectedSearchTerm, setRejectedSearchTerm] = useState('');
+  const [rejectedSelectedPaymentMethod, setRejectedSelectedPaymentMethod] = useState('all');
+  const [rejectedDateRange, setRejectedDateRange] = useState({ start: '', end: '' });
   
   // Modal states
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -228,8 +238,74 @@ const PaymentReceiving = () => {
       }
     ];
 
+    // Mock rejected payments data
+    const mockRejectedPayments = [
+      {
+        id: 'REJ-001',
+        invoiceNumber: 'INV-2024-006',
+        customerName: 'MNO Electronics Corp',
+        customerEmail: 'finance@mnoelectronics.com',
+        amount: 2750.50,
+        paymentMethod: 'bank_transfer',
+        reference: 'TXN-MNO-001',
+        submittedDate: new Date('2024-01-15').toISOString(),
+        rejectedDate: new Date('2024-01-16').toISOString(),
+        notes: 'Payment for electronic components order',
+        status: 'rejected',
+        rejectionReason: 'Insufficient documentation provided',
+        attachments: ['receipt_mno_001.pdf']
+      },
+      {
+        id: 'REJ-002',
+        invoiceNumber: 'INV-2024-007',
+        customerName: 'PQR Manufacturing Ltd',
+        customerEmail: 'accounts@pqrmfg.com',
+        amount: 1200.00,
+        paymentMethod: 'check',
+        reference: 'CHK-5432',
+        submittedDate: new Date('2024-01-18').toISOString(),
+        rejectedDate: new Date('2024-01-19').toISOString(),
+        notes: 'Check payment for manufacturing supplies',
+        status: 'rejected',
+        rejectionReason: 'Check amount does not match invoice total',
+        attachments: ['check_image_pqr.jpg']
+      },
+      {
+        id: 'REJ-003',
+        invoiceNumber: 'INV-2024-008',
+        customerName: 'STU Logistics Inc',
+        customerEmail: 'payments@stulogistics.com',
+        amount: 850.75,
+        paymentMethod: 'gcash',
+        reference: 'GCASH-456789123',
+        submittedDate: new Date('2024-01-20').toISOString(),
+        rejectedDate: new Date('2024-01-21').toISOString(),
+        notes: 'Partial payment for logistics services',
+        status: 'rejected',
+        rejectionReason: 'Payment reference number not found in our records',
+        attachments: ['gcash_receipt_stu.png']
+      },
+      {
+        id: 'REJ-004',
+        invoiceNumber: 'INV-2024-009',
+        customerName: 'VWX Construction Group',
+        customerEmail: 'billing@vwxconstruction.com',
+        amount: 3200.00,
+        paymentMethod: 'maya',
+        reference: 'MAYA-REF-789123',
+        submittedDate: new Date('2024-01-22').toISOString(),
+        rejectedDate: new Date('2024-01-23').toISOString(),
+        notes: 'Payment for construction materials',
+        status: 'rejected',
+        rejectionReason: 'Customer account on hold due to outstanding balance',
+        attachments: ['maya_screenshot_vwx.jpg']
+      }
+    ];
+
     setPendingPayments(mockPendingPayments);
     setFilteredPayments(mockPendingPayments);
+    setRejectedPayments(mockRejectedPayments);
+    setFilteredRejectedPayments(mockRejectedPayments);
     setPaymentMethods(mockPaymentMethods);
     setBalanceHistory(mockBalanceHistory);
     setPaymentHistory(mockPaymentHistory);
@@ -266,6 +342,37 @@ const PaymentReceiving = () => {
     setFilteredPayments(filtered);
   }, [pendingPayments, searchTerm, selectedPaymentMethod, dateRange]);
 
+  // Filter rejected payments based on search and filters
+  useEffect(() => {
+    let filtered = rejectedPayments;
+
+    // Search filter
+    if (rejectedSearchTerm) {
+      filtered = filtered.filter(payment => 
+        payment.customerName.toLowerCase().includes(rejectedSearchTerm.toLowerCase()) ||
+        payment.invoiceNumber.toLowerCase().includes(rejectedSearchTerm.toLowerCase()) ||
+        payment.reference.toLowerCase().includes(rejectedSearchTerm.toLowerCase())
+      );
+    }
+
+    // Payment method filter
+    if (rejectedSelectedPaymentMethod !== 'all') {
+      filtered = filtered.filter(payment => payment.paymentMethod === rejectedSelectedPaymentMethod);
+    }
+
+    // Date range filter
+    if (rejectedDateRange.start && rejectedDateRange.end) {
+      filtered = filtered.filter(payment => {
+        const paymentDate = new Date(payment.submittedDate);
+        const startDate = new Date(rejectedDateRange.start);
+        const endDate = new Date(rejectedDateRange.end);
+        return paymentDate >= startDate && paymentDate <= endDate;
+      });
+    }
+
+    setFilteredRejectedPayments(filtered);
+  }, [rejectedPayments, rejectedSearchTerm, rejectedSelectedPaymentMethod, rejectedDateRange]);
+
 
 
   // Payment approval handlers
@@ -285,16 +392,47 @@ const PaymentReceiving = () => {
   const handleRejectPayment = () => {
     if (!selectedPayment) return;
     
-    const updatedPayments = pendingPayments.map(p => 
-      p.id === selectedPayment.id ? { ...p, status: 'rejected' } : p
-    );
-    setPendingPayments(updatedPayments);
+    // Remove from pending payments
+    const updatedPendingPayments = pendingPayments.filter(p => p.id !== selectedPayment.id);
+    setPendingPayments(updatedPendingPayments);
+    
+    // Add to rejected payments with rejection timestamp
+    const rejectedPayment = {
+      ...selectedPayment,
+      status: 'rejected',
+      rejectedDate: new Date().toISOString(),
+      rejectionReason: 'Payment rejected by admin' // This could be made configurable
+    };
+    setRejectedPayments([rejectedPayment, ...rejectedPayments]);
+    
     closeApprovalModal();
   };
 
   const closeApprovalModal = () => {
     setShowApprovalModal(false);
     setSelectedPayment(null);
+  };
+
+  // Re-approve rejected payment
+  const handleReApprovePayment = (payment) => {
+    // Remove from rejected payments
+    const updatedRejectedPayments = rejectedPayments.filter(p => p.id !== payment.id);
+    setRejectedPayments(updatedRejectedPayments);
+    
+    // Add back to pending payments (remove rejection metadata)
+    const { rejectedDate, rejectionReason, ...cleanPayment } = payment;
+    const reApprovedPayment = {
+      ...cleanPayment,
+      status: 'pending_approval',
+      reApprovedDate: new Date().toISOString()
+    };
+    setPendingPayments([reApprovedPayment, ...pendingPayments]);
+  };
+
+  // Permanently delete rejected payment
+  const handleDeleteRejectedPayment = (paymentId) => {
+    const updatedRejectedPayments = rejectedPayments.filter(p => p.id !== paymentId);
+    setRejectedPayments(updatedRejectedPayments);
   };
 
   // Payment methods management handlers
@@ -368,11 +506,11 @@ const PaymentReceiving = () => {
     
     // Add to payment history
     const newPaymentRecord = {
-      id: `HIST-${Date.now()}`,
+      id: `HIST-${Date.now()}`, 
       customerName: item.customerName,
       customerAddress: item.customerAddress,
       invoiceNumber: item.invoiceNumber,
-      action: 'Payment Received',
+      action: 'Marked as Paid',
       timestamp: new Date().toISOString(),
       details: {
         amount: item.details.amount,
@@ -394,6 +532,22 @@ const PaymentReceiving = () => {
       id: 'paymentMethod',
       value: selectedPaymentMethod,
       setValue: setSelectedPaymentMethod,
+      options: [
+        { value: 'all', label: 'All Payment Methods' },
+        ...paymentMethods.map(method => ({
+          value: method.name.toLowerCase().replace(/\s+/g, '_'),
+          label: method.name
+        }))
+      ]
+    }
+  ];
+
+  // Configure dropdown filters for rejected payments
+  const rejectedDropdownFilters = [
+    {
+      id: 'rejectedPaymentMethod',
+      value: rejectedSelectedPaymentMethod,
+      setValue: setRejectedSelectedPaymentMethod,
       options: [
         { value: 'all', label: 'All Payment Methods' },
         ...paymentMethods.map(method => ({
@@ -467,6 +621,20 @@ const PaymentReceiving = () => {
                 </span>
               </button>
               <button
+                onClick={() => setActiveTab('rejected')}
+                className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'rejected'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <XCircle className="w-4 h-4" />
+                Rejected
+                <span className="bg-red-100 text-red-600 py-1 px-2 rounded-full text-xs">
+                  {rejectedPayments.length}
+                </span>
+              </button>
+              <button
                 onClick={() => setActiveTab('history')}
                 className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === 'history'
@@ -518,6 +686,36 @@ const PaymentReceiving = () => {
               onSendReminder={handleSendReminder}
               onMarkAsPaid={handleMarkAsPaid}
             />
+          )}
+
+          {/* Rejected Tab Content */}
+          {activeTab === 'rejected' && (
+            <>
+              {/* Search and Filters */}
+              <ModernSearchFilter
+                searchTerm={rejectedSearchTerm}
+                setSearchTerm={setRejectedSearchTerm}
+                searchPlaceholder="Search rejected payments..."
+                dropdownFilters={rejectedDropdownFilters}
+                dateRange={rejectedDateRange}
+                setDateRange={setRejectedDateRange}
+                showDateRange={true}
+                filteredCount={filteredRejectedPayments.length}
+                totalCount={rejectedPayments.length}
+                itemLabel="rejected payments"
+              />
+
+              {/* Rejected Payments Table */}
+              <RejectedPaymentsTable
+                payments={filteredRejectedPayments}
+                onReApprove={handleReApprovePayment}
+                onViewDetails={handleViewPayment}
+                onDelete={handleDeleteRejectedPayment}
+                getPaymentMethodName={getPaymentMethodName}
+                formatCurrency={formatCurrency}
+                formatDateTime={formatDateTime}
+              />
+            </>
           )}
 
           {/* Payment History Tab Content */}

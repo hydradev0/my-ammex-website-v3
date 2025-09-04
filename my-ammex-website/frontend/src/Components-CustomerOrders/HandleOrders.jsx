@@ -108,17 +108,7 @@ function HandleOrders() {
 
   // Configure dropdown filters for SearchFilters component
   const dropdownFilters = [
-    {
-      id: 'status',
-      value: selectedStatus,
-      setValue: setSelectedStatus,
-      options: [
-        { value: 'all', label: 'All Status' },
-        { value: 'pending', label: 'Pending' },
-        { value: 'completed', label: 'Completed' },
-        { value: 'cancelled', label: 'Cancelled' }
-      ]
-    }
+   
   ];
 
   // Filter orders based on search term, selected status, and date range

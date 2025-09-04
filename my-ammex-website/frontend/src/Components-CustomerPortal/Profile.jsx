@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Edit, Save, X, User, Building, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
-import { getCustomers, getCustomerById, updateCustomer, getMyCustomer } from '../services/customerService';
+import { getCustomers, updateCustomer, getMyCustomer } from '../services/customerService';
 import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
@@ -16,8 +16,8 @@ const Profile = () => {
 
   // Customer data state
   const [userData, setUserData] = useState({
-    id: null, // Numeric primary key from database
-    customerId: '', // String customer ID like "CUST0001"
+    id: null,
+    customerId: '',
     customerName: '',
     contactName: '',
     street: '',
@@ -35,6 +35,25 @@ const Profile = () => {
 
   const [editData, setEditData] = useState({ ...userData });
 
+  // Helper function to format customer data consistently
+  const formatCustomerData = (customer) => ({
+    id: customer.id,
+    customerId: customer.customerId || '',
+    customerName: customer.customerName || '',
+    contactName: customer.contactName || '',
+    street: customer.street || '',
+    city: customer.city || '',
+    postalCode: customer.postalCode || '',
+    country: customer.country || '',
+    telephone1: customer.telephone1 || '',
+    telephone2: customer.telephone2 || '',
+    email1: customer.email1 || '',
+    email2: customer.email2 || '',
+    balance: customer.balance || 0,
+    notes: customer.notes || '',
+    isActive: customer.isActive !== undefined ? customer.isActive : true
+  });
+
   // Fetch customer data on component mount (client loads own record; admin uses URL param)
   useEffect(() => {
     const fetchCustomerData = async () => {
@@ -46,27 +65,12 @@ const Profile = () => {
           const me = await getMyCustomer();
           if (me.success && me.data) {
             const c = me.data;
-            const formattedData = {
-              id: c.id,
-              customerId: c.customerId || '',
-              customerName: c.customerName || '',
-              contactName: c.contactName || '',
-              street: c.street || '',
-              city: c.city || '',
-              postalCode: c.postalCode || '',
-              country: c.country || '',
-              telephone1: c.telephone1 || '',
-              telephone2: c.telephone2 || '',
-              email1: c.email1 || '',
-              email2: c.email2 || '',
-              balance: c.balance || 0,
-              notes: c.notes || '',
-              isActive: c.isActive !== undefined ? c.isActive : true
-            };
+            const formattedData = formatCustomerData(c);
             setUserData(formattedData);
             setEditData(formattedData);
-            // Force edit mode if required fields are missing
-            if (!formattedData.customerName || !formattedData.telephone1 || !formattedData.email1) {
+            // Opens edit mode if required fields are missing
+            if (!formattedData.customerName || !formattedData.telephone1 || !formattedData.email1 || 
+              !formattedData.street || !formattedData.city || !formattedData.postalCode || !formattedData.country) {
               setIsEditing(true);
             }
           } else {
@@ -83,23 +87,7 @@ const Profile = () => {
           if (searchResponse.success && searchResponse.data.length > 0) {
             const customer = searchResponse.data.find(c => c.customerId === customerIdToSearch);
             if (customer) {
-              const formattedData = {
-                id: customer.id,
-                customerId: customer.customerId || '',
-                customerName: customer.customerName || '',
-                contactName: customer.contactName || '',
-                street: customer.street || '',
-                city: customer.city || '',
-                postalCode: customer.postalCode || '',
-                country: customer.country || '',
-                telephone1: customer.telephone1 || '',
-                telephone2: customer.telephone2 || '',
-                email1: customer.email1 || '',
-                email2: customer.email2 || '',
-                balance: customer.balance || 0,
-                notes: customer.notes || '',
-                isActive: customer.isActive !== undefined ? customer.isActive : true
-              };
+              const formattedData = formatCustomerData(customer);
               setUserData(formattedData);
               setEditData(formattedData);
             } else {
@@ -151,8 +139,7 @@ const Profile = () => {
         telephone2: editData.telephone2,
         email1: editData.email1,
         email2: editData.email2,
-        notes: editData.notes,
-        profileCompleted: user?.role === 'Client' ? true : undefined
+        notes: editData.notes
       };
       
       // Use the numeric ID for the update

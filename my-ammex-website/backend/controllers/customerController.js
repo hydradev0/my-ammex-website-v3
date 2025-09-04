@@ -25,10 +25,10 @@ const getAllCustomers = async (req, res, next) => {
     // Build where clause - default to active records unless specified otherwise
     const whereClause = {};
     if (search) {
-      whereClause[require('sequelize').Op.or] = [
-        { customerName: { [require('sequelize').Op.iLike]: `%${search}%` } },
-        { customerId: { [require('sequelize').Op.iLike]: `%${search}%` } },
-        { email1: { [require('sequelize').Op.iLike]: `%${search}%` } }
+      whereClause[Op.or] = [
+        { customerName: { [Op.iLike]: `%${search}%` } },
+        { customerId: { [Op.iLike]: `%${search}%` } },
+        { email1: { [Op.iLike]: `%${search}%` } }
       ];
     }
     // Only filter by isActive if explicitly provided, otherwise default to active records
@@ -78,7 +78,6 @@ const getCustomerById = async (req, res, next) => {
     }
 
     const customer = await Customer.findByPk(id, {
-      where: { isActive: true }, // Filter for active customer
       include: includeOptions
     });
 
@@ -160,14 +159,6 @@ const updateCustomer = async (req, res, next) => {
       }
     }
 
-    // Compute profileCompleted on server based on required fields
-    const computedCompleted = !!(
-      (sanitized.customerName ?? customer.customerName) &&
-      (sanitized.telephone1 ?? customer.telephone1) &&
-      (sanitized.email1 ?? customer.email1)
-    );
-    sanitized.profileCompleted = computedCompleted;
-
     await customer.update(sanitized);
 
     res.json({
@@ -210,7 +201,6 @@ const getCustomerStats = async (req, res, next) => {
     const { Customer, Order } = getModels();
     
     const totalCustomers = await Customer.count({ where: { isActive: true } });
-    const activeCustomers = await Customer.count({ where: { isActive: true } });
     const totalOrders = await Order.count({ where: { isActive: true } });
     
     // Get top customers by order count
@@ -237,7 +227,6 @@ const getCustomerStats = async (req, res, next) => {
       success: true,
       data: {
         totalCustomers,
-        activeCustomers,
         totalOrders,
         topCustomers
       }
