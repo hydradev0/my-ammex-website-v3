@@ -2,58 +2,61 @@
 // Each role gets 2-4 cards as requested
 
 export const roleMetrics = {
-  admin: {
-    name: 'Admin',
+  'Admin': {
+    name: 'Administrator',
     cards: [
       'Today\'s Sales',
       'Today\'s Orders', 
       'Low Stock Items',
-      'Today\'s Customers'
+      'Out of Stock Items'
     ]
   },
-  sales: {
-    name: 'Sales User',
+  'Sales Marketing': {
+    name: 'Sales Marketing',
     cards: [
       'Today\'s Sales',
       'Today\'s Orders',
-      'Today\'s Customers'
     ]
   },
-  logistics: {
-    name: 'Logistics User',
+  'Warehouse Supervisor': {
+    name: 'Warehouse Supervisor',
     cards: [
       'Low Stock Items',
       'Total Stock Value',
       'Out of Stock Items',
-      'Reorder Pending'
     ]
   },
 };
 
-// Get current user role (in production, this would come from auth context/JWT)
-export const getCurrentUserRole = () => {
-  // For demo purposes, you can change this to test different roles
-  // In production, this would come from your authentication system
-  return localStorage.getItem('userRole') || 'admin';
-};
-
 // Get metrics cards for current user role
-export const getMetricsCardsForRole = (role = null) => {
-  const userRole = role || getCurrentUserRole();
-  return roleMetrics[userRole]?.cards || roleMetrics.admin.cards;
+export const getMetricsCardsForRole = (role) => {
+  return roleMetrics[role]?.cards || roleMetrics['Admin'].cards;
 };
 
 // Get role name
-export const getRoleName = (role = null) => {
-  const userRole = role || getCurrentUserRole();
-  return roleMetrics[userRole]?.name || 'Admin';
+export const getRoleName = (role) => {
+  return roleMetrics[role]?.name || 'Administrator';
 };
 
-// Set user role (for demo/testing purposes)
-export const setUserRole = (role) => {
-  if (roleMetrics[role]) {
-    localStorage.setItem('userRole', role);
-    return true;
-  }
-  return false;
+// Check if user has access to inventory alerts
+export const hasInventoryAlertsAccess = (role) => {
+  return ['Admin', 'Warehouse Supervisor'].includes(role);
 }; 
+
+// Analytics metrics cards configuration
+export const analyticsRoleMetrics = {
+  'Admin': {
+    cards: ['Monthly Profit', 'Average Order Value', 'Monthly Orders','Inventory Growth Rate']
+  },
+  'Sales Marketing': {
+    cards: ['Monthly Profit', 'Average Order Value', 'Monthly Orders']
+  },
+  'Warehouse Supervisor': {
+    cards: ['Monthly Fast Moving Items', 'Monthly Slow Moving Items', 'Inventory Growth Rate']
+  },
+};
+
+// Get analytics metrics cards for current user role
+export const getAnalyticsCardsForRole = (role) => {
+  return analyticsRoleMetrics[role]?.cards || analyticsRoleMetrics['Admin'].cards;
+};

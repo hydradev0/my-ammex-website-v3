@@ -35,8 +35,22 @@ function App() {
         <Route path="/login" element={<Login />} />
         
         {/* Home */}
-        <Route path="Home/Dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="Home/Analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route 
+          path="Home/Dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor", "Sales Marketing"]}>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="Home/Analytics" 
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor"]}>
+              <Analytics />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Business Partners - Admin and Sales Marketing */} 
         <Route
