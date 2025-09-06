@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import HandleCustomerModal from '../Components/HandleCustomerModal';
 
-function ProcessOrderModal({ isOpen, onClose, order, onProcess, discountPercent, setDiscountPercent }) {
+function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discountPercent, setDiscountPercent }) {
+  const [rejectionReason, setRejectionReason] = useState('');
+  
   if (!order) return null;
 
   const handleDiscountChange = (e) => {
@@ -14,6 +17,10 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, discountPercent,
     onProcess(order.id, discountAmount);
   };
 
+  const handleReject = () => {
+    onReject(order, rejectionReason);
+  };
+
   const discountAmount = (order.total * discountPercent) / 100;
   const finalTotal = order.total - discountAmount;
 
@@ -24,6 +31,12 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, discountPercent,
         className="px-4 py-2 cursor-pointer text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
       >
         Cancel
+      </button>
+      <button
+        onClick={handleReject}
+        className="px-4 py-2 cursor-pointer text-sm font-medium text-white bg-red-600 border border-gray-300 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+      >
+        Reject
       </button>
       <button
         onClick={handleProcess}
@@ -70,7 +83,6 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, discountPercent,
             type="number"
             id="discount"
             name="discount"
-            value={discountPercent}
             onChange={handleDiscountChange}
             min="0"
             max="100"
@@ -80,6 +92,22 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, discountPercent,
           />
           <span className="absolute center pl-2 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
         </div>
+      </div>
+
+      {/* Rejection Reason Section */}
+      <div className="mb-6">
+        <label htmlFor="rejectionReason" className="block text-sm font-medium text-gray-700 mb-2">
+          Rejection Reason (if rejecting)
+        </label>
+        <textarea
+          id="rejectionReason"
+          name="rejectionReason"
+          value={rejectionReason}
+          onChange={(e) => setRejectionReason(e.target.value)}
+          placeholder="Enter reason for rejection..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-red-500 resize-none"
+          rows="3"
+        />
       </div>
 
       {/* Total Section */}
