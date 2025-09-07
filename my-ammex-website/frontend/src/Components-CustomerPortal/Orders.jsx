@@ -1,22 +1,110 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
 
 const Orders = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState('pending');
+  
+  // State for pending orders
+  const [pendingOrders, setPendingOrders] = useState([]);
+  
+  // State for rejected orders
+  const [rejectedOrders, setRejectedOrders] = useState([]);
+  
+  // Sorting state
+  const [sortField, setSortField] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc');
+  
+  // Modal state
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const modalRef = useRef(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // Load orders from localStorage and separate into pending/rejected
   useEffect(() => {
-    // Load orders from localStorage
     const savedOrders = JSON.parse(localStorage.getItem('customerOrders') || '[]');
-    setOrders(savedOrders);
+    
+    // Separate orders into pending and rejected
+    const pending = savedOrders.filter(order => order.status !== 'rejected');
+    
+    // Mock rejected orders data for demonstration
+    const mockRejectedOrders = [
+      {
+        id: 'ORD-R001',
+        orderNumber: 'ORD-R001',
+        orderDate: '2024-03-15T10:30:00Z',
+        status: 'rejected',
+        totalAmount: 1250.00,
+        rejectionReason: 'Reached credit limit',
+        items: [
+          {
+            name: 'Industrial Valve - 2" Steel',
+            quantity: 2,
+            price: 500.00,
+            total: 1000.00
+          },
+          {
+            name: 'Pipe Fitting - Elbow 90°',
+            quantity: 5,
+            price: 50.00,
+            total: 250.00
+          }
+        ]
+      },
+      {
+        id: 'ORD-R002',
+        orderNumber: 'ORD-R002',
+        orderDate: '2024-03-18T14:15:00Z',
+        status: 'rejected',
+        totalAmount: 850.00,
+        rejectionReason: 'Has not paid previous invoices',
+        items: [
+          {
+            name: 'Hydraulic Hose - 1/2"',
+            quantity: 10,
+            price: 85.00,
+            total: 850.00
+          }
+        ]
+      },
+      {
+        id: 'ORD-R003',
+        orderNumber: 'ORD-R003',
+        orderDate: '2024-03-20T09:45:00Z',
+        status: 'rejected',
+        totalAmount: 2100.00,
+        rejectionReason: 'Product out of stock',
+        items: [
+          {
+            name: 'Pressure Gauge - 0-100 PSI',
+            quantity: 3,
+            price: 150.00,
+            total: 450.00
+          },
+          {
+            name: 'Control Valve - 3"',
+            quantity: 1,
+            price: 1650.00,
+            total: 1650.00
+          }
+        ]
+      }
+    ];
+    
+    setPendingOrders(pending);
+    setRejectedOrders(mockRejectedOrders);
   }, []);
+
 
   // Handle click outside modal
   useEffect(() => {
@@ -50,15 +138,48 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
+  // Sorting function
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort orders function
+  const sortOrders = (orders) => {
+    return [...orders].sort((a, b) => {
+      if (sortField === 'orderDate') {
+        return sortDirection === 'asc' 
+          ? new Date(a.orderDate) - new Date(b.orderDate)
+          : new Date(b.orderDate) - new Date(a.orderDate);
+      }
+      if (sortField === 'totalAmount') {
+        return sortDirection === 'asc' 
+          ? a.totalAmount - b.totalAmount
+          : b.totalAmount - a.totalAmount;
+      }
+      if (sortField === 'orderNumber') {
+        return sortDirection === 'asc'
+          ? a.orderNumber.localeCompare(b.orderNumber)
+          : b.orderNumber.localeCompare(a.orderNumber);
+      }
+      return 0;
+    });
+  };
+
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-600" />;
-      case 'processing':
+      case 'dispatched':
         return <Package className="w-4 h-4 text-blue-600" />;
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'cancelled':
+      case 'rejected':
         return <XCircle className="w-4 h-4 text-red-600" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600" />;
@@ -69,11 +190,11 @@ const Orders = () => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'processing':
+      case 'dispatched':
         return 'bg-blue-100 text-blue-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'cancelled':
+      case 'rejected':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -89,6 +210,18 @@ const Orders = () => {
       minute: '2-digit'
     });
   };
+
+  // Sort and paginate orders
+  const sortedPendingOrders = sortOrders(pendingOrders);
+  const sortedRejectedOrders = sortOrders(rejectedOrders);
+
+  // Pagination logic for pending orders
+  const startPendingIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPendingOrders = sortedPendingOrders.slice(startPendingIndex, startPendingIndex + itemsPerPage);
+
+  // Pagination logic for rejected orders
+  const startRejectedIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRejectedOrders = sortedRejectedOrders.slice(startRejectedIndex, startRejectedIndex + itemsPerPage);
 // Order Details Modal
   const modalContent = showOrderModal && selectedOrder ? (
     <div 
@@ -182,70 +315,232 @@ const Orders = () => {
           <h1 className="text-2xl sm:text-2xl md:text-2xl lg:text-2xl font-bold text-gray-800 text-center sm:text-left sm:-ml-4 -md:ml-2 -lg:ml-2 xl:ml-2">Orders</h1>
         </div>
 
-        {orders.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Orders Yet</h3>
-            <p className="text-gray-500 mb-6">You haven't placed any orders yet. Start shopping to see your orders here!</p>
-            <button
-              onClick={handleBack}
-              className="bg-[#3182ce] text-white px-6 py-2 rounded-3xl hover:bg-[#2c5282] transition-colors"
-            >
-              Start Shopping
-            </button>
+
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`py-3 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+                  activeTab === 'pending'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Clock className="w-5 h-5" />
+                Pending Orders
+                <span className="bg-blue-100 text-blue-600 py-1 px-2.5 rounded-full text-xs font-medium">
+                  {pendingOrders.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('rejected')}
+                className={`py-3 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+                  activeTab === 'rejected'
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <XCircle className="w-5 h-5" />
+                Rejected Orders
+                <span className="bg-red-100 text-red-600 py-1 px-2.5 rounded-full text-xs font-medium">
+                  {rejectedOrders.length}
+                </span>
+              </button>
+            </nav>
           </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
-                    <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-3 sm:px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <div>
-                          <div className="font-medium">{order.orderNumber}</div>
-                          <div className="text-xs text-gray-500 sm:hidden">{formatDate(order.orderDate)}</div>
-                        </div>
-                      </td>
-                      <td className="hidden sm:table-cell px-3 sm:px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(order.orderDate)}
-                      </td>
-                      <td className="px-3 sm:px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                      </td>
-                      <td className="px-3 sm:px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        ${order.totalAmount.toLocaleString()}
-                      </td>
-                      <td className="hidden md:table-cell px-3 sm:px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusIcon(order.status)}
-                          <span className="ml-1 capitalize">{order.status}</span>
-                        </span>
-                      </td>
-                      <td className="px-6 sm:px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button
-                          onClick={() => handleViewOrder(order)}
-                          className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1"
+        </div>
+
+        {/* Pending Tab Content */}
+        {activeTab === 'pending' && (
+          <>
+
+            {/* Pending Orders Table */}
+            {paginatedPendingOrders.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Orders</h3>
+                <p className="text-gray-500 mb-6">You don't have any pending orders at the moment.</p>
+                <button
+                  onClick={handleBack}
+                  className="bg-[#3182ce] text-white px-6 py-2 rounded-lg hover:bg-[#2c5282] transition-colors"
+                >
+                  Start Shopping
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('orderNumber')}
                         >
-                          <Eye className="w-6 h-6 md:w-4 md:h-4" />
-                          <span className="hidden sm:inline">View</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          Order #
+                          {sortField === 'orderNumber' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('orderDate')}
+                        >
+                          Date
+                          {sortField === 'orderDate' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Items
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('totalAmount')}
+                        >
+                          Total
+                          {sortField === 'totalAmount' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedPendingOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {order.orderNumber}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(order.orderDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            ${order.totalAmount.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleViewOrder(order)}
+                              className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Rejected Tab Content */}
+        {activeTab === 'rejected' && (
+          <>
+
+            {/* Rejected Orders Table */}
+            {paginatedRejectedOrders.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Rejected Orders</h3>
+                <p className="text-gray-500">You don't have any rejected orders.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('orderNumber')}
+                        >
+                          Order #
+                          {sortField === 'orderNumber' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('orderDate')}
+                        >
+                          Date
+                          {sortField === 'orderDate' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Items
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('totalAmount')}
+                        >
+                          Total
+                          {sortField === 'totalAmount' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Reason
+                        </th>
+                        <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedRejectedOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {order.orderNumber}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(order.orderDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            ${order.totalAmount.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                            {order.rejectionReason || 'Order rejected'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleViewOrder(order)} // TODO: Add an edit button and checkout button
+                              className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Pagination */}
+        {((activeTab === 'pending' && paginatedPendingOrders.length > 0) || 
+          (activeTab === 'rejected' && paginatedRejectedOrders.length > 0)) && (
+          <div className="mt-6">
+            {/* Add PaginationTable component here if needed */}
           </div>
         )}
       </div>

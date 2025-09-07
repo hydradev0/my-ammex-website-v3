@@ -528,7 +528,7 @@ useEffect(() => {
               onClick={handleContinueShopping}
               className="bg-[#3182ce] text-white px-6 py-2 rounded-3xl hover:bg-[#2c5282] transition-colors"
             >
-              Continue Shopping
+              Browse Products
             </button>
           </div>
         ) : (

@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import ScrollLock from "./ScrollLock";
+import ScrollLock from "../Components/ScrollLock";
 
 function HandleCustomerModal({ 
   isOpen, 

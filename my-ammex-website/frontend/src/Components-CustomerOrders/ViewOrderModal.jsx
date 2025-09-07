@@ -1,4 +1,4 @@
-import HandleCustomerModal from '../Components/HandleCustomerModal';
+import HandleCustomerModal from './HandleCustomerModal';
 
 function ViewOrderModal({ isOpen, onClose, order }) {
   if (!order) return null;

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Edit, Save, X, User, Building, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
 import { getCustomers, updateCustomer, getMyCustomer } from '../services/customerService';
+import { updateMyUser } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
@@ -18,7 +19,7 @@ const Profile = () => {
   const [userData, setUserData] = useState({
     id: null,
     customerId: '',
-    customerName: '',
+    companyName: '',
     contactName: '',
     street: '',
     city: '',
@@ -33,13 +34,17 @@ const Profile = () => {
     isActive: true
   });
 
+  // User account email state (from auth context)
+  const [userEmail, setUserEmail] = useState('');
+
   const [editData, setEditData] = useState({ ...userData });
+  const [editUserEmail, setEditUserEmail] = useState('');
 
   // Helper function to format customer data consistently
   const formatCustomerData = (customer) => ({
     id: customer.id,
     customerId: customer.customerId || '',
-    customerName: customer.customerName || '',
+    companyName: customer.customerName || '', // Map customerName to companyName for display
     contactName: customer.contactName || '',
     street: customer.street || '',
     city: customer.city || '',
@@ -61,6 +66,12 @@ const Profile = () => {
         setLoading(true);
         setError(null);
 
+        // Initialize user email from auth context
+        if (user?.email) {
+          setUserEmail(user.email);
+          setEditUserEmail(user.email);
+        }
+
         if (user?.role === 'Client') {
           const me = await getMyCustomer();
           if (me.success && me.data) {
@@ -69,7 +80,7 @@ const Profile = () => {
             setUserData(formattedData);
             setEditData(formattedData);
             // Opens edit mode if required fields are missing
-            if (!formattedData.customerName || !formattedData.telephone1 || !formattedData.email1 || 
+            if (!formattedData.companyName || !formattedData.telephone1 || !user?.email || 
               !formattedData.street || !formattedData.city || !formattedData.postalCode || !formattedData.country) {
               setIsEditing(true);
             }
@@ -118,6 +129,7 @@ const Profile = () => {
 
   const handleEdit = () => {
     setEditData({ ...userData });
+    setEditUserEmail(userEmail);
     setIsEditing(true);
   };
 
@@ -129,7 +141,7 @@ const Profile = () => {
       
       // Transform form data to match backend model
       const updatePayload = {
-        customerName: editData.customerName,
+        customerName: editData.companyName, // Map companyName to customerName for backend
         street: editData.street,
         city: editData.city,
         postalCode: editData.postalCode,
@@ -137,20 +149,46 @@ const Profile = () => {
         contactName: editData.contactName,
         telephone1: editData.telephone1,
         telephone2: editData.telephone2,
-        email1: editData.email1,
-        email2: editData.email2,
+        email1: editUserEmail, // Use account email as email1
+        email2: editData.email2, // Keep original email2 as email2
         notes: editData.notes
       };
       
-      // Use the numeric ID for the update
-      const response = await updateCustomer(userData.id, updatePayload);
+      // Update customer record
+      const customerResponse = await updateCustomer(userData.id, updatePayload);
       
-      if (response.success) {
+      if (customerResponse.success) {
+        // Update user account if it's a Client account
+        if (user?.role === 'Client') {
+          try {
+            const userUpdateData = {};
+            
+            // Update name if company name changed
+            if (editData.companyName !== userData.companyName) {
+              userUpdateData.name = editData.companyName;
+            }
+            
+            // Update email if user email changed
+            if (editUserEmail !== userEmail) {
+              userUpdateData.email = editUserEmail;
+            }
+            
+            // Only call update if there are changes
+            if (Object.keys(userUpdateData).length > 0) {
+              await updateMyUser(userUpdateData);
+            }
+          } catch (userErr) {
+            console.warn('Failed to update user account:', userErr);
+            // Don't fail the entire operation if user update fails
+          }
+        }
+        
         setUserData({ ...userData, ...editData });
+        setUserEmail(editUserEmail);
         setIsEditing(false);
         // You could show a success message here
       } else {
-        setError(response.message || 'Failed to update customer');
+        setError(customerResponse.message || 'Failed to update customer');
       }
     } catch (err) {
       console.error('Error updating customer:', err);
@@ -162,6 +200,7 @@ const Profile = () => {
 
   const handleCancel = () => {
     setEditData({ ...userData });
+    setEditUserEmail(userEmail);
     setIsEditing(false);
     setError(null);
   };
@@ -171,6 +210,10 @@ const Profile = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleUserEmailChange = (value) => {
+    setEditUserEmail(value);
   };
 
   // Show loading state
@@ -302,14 +345,8 @@ const Profile = () => {
               <div className="text-gray-900 font-medium text-sm sm:text-base">{userData.customerId}</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Account Status</label>
-              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                userData.isActive 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {userData.isActive ? 'Active' : 'Inactive'}
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Account Email</label>
+              <div className="text-gray-900 font-medium text-sm sm:text-base break-all">{userEmail}</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Current Balance</label>
@@ -333,12 +370,12 @@ const Profile = () => {
               {isEditing ? (
                 <input
                   type="text"
-                  value={editData.customerName}
-                  onChange={(e) => handleInputChange('customerName', e.target.value)}
+                  value={editData.companyName}
+                  onChange={(e) => handleInputChange('companyName', e.target.value)}
                   className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
-                <div className="text-gray-900 text-sm sm:text-base">{userData.customerName}</div>
+                <div className="text-gray-900 text-sm sm:text-base">{userData.companyName}</div>
               )}
             </div>
             <div>
@@ -405,18 +442,18 @@ const Profile = () => {
             <Mail className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
             Email Information
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email 1</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email 1 (Account Email)</label>
               {isEditing ? (
                 <input
                   type="email"
-                  value={editData.email1}
-                  onChange={(e) => handleInputChange('email1', e.target.value)}
+                  value={editUserEmail}
+                  onChange={(e) => handleUserEmailChange(e.target.value)}
                   className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
                 />
               ) : (
-                <div className="text-gray-900 break-all text-sm sm:text-base">{userData.email1}</div>
+                <div className="text-gray-900 break-all text-sm sm:text-base font-medium">{userEmail}</div>
               )}
             </div>
             <div>

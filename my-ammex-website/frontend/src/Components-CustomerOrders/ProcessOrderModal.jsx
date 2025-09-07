@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import HandleCustomerModal from '../Components/HandleCustomerModal';
+import HandleCustomerModal from './HandleCustomerModal';
 
 function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discountPercent, setDiscountPercent }) {
   const [rejectionReason, setRejectionReason] = useState('');

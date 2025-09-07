@@ -39,6 +39,7 @@ const registerUser = async (req, res, next) => {
     if (user.role === 'Client') {
       customer = await Customer.create({
         userId: user.id,
+        customerName: name, // Map the name field to customerName
         // allow stub with mostly nulls; customerId will be set by hook
         isActive: true
       });
@@ -194,14 +195,22 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
-// Update user (admin only)
+// Update user (admin only or self-update)
 const updateUser = async (req, res, next) => {
   try {
     const { User } = getModels();
     const { id } = req.params;
     const updateData = req.body;
 
-    const user = await User.findByPk(id);
+    // Determine which user to update
+    let targetUserId = id;
+    
+    // If no ID in params (self-update via /me route), use current user's ID
+    if (!id || id === 'me') {
+      targetUserId = req.user.id;
+    }
+
+    const user = await User.findByPk(targetUserId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -209,7 +218,32 @@ const updateUser = async (req, res, next) => {
       });
     }
 
-    await user.update(updateData);
+    // For self-updates, only allow certain fields to be updated
+    if (targetUserId === req.user.id) {
+      const allowedFields = ['name', 'email']; // Only allow name and email for self-updates
+      const filteredData = {};
+      Object.keys(updateData).forEach(key => {
+        if (allowedFields.includes(key)) {
+          filteredData[key] = updateData[key];
+        }
+      });
+      
+      // Check if email is being changed and if it already exists
+      if (filteredData.email && filteredData.email !== user.email) {
+        const existingUser = await User.findOne({ where: { email: filteredData.email } });
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already exists'
+          });
+        }
+      }
+      
+      await user.update(filteredData);
+    } else {
+      // Admin update - allow all fields
+      await user.update(updateData);
+    }
 
     res.json({
       success: true,

@@ -51,6 +51,11 @@ router.get('/users', protect, authorize('Admin'), getAllUsers);
 // @access  Private/Admin
 router.put('/users/:id', protect, authorize('Admin'), updateUser);
 
+// @route   PUT /api/auth/me
+// @desc    Update current user's own information
+// @access  Private
+router.put('/me', protect, updateUser);
+
 // @route   DELETE /api/auth/users/:id
 // @desc    Delete user (admin only)
 // @access  Private/Admin

@@ -82,3 +82,45 @@ export const restoreAccount = async (accountId) => {
     };
   }
 };
+
+export const updateUser = async (userId, userData) => {
+  try {
+    const response = await apiCall(`/auth/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      message: 'User updated successfully'
+    };
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to update user'
+    };
+  }
+};
+
+export const updateMyUser = async (userData) => {
+  try {
+    const response = await apiCall('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      message: 'User updated successfully'
+    };
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to update user'
+    };
+  }
+};

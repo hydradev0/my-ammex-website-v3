@@ -70,7 +70,7 @@ export const AccountModal = ({
                     ? 'border-red-300 focus:ring-red-500 focus:border-white' 
                     : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
                 }`}
-                placeholder="Enter full name"
+                placeholder="Enter Name (Company Name for Client Accounts)"
               />
               {fieldErrors?.name && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
