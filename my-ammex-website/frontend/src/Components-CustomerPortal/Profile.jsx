@@ -13,7 +13,9 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [formError, setFormError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Customer data state
   const [userData, setUserData] = useState({
@@ -137,7 +139,60 @@ const Profile = () => {
     try {
       setUpdating(true);
       setError(null);
-     
+      setFormError(null);
+      setFieldErrors({});
+      
+      // Validation helpers
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phPhoneRegex =  /^(09|\+639)\d{9}$/;
+      const phCityRegex = /^[A-Za-z\s]+$/;
+      const phPostalRegex = /^\d{4}$/;
+      const phCountryRegex = /^[A-Za-z\s]+$/;
+      const phStreetRegex = /^[A-Za-z0-9\s]+$/;
+
+      const newErrors = {};
+
+      // Required fields: companyName and account email
+      if (!editData.companyName || editData.companyName.trim() === '') {
+        newErrors.companyName = 'Company name is required';
+      }
+      if (!editUserEmail || editUserEmail.trim() === '') {
+        newErrors.email1 = 'Account email is required';
+      } else if (!emailRegex.test(editUserEmail)) {
+        newErrors.email1 = 'Please enter a valid email address';
+      }
+
+      // Optional fields: validate format only if provided
+      if (editData.contactName && !phPhoneRegex.test(editData.contactName)) {
+        newErrors.contactName = 'Please enter a valid name';
+      }
+      if (editData.telephone1 && !phPhoneRegex.test(editData.telephone1)) {
+        newErrors.telephone1 = 'Please enter a valid phone number';
+      }
+      if (editData.telephone2 && !phPhoneRegex.test(editData.telephone2)) {
+        newErrors.telephone2 = 'Please enter a valid phone number';
+      }
+      if (editData.email2 && !emailRegex.test(editData.email2)) {
+        newErrors.email2 = 'Please enter a valid email address';
+      }
+      if (editData.street && !phStreetRegex.test(editData.street)) {
+        newErrors.street = 'Please enter a valid street';
+      }
+      if (editData.city && !phCityRegex.test(editData.city)) {
+        newErrors.city = 'Please enter a valid city';
+      }
+      if (editData.postalCode && !phPostalRegex.test(editData.postalCode)) {
+        newErrors.postalCode = 'Please enter a valid postal code';
+      }
+      if (editData.country && !phCountryRegex.test(editData.country)) {
+        newErrors.country = 'Please enter a valid country';
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setFieldErrors(newErrors);
+        setFormError('Please fix the highlighted fields');
+        return;
+      }
       
       // Transform form data to match backend model
       const updatePayload = {
@@ -175,11 +230,16 @@ const Profile = () => {
             
             // Only call update if there are changes
             if (Object.keys(userUpdateData).length > 0) {
-              await updateMyUser(userUpdateData);
+              const userResponse = await updateMyUser(userUpdateData);
+              if (!userResponse.success) {
+                setFormError(userResponse.message || 'Failed to update user account');
+                return;
+              }
             }
           } catch (userErr) {
-            console.warn('Failed to update user account:', userErr);
-            // Don't fail the entire operation if user update fails
+            console.error('Failed to update user account:', userErr);
+            setFormError(userErr.message || 'Failed to update user account');
+            return;
           }
         }
         
@@ -203,6 +263,7 @@ const Profile = () => {
     setEditUserEmail(userEmail);
     setIsEditing(false);
     setError(null);
+    setFormError(null);
   };
 
   const handleInputChange = (field, value) => {
@@ -210,10 +271,16 @@ const Profile = () => {
       ...prev,
       [field]: value
     }));
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: null }));
+    }
   };
 
   const handleUserEmailChange = (value) => {
     setEditUserEmail(value);
+    if (fieldErrors.email1) {
+      setFieldErrors(prev => ({ ...prev, email1: null }));
+    }
   };
 
   // Show loading state
@@ -323,11 +390,11 @@ const Profile = () => {
       </div>
 
       {/* Error Display */}
-      {error && (
+      {(error || formError) && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800">{error}</span>
+            <span className="text-red-800">{error || formError}</span>
           </div>
         </div>
       )}
@@ -368,12 +435,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Company Name</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={editData.companyName}
+                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                    aria-invalid={!!fieldErrors.companyName}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.companyName ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.companyName && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.companyName}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.companyName}</div>
               )}
@@ -381,12 +454,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Contact Name</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.contactName}
-                  onChange={(e) => handleInputChange('contactName', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={editData.contactName}
+                    onChange={(e) => handleInputChange('contactName', e.target.value)}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.contactName ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                    aria-invalid={!!fieldErrors.contactName}
+                  />
+                  {fieldErrors.contactName && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.contactName}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.contactName}</div>
               )}
@@ -407,12 +486,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Telephone 1</label>
               {isEditing ? (
-                <input
-                  type="tel"
-                  value={editData.telephone1}
-                  onChange={(e) => handleInputChange('telephone1', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="tel"
+                    value={editData.telephone1}
+                    onChange={(e) => handleInputChange('telephone1', e.target.value)}
+                    aria-invalid={!!fieldErrors.telephone1}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.telephone1 ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.telephone1 && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.telephone1}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.telephone1}</div>
               )}
@@ -420,12 +505,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Telephone 2</label>
               {isEditing ? (
-                <input
-                  type="tel"
-                  value={editData.telephone2}
-                  onChange={(e) => handleInputChange('telephone2', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="tel"
+                    value={editData.telephone2}
+                    onChange={(e) => handleInputChange('telephone2', e.target.value)}
+                    aria-invalid={!!fieldErrors.telephone2}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.telephone2 ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.telephone2 && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.telephone2}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.telephone2}</div>
               )}
@@ -446,12 +537,21 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email 1 (Account Email)</label>
               {isEditing ? (
-                <input
-                  type="email"
-                  value={editUserEmail}
-                  onChange={(e) => handleUserEmailChange(e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="email"
+                    value={editUserEmail}
+                    onChange={(e) => handleUserEmailChange(e.target.value)}
+                    aria-invalid={!!fieldErrors.email1}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${
+                      fieldErrors.email1 ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter your email address"
+                  />
+                  {fieldErrors.email1 && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.email1}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 break-all text-sm sm:text-base font-medium">{userEmail}</div>
               )}
@@ -459,12 +559,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email 2</label>
               {isEditing ? (
-                <input
-                  type="email"
-                  value={editData.email2}
-                  onChange={(e) => handleInputChange('email2', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="email"
+                    value={editData.email2}
+                    onChange={(e) => handleInputChange('email2', e.target.value)}
+                    aria-invalid={!!fieldErrors.email2}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.email2 ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.email2 && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.email2}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 break-all text-sm sm:text-base">{userData.email2}</div>
               )}
@@ -485,12 +591,18 @@ const Profile = () => {
             <div className="sm:col-span-2 lg:col-span-3">
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Street</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.street}
-                  onChange={(e) => handleInputChange('street', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={editData.street}
+                    onChange={(e) => handleInputChange('street', e.target.value)}
+                    aria-invalid={!!fieldErrors.street}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.street ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.street && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.street}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.street}</div>
               )}
@@ -498,12 +610,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">City</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={editData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    aria-invalid={!!fieldErrors.city}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.city ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.city && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.city}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.city}</div>
               )}
@@ -511,12 +629,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Postal Code</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.postalCode}
-                  onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={editData.postalCode}
+                    onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                    aria-invalid={!!fieldErrors.postalCode}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.postalCode ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.postalCode && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.postalCode}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.postalCode}</div>
               )}
@@ -524,12 +648,18 @@ const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Country</label>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={editData.country}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
+                    aria-invalid={!!fieldErrors.country}
+                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.country ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {fieldErrors.country && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.country}</p>
+                  )}
+                </>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.country}</div>
               )}

@@ -105,6 +105,17 @@ const initializeModels = (sequelize) => {
         notEmpty: { msg: 'Vendor is required' }
       }
     },
+    supplierId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Supplier',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Supplier is required' }
+      }
+    },
     price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
@@ -739,6 +750,16 @@ const initializeModels = (sequelize) => {
     as: 'item'
   });
 
+  // Supplier relationships
+  Supplier.hasMany(Item, {
+    foreignKey: 'supplierId',
+    as: 'items'
+  });
+
+  Item.belongsTo(Supplier, {
+    foreignKey: 'supplierId',
+    as: 'supplier'
+  });
 
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {

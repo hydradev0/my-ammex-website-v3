@@ -71,13 +71,37 @@ const getItemById = async (req, res, next) => {
 // Create new item
 const createItem = async (req, res, next) => {
   try {
-    const { Item, Category, Unit } = getModels();
+    const { Item, Category, Unit, Supplier } = getModels();
     const itemData = req.body;
 
     // Expect: vendor (company name string), categoryId (number), modelNo (string)
     const vendorName = (itemData.vendor || '').toString().trim();
     const categoryId = itemData.categoryId;
     const modelNo = (itemData.modelNo || '').toString().trim();
+
+    // Find supplier by company name if vendor is provided but supplierId is not
+    let supplierId = itemData.supplierId;
+    if (!supplierId && vendorName) {
+      const supplier = await Supplier.findOne({
+        where: { companyName: vendorName }
+      });
+      if (supplier) {
+        supplierId = supplier.id;
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Supplier with company name "${vendorName}" not found. Please create the supplier first.` 
+        });
+      }
+    }
+
+    // Ensure supplierId is provided
+    if (!supplierId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Supplier is required. Please select a valid supplier.' 
+      });
+    }
 
     // Fetch category to get its name
     const category = await Category.findByPk(categoryId);
@@ -106,13 +130,18 @@ const createItem = async (req, res, next) => {
 
     const generatedCode = `${vendorCode}-${categoryCode}-${runningNumber}-${modelNo}`;
 
-    const item = await Item.create({ ...itemData, itemCode: generatedCode });
+    const item = await Item.create({ 
+      ...itemData, 
+      itemCode: generatedCode,
+      supplierId: supplierId
+    });
     
     // Fetch the created item with related data
     const createdItem = await Item.findByPk(item.id, {
       include: [
         { model: Category, as: 'category' },
-        { model: Unit, as: 'unit' }
+        { model: Unit, as: 'unit' },
+        { model: Supplier, as: 'supplier' }
       ]
     });
 
