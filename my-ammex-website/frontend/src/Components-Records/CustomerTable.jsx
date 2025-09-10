@@ -250,11 +250,12 @@ function CustomerTable() {
       truncate: true
     },
     { 
-      key: 'email1', 
+      key: 'userEmail', 
       header: 'Email',
-      width: 'w-56',
+      width: 'w-56',  
       cellClassName: 'w-56',
-      truncate: true
+      truncate: true,
+      render: (value, customer) => customer?.user?.email || customer?.email1 || ''
     },
     { 
       key: 'telephone1', 
@@ -303,6 +304,7 @@ function CustomerTable() {
       const matchesSearch = 
         (customer.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (customer.customerId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.user?.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (customer.email1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (customer.telephone1 || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (customer.contactName || '').toLowerCase().includes(searchTerm.toLowerCase());

@@ -23,6 +23,7 @@ const Cart = () => {
   const [removingItemId, setRemovingItemId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [inputValues, setInputValues] = useState({});
 
   // Initialize cart on component mount (prefer local, then background-merge DB)
 useEffect(() => {
@@ -125,6 +126,20 @@ useEffect(() => {
     });
   }, [cart]);
 
+  // Sync input values with cart quantities (for plus/minus button updates)
+  useEffect(() => {
+    setInputValues(prev => {
+      const newValues = { ...prev };
+      cart.forEach(item => {
+        // Only update if the input value is different from cart quantity
+        if (newValues[item.id] === undefined || newValues[item.id] === prev[item.id]) {
+          newValues[item.id] = item.quantity;
+        }
+      });
+      return newValues;
+    });
+  }, [cart]);
+
   // Auto-hide success toast
   useEffect(() => {
     if (showSuccessToast) {
@@ -138,7 +153,14 @@ useEffect(() => {
 
   const updateQuantity = async (itemId, newQuantity) => {
     try {
-      if (newQuantity <= 0) {
+      // Find the item to get its stock limit
+      const item = cart.find(cartItem => cartItem.id === itemId);
+      const maxStock = item?.stock || 999;
+      
+      // Convert to number and validate
+      const quantity = parseInt(newQuantity);
+      
+      if (isNaN(quantity) || quantity <= 0) {
         openConfirm({
           title: 'Remove Item',
           message: 'Setting quantity to 0 will remove this item from your cart. Continue?',
@@ -155,12 +177,21 @@ useEffect(() => {
           }
         });
         return;
-      } else {
-        // Update quantity
-        const result = await updateCartItem(itemId, newQuantity, user?.id);
+      }
+      
+      // If quantity exceeds max stock, automatically correct to max stock
+      if (quantity > maxStock) {
+        const result = await updateCartItem(itemId, maxStock, user?.id);
         if (result.success) {
           setCart(result.cart);
         }
+        return;
+      }
+      
+      // Update quantity normally
+      const result = await updateCartItem(itemId, quantity, user?.id);
+      if (result.success) {
+        setCart(result.cart);
       }
     } catch (error) {
       console.error('Error updating quantity:', error);
@@ -603,9 +634,48 @@ useEffect(() => {
                               >
                                 <Minus size={16} />
                               </button>
-                              <span className="w-8 text-center font-medium">
-                                {item.quantity}
-                              </span>
+                              <input 
+                              type="number" 
+                              className="w-12 h-8 text-center font-medium border border-gray-300 rounded-md focus:outline-none
+                              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                              value={inputValues[item.id] !== undefined ? inputValues[item.id] : item.quantity} 
+                              onChange={(e) => {
+                                // Update local input state for typing
+                                setInputValues(prev => ({
+                                  ...prev,
+                                  [item.id]: e.target.value
+                                }));
+                              }}
+                              onBlur={(e) => {
+                                // Update quantity only when clicking outside the input
+                                const quantity = parseInt(e.target.value);
+                                if (isNaN(quantity) || quantity <= 0) {
+                                  // Reset to current quantity if invalid
+                                  setInputValues(prev => ({
+                                    ...prev,
+                                    [item.id]: item.quantity
+                                  }));
+                                } else if (quantity > item.stock) {
+                                  // Set to max stock if exceeds limit
+                                  setInputValues(prev => ({
+                                    ...prev,
+                                    [item.id]: item.stock
+                                  }));
+                                  updateQuantity(item.id, item.stock);
+                                } else {
+                                  // Update with valid quantity
+                                  updateQuantity(item.id, quantity);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                // Allow Enter key to trigger update
+                                if (e.key === 'Enter') {
+                                  e.target.blur();
+                                }
+                              }}
+                              min="1"
+                              max={item.stock}
+                              />
                               <button
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 disabled={item.quantity >= (item.stock || 999)}

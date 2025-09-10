@@ -70,6 +70,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(12);
   const [toast, setToast] = useState({ show: false, message: '' });
+  const [priceRange, setPriceRange] = useState({ min: null, max: null });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
 
@@ -101,9 +102,11 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
       const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.itemCode?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
+      const meetsMin = priceRange.min == null || product.price >= priceRange.min;
+      const meetsMax = priceRange.max == null || product.price <= priceRange.max;
+      return matchesCategory && matchesSearch && meetsMin && meetsMax;
     });
-  }, [products, selectedCategory, searchTerm]);
+  }, [products, selectedCategory, searchTerm, priceRange.min, priceRange.max]);
 
   const paginatedProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * productsPerPage;
@@ -115,7 +118,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, searchTerm, priceRange.min, priceRange.max]);
 
   const handleAddToCart = async (product) => {
     try {
@@ -246,6 +249,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
             setSelectedCategory={setSelectedCategory}
             categories={availableCategories}
             cartItemCount={getItemCount()}
+            onPriceInputChange={({ min, max }) => setPriceRange({ min, max })}
           />
 
           {/* Product Grid */}

@@ -8,6 +8,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
   maxHeight = 'max-h-[110vh]',
  }) => {
   const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [inputQuantity, setInputQuantity] = useState(1);
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const modalRef = useRef(null);
@@ -15,8 +16,14 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
   useEffect(() => {
     if (isOpen) {
       setIsAnimating(true);
+      setInputQuantity(1);
     }
   }, [isOpen]);
+
+  // Keep the input field in sync when quantity changes via buttons
+  useEffect(() => {
+    setInputQuantity(selectedQuantity);
+  }, [selectedQuantity]);
 
   // Handle click outside modal
   useEffect(() => {
@@ -53,6 +60,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
   const handleQuantityChange = (change) => {
     const newQuantity = Math.max(1, Math.min(product.stock, selectedQuantity + change));
     setSelectedQuantity(newQuantity);
+    setInputQuantity(newQuantity);
   };
 
   const handleClose = () => {
@@ -178,15 +186,42 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
                       <button
                         onClick={() => handleQuantityChange(-1)}
                         disabled={selectedQuantity <= 1}
-                        className="w-8 h-8 lg:w-10 lg:h-10 border cursor-pointer border-gray-300 rounded-md lg:rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-8 h-8 lg:w-12 lg:h-12 border cursor-pointer border-gray-300 rounded-md lg:rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Minus className="w-3 h-3 lg:w-4 lg:h-4" />
                       </button>
-                      <span className="w-12 lg:w-16 text-center font-medium text-sm lg:text-base">{selectedQuantity}</span>
+                      <input
+                        type="number"
+                        className="w-10 h-8 lg:w-14 lg:h-12 text-center font-medium text-sm lg:text-lg border border-gray-300 rounded-md 
+                        lg:rounded-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        value={inputQuantity}
+                        onChange={(e) => {
+                          setInputQuantity(e.target.value);
+                        }}
+                        onBlur={(e) => {
+                          const parsed = parseInt(e.target.value);
+                          if (isNaN(parsed)) {
+                            // revert to current selected quantity
+                            setInputQuantity(selectedQuantity);
+                            return;
+                          }
+                          const clamped = Math.max(1, Math.min(product.stock, parsed));
+                          setSelectedQuantity(clamped);
+                          setInputQuantity(clamped);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        min="1"
+                        max={product.stock}
+                        disabled={product.stock === 0}
+                      />
                       <button
                         onClick={() => handleQuantityChange(1)}
                         disabled={selectedQuantity >= product.stock}
-                        className="w-8 h-8 lg:w-10 lg:h-10 border cursor-pointer border-gray-300 rounded-md lg:rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-8 h-8 lg:w-12 lg:h-12 border cursor-pointer border-gray-300 rounded-md lg:rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
                       </button>

@@ -3,8 +3,17 @@ const { Op } = require('sequelize');
 // Get current user's customer
 const getMyCustomer = async (req, res, next) => {
   try {
-    const { Customer } = getModels();
-    const customer = await Customer.findOne({ where: { userId: req.user.id } });
+    const { Customer, User } = getModels();
+    const customer = await Customer.findOne({ 
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'role', 'department', 'isActive']
+        }
+      ]
+    });
 
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
@@ -19,7 +28,7 @@ const getMyCustomer = async (req, res, next) => {
 // Get all customers
 const getAllCustomers = async (req, res, next) => {
   try {
-    const { Customer } = getModels();
+    const { Customer, User } = getModels();
     const { page = 1, limit = 10, search, isActive } = req.query;
     
     // Build where clause - default to active records unless specified otherwise
@@ -28,7 +37,8 @@ const getAllCustomers = async (req, res, next) => {
       whereClause[Op.or] = [
         { customerName: { [Op.iLike]: `%${search}%` } },
         { customerId: { [Op.iLike]: `%${search}%` } },
-        { email1: { [Op.iLike]: `%${search}%` } }
+        { email1: { [Op.iLike]: `%${search}%` } },
+        { '$user.email$': { [Op.iLike]: `%${search}%` } }
       ];
     }
     // Only filter by isActive if explicitly provided, otherwise default to active records
@@ -40,6 +50,13 @@ const getAllCustomers = async (req, res, next) => {
 
     const customers = await Customer.findAndCountAll({
       where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'role', 'department', 'isActive']
+        }
+      ],
       limit: parseInt(limit),
       offset: (page - 1) * limit,
       order: [['createdAt', 'DESC']]

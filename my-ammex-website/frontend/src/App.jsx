@@ -1,22 +1,29 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-// Import your page components
-import Dashboard from './Pages/Home/Dashboard'; // Update this path to where your Dashboard component is located
+import Layout from './Layout';
+
+import Dashboard from './Pages/Home/Dashboard'; 
 import Analytics from './Pages/Home/Analytics';
+
 import Customers from './Pages/BusinessPartners/Customers';
 import Suppliers from './Pages/BusinessPartners/Suppliers';
+
 import SalesQuotes from './Pages/Sales/SalesQuotes';
 import PurchaseQuotes from './Pages/Purchasing/PurchaseQuotes';
 import PurchaseOrder from './Pages/Purchasing/PurchaseOrder';
 import Inventory from './Pages/Inventory/Inventory';
+
 import SalesOrder from './Pages/Sales/SalesOrder';
 import SalesInvoice from './Pages/Sales/SalesInvoice';
+
 import AccountManagement from './Pages/Admin/AccountManagement';
+
 import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
 import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
 import Invoice from './Components-CustomerPortal/Invoice';
 import ProductSpecs from './Pages/Inventory/ProductSpecs';
+
 import ProtectedRoute from './Components/ProtectedRoute';
 import Login from './Pages/Auth/Login';
 
@@ -28,6 +35,7 @@ function App() {
   return (
     <>
     <BrowserRouter>
+      <Layout>
       <div className="app-scale-wrapper">
       <div className='text-gray-900 min-h-screen '>
       <Routes>
@@ -204,6 +212,7 @@ function App() {
       </Routes>
         </div>
       </div>
+      </Layout>
     </BrowserRouter>
     </>
   );

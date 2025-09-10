@@ -3,7 +3,7 @@ import axios from 'axios';
 import { initializeCartFromDatabase } from '../services/cartService';
 
 // Set axios base URL to point to backend
-axios.defaults.baseURL = 'http://localhost:5000';
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AuthContext = createContext();
 
