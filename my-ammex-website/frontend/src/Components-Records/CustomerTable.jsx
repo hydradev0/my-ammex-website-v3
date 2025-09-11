@@ -6,8 +6,7 @@ import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
 import { customerViewConfig, editCustomerConfig } from '../Components/viewConfigs';
-import { baseDropdownActions } from '../Components/dropdownActions';
-import { Plus } from 'lucide-react';
+import { customerDropdownActions } from '../Components/dropdownActions';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../services/customerService';
 
@@ -146,12 +145,12 @@ function CustomerTable() {
     setSelectedCustomer(null);
   };
 
-  // Handle new customer button click
-  const handleNewCustomerClick = () => {
-    setIsEditMode(false);
-    setSelectedCustomer(null);
-    setIsModalOpen(true);
-  };
+  // // Handle new customer button click
+  // const handleNewCustomerClick = () => {
+  //   setIsEditMode(false);
+  //   setSelectedCustomer(null);
+  //   setIsModalOpen(true);
+  // };
 
     // Modern confirmation dialog for delete operations
   const showDeleteConfirmation = (customerName, customerId) => {
@@ -268,7 +267,7 @@ function CustomerTable() {
   
   // Custom dropdown actions for customers with view, edit, and delete functionality
   const customCustomerDropdownActions = useMemo(() => {
-    return baseDropdownActions.map(action => {
+    return customerDropdownActions.map(action => {
       if (action.id === 'view') {
         return {
           ...action,
@@ -358,7 +357,7 @@ function CustomerTable() {
           />
           
           {/* New Customer Button */}
-          <button 
+          {/* <button 
             className={`w-full sm:w-auto bg-blue-900 hover:bg-blue-800 text-white text-lg font-medium 
             py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50 transition-colors 
             flex items-center cursor-pointer justify-center gap-2"
@@ -370,7 +369,7 @@ function CustomerTable() {
           >
             <Plus className="h-6 w-6 mr-2" />
             <span>New Customer</span>
-          </button>
+          </button> */}
           
           
         </div>

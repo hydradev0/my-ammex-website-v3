@@ -403,9 +403,6 @@ const initializeModels = (sequelize) => {
     telephone1: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        notEmpty: { msg: 'Telephone 1 is required' }
-      }
     },
     telephone2: {
       type: DataTypes.STRING,

@@ -134,18 +134,26 @@ const createCustomer = async (req, res, next) => {
 // Update customer
 const updateCustomer = async (req, res, next) => {
   try {
-    const { Customer } = getModels();
+    const { Customer, User } = getModels();
     const { id } = req.params;
     const updateData = req.body || {};
 
-    const customer = await Customer.findByPk(id);
+    const customer = await Customer.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'role', 'department', 'isActive']
+        }
+      ]
+    });
+    
     if (!customer) {
       return res.status(404).json({
         success: false,
         message: 'Customer not found'
       });
     }
-
 
     // Check for duplicate customerId (excluding current customer)
     if (updateData.customerId && updateData.customerId !== customer.customerId) {
@@ -176,11 +184,60 @@ const updateCustomer = async (req, res, next) => {
       }
     }
 
+    // Update customer record
     await customer.update(sanitized);
+
+    // If customer has a linked user account, sync the data
+    if (customer.user && customer.userId) {
+      const userUpdateData = {};
+      
+      // Sync name if customerName changed
+      if (sanitized.customerName && sanitized.customerName !== customer.user.name) {
+        userUpdateData.name = sanitized.customerName;
+      }
+      
+      // Sync email if email1 changed
+      if (sanitized.email1 && sanitized.email1 !== customer.user.email) {
+        // Check if email already exists for another user
+        const existingUser = await User.findOne({
+          where: {
+            email: sanitized.email1,
+            id: { [Op.ne]: customer.userId }
+          }
+        });
+        
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already exists for another user'
+          });
+        }
+        
+        userUpdateData.email = sanitized.email1;
+      }
+      
+      // Update user if there are changes
+      if (Object.keys(userUpdateData).length > 0) {
+        await User.update(userUpdateData, {
+          where: { id: customer.userId }
+        });
+      }
+    }
+
+    // Fetch updated customer with user data
+    const updatedCustomer = await Customer.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'role', 'department', 'isActive']
+        }
+      ]
+    });
 
     res.json({
       success: true,
-      data: customer
+      data: updatedCustomer
     });
   } catch (error) {
     next(error);

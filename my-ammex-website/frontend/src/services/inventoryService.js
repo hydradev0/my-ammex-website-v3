@@ -32,8 +32,11 @@ const apiCall = async (endpoint, options = {}) => {
 
 export const getItems = async (params = {}) => {
   const queryParams = new URLSearchParams();
-  if (params.page) queryParams.append('page', params.page);
+
+  // Only append if provided; let caller control page size
   if (params.limit) queryParams.append('limit', params.limit);
+
+  if (params.page) queryParams.append('page', params.page);
   if (params.category) queryParams.append('category', params.category);
   if (params.search) queryParams.append('search', params.search);
 
@@ -42,6 +45,7 @@ export const getItems = async (params = {}) => {
   
   return await apiCall(endpoint);
 };
+
 
 export const getItemById = async (id) => {
   return await apiCall(`/items/${id}`);

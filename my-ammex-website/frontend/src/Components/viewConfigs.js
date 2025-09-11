@@ -384,7 +384,6 @@ export const editCustomerConfig = {
           key: 'telephone1',
           width: 'w-1/2',
           type: 'tel',
-          required: true
         },
         {
           label: 'Telephone 2',

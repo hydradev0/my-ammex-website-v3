@@ -302,7 +302,7 @@ function EditDetailsModal({
         {/* Header */}
         <div className="flex justify-between items-center p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-800">{config.title || 'Edit Details'}: {data.name || data.itemName || 'Item'}</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{config.title || 'Edit Details'}: {data.name || data.itemName || ''}</h2>
           </div>
           
           <button 

@@ -41,7 +41,7 @@ const initializeServer = async () => {
       app.use('/api/categories', require('./routes/categories'));
       app.use('/api/units', require('./routes/units'));
       app.use('/api/customers', require('./routes/customers'));
-app.use('/api/suppliers', require('./routes/suppliers'));
+      app.use('/api/suppliers', require('./routes/suppliers'));
       app.use('/api/cart', require('./routes/cart'));
       
       app.use('/api/orders', require('./routes/orders'));
@@ -121,7 +121,6 @@ app.use('/api/suppliers', require('./routes/suppliers'));
             message: 'Validation failed',
             errors: [
               ...(!customerName ? [{ field: 'customerName', message: 'Customer name is required' }] : []),
-              ...(!telephone1 ? [{ field: 'telephone1', message: 'Telephone 1 is required' }] : []),
               ...(!email1 ? [{ field: 'email1', message: 'Email 1 is required' }] : [])
             ]
           });

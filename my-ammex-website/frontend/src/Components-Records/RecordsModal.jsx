@@ -53,9 +53,6 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
       newErrors.email2 = 'Email 2 is invalid';
     }
     
-    if (!formData.telephone1.trim()) {
-      newErrors.telephone1 = 'Telephone 1 is required';
-    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

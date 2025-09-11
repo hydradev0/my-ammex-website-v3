@@ -198,7 +198,7 @@ const getAllUsers = async (req, res, next) => {
 // Update user (admin only or self-update)
 const updateUser = async (req, res, next) => {
   try {
-    const { User } = getModels();
+    const { User, Customer } = getModels();
     const { id } = req.params;
     const updateData = req.body;
 
@@ -210,7 +210,16 @@ const updateUser = async (req, res, next) => {
       targetUserId = req.user.id;
     }
 
-    const user = await User.findByPk(targetUserId);
+    const user = await User.findByPk(targetUserId, {
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          required: false // Don't require customer (some users might not have one)
+        }
+      ]
+    });
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -230,7 +239,12 @@ const updateUser = async (req, res, next) => {
       
       // Check if email is being changed and if it already exists
       if (filteredData.email && filteredData.email !== user.email) {
-        const existingUser = await User.findOne({ where: { email: filteredData.email } });
+        const existingUser = await User.findOne({ 
+          where: { 
+            email: filteredData.email,
+            id: { [Op.ne]: targetUserId }
+          } 
+        });
         if (existingUser) {
           return res.status(400).json({
             success: false,
@@ -239,21 +253,98 @@ const updateUser = async (req, res, next) => {
         }
       }
       
+      // Update user record
       await user.update(filteredData);
+      
+      // If user has a linked customer and we're updating name/email, sync to customer
+      if (user.customer && (filteredData.name || filteredData.email)) {
+        const customerUpdateData = {};
+        
+        // Sync customerName if name changed
+        if (filteredData.name && filteredData.name !== user.customer.customerName) {
+          customerUpdateData.customerName = filteredData.name;
+        }
+        
+        // Sync email1 if email changed
+        if (filteredData.email && filteredData.email !== user.customer.email1) {
+          customerUpdateData.email1 = filteredData.email;
+        }
+        
+        // Update customer if there are changes
+        if (Object.keys(customerUpdateData).length > 0) {
+          await Customer.update(customerUpdateData, {
+            where: { userId: targetUserId }
+          });
+        }
+      }
     } else {
       // Admin update - allow all fields
+      
+      // Check if email is being changed and if it already exists
+      if (updateData.email && updateData.email !== user.email) {
+        const existingUser = await User.findOne({ 
+          where: { 
+            email: updateData.email,
+            id: { [Op.ne]: targetUserId }
+          } 
+        });
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already exists'
+          });
+        }
+      }
+      
+      // Update user record
       await user.update(updateData);
+      
+      // If user has a linked customer and we're updating name/email, sync to customer
+      if (user.customer && (updateData.name || updateData.email)) {
+        const customerUpdateData = {};
+        
+        // Sync customerName if name changed
+        if (updateData.name && updateData.name !== user.customer.customerName) {
+          customerUpdateData.customerName = updateData.name;
+        }
+        
+        // Sync email1 if email changed
+        if (updateData.email && updateData.email !== user.customer.email1) {
+          customerUpdateData.email1 = updateData.email;
+        }
+        
+        // Update customer if there are changes
+        if (Object.keys(customerUpdateData).length > 0) {
+          await Customer.update(customerUpdateData, {
+            where: { userId: targetUserId }
+          });
+        }
+      }
     }
+
+    // Fetch updated user data
+    const updatedUser = await User.findByPk(targetUserId, {
+      attributes: { exclude: ['password'] },
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          required: false
+        }
+      ]
+    });
 
     res.json({
       success: true,
       data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        isActive: user.isActive
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        department: updatedUser.department,
+        isActive: updatedUser.isActive,
+        customerPk: updatedUser.customer ? updatedUser.customer.id : null,
+        customerId: updatedUser.customer ? updatedUser.customer.customerId : null
       }
     });
   } catch (error) {
@@ -261,10 +352,10 @@ const updateUser = async (req, res, next) => {
   }
 };
 
-// Delete user (admin only)
+// Updated deleteUser function in auth controller
 const deleteUser = async (req, res, next) => {
   try {
-    const { User } = getModels();
+    const { User, Customer } = getModels();
     const { id } = req.params;
 
     const user = await User.findByPk(id);
@@ -275,11 +366,52 @@ const deleteUser = async (req, res, next) => {
       });
     }
 
+    // Soft delete user
     await user.update({ isActive: false });
+
+    // Also soft delete linked customer if exists
+    await Customer.update(
+      { isActive: false }, 
+      { where: { userId: id } }
+    );
 
     res.json({
       success: true,
       message: 'User deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Updated deleteCustomer function in customer controller
+const deleteCustomer = async (req, res, next) => {
+  try {
+    const { Customer, User } = getModels();
+    const { id } = req.params;
+
+    const customer = await Customer.findByPk(id);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Soft delete customer
+    await customer.update({ isActive: false });
+
+    // Also soft delete linked user if exists
+    if (customer.userId) {
+      await User.update(
+        { isActive: false }, 
+        { where: { id: customer.userId } }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Customer deleted successfully'
     });
   } catch (error) {
     next(error);
@@ -292,5 +424,6 @@ module.exports = {
   getCurrentUser,
   getAllUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  deleteCustomer
 }; 

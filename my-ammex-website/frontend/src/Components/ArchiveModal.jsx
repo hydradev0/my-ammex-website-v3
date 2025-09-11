@@ -59,7 +59,6 @@ function ArchiveModal({ isOpen = false, onClose }) {
   useEffect(() => {
     if (!isOpen || activeTab !== 'Items' || !showItemsTab) return;
     fetchArchivedItemsData({ page: itemsPage, limit: itemsPerPage });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, activeTab, itemsPage, itemsPerPage, showItemsTab]);
 
   const handleRestoreItem = async (item) => {
@@ -70,7 +69,6 @@ function ArchiveModal({ isOpen = false, onClose }) {
         fetchArchivedItemsData();
       }
     } catch (err) {
-      // Keep simple; error banner already handled via fetch
       console.error('Restore failed:', err);
     }
   };
@@ -108,7 +106,6 @@ function ArchiveModal({ isOpen = false, onClose }) {
   useEffect(() => {
     if (!isOpen || activeTab !== 'Customers' || !showCustomersTab) return;
     fetchArchivedCustomersData({ page: customersPage, limit: customersPerPage });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, activeTab, customersPage, customersPerPage, showCustomersTab]);
 
   const handleRestoreCustomer = async (customer) => {
@@ -195,7 +192,7 @@ function ArchiveModal({ isOpen = false, onClose }) {
           <div className="flex gap-2 border-b border-gray-200">
             {showItemsTab && (
               <button
-                className={`px-3 py-2 -mb-px border-b-2 ${activeTab === 'Items' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                className={`px-3 cursor-pointer py-2 -mb-px border-b-2 ${activeTab === 'Items' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
                 onClick={() => setActiveTab('Items')}
               >
                 Items
@@ -203,7 +200,7 @@ function ArchiveModal({ isOpen = false, onClose }) {
             )}
             {showCustomersTab && (
               <button
-                className={`px-3 py-2 -mb-px border-b-2 ${activeTab === 'Customers' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                className={`px-3 cursor-pointer py-2 -mb-px border-b-2 ${activeTab === 'Customers' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
                 onClick={() => setActiveTab('Customers')}
               >
                 Customers
@@ -211,7 +208,7 @@ function ArchiveModal({ isOpen = false, onClose }) {
             )}
             {showAccountsTab && (
               <button
-                className={`px-3 py-2 -mb-px border-b-2 ${activeTab === 'Accounts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                className={`px-3 cursor-pointer py-2 -mb-px border-b-2 ${activeTab === 'Accounts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
                 onClick={() => setActiveTab('Accounts')}
               >
                 Accounts

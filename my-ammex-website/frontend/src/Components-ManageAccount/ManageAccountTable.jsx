@@ -517,8 +517,6 @@ const ManageAccountTable = () => {
         </div>
       )}
 
-
-
       {/* Search and Filters Section */}
       <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-col lg:flex-row gap-4">

@@ -17,9 +17,9 @@ import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 
 // Constants for category styling
 const CATEGORY_STYLES = {
-  'Materials': 'bg-blue-100 text-blue-800',
+  'Hammer': 'bg-blue-100 text-blue-800',
   'Machines': 'bg-green-100 text-green-800',
-  'Sanitary': 'bg-purple-100 text-purple-800',
+  'Drivers': 'bg-purple-100 text-purple-800',
   'Drill': 'bg-orange-100 text-orange-800',
   'Tools': 'bg-red-100 text-red-800',
 };
@@ -54,6 +54,12 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   const [deletingItem, setDeletingItem] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  // Server-side pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(7);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // State for search and filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,21 +98,40 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   });
   const [adjustingPrice, setAdjustingPrice] = useState(false);
 
-  // Fetch items on component mount
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  // Windowed fetching (fetch 3 UI pages at a time)
+  const PAGE_WINDOW_MULTIPLIER = 3;
+  const [fetchedBackendPage, setFetchedBackendPage] = useState(1);
+  const [fetchedLimit, setFetchedLimit] = useState(itemsPerPage * PAGE_WINDOW_MULTIPLIER);
 
-  // Fetch items from API
-  const fetchItems = async () => {
+  // Fetch items on mount, when navigating to a new backend window, or when rows-per-page changes
+  useEffect(() => {
+    const backendPage = Math.floor((currentPage - 1) / PAGE_WINDOW_MULTIPLIER) + 1;
+    const limit = itemsPerPage * PAGE_WINDOW_MULTIPLIER;
+    if (backendPage !== fetchedBackendPage || limit !== fetchedLimit) {
+      fetchItems({ page: backendPage, limit, backendPageOverride: backendPage });
+    } else if (items.length === 0) {
+      // initial load
+      fetchItems({ page: backendPage, limit, backendPageOverride: backendPage });
+    }
+  }, [currentPage, itemsPerPage]);
+
+  // Fetch items from API (fetch window of 3 UI pages)
+  const fetchItems = async ({ page = 1, limit = itemsPerPage * PAGE_WINDOW_MULTIPLIER, backendPageOverride } = {}) => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await getItems();
+      const response = await getItems({ page, limit });
       
       if (response.success) {
-        setItems(response.data);
+        setItems(response.data || []);
+        const p = response.pagination || {};
+        // Maintain the current UI page; update fetched backend page window & limit
+        setFetchedBackendPage(backendPageOverride || page);
+        setFetchedLimit(limit);
+        const total = p.totalItems || (response.data ? response.data.length : 0);
+        setTotalItems(total);
+        setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)));
       } else {
         setError(response.message || 'Failed to fetch items');
       }
@@ -188,6 +213,25 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       return matchesSearch && matchesFilter;
     });
   }, [items, searchTerm, filterValue]);
+
+  // Slice current window into UI page-sized chunk
+  const displayItems = useMemo(() => {
+    const pageIndexWithinWindow = (currentPage - 1) % PAGE_WINDOW_MULTIPLIER;
+    const start = pageIndexWithinWindow * itemsPerPage;
+    return filteredItems.slice(start, start + itemsPerPage);
+  }, [filteredItems, currentPage, itemsPerPage]);
+
+  // Server-side pagination handlers
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    const value = Number(newItemsPerPage) || 10;
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
 
   // Handle new item submission
   const handleNewItem = async (newItem) => {
@@ -552,7 +596,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
     setIsEditMode(false);
     setSelectedItem(null);
     setFieldErrors({});
-    setIsModalOpen(true);
+    setIsModalOpen(true); 
   };
 
   if (loading && items.length === 0) {
@@ -608,15 +652,22 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
         
         {/* Generic Table for Items */}
         <GenericTable 
-          data={filteredItems}
+          data={displayItems}
           columns={itemColumns}
           onRowClick={handleRowClick}
           pagination={true}
-          itemsPerPage={7}
           emptyMessage={'No items found'}
           className="mb-8"
           alternateRowColors={true}
           dropdownActions={customItemsDropdownActions}
+          serverPagination={true}
+          isLoading={loading}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPageProp={itemsPerPage}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
         />
 
         {/* Item Modal (disabled in read-only mode) */}

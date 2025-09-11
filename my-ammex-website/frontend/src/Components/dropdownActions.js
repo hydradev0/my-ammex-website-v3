@@ -25,6 +25,23 @@ export const baseDropdownActions = [
   }
 ];
 
+export const customerDropdownActions = [
+  {
+    id: 'view',
+    label: 'View Details',
+    icon: Eye,
+    onClick: null,
+    className: 'text-gray-700'
+  },
+  {
+    id: 'edit',
+    label: 'Edit',
+    icon: Edit,
+    onClick: null,
+    className: 'text-gray-700'
+  },
+];
+
 // Sales Quotes specific actions (additive)
 export const salesQuotesDropdownActions = [
   ...baseDropdownActions,

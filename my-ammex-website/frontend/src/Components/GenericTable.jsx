@@ -44,7 +44,16 @@ const GenericTable = ({
   emptyMessage = 'No data available',
   alternateRowColors = true,
   dropdownActions = baseDropdownActions,
-  width = 'max-w-full'
+  width = 'max-w-full',
+  // Server-side pagination controls (optional)
+  serverPagination = false,
+  currentPage: controlledCurrentPage,
+  totalPages: controlledTotalPages,
+  totalItems: controlledTotalItems,
+  itemsPerPageProp,
+  onPageChange,
+  onItemsPerPageChange,
+  isLoading = false
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentItemsPerPage, setCurrentItemsPerPage] = useState(itemsPerPage);
@@ -67,11 +76,16 @@ const GenericTable = ({
     });
   }, [data, sortConfig]);
 
-  // Handle pagination
-  const totalPages = Math.ceil(sortedData.length / currentItemsPerPage);
-  const startIndex = (currentPage - 1) * currentItemsPerPage;
-  const paginatedData = pagination 
-    ? sortedData.slice(startIndex, startIndex + currentItemsPerPage)
+  // Handle pagination (client vs server)
+  const effectiveItemsPerPage = serverPagination ? (itemsPerPageProp || itemsPerPage) : currentItemsPerPage;
+  const effectiveCurrentPage = serverPagination ? (controlledCurrentPage || 1) : currentPage;
+  const totalPages = serverPagination
+    ? (controlledTotalPages || 1)
+    : Math.ceil(sortedData.length / effectiveItemsPerPage);
+  const totalItems = serverPagination ? (controlledTotalItems ?? sortedData.length) : sortedData.length;
+  const startIndex = (effectiveCurrentPage - 1) * effectiveItemsPerPage;
+  const paginatedData = pagination
+    ? (serverPagination ? sortedData : sortedData.slice(startIndex, startIndex + effectiveItemsPerPage))
     : sortedData;
 
   const handleSort = (key) => {
@@ -82,12 +96,20 @@ const GenericTable = ({
   };
 
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    if (serverPagination) {
+      onPageChange && onPageChange(page);
+    } else {
+      setCurrentPage(page);
+    }
   };
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
-    setCurrentItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to first page when changing items per page
+    if (serverPagination) {
+      onItemsPerPageChange && onItemsPerPageChange(newItemsPerPage);
+    } else {
+      setCurrentItemsPerPage(newItemsPerPage);
+      setCurrentPage(1); // Reset to first page when changing items per page
+    }
   };
 
   // Format currency helper function (from your original code)
@@ -125,7 +147,13 @@ const GenericTable = ({
     <div className={`generic-table-container ${className}`}>
       {title && <h2 className="text-2xl font-bold my-4 text-gray-800 leading-snug">{title}</h2>}
       
-      <div className={`overflow-x-auto bg-white rounded-md shadow-md ${width}`}>
+      <div className={`overflow-x-auto bg-white rounded-md shadow-md relative ${width}`}>
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/50 z-20 flex flex-col items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+            <p className="text-gray-600">fetching data...</p>
+          </div>
+        )}
         <table className="w-full table-fixed divide-y divide-gray-200 leading-relaxed">
           <thead className="bg-blue-900">
             <tr>
@@ -233,10 +261,10 @@ const GenericTable = ({
       
       {pagination && sortedData.length > 0 && (
         <PaginationTable
-          currentPage={currentPage}
+          currentPage={effectiveCurrentPage}
           totalPages={totalPages}
-          totalItems={sortedData.length}
-          itemsPerPage={currentItemsPerPage}
+          totalItems={totalItems}
+          itemsPerPage={effectiveItemsPerPage}
           onPageChange={handlePageChange}
           onItemsPerPageChange={handleItemsPerPageChange}
           className="mt-4"
