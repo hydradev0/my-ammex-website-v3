@@ -4,7 +4,7 @@ import { ArrowLeft, Plus, Minus, Trash2, Package, Check, ShoppingBag, ChevronRig
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
-import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase } from '../services/cartService';
+import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
 
 const Cart = () => {
@@ -14,6 +14,10 @@ const Cart = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewWarning, setPreviewWarning] = useState(null);
+  const [previewError, setPreviewError] = useState('');
+  const [confirmingCheckout, setConfirmingCheckout] = useState(false);
   const previewModalRef = useRef(null);
   const successModalRef = useRef(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -278,55 +282,49 @@ useEffect(() => {
     setSelectedIds(allSelected ? new Set() : new Set(cart.map(item => item.id)));
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (getSelectedItems().length === 0) return;
-    
-    // Generate order number
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
-    const randomNum = Math.floor(Math.random() * 1000);
-    const newOrderNumber = `ORD-${dateStr}-${randomNum}`;
-    setOrderNumber(newOrderNumber);
-    
-    setShowPreviewModal(true);
+    try {
+      setPreviewError('');
+      setPreviewLoading(true);
+      // Preview from backend for accurate totals
+      const ids = getSelectedItems().map(i => i.id);
+      const preview = await checkoutPreview(user?.id, { itemIds: ids });
+      setOrderNumber(preview?.data?.orderNumber || '');
+      // Capture soft warnings (e.g., incomplete profile)
+      setPreviewWarning(preview?.warnings || null);
+      setShowPreviewModal(true);
+    } catch (e) {
+      console.error('Checkout preview failed:', e);
+      setPreviewError(e.message || 'Failed to preview checkout');
+    }
+    finally {
+      setPreviewLoading(false);
+    }
   };
 
-  const handleConfirmPreview = () => {
-    setShowPreviewModal(false);
-    
-    // Create order object
-    const order = {
-      id: orderNumber,
-      orderNumber: orderNumber,
-      items: getSelectedItems().map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        total: item.price * item.quantity
-      })),
-      totalAmount: getSelectedTotalPrice(),
-      orderDate: new Date().toISOString(),
-      status: 'pending',
-      customerName: 'Customer',
-      customerEmail: 'customer@example.com'
-    };
+  const handleConfirmPreview = async () => {
+    try {
+      setConfirmingCheckout(true);
+      const ids = getSelectedItems().map(i => i.id);
+      const result = await checkoutConfirm(user?.id, { itemIds: ids });
 
-    // Save order to localStorage
-    const existingOrders = JSON.parse(localStorage.getItem('customerOrders') || '[]');
-    existingOrders.unshift(order);
-    localStorage.setItem('customerOrders', JSON.stringify(existingOrders));
+      // Remove only the selected items locally
+      const remaining = cart.filter(item => !selectedIds.has(item.id));
+      setCart(remaining);
+      localStorage.setItem('customerCart', JSON.stringify(remaining));
+      setSelectedIds(new Set(remaining.map(item => item.id)));
 
-    // Remove only the selected items from the cart; keep the rest
-    const remaining = cart.filter(item => !selectedIds.has(item.id));
-    setCart(remaining);
-    localStorage.setItem('customerCart', JSON.stringify(remaining));
-    // Reset selection to remaining items (select all by default)
-    setSelectedIds(new Set(remaining.map(item => item.id)));
-
-    // Show success toast
-    setShowSuccessToast(true);
+      // Show success using server order number
+      setOrderNumber(result?.clientView?.orderNumber || result?.data?.orderNumber || '');
+      setShowPreviewModal(false);
+      setShowSuccessToast(true);
+    } catch (e) {
+      console.error('Checkout confirm failed:', e);
+    } finally {
+      setConfirmingCheckout(false);
+    }
   };
 
   const handleBack = () => {
@@ -340,7 +338,8 @@ useEffect(() => {
   const handleContinueShopping = () => {
     navigate('/Products');
   };
-
+  
+// Preview Modal
   const previewModalContent = showPreviewModal ? (
     <div 
       ref={previewModalRef}
@@ -355,6 +354,21 @@ useEffect(() => {
           <h2 className="text-xl font-semibold text-gray-900">Order Preview</h2>
           <p className="text-gray-500 mt-1">Please review your order before confirming</p>
         </div>
+        {previewWarning?.profileIncomplete && (
+          <div className="px-6 pt-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
+              <p className="font-semibold mb-1">Profile incomplete</p>
+              <p className="text-sm mb-2">Please complete your profile before confirming checkout.</p>
+              {Array.isArray(previewWarning.missingFields) && previewWarning.missingFields.length > 0 && (
+                <ul className="list-disc list-inside text-sm">
+                  {previewWarning.missingFields.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Fixed Order Info */}
         <div className="p-6 border-b border-gray-200 flex-shrink-0">
@@ -413,10 +427,26 @@ useEffect(() => {
               Back to Cart
             </button>
             <button
-              onClick={handleConfirmPreview}
-              className="flex-1 cursor-pointer bg-[#3182ce] text-white px-4 py-3 rounded-3xl font-medium hover:bg-[#2c5282] transition-colors"
+              onClick={() => {
+                if (confirmingCheckout) return;
+                if (previewWarning?.profileIncomplete) {
+                  setShowPreviewModal(false);
+                  navigate('/Products/profile');
+                } else {
+                  handleConfirmPreview();
+                }
+              }}
+              disabled={confirmingCheckout}
+              className={`flex-1 cursor-pointer px-4 py-3 rounded-3xl font-medium transition-colors ${confirmingCheckout ? 'bg-[#6aa3db] text-white cursor-not-allowed' : (previewWarning?.profileIncomplete ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#3182ce] text-white hover:bg-[#2c5282]')}`}
             >
-              Confirm Order
+              {previewWarning?.profileIncomplete ? 'Go to Profile' : (
+                confirmingCheckout ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
+                    Placing order...
+                  </span>
+                ) : 'Confirm Order'
+              )}
             </button>
           </div>
         </div>
@@ -557,7 +587,7 @@ useEffect(() => {
             <p className="text-gray-500 mb-6">Add some products to get started</p>
             <button
               onClick={handleContinueShopping}
-              className="bg-[#3182ce] text-white px-6 py-2 rounded-3xl hover:bg-[#2c5282] transition-colors"
+              className="bg-[#3182ce] cursor-pointer text-white px-6 py-2 rounded-3xl hover:bg-[#4992d6] transition-colors"
             >
               Browse Products
             </button>
@@ -737,11 +767,19 @@ useEffect(() => {
                 
                 <button
                   onClick={handleCheckout}
-                  disabled={getSelectedItems().length === 0}
-                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#2c5282]'}`}
+                  disabled={getSelectedItems().length === 0 || previewLoading}
+                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 || previewLoading ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#2c5282]'}`}
                 >
-                  Proceed to Checkout
+                  {previewLoading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
+                      Preparing preview...
+                    </span>
+                  ) : 'Proceed to Checkout'}
                 </button>
+                {previewError && (
+                  <div className="mt-3 text-sm text-red-600">{previewError}</div>
+                )}
                 
                 <button
                   onClick={handleContinueShopping}

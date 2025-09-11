@@ -43,6 +43,7 @@ const initializeServer = async () => {
       app.use('/api/customers', require('./routes/customers'));
       app.use('/api/suppliers', require('./routes/suppliers'));
       app.use('/api/cart', require('./routes/cart'));
+      app.use('/api/checkout', require('./routes/checkout'));
       
       app.use('/api/orders', require('./routes/orders'));
       app.use('/api/analytics', require('./routes/analytics'));
@@ -87,6 +88,14 @@ const initializeServer = async () => {
           success: true,
           data: []
         });
+      });
+      
+      // Mock checkout routes in no-DB mode
+      app.post('/api/checkout/:customerId/preview', (req, res) => {
+        res.json({ success: true, data: { items: [], totalAmount: 0, orderNumber: 'ORD-DEV-0000', status: 'pending', orderDate: new Date().toISOString() } });
+      });
+      app.post('/api/checkout/:customerId/confirm', (req, res) => {
+        res.status(201).json({ success: true, data: { id: 'dev-order', items: [], totalAmount: 0, status: 'pending', orderNumber: 'ORD-DEV-0000', orderDate: new Date().toISOString() }, clientView: { id: 'dev-order', items: [], totalAmount: 0, status: 'pending', orderNumber: 'ORD-DEV-0000', orderDate: new Date().toISOString() } });
       });
 
       app.get('/api/analytics', (req, res) => {

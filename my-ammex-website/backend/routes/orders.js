@@ -10,8 +10,10 @@ const {
   updateOrder,
   updateOrderStatus,
   deleteOrder,
-  getOrdersByStatus
+  getOrdersByStatus,
+  getMyOrders
 } = require('../controllers/orderController');
+const { getModels } = require('../config/db');
 
 // Validation middleware
 const validateOrder = [
@@ -40,6 +42,8 @@ router.get('/status/:status', protect, authorize('Admin', 'Sales Marketing'), ge
 // @route   GET /api/orders/:id
 // @desc    Get single order by ID
 // @access  Private (Admin, Sales Marketing)
+// Place specific routes before dynamic :id to avoid conflicts
+router.get('/my', protect, authorize('Client'), getMyOrders);
 router.get('/:id', protect, authorize('Admin', 'Sales Marketing'), getOrderById);
 
 // @route   POST /api/orders
@@ -61,5 +65,7 @@ router.patch('/:id/status', protect, authorize('Admin', 'Sales Marketing'), upda
 // @desc    Delete order
 // @access  Private (Admin, Sales Marketing)
 router.delete('/:id', protect, authorize('Admin', 'Sales Marketing'), deleteOrder);
+
+// Moved '/my' above to avoid being captured by '/:id'
 
 module.exports = router; 

@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle, 
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
+import { getMyOrders } from '../services/cartService';
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const Orders = () => {
   
   // State for rejected orders
   const [rejectedOrders, setRejectedOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Sorting state
   const [sortField, setSortField] = useState('date');
@@ -30,79 +32,26 @@ const Orders = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Load orders from localStorage and separate into pending/rejected
+  // Load orders from backend
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem('customerOrders') || '[]');
-    
-    // Separate orders into pending and rejected
-    const pending = savedOrders.filter(order => order.status !== 'rejected');
-    
-    // Mock rejected orders data for demonstration
-    const mockRejectedOrders = [
-      {
-        id: 'ORD-R001',
-        orderNumber: 'ORD-R001',
-        orderDate: '2024-03-15T10:30:00Z',
-        status: 'rejected',
-        totalAmount: 1250.00,
-        rejectionReason: 'Reached credit limit',
-        items: [
-          {
-            name: 'Industrial Valve - 2" Steel',
-            quantity: 2,
-            price: 500.00,
-            total: 1000.00
-          },
-          {
-            name: 'Pipe Fitting - Elbow 90°',
-            quantity: 5,
-            price: 50.00,
-            total: 250.00
-          }
-        ]
-      },
-      {
-        id: 'ORD-R002',
-        orderNumber: 'ORD-R002',
-        orderDate: '2024-03-18T14:15:00Z',
-        status: 'rejected',
-        totalAmount: 850.00,
-        rejectionReason: 'Has not paid previous invoices',
-        items: [
-          {
-            name: 'Hydraulic Hose - 1/2"',
-            quantity: 10,
-            price: 85.00,
-            total: 850.00
-          }
-        ]
-      },
-      {
-        id: 'ORD-R003',
-        orderNumber: 'ORD-R003',
-        orderDate: '2024-03-20T09:45:00Z',
-        status: 'rejected',
-        totalAmount: 2100.00,
-        rejectionReason: 'Product out of stock',
-        items: [
-          {
-            name: 'Pressure Gauge - 0-100 PSI',
-            quantity: 3,
-            price: 150.00,
-            total: 450.00
-          },
-          {
-            name: 'Control Valve - 3"',
-            quantity: 1,
-            price: 1650.00,
-            total: 1650.00
-          }
-        ]
+    let isMounted = true;
+    (async () => {
+      try {
+        setIsLoading(true);
+        const res = await getMyOrders('pending');
+        if (!isMounted) return;
+        setPendingOrders(res?.data || []);
+        // For now, keep rejected empty until backend supports client view of rejected
+        setRejectedOrders([]);
+      } catch (e) {
+        console.error('Failed to load orders:', e);
+        setPendingOrders([]);
+        setRejectedOrders([]);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-    ];
-    
-    setPendingOrders(pending);
-    setRejectedOrders(mockRejectedOrders);
+    })();
+    return () => { isMounted = false; };
   }, []);
 
 
@@ -355,16 +304,21 @@ const Orders = () => {
         {/* Pending Tab Content */}
         {activeTab === 'pending' && (
           <>
-
-            {/* Pending Orders Table */}
-            {paginatedPendingOrders.length === 0 ? (
+            {/* Loading State */}
+            {isLoading ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your orders...</h3>
+                <p className="text-gray-600">Please wait while we fetch your orders</p>
+              </div>
+            ) : paginatedPendingOrders.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Orders</h3>
                 <p className="text-gray-500 mb-6">You don't have any pending orders at the moment.</p>
                 <button
                   onClick={handleBack}
-                  className="bg-[#3182ce] text-white px-6 py-2 rounded-lg hover:bg-[#2c5282] transition-colors"
+                  className="bg-[#3182ce] cursor-pointer text-white px-6 py-2 rounded-3xl hover:bg-[#2c5282] transition-colors"
                 >
                   Start Shopping
                 </button>
@@ -428,7 +382,7 @@ const Orders = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
                               onClick={() => handleViewOrder(order)}
-                              className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
+                              className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
                             >
                               <Eye className="w-4 h-4" />
                               View

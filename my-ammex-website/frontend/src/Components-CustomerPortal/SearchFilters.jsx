@@ -110,7 +110,7 @@ const SearchFilters = ({
             <button
               ref={desktopTriggerRef}
               onClick={() => setShowDesktopFilters((v) => !v)}
-              className="flex cursor-pointer items-center gap-2 pr-4 py-2 rounded-3xl text-gray-700 border border-gray-400 hover:bg-gray-100 transition-colors whitespace-nowrap"
+              className="flex cursor-pointer items-center gap-2 pr-4 py-2 rounded-3xl text-gray-700 border border-gray-400 hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               <SlidersHorizontal className="ml-4 w-5 h-5" />
               <span className="text-[16px] font-medium flex items-center gap-1">
@@ -126,11 +126,11 @@ const SearchFilters = ({
                         onPriceInputChange({ min: null, max: null });
                       }
                     }}
-                    className="ml-4 inline-flex items-center justify-center rounded-full hover:bg-gray-200"
+                    className="ml-4 inline-flex items-center justify-center rounded-full hover:bg-gray-300"
                     aria-label="Clear filters"
                     title="Clear filters"
                   >
-                    <X size={16} className="text-gray-600 " />
+                    <X size={16} className="text-gray-600 m-1" />
                   </span>
                 )}
               </span>

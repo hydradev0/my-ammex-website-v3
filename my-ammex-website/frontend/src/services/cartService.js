@@ -231,6 +231,53 @@ export const convertCartToOrder = async (customerId) => {
   }
 };
 
+// Checkout preview (server-side pricing of selected items)
+export const checkoutPreview = async (customerId, { itemIds = [], cartItemIds = [] } = {}) => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/checkout/${customerId}/preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ itemIds, cartItemIds })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to preview checkout');
+  return data;
+};
+
+// Checkout confirm (creates order from selected items, removes only those from cart)
+export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = [], notes = '' } = {}) => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/checkout/${customerId}/confirm`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ itemIds, cartItemIds, notes })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to confirm checkout');
+  return data;
+};
+
+// Fetch authenticated client's orders (optionally filter by status)
+export const getMyOrders = async (status = undefined) => {
+  const token = localStorage.getItem('token');
+  const url = new URL(`${API_BASE_URL}/orders/my`);
+  if (status) url.searchParams.set('status', status);
+  const response = await fetch(url.toString(), {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch orders');
+  return data;
+};
+
 // Get cart from localStorage (for immediate UI updates)
 export const getLocalCart = () => {
   try {

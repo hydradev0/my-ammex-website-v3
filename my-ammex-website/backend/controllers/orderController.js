@@ -1,4 +1,5 @@
 const { getModels } = require('../config/db');
+const { Op } = require('sequelize');
 
 // Get all orders
 const getAllOrders = async (req, res, next) => {
@@ -258,6 +259,50 @@ function generateOrderNumber() {
   return `ORD-${yyyy}${mm}${dd}-${random}`;
 }
 
+// Get authenticated client's own orders (optionally filter by status)
+const getMyOrders = async (req, res, next) => {
+  try {
+    const { Order, OrderItem, Customer, Item } = getModels();
+    const { status } = req.query;
+
+    // Map auth user -> customer
+    const customer = await Customer.findOne({ where: { userId: req.user.id } });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found for user' });
+    }
+
+    const where = { customerId: customer.id };
+    if (status) where.status = status;
+
+    const orders = await Order.findAll({
+      where,
+      include: [
+        { model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Shape to client-friendly structure like Orders.jsx expects
+    const clientOrders = orders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      orderDate: o.orderDate,
+      status: o.status,
+      totalAmount: Number(o.totalAmount),
+      items: (o.items || []).map((it) => ({
+        name: it.item?.itemName,
+        quantity: Number(it.quantity),
+        price: Number(it.unitPrice),
+        total: Number(it.totalPrice)
+      }))
+    }));
+
+    res.json({ success: true, data: clientOrders });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllOrders,
   getOrderById,
@@ -265,5 +310,6 @@ module.exports = {
   updateOrder,
   updateOrderStatus,
   deleteOrder,
-  getOrdersByStatus
+  getOrdersByStatus,
+  getMyOrders
 }; 
