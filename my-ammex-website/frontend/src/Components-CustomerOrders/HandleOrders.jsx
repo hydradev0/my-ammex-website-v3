@@ -6,6 +6,7 @@ import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import PaginationTable from '../Components/PaginationTable';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import { getPendingOrdersForSales, updateOrderStatus } from '../services/orderService';
+import { useAuth } from '../contexts/AuthContext';
 //test
 function HandleOrders() {
   // Tab state
@@ -40,10 +41,20 @@ function HandleOrders() {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { user } = useAuth();
+
   // Load pending orders from backend (Sales/Admin view)
   useEffect(() => {
     let mounted = true;
     (async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !user?.id) {
+        if (!mounted) return;
+        setPendingOrders([]);
+        setFilteredPendingOrders([]);
+        setIsLoading(false);
+        return;
+      }
       try {
         setIsLoading(true);
         const res = await getPendingOrdersForSales(currentPage, itemsPerPage);
@@ -73,7 +84,7 @@ function HandleOrders() {
       }
     })();
     return () => { mounted = false; };
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, user?.id]);
 
   // Filter pending orders based on search and filters
   useEffect(() => {

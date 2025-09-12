@@ -11,7 +11,8 @@ const {
   updateOrderStatus,
   deleteOrder,
   getOrdersByStatus,
-  getMyOrders
+  getMyOrders,
+  cancelMyOrder
 } = require('../controllers/orderController');
 const { getModels } = require('../config/db');
 
@@ -41,6 +42,11 @@ router.get('/status/:status', protect, authorize('Admin', 'Sales Marketing'), ge
 
 // Place specific routes before dynamic :id to avoid conflicts
 router.get('/my', protect, authorize('Client'), getMyOrders);
+
+// @route   PATCH /api/orders/:id/cancel
+// @desc    Client cancels own order (pending or processing)
+// @access  Private (Client)
+router.patch('/:id/cancel', protect, authorize('Client'), cancelMyOrder);
 
 // @route   GET /api/orders/:id
 // @desc    Get single order by ID

@@ -305,7 +305,7 @@ const initializeModels = (sequelize) => {
       unique: true
     },
     status: {
-      type: DataTypes.ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled'),
+      type: DataTypes.ENUM('pending', 'cancelled'),
       defaultValue: 'pending'
     },
     totalAmount: {

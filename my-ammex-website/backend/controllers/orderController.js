@@ -294,12 +294,8 @@ const getMyOrders = async (req, res, next) => {
 
     const where = { customerId: customer.id };
     if (status) {
-      if (status === 'rejected') {
-        // Map to DB status 'cancelled' and filter by REJECT marker later
-        where.status = 'cancelled';
-      } else {
-        where.status = status;
-      }
+      // Map client 'rejected' filter to DB enum value 'cancelled'
+      where.status = status === 'rejected' ? 'cancelled' : status;
     }
 
     const orders = await Order.findAll({
@@ -338,6 +334,43 @@ const getMyOrders = async (req, res, next) => {
   }
 };
 
+// Client cancels own order (only if still pending/processing)
+const cancelMyOrder = async (req, res, next) => {
+  try {
+    const { Order, Customer } = getModels();
+    const { id } = req.params; // can be numeric id or orderNumber
+
+    // Resolve authenticated user's customer
+    const customer = await Customer.findOne({ where: { userId: req.user.id } });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found for user' });
+    }
+
+    // Resolve order by id or orderNumber, and ensure ownership
+    let order = null;
+    if (/^\d+$/.test(String(id))) {
+      order = await Order.findOne({ where: { id: Number(id), customerId: customer.id } });
+    }
+    if (!order) {
+      order = await Order.findOne({ where: { orderNumber: String(id), customerId: customer.id } });
+    }
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Allow cancellation only for pending or processing
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ success: false, message: 'Only pending or processing orders can be cancelled' });
+    }
+
+    await order.update({ status: 'cancelled' });
+
+    return res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllOrders,
   getOrderById,
@@ -346,5 +379,6 @@ module.exports = {
   updateOrderStatus,
   deleteOrder,
   getOrdersByStatus,
-  getMyOrders
+  getMyOrders,
+  cancelMyOrder
 }; 

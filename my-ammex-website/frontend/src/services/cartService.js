@@ -263,20 +263,6 @@ export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = 
   return data;
 };
 
-// Fetch authenticated client's orders (optionally filter by status)
-export const getMyOrders = async (status = undefined) => {
-  const token = localStorage.getItem('token');
-  const url = new URL(`${API_BASE_URL}/orders/my`);
-  if (status) url.searchParams.set('status', status);
-  const response = await fetch(url.toString(), {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'Failed to fetch orders');
-  return data;
-};
 
 // Get cart from localStorage (for immediate UI updates)
 export const getLocalCart = () => {

@@ -31,4 +31,33 @@ export const updateOrderStatus = async (orderId, { status, rejectionReason } = {
   return data; // { success, data: order }
 };
 
+// Client: fetch own orders (optionally filter by status)
+export const getMyOrders = async (status = undefined) => {
+  const token = localStorage.getItem('token');
+  const url = new URL(`${API_BASE_URL}/orders/my`);
+  if (status) url.searchParams.set('status', status);
+  const res = await fetch(url.toString(), {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch orders');
+  return data;
+};
+
+// Client: cancel own order (by numeric id or orderNumber)
+export const cancelMyOrder = async (orderIdOrNumber) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/orders/${orderIdOrNumber}/cancel`, {
+    method: 'PATCH',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to cancel order');
+  return data;
+};
+
 

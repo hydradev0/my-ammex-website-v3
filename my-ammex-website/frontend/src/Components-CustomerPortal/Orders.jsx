@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle, ChevronDown, ChevronUp, Trash } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
-import { getMyOrders } from '../services/cartService';
+import { getMyOrders, cancelMyOrder } from '../services/orderService';
+import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
+import { useAuth } from '../contexts/AuthContext';
 
 const Orders = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // Tab state
   const [activeTab, setActiveTab] = useState('pending');
@@ -31,11 +34,22 @@ const Orders = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
 
-  // Load orders from backend
+  // Load orders from backend (on login changes)
   useEffect(() => {
     let isMounted = true;
     (async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !user?.id) {
+        if (!isMounted) return;
+        setPendingOrders([]);
+        setRejectedOrders([]);
+        setIsLoading(false);
+        return;
+      }
       try {
         setIsLoading(true);
         const [resPending, resRejected] = await Promise.all([
@@ -54,7 +68,7 @@ const Orders = () => {
       }
     })();
     return () => { isMounted = false; };
-  }, []);
+  }, [user?.id]);
 
 
   // Handle click outside modal
@@ -82,6 +96,11 @@ const Orders = () => {
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
     setShowOrderModal(true);
+  };
+
+  const handleCancelOrder = async (order) => {
+    setOrderToCancel(order);
+    setIsCancelOpen(true);
   };
 
   const closeOrderModal = () => {
@@ -381,13 +400,20 @@ const Orders = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                             ${order.totalAmount.toLocaleString()}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
                               onClick={() => handleViewOrder(order)}
                               className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
                             >
                               <Eye className="w-4 h-4" />
                               View
+                            </button>
+                            <button
+                              onClick={() => handleCancelOrder(order)}
+                              className="text-red-600 cursor-pointer hover:text-red-800 transition-colors flex items-center gap-1 ml-auto"
+                            >
+                              <Trash className="w-4 h-4" />
+                              Cancel Order
                             </button>
                           </td>
                         </tr>
@@ -504,6 +530,35 @@ const Orders = () => {
       {/* Order Details Modal */}
       <ScrollLock active={showOrderModal} />
       {createPortal(modalContent, document.body)}
+
+      {/* Cancel Confirmation */}
+      <ConfirmDeleteModal
+        isOpen={isCancelOpen}
+        title="Cancel Order"
+        entityName={orderToCancel?.orderNumber}
+        description="This will cancel your order. Sales will no longer process it."
+        confirmLabel="Cancel Order"
+        cancelLabel="Keep Order"
+        loading={cancelLoading}
+        onCancel={() => {
+          if (cancelLoading) return;
+          setIsCancelOpen(false);
+          setOrderToCancel(null);
+        }}
+        onConfirm={async () => {
+          try {
+            setCancelLoading(true);
+            await cancelMyOrder(orderToCancel?.orderNumber || orderToCancel?.id);
+            setPendingOrders(prev => prev.filter(o => o.id !== orderToCancel?.id));
+          } catch (e) {
+            console.error('Failed to cancel order:', e);
+          } finally {
+            setCancelLoading(false);
+            setIsCancelOpen(false);
+            setOrderToCancel(null);
+          }
+        }}
+      />
     </>
   );
 };
