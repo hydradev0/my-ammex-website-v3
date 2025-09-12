@@ -35,15 +35,16 @@ const validateOrderItem = [
 router.get('/', protect, authorize('Admin', 'Sales Marketing'), getAllOrders);
 
 // @route   GET /api/orders/status/:status
-// @desc    Get orders by status
+// @desc    Get orders by status (includes customer and item details)
 // @access  Private (Admin, Sales Marketing)
 router.get('/status/:status', protect, authorize('Admin', 'Sales Marketing'), getOrdersByStatus);
+
+// Place specific routes before dynamic :id to avoid conflicts
+router.get('/my', protect, authorize('Client'), getMyOrders);
 
 // @route   GET /api/orders/:id
 // @desc    Get single order by ID
 // @access  Private (Admin, Sales Marketing)
-// Place specific routes before dynamic :id to avoid conflicts
-router.get('/my', protect, authorize('Client'), getMyOrders);
 router.get('/:id', protect, authorize('Admin', 'Sales Marketing'), getOrderById);
 
 // @route   POST /api/orders

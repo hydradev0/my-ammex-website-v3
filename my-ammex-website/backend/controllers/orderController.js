@@ -169,9 +169,16 @@ const updateOrderStatus = async (req, res, next) => {
   try {
     const { Order } = getModels();
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, rejectionReason } = req.body;
 
-    const order = await Order.findByPk(id);
+    // Accept either numeric DB id or orderNumber
+    let order = null;
+    if (/^\d+$/.test(String(id))) {
+      order = await Order.findByPk(id);
+    }
+    if (!order) {
+      order = await Order.findOne({ where: { orderNumber: String(id) } });
+    }
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -179,7 +186,23 @@ const updateOrderStatus = async (req, res, next) => {
       });
     }
 
-    await order.update({ status });
+    // Normalize: persist 'rejected' as 'cancelled' in DB enum. If re-approving to 'pending', strip REJECT: marker.
+    const normalizedStatus = status === 'rejected' ? 'cancelled' : status;
+    const updateData = { status: normalizedStatus };
+    if (status === 'rejected' && typeof rejectionReason === 'string' && rejectionReason.trim() !== '') {
+      // Persist rejection reason into notes (non-destructive: append or set)
+      const prefix = 'REJECT:';
+      const existing = order.notes ? String(order.notes) + ' ' : '';
+      updateData.notes = `${existing}${prefix} ${rejectionReason.trim()}`.trim();
+    } else if (status === 'pending') {
+      // Remove any REJECT: marker from notes when re-approving
+      if (order.notes) {
+        const cleaned = String(order.notes).replace(/REJECT:[^]*$/i, '').trim();
+        updateData.notes = cleaned.length > 0 ? cleaned : null;
+      }
+    }
+
+    await order.update(updateData);
 
     res.json({
       success: true,
@@ -215,20 +238,18 @@ const deleteOrder = async (req, res, next) => {
   }
 };
 
-// Get orders by status
+// Get orders by status (includes customer and item details)
 const getOrdersByStatus = async (req, res, next) => {
   try {
-    const { Order, OrderItem } = getModels();
+    const { Order, OrderItem, Customer, Item } = getModels();
     const { status } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
     const orders = await Order.findAndCountAll({
       where: { status },
       include: [
-        {
-          model: OrderItem,
-          as: 'items'
-        }
+        { model: Customer, as: 'customer' },
+        { model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }
       ],
       limit: parseInt(limit),
       offset: (page - 1) * limit,
@@ -272,7 +293,14 @@ const getMyOrders = async (req, res, next) => {
     }
 
     const where = { customerId: customer.id };
-    if (status) where.status = status;
+    if (status) {
+      if (status === 'rejected') {
+        // Map to DB status 'cancelled' and filter by REJECT marker later
+        where.status = 'cancelled';
+      } else {
+        where.status = status;
+      }
+    }
 
     const orders = await Order.findAll({
       where,
@@ -283,19 +311,26 @@ const getMyOrders = async (req, res, next) => {
     });
 
     // Shape to client-friendly structure like Orders.jsx expects
-    const clientOrders = orders.map((o) => ({
-      id: o.id,
-      orderNumber: o.orderNumber,
-      orderDate: o.orderDate,
-      status: o.status,
-      totalAmount: Number(o.totalAmount),
-      items: (o.items || []).map((it) => ({
-        name: it.item?.itemName,
-        quantity: Number(it.quantity),
-        price: Number(it.unitPrice),
-        total: Number(it.totalPrice)
-      }))
-    }));
+    const clientOrders = orders
+      .map((o) => {
+        const notes = o.notes ? String(o.notes) : '';
+        const idx = notes.indexOf('REJECT:');
+        const isRejected = (status === 'rejected') || (o.status === 'cancelled');
+        return {
+          id: o.id,
+          orderNumber: o.orderNumber,
+          orderDate: o.orderDate,
+          status: isRejected ? 'rejected' : o.status,
+          totalAmount: Number(o.totalAmount),
+          items: (o.items || []).map((it) => ({
+            name: it.item?.itemName,
+            quantity: Number(it.quantity),
+            price: Number(it.unitPrice),
+            total: Number(it.totalPrice)
+          })),
+          ...(idx >= 0 ? { rejectionReason: notes.slice(idx + 'REJECT:'.length).trim() } : {})
+        };
+      });
 
     res.json({ success: true, data: clientOrders });
   } catch (error) {

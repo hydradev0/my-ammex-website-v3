@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Clock, XCircle, Eye, Trash2, CircleCheckBig, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, XCircle, Eye, Trash2, CircleCheckBig, Pencil, Package } from 'lucide-react';
 import ViewOrderModal from './ViewOrderModal';
 import ProcessOrderModal from './ProcessOrderModal';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import PaginationTable from '../Components/PaginationTable';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
+import { getPendingOrdersForSales, updateOrderStatus } from '../services/orderService';
 //test
 function HandleOrders() {
   // Tab state
@@ -37,111 +38,42 @@ function HandleOrders() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data initialization
+  // Load pending orders from backend (Sales/Admin view)
   useEffect(() => {
-    const mockPendingOrders = [
-      {
-        id: 'ORD001',
-        clientName: 'ABC Corporation',
-        date: '2024-03-20',
-        status: 'pending',
-        total: 1500.00,
-        items: [
-          {
-            name: 'Product A',
-            quantity: 2,
-            unitPrice: 500.00,
-            total: 1000.00
-          },
-          {
-            name: 'Product B',
-            quantity: 1,
-            unitPrice: 500.00,
-            total: 500.00
-          }
-        ]
-      },
-      {
-        id: 'ORD002',
-        clientName: 'XYZ Ltd',
-        date: '2024-03-21',
-        status: 'pending',
-        total: 2300.00,
-        items: [
-          {
-            name: 'Product C',
-            quantity: 3,
-            unitPrice: 500.00,
-            total: 1500.00
-          },
-          {
-            name: 'Product D',
-            quantity: 2,
-            unitPrice: 400.00,
-            total: 800.00
-          }
-        ]
-      },
-      {
-        id: 'ORD003',
-        clientName: 'DEF Manufacturing',
-        date: '2024-03-22',
-        status: 'pending',
-        total: 850.00,
-        items: [
-          {
-            name: 'Product E',
-            quantity: 1,
-            unitPrice: 850.00,
-            total: 850.00
-          }
-        ]
+    let mounted = true;
+    (async () => {
+      try {
+        setIsLoading(true);
+        const res = await getPendingOrdersForSales(currentPage, itemsPerPage);
+        if (!mounted) return;
+        const orders = (res?.data || []).map((o) => ({
+          id: o.orderNumber || String(o.id),
+          orderDbId: o.id,
+          clientName: o.customer?.customerName || '—',
+          date: new Date(o.orderDate).toISOString().slice(0, 10),
+          status: o.status,
+          total: Number(o.totalAmount) || 0,
+          items: (o.items || []).map((it) => ({
+            name: it.item?.itemName,
+            quantity: Number(it.quantity),
+            unitPrice: Number(it.unitPrice),
+            total: Number(it.totalPrice)
+          }))
+        }));
+        setPendingOrders(orders);
+        setFilteredPendingOrders(orders);
+      } catch (e) {
+        console.error('Failed to load pending orders:', e);
+        setPendingOrders([]);
+        setFilteredPendingOrders([]);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-    ];
-
-    const mockRejectedOrders = [
-      {
-        id: 'ORD004',
-        clientName: 'GHI Industries',
-        date: '2024-03-15',
-        status: 'rejected',
-        total: 1200.00,
-        rejectedDate: '2024-03-16',
-        rejectionReason: 'Insufficient payment documentation',
-        items: [
-          {
-            name: 'Product F',
-            quantity: 2,
-            unitPrice: 600.00,
-            total: 1200.00
-          }
-        ]
-      },
-      {
-        id: 'ORD005',
-        clientName: 'JKL Services',
-        date: '2024-03-18',
-        status: 'rejected',
-        total: 950.00,
-        rejectedDate: '2024-03-19',
-        rejectionReason: 'Customer account on hold',
-        items: [
-          {
-            name: 'Product G',
-            quantity: 1,
-            unitPrice: 950.00,
-            total: 950.00
-          }
-        ]
-      }
-    ];
-
-    setPendingOrders(mockPendingOrders);
-    setFilteredPendingOrders(mockPendingOrders);
-    setRejectedOrders(mockRejectedOrders);
-    setFilteredRejectedOrders(mockRejectedOrders);
-  }, []);
+    })();
+    return () => { mounted = false; };
+  }, [currentPage, itemsPerPage]);
 
   // Filter pending orders based on search and filters
   useEffect(() => {
@@ -224,27 +156,40 @@ function HandleOrders() {
     setDiscountPercent(""); // Reset discount when closing process modal
   };
 
-  const handleProcess = (orderId, discount) => {
-    // Here you would typically make an API call to process the order with the discount
-    console.log(`Processing order ${orderId} with discount ${discount}`);
-    // Update the order status in your state/backend
-    handleCloseProcessModal();
+  const handleProcess = async (orderId, discount) => {
+    // Example: mark order as processing (later could include discount application endpoint)
+    try {
+      await updateOrderStatus(orderId, { status: 'processing' });
+      // Reflect in UI
+      setPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'processing' } : o));
+      setFilteredPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'processing' } : o));
+    } catch (e) {
+      console.error('Failed to process order:', e);
+    } finally {
+      handleCloseProcessModal();
+    }
   };
 
   // Re-approve rejected order
-  const handleReApproveOrder = (order) => {
-    // Remove from rejected orders
-    const updatedRejectedOrders = rejectedOrders.filter(o => o.id !== order.id);
-    setRejectedOrders(updatedRejectedOrders);
-    
-    // Add back to pending orders (remove rejection metadata)
-    const { rejectedDate, rejectionReason, ...cleanOrder } = order;
-    const reApprovedOrder = {
-      ...cleanOrder,
-      status: 'pending',
-      reApprovedDate: new Date().toISOString()
-    };
-    setPendingOrders([reApprovedOrder, ...pendingOrders]);
+  const handleReApproveOrder = async (order) => {
+    try {
+      await updateOrderStatus(order.orderDbId || order.id, { status: 'pending' });
+
+      // Remove from rejected list
+      const updatedRejectedOrders = rejectedOrders.filter(o => o.id !== order.id);
+      setRejectedOrders(updatedRejectedOrders);
+
+      // Add back to pending
+      const { rejectedDate, rejectionReason, ...cleanOrder } = order;
+      const reApprovedOrder = {
+        ...cleanOrder,
+        status: 'pending',
+        reApprovedDate: new Date().toISOString()
+      };
+      setPendingOrders([reApprovedOrder, ...pendingOrders]);
+    } catch (e) {
+      console.error('Failed to re-approve order:', e);
+    }
   };
 
   // Permanently delete rejected order
@@ -254,21 +199,29 @@ function HandleOrders() {
   };
 
   // Reject pending order
-  const handleRejectOrder = (order, rejectionReason) => {
-    // Remove from pending orders
-    const updatedPendingOrders = pendingOrders.filter(o => o.id !== order.id);
-    setPendingOrders(updatedPendingOrders);
-    
-    // Add to rejected orders with rejection metadata
-    const rejectedOrder = {
-      ...order,
-      status: 'rejected',
-      rejectedDate: new Date().toISOString(),
-      rejectionReason: rejectionReason || 'Order rejected'
-    };
-    setRejectedOrders([rejectedOrder, ...rejectedOrders]);
-    setIsProcessModalOpen(false);
-    setSelectedOrder(null);
+  const handleRejectOrder = async (order, rejectionReason) => {
+    try {
+      // Update backend first
+      await updateOrderStatus(order.orderDbId || order.id, { status: 'rejected', rejectionReason });
+
+      // Remove from pending orders
+      const updatedPendingOrders = pendingOrders.filter(o => o.id !== order.id);
+      setPendingOrders(updatedPendingOrders);
+      
+      // Add to rejected orders with rejection metadata
+      const rejectedOrder = {
+        ...order,
+        status: 'rejected',
+        rejectedDate: new Date().toISOString(),
+        rejectionReason: rejectionReason || 'Order rejected'
+      };
+      setRejectedOrders([rejectedOrder, ...rejectedOrders]);
+    } catch (e) {
+      console.error('Failed to reject order:', e);
+    } finally {
+      setIsProcessModalOpen(false);
+      setSelectedOrder(null);
+    }
   };
 
 
@@ -401,6 +354,19 @@ function HandleOrders() {
           {/* Pending Orders Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
+              {isLoading ? (
+                <div className="p-10 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading pending orders...</h3>
+                  <p className="text-gray-600">Please wait while we fetch the latest orders</p>
+                </div>
+              ) : paginatedPendingOrders.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Orders</h3>
+                  <p className="text-gray-500 mb-6">You don't have any pending orders at the moment.</p>
+                </div>
+              ) : (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
                   <tr>
@@ -494,6 +460,7 @@ function HandleOrders() {
                   ))}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
           <PaginationTable
@@ -529,6 +496,19 @@ function HandleOrders() {
           {/* Rejected Orders Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
+              {isLoading ? (
+                <div className="p-10 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading rejected orders...</h3>
+                  <p className="text-gray-600">Please wait while we fetch the latest orders</p>
+                </div>
+              ) : paginatedRejectedOrders.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                  <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Rejected Orders</h3>
+                  <p className="text-gray-500 mb-6">You don't have any rejected orders at the moment.</p>
+                </div>
+              ) : (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
                   <tr>
@@ -606,27 +586,30 @@ function HandleOrders() {
                         <button 
                           onClick={() => handleviewOrder(order)}
                           className="text-blue-600 hover:text-blue-900 mr-4"
+                          title="View Order"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={() => handleReApproveOrder(order)}
                           className="text-green-600 hover:text-green-900 mr-4"
+                          title="Re-approve Order"
                         >
-                          <CircleCheckBig className="w-4 h-4" />
+                          <CircleCheckBig className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={() => handleDeleteClick(order)}
                           className="text-red-600 hover:text-red-900 mr-4"
                           title="Delete Order"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
           <PaginationTable

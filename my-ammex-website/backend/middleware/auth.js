@@ -66,6 +66,7 @@ exports.authorize = (...roles) => {
     .replace(/_/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+    
 
   // Simple alias map to reduce common mismatches
   const toCanonical = (normalizedRole) => {
@@ -125,3 +126,4 @@ exports.checkDepartment = (...departments) => {
     next();
   };
 }; 
+

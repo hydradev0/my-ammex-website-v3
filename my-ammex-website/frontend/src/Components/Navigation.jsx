@@ -11,8 +11,10 @@ function Navigation() {
   const role = user?.role;
   const isInventoryAllowed = role === 'Admin' || role === 'Warehouse Supervisor' || role === 'Sales Marketing';
   const isSalesAllowed = role === 'Admin' || role === 'Sales Marketing';
-  const isBusinessPartnersAllowed = role === 'Admin' || role === 'Sales Marketing';
+  const isBusinessPartnersAllowed = role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor';
   const isPurchasingAllowed = role === 'Admin' || role === 'Sales Marketing';
+  const customerAllowed = role === 'Admin' || role === 'Sales Marketing';
+  const supplierAllowed = role === 'Admin' || role === 'Warehouse Supervisor';
 
   const navItems = [
     {
@@ -25,9 +27,9 @@ function Navigation() {
     isBusinessPartnersAllowed ? {
       name: 'Business Partners',
       dropdownItems: [
-        { name: 'Customers', link: '/BusinessPartners/Customers' },
-        { name: 'Suppliers', link: '/BusinessPartners/Suppliers' }
-      ]
+        customerAllowed ? { name: 'Customers', link: '/BusinessPartners/Customers' } : null,
+        supplierAllowed ? { name: 'Suppliers', link: '/BusinessPartners/Suppliers' } : null,
+      ].filter(Boolean)
     } : null,
     isSalesAllowed ? {
       name: 'Sales',

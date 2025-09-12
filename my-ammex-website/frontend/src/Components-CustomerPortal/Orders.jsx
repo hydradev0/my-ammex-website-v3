@@ -38,11 +38,13 @@ const Orders = () => {
     (async () => {
       try {
         setIsLoading(true);
-        const res = await getMyOrders('pending');
+        const [resPending, resRejected] = await Promise.all([
+          getMyOrders('pending'),
+          getMyOrders('rejected')
+        ]);
         if (!isMounted) return;
-        setPendingOrders(res?.data || []);
-        // For now, keep rejected empty until backend supports client view of rejected
-        setRejectedOrders([]);
+        setPendingOrders(resPending?.data || []);
+        setRejectedOrders(resRejected?.data || []);
       } catch (e) {
         console.error('Failed to load orders:', e);
         setPendingOrders([]);
