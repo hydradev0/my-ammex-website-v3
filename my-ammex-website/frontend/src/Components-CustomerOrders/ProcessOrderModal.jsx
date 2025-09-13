@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import HandleCustomerModal from './HandleCustomerModal';
 
-function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discountPercent, setDiscountPercent }) {
+function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discountPercent, setDiscountPercent, isProcessing, isRejecting }) {
   const [rejectionReason, setRejectionReason] = useState('');
   
   if (!order) return null;
@@ -34,15 +34,39 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
       </button>
       <button
         onClick={handleReject}
-        className="px-4 py-2 cursor-pointer text-sm font-medium text-white bg-red-600 border border-gray-300 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+        disabled={isRejecting || isProcessing}
+        className={`px-4 py-2 cursor-pointer text-sm font-medium text-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+          isRejecting || isProcessing
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+        }`}
       >
-        Reject
+        {isRejecting ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            Rejecting...
+          </div>
+        ) : (
+          'Reject'
+        )}
       </button>
       <button
         onClick={handleProcess}
-        className="px-4 py-2 cursor-pointer text-sm font-medium text-white bg-green-600 border border-gray-300 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+        disabled={isProcessing || isRejecting}
+        className={`px-4 py-2 cursor-pointer text-sm font-medium text-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+          isProcessing || isRejecting
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+        }`}
       >
-        Process Order
+        {isProcessing ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            Processing...
+          </div>
+        ) : (
+          'Process Order'
+        )}
       </button>
     </>
   );

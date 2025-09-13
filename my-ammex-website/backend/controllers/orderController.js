@@ -168,8 +168,10 @@ const updateOrder = async (req, res, next) => {
 const updateOrderStatus = async (req, res, next) => {
   try {
     const { Order } = getModels();
+    const { createInvoiceFromOrder } = require('./invoiceController');
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
+    const userId = req.user.id;
 
     // Accept either numeric DB id or orderNumber
     let order = null;
@@ -186,9 +188,8 @@ const updateOrderStatus = async (req, res, next) => {
       });
     }
 
-    // Normalize: persist 'rejected' as 'cancelled' in DB enum. If re-approving to 'pending', strip REJECT: marker.
-    const normalizedStatus = status === 'rejected' ? 'cancelled' : status;
-    const updateData = { status: normalizedStatus };
+    // Persist provided status directly. If rejecting, capture reason in notes.
+    const updateData = { status };
     if (status === 'rejected' && typeof rejectionReason === 'string' && rejectionReason.trim() !== '') {
       // Persist rejection reason into notes (non-destructive: append or set)
       const prefix = 'REJECT:';
@@ -204,9 +205,21 @@ const updateOrderStatus = async (req, res, next) => {
 
     await order.update(updateData);
 
+    // Automatically create invoice when order is approved
+    let createdInvoice = null;
+    if (status === 'approved') {
+      try {
+        createdInvoice = await createInvoiceFromOrder(order.id, userId);
+      } catch (invoiceError) {
+        // Log the error but don't fail the order update
+        console.error('Failed to create invoice for approved order:', invoiceError.message);
+      }
+    }
+
     res.json({
       success: true,
-      data: order
+      data: order,
+      ...(createdInvoice && { invoice: createdInvoice })
     });
   } catch (error) {
     next(error);
@@ -256,9 +269,25 @@ const getOrdersByStatus = async (req, res, next) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Process orders to extract rejection metadata for rejected orders
+    const processedOrders = orders.rows.map(order => {
+      if (order.status === 'rejected' && order.notes) {
+        const notes = String(order.notes);
+        const rejectIndex = notes.indexOf('REJECT:');
+        if (rejectIndex >= 0) {
+          const rejectionReason = notes.slice(rejectIndex + 'REJECT:'.length).trim();
+          return {
+            ...order.toJSON(),
+            rejectionReason
+          };
+        }
+      }
+      return order.toJSON();
+    });
+
     res.json({
       success: true,
-      data: orders.rows,
+      data: processedOrders,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(orders.count / limit),
@@ -294,8 +323,8 @@ const getMyOrders = async (req, res, next) => {
 
     const where = { customerId: customer.id };
     if (status) {
-      // Map client 'rejected' filter to DB enum value 'cancelled'
-      where.status = status === 'rejected' ? 'cancelled' : status;
+      // Use provided status directly (DB enum now includes 'rejected')
+      where.status = status;
     }
 
     const orders = await Order.findAll({
@@ -311,7 +340,7 @@ const getMyOrders = async (req, res, next) => {
       .map((o) => {
         const notes = o.notes ? String(o.notes) : '';
         const idx = notes.indexOf('REJECT:');
-        const isRejected = (status === 'rejected') || (o.status === 'cancelled');
+        const isRejected = o.status === 'rejected';
         return {
           id: o.id,
           orderNumber: o.orderNumber,

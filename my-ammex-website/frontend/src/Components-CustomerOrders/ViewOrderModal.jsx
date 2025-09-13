@@ -38,7 +38,7 @@ function ViewOrderModal({ isOpen, onClose, order }) {
           <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
           <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full 
             ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-              order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+              order.status === 'approved' ? 'bg-green-100 text-green-800' :
               order.status === 'completed' ? 'bg-green-100 text-green-800' :
               'bg-red-100 text-red-800'}`}>
             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}

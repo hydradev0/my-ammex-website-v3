@@ -305,7 +305,7 @@ const initializeModels = (sequelize) => {
       unique: true
     },
     status: {
-      type: DataTypes.ENUM('pending', 'cancelled'),
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'cancelled'),
       defaultValue: 'pending'
     },
     totalAmount: {
@@ -641,6 +641,135 @@ const initializeModels = (sequelize) => {
     timestamps: true
   });
 
+  // Invoice Model
+  const Invoice = sequelize.define('Invoice', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    invoiceNumber: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false
+    },
+    orderId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Order',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Order ID is required' }
+      }
+    },
+    customerId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Customer',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Customer ID is required' }
+      }
+    },
+    invoiceDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    dueDate: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    totalAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Total amount is required' },
+        min: { args: [0], msg: 'Total amount must be a positive number' }
+      }
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'completed'),
+      defaultValue: 'pending'
+    },
+    paymentTerms: {
+      type: DataTypes.STRING,
+      defaultValue: '30 days'
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    createdBy: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'User',
+        key: 'id'
+      },
+      allowNull: false
+    }
+  }, {
+    timestamps: true
+  });
+
+  // InvoiceItem Model
+  const InvoiceItem = sequelize.define('InvoiceItem', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    invoiceId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Invoice',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Invoice ID is required' }
+      }
+    },
+    itemId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Item',
+        key: 'id'
+      },
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Item ID is required' }
+      }
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        min: { args: [1], msg: 'Quantity must be at least 1' }
+      }
+    },
+    unitPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        min: { args: [0], msg: 'Unit price must be a positive number' }
+      }
+    },
+    totalPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        min: { args: [0], msg: 'Total price must be a positive number' }
+      }
+    }
+  }, {
+    timestamps: true
+  });
+
   /* ================================ */
 
   // Define relationships
@@ -758,6 +887,57 @@ const initializeModels = (sequelize) => {
     as: 'supplier'
   });
 
+  // Invoice relationships
+  Order.hasOne(Invoice, {
+    foreignKey: 'orderId',
+    as: 'invoice'
+  });
+
+  Invoice.belongsTo(Order, {
+    foreignKey: 'orderId',
+    as: 'order'
+  });
+
+  Customer.hasMany(Invoice, {
+    foreignKey: 'customerId',
+    as: 'invoices'
+  });
+
+  Invoice.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+
+  User.hasMany(Invoice, {
+    foreignKey: 'createdBy',
+    as: 'createdInvoices'
+  });
+
+  Invoice.belongsTo(User, {
+    foreignKey: 'createdBy',
+    as: 'creator'
+  });
+
+  Invoice.hasMany(InvoiceItem, {
+    foreignKey: 'invoiceId',
+    as: 'items'
+  });
+
+  InvoiceItem.belongsTo(Invoice, {
+    foreignKey: 'invoiceId',
+    as: 'invoice'
+  });
+
+  Item.hasMany(InvoiceItem, {
+    foreignKey: 'itemId',
+    as: 'invoiceItems'
+  });
+
+  InvoiceItem.belongsTo(Item, {
+    foreignKey: 'itemId',
+    as: 'item'
+  });
+
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
@@ -773,7 +953,9 @@ const initializeModels = (sequelize) => {
     Supplier,
     Unit,
     Cart,
-    CartItem
+    CartItem,
+    Invoice,
+    InvoiceItem
   };
 };
 

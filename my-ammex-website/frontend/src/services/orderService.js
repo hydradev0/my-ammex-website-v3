@@ -16,6 +16,22 @@ export const getPendingOrdersForSales = async (page = 1, limit = 10) => {
   return data; // { success, data: Order[], pagination }
 };
 
+export const getRejectedOrdersForSales = async (page = 1, limit = 10) => {
+  const token = localStorage.getItem('token');
+  const url = new URL(`${API_BASE_URL}/orders/status/rejected`);
+  url.searchParams.set('page', String(page));
+  url.searchParams.set('limit', String(limit));
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch rejected orders');
+  return data; // { success, data: Order[], pagination }
+};
+
 export const updateOrderStatus = async (orderId, { status, rejectionReason } = {}) => {
   const token = localStorage.getItem('token');
   const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {

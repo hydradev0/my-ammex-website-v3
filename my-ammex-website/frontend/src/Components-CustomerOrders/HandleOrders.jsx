@@ -5,7 +5,7 @@ import ProcessOrderModal from './ProcessOrderModal';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import PaginationTable from '../Components/PaginationTable';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
-import { getPendingOrdersForSales, updateOrderStatus } from '../services/orderService';
+import { getPendingOrdersForSales, getRejectedOrdersForSales, updateOrderStatus } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 //test
 function HandleOrders() {
@@ -15,10 +15,12 @@ function HandleOrders() {
   // State for pending orders
   const [pendingOrders, setPendingOrders] = useState([]);
   const [filteredPendingOrders, setFilteredPendingOrders] = useState([]);
+  const [totalPendingCount, setTotalPendingCount] = useState(0);
   
   // State for rejected orders
   const [rejectedOrders, setRejectedOrders] = useState([]);
   const [filteredRejectedOrders, setFilteredRejectedOrders] = useState([]);
+  const [totalRejectedCount, setTotalRejectedCount] = useState(0);
   
   // Search and filter states for pending orders
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +42,12 @@ function HandleOrders() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Action loading states
+  const [processingOrderId, setProcessingOrderId] = useState(null);
+  const [rejectingOrderId, setRejectingOrderId] = useState(null);
+  const [reApprovingOrderId, setReApprovingOrderId] = useState(null);
+  const [deletingOrderId, setDeletingOrderId] = useState(null);
 
   const { user } = useAuth();
 
@@ -75,12 +83,57 @@ function HandleOrders() {
         }));
         setPendingOrders(orders);
         setFilteredPendingOrders(orders);
+        const totalFromApi = Number(res?.pagination?.totalItems) || orders.length;
+        setTotalPendingCount(totalFromApi);
       } catch (e) {
         console.error('Failed to load pending orders:', e);
         setPendingOrders([]);
         setFilteredPendingOrders([]);
       } finally {
         if (mounted) setIsLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [currentPage, itemsPerPage, user?.id]);
+
+  // Load rejected orders from backend (Sales/Admin view)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !user?.id) {
+        if (!mounted) return;
+        setRejectedOrders([]);
+        setFilteredRejectedOrders([]);
+        return;
+      }
+      try {
+        const res = await getRejectedOrdersForSales(currentPage, itemsPerPage);
+        if (!mounted) return;
+        const orders = (res?.data || []).map((o) => ({
+          id: o.orderNumber || String(o.id),
+          orderDbId: o.id,
+          clientName: o.customer?.customerName || '—',
+          date: new Date(o.orderDate).toISOString().slice(0, 10),
+          status: 'rejected',
+          total: Number(o.totalAmount) || 0,
+          rejectedDate: o.updatedAt ? new Date(o.updatedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          rejectionReason: o.rejectionReason || 'Order rejected',
+          items: (o.items || []).map((it) => ({
+            name: it.item?.itemName,
+            quantity: Number(it.quantity),
+            unitPrice: Number(it.unitPrice),
+            total: Number(it.totalPrice)
+          }))
+        }));
+        setRejectedOrders(orders);
+        setFilteredRejectedOrders(orders);
+        const totalFromApi = Number(res?.pagination?.totalItems) || orders.length;
+        setTotalRejectedCount(totalFromApi);
+      } catch (e) {
+        console.error('Failed to load rejected orders:', e);
+        setRejectedOrders([]);
+        setFilteredRejectedOrders([]);
       }
     })();
     return () => { mounted = false; };
@@ -168,27 +221,30 @@ function HandleOrders() {
   };
 
   const handleProcess = async (orderId, discount) => {
-    // Example: mark order as processing (later could include discount application endpoint)
+    setProcessingOrderId(orderId);
     try {
-      await updateOrderStatus(orderId, { status: 'processing' });
+      await updateOrderStatus(orderId, { status: 'approved' });
       // Reflect in UI
-      setPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'processing' } : o));
-      setFilteredPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'processing' } : o));
+      setPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'approved' } : o));
+      setFilteredPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'approved' } : o));
     } catch (e) {
       console.error('Failed to process order:', e);
     } finally {
+      setProcessingOrderId(null);
       handleCloseProcessModal();
     }
   };
 
   // Re-approve rejected order
   const handleReApproveOrder = async (order) => {
+    setReApprovingOrderId(order.id);
     try {
       await updateOrderStatus(order.orderDbId || order.id, { status: 'pending' });
 
       // Remove from rejected list
       const updatedRejectedOrders = rejectedOrders.filter(o => o.id !== order.id);
       setRejectedOrders(updatedRejectedOrders);
+      setTotalRejectedCount((c) => Math.max(0, c - 1));
 
       // Add back to pending
       const { rejectedDate, rejectionReason, ...cleanOrder } = order;
@@ -198,19 +254,34 @@ function HandleOrders() {
         reApprovedDate: new Date().toISOString()
       };
       setPendingOrders([reApprovedOrder, ...pendingOrders]);
+      setTotalPendingCount((c) => c + 1);
     } catch (e) {
       console.error('Failed to re-approve order:', e);
+    } finally {
+      setReApprovingOrderId(null);
     }
   };
 
   // Permanently delete rejected order
-  const handleDeleteRejectedOrder = (orderId) => {
-    const updatedRejectedOrders = rejectedOrders.filter(o => o.id !== orderId);
-    setRejectedOrders(updatedRejectedOrders);
+  const handleDeleteRejectedOrder = async (orderId) => {
+    setDeletingOrderId(orderId);
+    try {
+      // Simulate API call delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const updatedRejectedOrders = rejectedOrders.filter(o => o.id !== orderId);
+      setRejectedOrders(updatedRejectedOrders);
+      setTotalRejectedCount((c) => Math.max(0, c - 1));
+    } catch (e) {
+      console.error('Failed to delete order:', e);
+    } finally {
+      setDeletingOrderId(null);
+    }
   };
 
   // Reject pending order
   const handleRejectOrder = async (order, rejectionReason) => {
+    setRejectingOrderId(order.id);
     try {
       // Update backend first
       await updateOrderStatus(order.orderDbId || order.id, { status: 'rejected', rejectionReason });
@@ -218,6 +289,7 @@ function HandleOrders() {
       // Remove from pending orders
       const updatedPendingOrders = pendingOrders.filter(o => o.id !== order.id);
       setPendingOrders(updatedPendingOrders);
+      setTotalPendingCount((c) => Math.max(0, c - 1));
       
       // Add to rejected orders with rejection metadata
       const rejectedOrder = {
@@ -227,9 +299,11 @@ function HandleOrders() {
         rejectionReason: rejectionReason || 'Order rejected'
       };
       setRejectedOrders([rejectedOrder, ...rejectedOrders]);
+      setTotalRejectedCount((c) => c + 1);
     } catch (e) {
       console.error('Failed to reject order:', e);
     } finally {
+      setRejectingOrderId(null);
       setIsProcessModalOpen(false);
       setSelectedOrder(null);
     }
@@ -242,9 +316,9 @@ function HandleOrders() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (orderToDelete) {
-      handleDeleteRejectedOrder(orderToDelete.id);
+      await handleDeleteRejectedOrder(orderToDelete.id);
       setIsDeleteModalOpen(false);
       setOrderToDelete(null);
     }
@@ -324,7 +398,7 @@ function HandleOrders() {
               <Clock className="w-4 h-4" />
               Pending
               <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs">
-                {pendingOrders.length}
+                {totalPendingCount}
               </span>
             </button>
             <button
@@ -338,7 +412,7 @@ function HandleOrders() {
               <XCircle className="w-4 h-4" />
               Rejected
               <span className="bg-red-100 text-red-600 py-1 px-2 rounded-full text-xs">
-                {rejectedOrders.length}
+                {totalRejectedCount}
               </span>
             </button>
           </nav>
@@ -358,26 +432,13 @@ function HandleOrders() {
             setDateRange={setDateRange}
             showDateRange={true}
             filteredCount={filteredPendingOrders.length}
-            totalCount={pendingOrders.length}
+            totalCount={totalPendingCount}
             itemLabel="orders"
           />
 
           {/* Pending Orders Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              {isLoading ? (
-                <div className="p-10 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading pending orders...</h3>
-                  <p className="text-gray-600">Please wait while we fetch the latest orders</p>
-                </div>
-              ) : paginatedPendingOrders.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Orders</h3>
-                  <p className="text-gray-500 mb-6">You don't have any pending orders at the moment.</p>
-                </div>
-              ) : (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
                   <tr>
@@ -421,7 +482,7 @@ function HandleOrders() {
                       )}
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
-                      Items
+                      Qty
                     </th>
                     <th className="px-6 py-3 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
                       Actions
@@ -429,49 +490,75 @@ function HandleOrders() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedPendingOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-md font-medium text-blue-600">
-                        {order.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        {order.clientName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        {order.date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                          Pending
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        ₱{order.total.toFixed(2)}
-                      </td>
-                      <td className="px-10 py-4 whitespace-nowrap text-md text-gray-500">
-                        {order.items.reduce((total, item) => total + item.quantity, 0)}
-                      </td>
-                      <td className="py-4 whitespace-nowrap text-md font-medium flex items-center justify-end gap-1">
-                        <button 
-                          onClick={() => handleviewOrder(order)}
-                          className="text-blue-600 hover:text-blue-900 mr-4 flex items-center gap-1"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-                        <button 
-                          onClick={() => handleReviewOrder(order)}
-                          className="text-green-600 hover:text-green-900 mr-4 flex items-center gap-1"
-                        >
-                          <Pencil className="w-4 h-4" />
-                          Review
-                        </button>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading pending orders...</h3>
+                        <p className="text-gray-600">Please wait while we fetch the latest orders</p>
                       </td>
                     </tr>
-                  ))}
+                  ) : paginatedPendingOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Orders</h3>
+                        <p className="text-gray-500 mb-6">You don't have any pending orders at the moment.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedPendingOrders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-md font-medium text-blue-600">
+                          {order.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          {order.clientName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          {order.date}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Pending
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          ₱{order.total.toFixed(2)}
+                        </td>
+                        <td className="px-10 py-4 whitespace-nowrap text-md text-gray-500">
+                          {order.items.reduce((total, item) => total + item.quantity, 0)}
+                        </td>
+                        <td className="py-4 whitespace-nowrap text-md font-medium flex items-center justify-end gap-1">
+                          <button 
+                            onClick={() => handleviewOrder(order)}
+                            className="text-blue-600 hover:text-blue-900 mr-4 flex items-center gap-1"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View
+                          </button>
+                          <button 
+                            onClick={() => handleReviewOrder(order)}
+                            disabled={processingOrderId === order.id}
+                            className={`mr-4 flex items-center gap-1 ${
+                              processingOrderId === order.id 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-green-600 hover:text-green-900'
+                            }`}
+                          >
+                            {processingOrderId === order.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                            ) : (
+                              <Pencil className="w-4 h-4" />
+                            )}
+                            {processingOrderId === order.id ? 'Processing...' : 'Review'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-              )}
             </div>
           </div>
           <PaginationTable
@@ -500,26 +587,13 @@ function HandleOrders() {
             setDateRange={setRejectedDateRange}
             showDateRange={true}
             filteredCount={filteredRejectedOrders.length}
-            totalCount={rejectedOrders.length}
+            totalCount={totalRejectedCount}
             itemLabel="rejected orders"
           />
 
           {/* Rejected Orders Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              {isLoading ? (
-                <div className="p-10 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading rejected orders...</h3>
-                  <p className="text-gray-600">Please wait while we fetch the latest orders</p>
-                </div>
-              ) : paginatedRejectedOrders.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                  <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Rejected Orders</h3>
-                  <p className="text-gray-500 mb-6">You don't have any rejected orders at the moment.</p>
-                </div>
-              ) : (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
                   <tr>
@@ -571,56 +645,91 @@ function HandleOrders() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedRejectedOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-md font-medium text-blue-600">
-                        {order.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        {order.clientName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        {order.date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        {order.rejectedDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        <span className="text-red-600 text-sm">
-                          {order.rejectionReason}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                        ₱{order.total.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-md font-medium">
-                        <button 
-                          onClick={() => handleviewOrder(order)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                          title="View Order"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleReApproveOrder(order)}
-                          className="text-green-600 hover:text-green-900 mr-4"
-                          title="Re-approve Order"
-                        >
-                          <CircleCheckBig className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteClick(order)}
-                          className="text-red-600 hover:text-red-900 mr-4"
-                          title="Delete Order"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading rejected orders...</h3>
+                        <p className="text-gray-600">Please wait while we fetch the latest orders</p>
                       </td>
                     </tr>
-                  ))}
+                  ) : paginatedRejectedOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">No Rejected Orders</h3>
+                        <p className="text-gray-500 mb-6">You don't have any rejected orders at the moment.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedRejectedOrders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-md font-medium text-blue-600">
+                          {order.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          {order.clientName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          {order.date}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          {order.rejectedDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          <span className="text-red-600 text-sm">
+                            {order.rejectionReason}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
+                          ₱{order.total.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-md font-medium">
+                          <button 
+                            onClick={() => handleviewOrder(order)}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                            title="View Order"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleReApproveOrder(order)}
+                            disabled={reApprovingOrderId === order.id}
+                            className={`mr-4 ${
+                              reApprovingOrderId === order.id 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-green-600 hover:text-green-900'
+                            }`}
+                            title={reApprovingOrderId === order.id ? "Re-approving..." : "Re-approve Order"}
+                          >
+                            {reApprovingOrderId === order.id ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                            ) : (
+                              <CircleCheckBig className="w-5 h-5" />
+                            )}
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClick(order)}
+                            disabled={deletingOrderId === order.id}
+                            className={`mr-4 ${
+                              deletingOrderId === order.id 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-red-600 hover:text-red-900'
+                            }`}
+                            title={deletingOrderId === order.id ? "Deleting..." : "Delete Order"}
+                          >
+                            {deletingOrderId === order.id ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                            ) : (
+                              <Trash2 className="w-5 h-5" />
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-              )}
             </div>
           </div>
           <PaginationTable
@@ -653,6 +762,8 @@ function HandleOrders() {
           onReject={handleRejectOrder}
           discountPercent={discountPercent}
           setDiscountPercent={setDiscountPercent}
+          isProcessing={processingOrderId === selectedOrder?.id}
+          isRejecting={rejectingOrderId === selectedOrder?.id}
         />
       )}
       <ConfirmDeleteModal
@@ -660,10 +771,11 @@ function HandleOrders() {
         title="Delete Rejected Order"
         entityName={orderToDelete?.id}
         description="This action cannot be undone. The order will be permanently removed from the rejected orders list."
-        confirmLabel="Delete Order"
+        confirmLabel={deletingOrderId ? "Deleting..." : "Delete Order"}
         cancelLabel="Cancel"
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
+        loading={deletingOrderId === orderToDelete?.id}
       />
     </div>
   );

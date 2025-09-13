@@ -8,7 +8,8 @@ const InvoiceHistoryTab = ({
   onViewInvoice,
   onInvoiceAction,
   formatCurrency,
-  formatDate
+  formatDate,
+  isloading
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -79,7 +80,16 @@ const InvoiceHistoryTab = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedInvoices.length === 0 ? (
+              {isloading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                      <p className="text-gray-600">Loading invoice history...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedInvoices.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center">

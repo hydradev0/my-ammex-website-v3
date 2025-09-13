@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Calendar, DollarSign, Download, Printer } from 'lucide-react';
+import { Eye, Calendar, DollarSign, Download, Printer, CheckCircle } from 'lucide-react';
 import PaginationTable from '../Components/PaginationTable';
 import AdvanceActionsDropdown from '../Components/AdvanceActionsDropdown';
 
@@ -8,7 +8,8 @@ const InvoiceTable = ({
   onViewInvoice,
   onInvoiceAction,
   formatCurrency,
-  formatDate
+  formatDate,
+  isloading
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -48,6 +49,7 @@ const InvoiceTable = ({
 
   // Configure dropdown actions
   const getDropdownActions = () => [
+    { key: 'mark_completed', label: 'Mark as Completed', icon: CheckCircle },
     { key: 'print', label: 'Print', icon: Printer },
   ];
 
@@ -56,6 +58,7 @@ const InvoiceTable = ({
     <>
       <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
         <div className="overflow-x-auto">
+          
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
               <tr>
@@ -77,7 +80,16 @@ const InvoiceTable = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedInvoices.length === 0 ? (
+              {isloading ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                      <p className="text-gray-600">Loading invoices...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedInvoices.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center">
@@ -140,7 +152,7 @@ const InvoiceTable = ({
                             {formatCurrency(invoice.totalAmount)}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {invoice.items.length} items
+                            {invoice.items.reduce((total, item) => total + item.quantity, 0)} items
                           </div>
                         </div>
                       </td>

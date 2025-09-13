@@ -4,10 +4,12 @@ import { ArrowLeft, ChevronRight, Eye, FileText, Clock, CheckCircle, X, XCircle,
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
+import { getMyInvoices } from '../services/invoiceService';
 
 const Invoice = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -24,145 +26,53 @@ const Invoice = () => {
   const methodMenuRef = useRef(null);
 
   useEffect(() => {
-    // Mock data for demonstration
-    const mockInvoices = [
-      {
-        id: 'INV-001',
-        invoiceNumber: 'INV-2024-001',
-        orderNumber: 'ORD-2024-001',
-        invoiceDate: new Date('2024-01-15').toISOString(),
-        dueDate: new Date('2024-02-14').toISOString(),
-        totalAmount: 2450.00,
-        paidAmount: 1000.00,
-        remainingAmount: 1450.00,
-        paymentStatus: 'partial',
-        paymentTerms: '30 days',
-        items: [
-          { name: 'Industrial Gloves - Nitrile', quantity: 100, price: 12.50, total: 1250.00 },
-          { name: 'Safety Goggles', quantity: 50, price: 24.00, total: 1200.00 },
-          { name: 'Industrial Gloves - Nitrile', quantity: 100, price: 12.50, total: 1250.00 },
-          { name: 'Safety Goggles', quantity: 50, price: 24.00, total: 1200.00 },
-          { name: 'Industrial Gloves - Nitrile', quantity: 100, price: 12.50, total: 1250.00 },
-          { name: 'Safety Goggles', quantity: 50, price: 24.00, total: 1200.00 },
-          { name: 'Industrial Gloves - Nitrile', quantity: 100, price: 12.50, total: 1250.00 },
-          { name: 'Safety Goggles', quantity: 50, price: 24.00, total: 1200.00 },
-          { name: 'Industrial Gloves - Nitrile', quantity: 100, price: 12.50, total: 1250.00 },
-          { name: 'Safety Goggles', quantity: 50, price: 24.00, total: 1200.00 },
-          { name: 'Industrial Gloves - Nitrile', quantity: 100, price: 12.50, total: 1250.00 },
-          { name: 'Safety Goggles', quantity: 50, price: 24.00, total: 1200.00 }
-        ],
-        customer: {
-          name: 'ABC Manufacturing Corp',
-          email: 'purchasing@abcmfg.com'
-        },
-        lastPayment: {
-          date: new Date('2024-01-20').toISOString(),
-          amount: 1000.00,
-          method: 'bank_transfer',
-          reference: 'TXN-ABC-001',
-          notes: 'Partial payment via wire transfer'
-        }
-      },
-      {
-        id: 'INV-002',
-        invoiceNumber: 'INV-2024-002',
-        orderNumber: 'ORD-2024-002',
-        invoiceDate: new Date('2024-01-20').toISOString(),
-        dueDate: new Date('2024-02-19').toISOString(),
-        totalAmount: 1850.75,
-        paidAmount: 0,
-        remainingAmount: 1850.75,
-        paymentStatus: 'pending',
-        paymentTerms: '30 days',
-        items: [
-          { name: 'Disposable Face Masks', quantity: 500, price: 2.50, total: 1250.00 },
-          { name: 'Hand Sanitizer 500ml', quantity: 24, price: 15.50, total: 372.00 },
-          { name: 'Cleaning Wipes', quantity: 30, price: 7.62, total: 228.75 }
-        ],
-        customer: {
-          name: 'XYZ Healthcare Services',
-          email: 'orders@xyzhealthcare.com'
-        }
-      },
-      {
-        id: 'INV-003',
-        invoiceNumber: 'INV-2024-003',
-        orderNumber: 'ORD-2024-003',
-        invoiceDate: new Date('2024-01-10').toISOString(),
-        dueDate: new Date('2024-02-09').toISOString(),
-        totalAmount: 3200.00,
-        paidAmount: 3200.00,
-        remainingAmount: 0,
-        paymentStatus: 'paid',
-        paymentTerms: '30 days',
-        items: [
-          { name: 'Industrial Coveralls', quantity: 40, price: 45.00, total: 1800.00 },
-          { name: 'Safety Helmets', quantity: 20, price: 35.00, total: 700.00 },
-          { name: 'Work Boots', quantity: 20, price: 35.00, total: 700.00 }
-        ],
-        customer: {
-          name: 'DEF Construction Ltd',
-          email: 'procurement@defconstruction.com'
-        },
-        lastPayment: {
-          date: new Date('2024-02-05').toISOString(),
-          amount: 3200.00,
-          method: 'terms',
-          reference: 'NET30-DEF-001',
-          notes: 'Full payment within terms'
-        }
-      },
-      {
-        id: 'INV-004',
-        invoiceNumber: 'INV-2024-004',
-        orderNumber: 'ORD-2024-004',
-        invoiceDate: new Date('2023-12-15').toISOString(),
-        dueDate: new Date('2024-01-14').toISOString(),
-        totalAmount: 875.50,
-        paidAmount: 0,
-        remainingAmount: 875.50,
-        paymentStatus: 'overdue',
-        paymentTerms: '30 days',
-        items: [
-          { name: 'First Aid Kits', quantity: 15, price: 35.50, total: 532.50 },
-          { name: 'Emergency Blankets', quantity: 25, price: 13.72, total: 343.00 }
-        ],
-        customer: {
-          name: 'GHI Logistics Inc',
-          email: 'billing@ghilogistics.com'
-        }
-      },
-      {
-        id: 'INV-005',
-        invoiceNumber: 'INV-2024-005',
-        orderNumber: 'ORD-2024-005',
-        invoiceDate: new Date('2024-01-25').toISOString(),
-        dueDate: new Date('2024-02-24').toISOString(),
-        totalAmount: 1625.25,
-        paidAmount: 500.00,
-        remainingAmount: 1125.25,
-        paymentStatus: 'partial',
-        paymentTerms: '30 days',
-        items: [
-          { name: 'Chemical Resistant Gloves', quantity: 75, price: 18.50, total: 1387.50 },
-          { name: 'Safety Signs', quantity: 15, price: 15.85, total: 237.75 }
-        ],
-        customer: {
-          name: 'JKL Chemical Solutions',
-          email: 'accounts@jklchem.com'
-        },
-        lastPayment: {
-          date: new Date('2024-01-30').toISOString(),
-          amount: 500.00,
-          method: 'check',
-          reference: 'CHK-7854',
-          notes: 'Partial payment by company check'
-        }
-      }
-    ];
+    const loadInvoices = async () => {
+      setIsLoading(true);
+      try {
+        const response = await getMyInvoices();
+        const invoiceData = response.data || [];
+        
+        // Transform backend data to match frontend format
+        const transformedInvoices = invoiceData.map(invoice => ({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          orderNumber: invoice.orderId,
+          invoiceDate: invoice.invoiceDate,
+          dueDate: invoice.dueDate,
+          totalAmount: Number(invoice.totalAmount) || 0,
+          paidAmount: Number(invoice.paidAmount) || 0,
+          remainingAmount: Number(invoice.remainingAmount) || Number(invoice.totalAmount) || 0,
+          paymentStatus: invoice.paymentStatus,
+          paymentTerms: invoice.paymentTerms,
+          items: (invoice.items || []).map(item => {
+            const transformedItem = {
+              name: item.name || item.itemName || 'Unknown Item',
+              quantity: Number(item.quantity) || 0,
+              price: Number(item.unitPrice) || 0, 
+              total: Number(item.total) || 0, 
+              description: item.description || '',
+              unit: item.unit || 'pcs'
+            };
+            return transformedItem;
+          }),
+          customer: {
+            name: invoice.customerName || 'Unknown Customer',
+            email: invoice.customerEmail || ''
+          },
+          ...(invoice.lastPayment && { lastPayment: invoice.lastPayment })
+        }));
 
-    // Set mock invoices directly for testing (no localStorage persistence)
-    setInvoices(mockInvoices);
+        setInvoices(transformedInvoices);
+      } catch (error) {
+        console.error('Failed to load invoices:', error);
+        // Fallback to empty array on error
+        setInvoices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInvoices();
   }, []);
 
   // Handle click outside modal
@@ -329,7 +239,10 @@ const Invoice = () => {
   };
 
   const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString()}`;
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return '$0.00';
+    }
+    return `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Invoice Details Modal
@@ -634,7 +547,13 @@ const Invoice = () => {
           <h1 className="text-2xl sm:text-2xl md:text-2xl lg:text-2xl font-bold text-gray-800 text-center sm:text-left sm:-ml-4 -md:ml-2 -lg:ml-2 xl:ml-2">Invoices</h1>
         </div>
 
-        {invoices.length === 0 ? (
+        {isLoading ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Invoices...</h3>
+            <p className="text-gray-500">Please wait while we fetch your invoices.</p>
+          </div>
+        ) : invoices.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No Invoices Yet</h3>

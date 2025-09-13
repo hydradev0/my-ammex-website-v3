@@ -5,6 +5,7 @@ import InvoiceTable from './InvoiceTable';
 import InvoiceDetailsModal from './InvoiceDetailsModal';
 import InvoiceActionsModal from './InvoiceActionsModal';
 import InvoiceHistoryTab from './InvoiceHistoryTab';
+import { getInvoicesByStatus, updateInvoiceStatus } from '../services/invoiceService';
 
 const ProcessedInvoices = () => {
   // Tab state
@@ -25,155 +26,73 @@ const ProcessedInvoices = () => {
   const [filteredCompletedInvoices, setFilteredCompletedInvoices] = useState([]);
 
   
+  // Loading states
+  const [isLoading, setIsLoading] = useState(false);
+  
   // Modal states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showActionsModal, setShowActionsModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [actionType, setActionType] = useState(''); // 'mark_paid', 'send_reminder'
 
-  // Mock data initialization
+  // Load invoices from API
   useEffect(() => {
-    const mockInvoices = [
-        {
-          id: 'INV-004',
-          invoiceNumber: 'INV-2024-004',
-          orderId: 'ORD004',
-          customerName: 'GHI Technology Solutions',
-          customerEmail: 'finance@ghitech.com',
-          customerAddress: '321 Tech Park Drive, Innovation Center, Taguig City',
-          invoiceDate: new Date('2024-01-25').toISOString(),
-          dueDate: new Date('2024-02-25').toISOString(),
-          totalAmount: 3500.00,
-          items: [
-            {
-              name: 'Tech Equipment X',
-              description: 'Advanced technology solution X',
-              quantity: 5,
-              unit: 'units',
-              unitPrice: 600.00,
-              total: 3000.00
-            },
-            {
-              name: 'Installation Service',
-              description: 'Professional installation and setup',
-              quantity: 1,
-              unit: 'service',
-              unitPrice: 500.00,
-              total: 500.00
-            }
-          ],
-          discountApplied: 0.00,
-          createdDate: new Date('2024-01-25').toISOString(),
-          lastUpdated: new Date('2024-01-25').toISOString()
-        },
-        {
-          id: 'INV-003',
-          invoiceNumber: 'INV-2024-003',
-          orderId: 'ORD003',
-          customerName: 'DEF Construction Ltd',
-          customerEmail: 'procurement@defconstruction.com',
-          customerAddress: '789 Construction Way, Building Complex, Makati City',
-          invoiceDate: new Date('2024-01-18').toISOString(),
-          dueDate: new Date('2024-02-18').toISOString(),
-          totalAmount: 1200.00,
-          items: [
-            {
-              name: 'Construction Tool A',
-              description: 'Heavy-duty construction equipment',
-              quantity: 1,
-              unit: 'set',
-              unitPrice: 800.00,
-              total: 800.00
-            },
-            {
-              name: 'Safety Equipment B',
-              description: 'Industrial safety gear package',
-              quantity: 2,
-              unit: 'kits',
-              unitPrice: 200.00,
-              total: 400.00
-            }
-          ],
-          discountApplied: 0.00,
-          createdDate: new Date('2024-01-18').toISOString(),
-          lastUpdated: new Date('2024-01-30').toISOString()
-        },
-        {
-          id: 'INV-002',
-          invoiceNumber: 'INV-2024-002',
-          orderId: 'ORD002',
-          customerName: 'XYZ Healthcare Services',
-          customerEmail: 'orders@xyzhealthcare.com',
-          customerAddress: '456 Medical Center Blvd, Healthcare Hub, Quezon City',
-          invoiceDate: new Date('2024-01-22').toISOString(),
-          dueDate: new Date('2024-02-22').toISOString(),
-          totalAmount: 2300.00,
-          items: [
-            {
-              name: 'Product C',
-              description: 'Medical grade equipment C',
-              quantity: 3,
-              unit: 'sets',
-              unitPrice: 500.00,
-              total: 1500.00
-            },
-            {
-              name: 'Product D',
-              description: 'Specialized healthcare product D',
-              quantity: 2,
-              unit: 'units',
-              unitPrice: 400.00,
-              total: 800.00
-            }
-          ],
-          discountApplied: 0.00,
-          createdDate: new Date('2024-01-22').toISOString(),
-          lastUpdated: new Date('2024-01-22').toISOString()
-        },
-        {
-          id: 'INV-001',
-          invoiceNumber: 'INV-2024-001',
-          orderId: 'ORD001',
-          customerName: 'ABC Manufacturing Corp',
-          customerEmail: 'purchasing@abcmfg.com',
-          customerAddress: '123 Industrial Ave, Manufacturing District, Metro Manila',
-          invoiceDate: new Date('2024-01-20').toISOString(),
-          dueDate: new Date('2024-02-20').toISOString(),
-          totalAmount: 1500.00,
-          items: [
-            {
-              name: 'Product A',
-              description: 'High-quality industrial product A',
-              quantity: 2,
-              unit: 'pcs',
-              unitPrice: 500.00,
-              total: 1000.00
-            },
-            {
-              name: 'Product B',
-              description: 'Premium product B with warranty',
-              quantity: 1,
-              unit: 'pcs',
-              unitPrice: 500.00,
-              total: 500.00
-            }
-          ],
-          discountApplied: 0.00,
-          createdDate: new Date('2024-01-20').toISOString(),
-          lastUpdated: new Date('2024-01-25').toISOString()
-        }
-    ];
+    const loadInvoices = async () => {
+      setIsLoading(true);
+      try {
+        // Load pending invoices (current)
+        const pendingResponse = await getInvoicesByStatus('pending');
+        const pendingInvoices = pendingResponse.data || [];
+        
+        // Load completed invoices (history)
+        const completedResponse = await getInvoicesByStatus('completed');
+        const completedInvoices = completedResponse.data || [];
 
-    // Create completed invoices from the mock data (marking them as completed)
-    const mockCompletedInvoices = mockInvoices.map(invoice => ({
-      ...invoice,
-      status: 'completed'
-    }));
+        // Transform backend data to frontend format
+        const transformInvoice = (invoice) => ({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          orderId: invoice.order?.orderNumber || `ORD-${invoice.orderId}`,
+          customerName: invoice.customer?.customerName || 'Unknown Customer',
+          customerEmail: invoice.customer?.email1 || '',
+          customerAddress: `${invoice.customer?.street || ''}, ${invoice.customer?.city || ''}, ${invoice.customer?.country || ''}`.trim(),
+          invoiceDate: invoice.invoiceDate,
+          dueDate: invoice.dueDate,
+          totalAmount: Number(invoice.totalAmount),
+          items: (invoice.items || []).map(item => ({
+            name: item.item?.itemName || 'Unknown Item',
+            description: item.item?.description || '',
+            quantity: Number(item.quantity),
+            unit: item.item?.unit?.name || 'pcs',
+            unitPrice: Number(item.unitPrice),
+            total: Number(item.totalPrice)
+          })),
+          discountApplied: 0,
+          createdDate: invoice.createdAt,
+          lastUpdated: invoice.updatedAt,
+          status: invoice.status
+        });
 
-    setInvoices(mockInvoices);
-    setFilteredInvoices(mockInvoices);
-    setCompletedInvoices(mockCompletedInvoices);
-    setFilteredCompletedInvoices(mockCompletedInvoices);
+        const transformedPending = pendingInvoices.map(transformInvoice);
+        const transformedCompleted = completedInvoices.map(transformInvoice);
+
+        setInvoices(transformedPending);
+        setFilteredInvoices(transformedPending);
+        setCompletedInvoices(transformedCompleted);
+        setFilteredCompletedInvoices(transformedCompleted);
+      } catch (error) {
+        console.error('Failed to load invoices:', error);
+        // Fallback to empty arrays on error
+        setInvoices([]);
+        setFilteredInvoices([]);
+        setCompletedInvoices([]);
+        setFilteredCompletedInvoices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInvoices();
   }, []);
 
   // Filter invoices based on search and filters
@@ -236,10 +155,34 @@ const ProcessedInvoices = () => {
     setShowDetailsModal(true);
   };
 
-  const handleInvoiceAction = (invoice, action) => {
-    setSelectedInvoice(invoice);
-    setActionType(action);
-    setShowActionsModal(true);
+  const handleInvoiceAction = async (invoice, action) => {
+    if (action === 'mark_completed' && invoice) {
+      setIsLoading(true);
+      try {
+        await updateInvoiceStatus(invoice.id, 'completed');
+        
+        // Remove from current invoices and add to completed
+        setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+        setFilteredInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+        
+        const completedInvoice = { ...invoice, status: 'completed' };
+        setCompletedInvoices(prev => [completedInvoice, ...prev]);
+        setFilteredCompletedInvoices(prev => [completedInvoice, ...prev]);
+        
+        // Close any open modals
+        setShowActionsModal(false);
+        setSelectedInvoice(null);
+        setActionType('');
+      } catch (error) {
+        console.error('Failed to mark invoice as completed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSelectedInvoice(invoice);
+      setActionType(action);
+      setShowActionsModal(true);
+    }
   };
 
 
@@ -349,6 +292,7 @@ const ProcessedInvoices = () => {
               onInvoiceAction={handleInvoiceAction}
               formatCurrency={formatCurrency}
               formatDate={formatDate}
+              isloading={isLoading}
             />
           </>
         )}
@@ -377,6 +321,7 @@ const ProcessedInvoices = () => {
               onInvoiceAction={handleInvoiceAction}
               formatCurrency={formatCurrency}
               formatDate={formatDate}
+              isloading={isLoading}
             />
           </>
         )}

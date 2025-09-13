@@ -127,11 +127,11 @@ const InvoiceDetailsModal = ({
              <div className="space-y-4">
                <h3 className="text-lg font-semibold text-gray-900">Invoice Items</h3>
                <div className="overflow-x-auto max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
-                                  <table className="min-w-full divide-y divide-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200">
                    <thead className="bg-gray-50 sticky top-0 z-10">
                      <tr>
                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                         Item
+                         Item Name
                        </th>
                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                          Description

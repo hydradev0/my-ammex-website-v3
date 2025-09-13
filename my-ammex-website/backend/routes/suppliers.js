@@ -43,17 +43,17 @@ const validateSupplier = [
 // @route   GET /api/suppliers
 // @desc    Get all suppliers
 // @access  Private (Admin, Warehouse Supervisor)
-router.get('/', protect, authorize('Admin', "Warehouse Supervisor"), getAllSuppliers);
+router.get('/', protect, authorize('Admin', "Warehouse Supervisor", "Sales Marketing"), getAllSuppliers);
 
 // @route   GET /api/suppliers/stats
 // @desc    Get supplier statistics
 // @access  Private (Admin, Warehouse Supervisor)
-router.get('/stats', protect, authorize('Admin', "Warehouse Supervisor"), getSupplierStats);
+router.get('/stats', protect, authorize('Admin', "Warehouse Supervisor", "Sales Marketing"), getSupplierStats);
 
 // @route   GET /api/suppliers/:id
 // @desc    Get single supplier by ID
 // @access  Private (Admin, Warehouse Supervisor)
-router.get('/:id', protect, authorize('Admin', "Warehouse Supervisor"), getSupplierById);
+router.get('/:id', protect, authorize('Admin', "Warehouse Supervisor", "Sales Marketing"), getSupplierById);
 
 // @route   POST /api/suppliers
 // @desc    Create new supplier
