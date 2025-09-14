@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Settings, Clock, DollarSign, Receipt, XCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import PaymentTable from './PaymentTable';
 import RejectedPaymentsTable from './RejectedPaymentsTable';
 import PaymentApprovalModal from './PaymentApprovalModal';
-import PaymentMethodsManager from './PaymentMethodsManager';
 import PaymentHistoryTab from './PaymentHistoryTab';
 import BalanceTab from './BalanceTab';
 
 const PaymentReceiving = () => {
+  const navigate = useNavigate();
+  
   // Tab state
   const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'balance', 'history', 'rejected'
   
@@ -37,7 +39,6 @@ const PaymentReceiving = () => {
   
   // Modal states
   const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [showPaymentMethodsModal, setShowPaymentMethodsModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   
   // Payment methods management
@@ -437,7 +438,7 @@ const PaymentReceiving = () => {
 
   // Payment methods management handlers
   const handleManagePaymentMethods = () => {
-    setShowPaymentMethodsModal(true);
+    navigate('/Sales/ManagePaymentMethods');
   };
 
   const handleAddPaymentMethod = (methodData) => {
@@ -456,9 +457,6 @@ const PaymentReceiving = () => {
     setPaymentMethods(updatedMethods);
   };
 
-  const closePaymentMethodsModal = () => {
-    setShowPaymentMethodsModal(false);
-  };
 
   // Utility functions
   const getPaymentMethodName = (method) => {
@@ -740,15 +738,6 @@ const PaymentReceiving = () => {
         onApprove={handleApprovePayment}
         onReject={handleRejectPayment}
         getPaymentMethodName={getPaymentMethodName}
-      />
-      
-      <PaymentMethodsManager
-        isOpen={showPaymentMethodsModal}
-        onClose={closePaymentMethodsModal}
-        paymentMethods={paymentMethods}
-        onAddMethod={handleAddPaymentMethod}
-        onUpdateMethod={handleUpdatePaymentMethod}
-        onDeleteMethod={handleDeletePaymentMethod}
       />
     </>
   );

@@ -131,7 +131,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
       }
 
       // Use hybrid cart service
-      const result = await addToCart(user.id, product.id, 1, product);
+      const result = await addToCart(user.id, product.id, product.quantity, product);
       
       if (result.success) {
         setCart(result.cart);

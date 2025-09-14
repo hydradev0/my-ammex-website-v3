@@ -12,18 +12,7 @@ const Invoice = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentData, setPaymentData] = useState({
-    amount: '',
-    paymentMethod: 'terms',
-    reference: '',
-    notes: ''
-  });
-  const [invoiceReceipts, setInvoiceReceipts] = useState({}); // { [invoiceId]: { file, url, name, type, size } }
-  const [showMethodMenu, setShowMethodMenu] = useState(false);
   const modalRef = useRef(null);
-  const paymentModalRef = useRef(null);
-  const methodMenuRef = useRef(null);
 
   useEffect(() => {
     const loadInvoices = async () => {
@@ -81,27 +70,13 @@ const Invoice = () => {
       if (showInvoiceModal && modalRef.current && event.target === modalRef.current) {
         closeInvoiceModal();
       }
-      if (showPaymentModal && paymentModalRef.current && event.target === paymentModalRef.current) {
-        closePaymentModal();
-      }
-      if (showMethodMenu && methodMenuRef.current && !methodMenuRef.current.contains(event.target)) {
-        setShowMethodMenu(false);
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && showMethodMenu) {
-        setShowMethodMenu(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showInvoiceModal, showPaymentModal, showMethodMenu]);
+  }, [showInvoiceModal]);
 
   const handleBack = () => {
     navigate('/Products');
@@ -117,88 +92,15 @@ const Invoice = () => {
   };
 
   const handlePayInvoice = (invoice) => {
-    setSelectedInvoice(invoice);
-    setPaymentData({
-      amount: invoice.remainingAmount.toString(),
-      paymentMethod: 'terms',
-      reference: '',
-      notes: ''
-    });
-    setShowPaymentModal(true);
+    navigate(`/Products/Payment?invoiceId=${invoice.id}`);
   };
 
-  const handleReceiptUpload = (invoiceId, file) => {
-    if (!file) return;
-    const existing = invoiceReceipts[invoiceId];
-    if (existing && existing.url) {
-      URL.revokeObjectURL(existing.url);
-    }
-    const objectUrl = URL.createObjectURL(file);
-    setInvoiceReceipts(prev => ({
-      ...prev,
-      [invoiceId]: {
-        file,
-        url: objectUrl,
-        name: file.name,
-        type: file.type,
-        size: file.size
-      }
-    }));
-  };
-
-  const handleRemoveReceipt = (invoiceId) => {
-    const existing = invoiceReceipts[invoiceId];
-    if (!existing) return;
-    if (existing.url) URL.revokeObjectURL(existing.url);
-    setInvoiceReceipts(prev => {
-      const copy = { ...prev };
-      delete copy[invoiceId];
-      return copy;
-    });
-  };
 
   const closeInvoiceModal = () => {
     setShowInvoiceModal(false);
     setSelectedInvoice(null);
   };
 
-  const closePaymentModal = () => {
-    setShowPaymentModal(false);
-    setSelectedInvoice(null);
-    setPaymentData({
-      amount: '',
-      paymentMethod: 'terms',
-      reference: '',
-      notes: ''
-    });
-  };
-
-  const handlePaymentSubmit = () => {
-    if (!selectedInvoice || !paymentData.amount) return;
-
-    const paymentAmount = parseFloat(paymentData.amount);
-    const updatedInvoice = {
-      ...selectedInvoice,
-      paidAmount: selectedInvoice.paidAmount + paymentAmount,
-      remainingAmount: selectedInvoice.remainingAmount - paymentAmount,
-      paymentStatus: selectedInvoice.remainingAmount - paymentAmount <= 0 ? 'paid' : 'partial',
-      lastPayment: {
-        date: new Date().toISOString(),
-        amount: paymentAmount,
-        method: paymentData.paymentMethod,
-        reference: paymentData.reference,
-        notes: paymentData.notes
-      }
-    };
-
-    // Update invoices state (no localStorage save for testing)
-    const updatedInvoices = invoices.map(inv => 
-      inv.id === selectedInvoice.id ? updatedInvoice : inv
-    );
-    setInvoices(updatedInvoices);
-
-    closePaymentModal();
-  };
 
   const getPaymentStatusIcon = (status) => {
     switch (status) {
@@ -315,8 +217,7 @@ const Invoice = () => {
             </div>
           </div>
 
-          {/* Receipt upload moved to Payment Modal */}
-
+      {/*Payment Modal */}
         </div>
         {selectedInvoice.remainingAmount > 0 && (
           <div className="p-4 sm:p-6 border-t border-gray-200 sticky bottom-0 bg-white z-10">
@@ -336,189 +237,6 @@ const Invoice = () => {
     </div>
   ) : null;
 
-  // Payment Modal
-  const paymentModalContent = showPaymentModal && selectedInvoice ? (
-    <div 
-      ref={paymentModalRef}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
-    >
-      <div 
-        className="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[95vh] flex flex-col"
-        style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}
-      >
-        <div className="p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Make Payment</h2>
-            <button
-              onClick={closePaymentModal}
-              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer transition-colors duration-200"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-        
-        <div className="p-4 mr-1 sm:p-6 overflow-y-auto flex-1">
-          <div className="mb-4">
-            <p className="text-sm text-gray-600">Invoice: {selectedInvoice.invoiceNumber}</p>
-            <p className="text-sm text-gray-600">Outstanding Balance: <span className="font-semibold text-red-600">{formatCurrency(selectedInvoice.remainingAmount)}</span></p>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">₱</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={paymentData.amount}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^\d*(?:[.,]?\d{0,2})?$/.test(val)) {
-                      setPaymentData({ ...paymentData, amount: val.replace(',', '.') });
-                    }
-                  }}
-                  className="w-full pl-6 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-              <div className="relative" ref={methodMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowMethodMenu(!showMethodMenu)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 flex items-center justify-between"
-                >
-                  <span className="text-gray-700 text-sm">
-                    {(
-                      {
-                        terms: 'Terms Payment',
-                        bank_transfer: 'Bank Transfer',
-                        check: 'Check',
-                        cash: 'Cash'
-                      }[paymentData.paymentMethod]
-                    )}
-                  </span>
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
-                {showMethodMenu && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
-                    {[
-                      { key: 'terms', label: 'Terms Payment' },
-                      { key: 'bank_transfer', label: 'Bank Transfer' },
-                      { key: 'check', label: 'Check' },
-                      { key: 'cash', label: 'Cash' }
-                    ].map(option => (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => { setPaymentData({ ...paymentData, paymentMethod: option.key }); setShowMethodMenu(false); }}
-                        className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${paymentData.paymentMethod === option.key ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Receipt </label>
-              <div className="space-y-3">
-                <div>
-                  <input
-                    id="receipt-upload-payment"
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => handleReceiptUpload(selectedInvoice.id, e.target.files && e.target.files[0])}
-                    className="block w-full cursor-pointer text-sm text-gray-700 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#3182ce] file:text-white hover:file:bg-[#2c5282]"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Upload an image or PDF of your payment receipt.</p>
-                </div>
-
-                {invoiceReceipts[selectedInvoice.id] && (
-                  <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 break-all">{invoiceReceipts[selectedInvoice.id].name}</p>
-                      <p className="text-xs text-gray-500">{invoiceReceipts[selectedInvoice.id].type} • {(invoiceReceipts[selectedInvoice.id].size / 1024).toFixed(1)} KB</p>
-                      {invoiceReceipts[selectedInvoice.id].type.startsWith('image/') ? (
-                        <img
-                          src={invoiceReceipts[selectedInvoice.id].url}
-                          alt="Receipt preview"
-                          className="mt-2 max-h-40 rounded border border-gray-200"
-                        />
-                      ) : (
-                        <a
-                          href={invoiceReceipts[selectedInvoice.id].url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-block mt-2 text-[#3182ce] hover:text-[#2c5282] text-sm"
-                        >
-                          View PDF receipt
-                        </a>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleRemoveReceipt(selectedInvoice.id)}
-                      className="shrink-0 cursor-pointer text-red-600 hover:text-red-800 text-sm font-medium"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number (Optional)</label>
-              <input
-                type="text"
-                value={paymentData.reference}
-                onChange={(e) => setPaymentData({...paymentData, reference: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Transaction reference"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-              <textarea
-                value={paymentData.notes}
-                onChange={(e) => setPaymentData({...paymentData, notes: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows="3"
-                placeholder="Payment notes"
-              />
-            </div>
-          </div>
-
-        </div>
-
-        <div className="p-4 sm:p-6 border-t border-gray-200 sticky bottom-0 bg-white z-10">
-          <div className="flex gap-3">
-            <button
-              onClick={closePaymentModal}
-              className="flex-1 px-4 cursor-pointer py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handlePaymentSubmit}
-              disabled={!paymentData.amount || isNaN(parseFloat(paymentData.amount)) || parseFloat(paymentData.amount) <= 0}
-              className="flex-1 px-4 cursor-pointer py-2 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Submit Payment
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
 
   return (
     <>
@@ -644,10 +362,6 @@ const Invoice = () => {
       {/* Invoice Details Modal */}
       <ScrollLock active={showInvoiceModal} />
       {createPortal(invoiceModalContent, document.body)}
-
-      {/* Payment Modal */}
-      <ScrollLock active={showPaymentModal} />
-      {createPortal(paymentModalContent, document.body)}
     </>
   );
 };

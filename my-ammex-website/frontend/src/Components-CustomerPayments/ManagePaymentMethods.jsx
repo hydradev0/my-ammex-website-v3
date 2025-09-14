@@ -1,18 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus, Edit2, Trash2, QrCode, Upload, Save } from 'lucide-react';
-import { createPortal } from 'react-dom';
-import ScrollLock from "../Components/ScrollLock";
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Plus, Edit2, Trash2, QrCode, Upload, Save, X, Building2 } from 'lucide-react';
+import TopBar from '../Components/TopBar';
+import RoleBasedLayout from '../Components/RoleBasedLayout';
+import ManageBankModal from './ManageBankModal';
 
-const PaymentMethodsManager = ({ 
-  isOpen, 
-  onClose, 
-  paymentMethods, 
-  onAddMethod, 
-  onUpdateMethod, 
-  onDeleteMethod 
-}) => {
+const ManagePaymentMethods = () => {
+  const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -23,12 +20,71 @@ const PaymentMethodsManager = ({
   });
   const qrUploadRef = useRef(null);
 
-  if (!isOpen) return null;
+  // Mock payment methods data - replace with actual API call
+  const [paymentMethods, setPaymentMethods] = useState([
+    {
+      id: '1',
+      name: 'Bank Transfer',
+      accountNumber: '1234567890',
+      isActive: true,
+      requiresReference: true,
+      qrCode: null
+    },
+    {
+      id: '2',
+      name: 'Maya (PayMaya)',
+      accountNumber: '1234567890',
+      isActive: true,
+      requiresReference: false,
+      qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+    },
+    {
+      id: '3',
+      name: 'GCash',
+      accountNumber: '1234567890',
+      isActive: true,
+      requiresReference: false,
+      qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+    },
+    {
+      id: '4',
+      name: 'Check',
+      accountNumber: '1234567890',
+      isActive: false,
+      requiresReference: true,
+      qrCode: null
+    }
+  ]);
+
+  // Mock bank data - replace with actual API call
+  const [banks, setBanks] = useState([
+    {
+      id: '1',
+      bankName: 'BDO',
+      accountNumber: '1234567890',
+      isActive: true,
+      qrCode: null
+    },
+    {
+      id: '2',
+      bankName: 'BPI',
+      accountNumber: '0987654321',
+      isActive: true,
+      qrCode: null
+    },
+    {
+      id: '3',
+      bankName: 'Metrobank',
+      accountNumber: '1122334455',
+      isActive: false,
+      qrCode: null
+    }
+  ]);
 
   const resetForm = () => {
     setFormData({
       name: '',
-      description: '',
+      accountNumber: '',
       isActive: true,
       requiresReference: false,
       qrCode: null
@@ -45,7 +101,7 @@ const PaymentMethodsManager = ({
     setSelectedMethod(method);
     setFormData({
       name: method.name,
-      description: method.description,
+      accountNumber: method.accountNumber,
       isActive: method.isActive,
       requiresReference: method.requiresReference,
       qrCode: method.qrCode
@@ -62,14 +118,32 @@ const PaymentMethodsManager = ({
     };
 
     if (selectedMethod) {
-      onUpdateMethod(methodData);
+      setPaymentMethods(prev => 
+        prev.map(method => method.id === selectedMethod.id ? methodData : method)
+      );
     } else {
-      onAddMethod(methodData);
+      setPaymentMethods(prev => [...prev, methodData]);
     }
 
     setShowAddModal(false);
     setShowEditModal(false);
     resetForm();
+  };
+
+  const handleDeleteMethod = (methodId) => {
+    if (window.confirm('Are you sure you want to delete this payment method?')) {
+      setPaymentMethods(prev => prev.filter(method => method.id !== methodId));
+    }
+  };
+
+  const handleToggleActive = (methodId) => {
+    setPaymentMethods(prev => 
+      prev.map(method => 
+        method.id === methodId 
+          ? { ...method, isActive: !method.isActive }
+          : method
+      )
+    );
   };
 
   const handleQRUpload = (event) => {
@@ -87,7 +161,40 @@ const PaymentMethodsManager = ({
     setFormData({ ...formData, qrCode: null });
   };
 
-  {/* Modal */}
+
+  const handleManageBankTransfer = () => {
+    setShowBankModal(true);
+  };
+
+  const handleAddBank = (bankData) => {
+    const newBank = {
+      id: `bank-${Date.now()}`,
+      ...bankData
+    };
+    setBanks(prev => [...prev, newBank]);
+  };
+
+  const handleEditBank = (bankId, bankData) => {
+    setBanks(prev => 
+      prev.map(bank => bank.id === bankId ? { ...bank, ...bankData } : bank)
+    );
+  };
+
+  const handleDeleteBank = (bankId) => {
+    setBanks(prev => prev.filter(bank => bank.id !== bankId));
+  };
+
+  const handleToggleBankActive = (bankId) => {
+    setBanks(prev => 
+      prev.map(bank => 
+        bank.id === bankId 
+          ? { ...bank, isActive: !bank.isActive }
+          : bank
+      )
+    );
+  };
+
+  // Modal Form Component
   const MethodForm = ({ title, onSave, onCancel }) => (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -114,13 +221,13 @@ const PaymentMethodsManager = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
               <textarea
-                value={formData.description}
+                value={formData.accountNumber}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 rows="3"
-                placeholder="Brief description of the payment method"
+                placeholder="Account number"
               />
             </div>
 
@@ -147,7 +254,7 @@ const PaymentMethodsManager = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">QR Code (Optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">QR Code </label>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <input
@@ -206,44 +313,39 @@ const PaymentMethodsManager = ({
     </div>
   );
 
-  const modalContent = (
+  return (
     <>
-      <ScrollLock active={isOpen} />
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[120vh] overflow-y-auto"
-        style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}
-        >
+      <RoleBasedLayout />
+      <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
+
+        {/* Main Content */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Manage Payment Methods</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleAddMethod}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Method
-                </button>
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 p-1 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+              <div className="flex flex-col gap-2">
+              <h2 className="text-2xl font-semibold">Payment Methods</h2>
+              <p className="text-sm text-gray-500">Manage the payment methods available for your customers.</p>
               </div>
+              <button
+                onClick={handleAddMethod}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Method
+              </button>
             </div>
           </div>
           
-          <div className="p-6">
+          <div className="p-6 ">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">QR Code</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Number</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -253,17 +355,47 @@ const PaymentMethodsManager = ({
                         {method.name}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-500">
-                        {method.description}
+                        {method.accountNumber}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          method.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {method.isActive ? 'Active' : 'Inactive'}
-                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={method.isActive}
+                            onChange={() => handleToggleActive(method.id)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {method.qrCode ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditMethod(method)}
+                            className="text-blue-600 cursor-pointer hover:text-blue-800 transition-colors"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMethod(method.id)}
+                            className="text-red-600 cursor-pointer hover:text-red-800 transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                      {/* QR Code */}
+                      <td className="py-4 whitespace-nowrap text-sm text-gray-500">
+                        {method.name === 'Bank Transfer' ? (
+                          <button
+                            onClick={handleManageBankTransfer}
+                            className="bg-green-600 cursor-pointer text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-xs"
+                            title="Manage Banks"
+                          >
+                            <Building2 className="w-4 h-4" />
+                            Manage Banks
+                          </button>
+                        ) : method.qrCode ? (
                           <div className="flex items-center gap-2">
                             <QrCode className="w-4 h-4 text-green-600" />
                             <span className="text-green-600">Available</span>
@@ -271,22 +403,6 @@ const PaymentMethodsManager = ({
                         ) : (
                           <span className="text-gray-400">None</span>
                         )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEditMethod(method)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteMethod(method.id)}
-                            className="text-red-600 hover:text-red-800 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -298,7 +414,7 @@ const PaymentMethodsManager = ({
       </div>
 
       {/* Add Method Modal */}
-      {showAddModal && createPortal(
+      {showAddModal && (
         <MethodForm
           title="Add Payment Method"
           onSave={handleSave}
@@ -306,12 +422,11 @@ const PaymentMethodsManager = ({
             setShowAddModal(false);
             resetForm();
           }}
-        />,
-        document.body
+        />
       )}
 
       {/* Edit Method Modal */}
-      {showEditModal && createPortal(
+      {showEditModal && (
         <MethodForm
           title="Edit Payment Method"
           onSave={handleSave}
@@ -319,14 +434,21 @@ const PaymentMethodsManager = ({
             setShowEditModal(false);
             resetForm();
           }}
-        />,
-        document.body
+        />
       )}
+
+      {/* Bank Management Modal */}
+      <ManageBankModal
+        isOpen={showBankModal}
+        onClose={() => setShowBankModal(false)}
+        banks={banks}
+        onAddBank={handleAddBank}
+        onEditBank={handleEditBank}
+        onDeleteBank={handleDeleteBank}
+        onToggleBankActive={handleToggleBankActive}
+      />
     </>
   );
-
-  return isOpen ? createPortal(modalContent, document.body) : null;
 };
 
-export default PaymentMethodsManager;
-
+export default ManagePaymentMethods;

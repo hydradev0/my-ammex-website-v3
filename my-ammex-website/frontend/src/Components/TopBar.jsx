@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ArchiveModal from './ArchiveModal';
 
@@ -67,6 +67,13 @@ function TopBar() {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Settings size={16} /> Manage Accounts
+                </button>
+                )}
+                {(user.role === 'Sales Marketing' || user.role === 'Admin') && (<button
+                  onClick={() => navigate('/Sales/ManagePaymentMethods')}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                > 
+                  <CreditCard size={16} />Payment Methods
                 </button>
                 )}
 

@@ -227,7 +227,7 @@ const SearchFilters = ({
               className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
-                navigate('/Products/profile');
+                navigate('/Products/Profile');
               }}
             >
               My Profile
@@ -236,7 +236,7 @@ const SearchFilters = ({
               className="w-full text-left px-5 py-3 hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
-                navigate('/Products/orders');
+                navigate('/Products/Orders');
               }}
             >
               My Orders

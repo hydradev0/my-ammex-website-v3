@@ -22,6 +22,7 @@ import Cart from './Components-CustomerPortal/Cart';
 import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
 import Invoice from './Components-CustomerPortal/Invoice';
+import Payment from './Components-CustomerPortal/Payment';
 import ProductSpecs from './Pages/Inventory/ProductSpecs';
 
 import ProtectedRoute from './Components/ProtectedRoute';
@@ -29,6 +30,7 @@ import Login from './Pages/Auth/Login';
 
 import CustomerOrders from './Pages/Sales/CustomerOrders';
 import CustomerPayments from './Pages/Sales/CustomerPayments';
+import ManagePaymentMethods from './Components-CustomerPayments/ManagePaymentMethods';
 import Invoices from './Pages/Sales/Invoices';
 
 function App() {
@@ -72,7 +74,7 @@ function App() {
         <Route
           path="BusinessPartners/Suppliers"
           element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor"]}>
+            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor"]}>
               <Suppliers />
             </ProtectedRoute>
           }
@@ -100,6 +102,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <CustomerPayments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Sales/ManagePaymentMethods"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <ManagePaymentMethods />
             </ProtectedRoute>
           }
         />
@@ -203,6 +213,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Invoice />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="Products/Payment"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <Payment />
             </ProtectedRoute>
           }
         />
