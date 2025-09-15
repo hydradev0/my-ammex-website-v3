@@ -33,7 +33,26 @@ const app = express();
 
 // CORS Configuration for Production
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || process.env.NODE_ENV === 'development' ? true : false,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'https://app-ammex.onrender.com'
+    ].filter(Boolean);
+    
+    // Allow localhost only in development
+    if (process.env.NODE_ENV === 'development') {
+      allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
