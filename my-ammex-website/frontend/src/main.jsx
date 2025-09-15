@@ -4,6 +4,9 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './contexts/AuthContext'
 
+// Ensure React is available globally
+window.React = React
+
 createRoot(document.getElementById('root')).render(
     <StrictMode>
       <AuthProvider>
