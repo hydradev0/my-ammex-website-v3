@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, apiCall } from '../utils/apiConfig';
 
 // Hybrid cart service - localStorage for immediate UI, database for persistence
 

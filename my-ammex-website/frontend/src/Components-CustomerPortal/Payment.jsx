@@ -652,7 +652,7 @@ const Payment = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">AMMEX-{invoice?.invoiceNumber}</span>
+                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
                             </div>
                           </div>
                         ) : paymentData.paymentMethod === 'gcash' ? (
@@ -667,7 +667,7 @@ const Payment = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">AMMEX-{invoice?.invoiceNumber}</span>
+                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
                             </div>
                           </div>
                         ) : paymentData.paymentMethod === 'bank_transfer' && selectedBank ? (
@@ -690,7 +690,7 @@ const Payment = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">AMMEX-{invoice?.invoiceNumber}</span>
+                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
                             </div>
                           </div>
                         ) : paymentData.paymentMethod === 'bank_transfer' ? (
@@ -707,7 +707,7 @@ const Payment = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">AMMEX-{invoice?.invoiceNumber}</span>
+                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Amount:</span>
@@ -847,7 +847,7 @@ const Payment = () => {
         selectedBank={selectedBank}
         bankOptions={bankOptions}
         paymentAmount={paymentData.amount}
-        invoiceNumber={invoice?.invoiceNumber}
+        balance={invoice?.remainingAmount}
       />
     </>
   );

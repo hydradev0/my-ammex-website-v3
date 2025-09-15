@@ -10,7 +10,7 @@ const QRCodeModal = ({
   selectedBank, 
   bankOptions, 
   paymentAmount, 
-  invoiceNumber 
+  balance
 }) => {
   const modalRef = useRef(null);
 
@@ -114,9 +114,8 @@ const QRCodeModal = ({
             <p className="text-sm text-gray-600 mb-2">Amount to Pay:</p>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(parseFloat(paymentAmount) || 0)}</p>
             {paymentMethod === 'bank_transfer' && selectedBank && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-600 mb-1">Reference Number:</p>
-                <p className="text-sm font-medium text-gray-900">AMMEX-{invoiceNumber}</p>
+              <div className="mt-4 p-3 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">Balance: <span className="text-red-500 font-bold">{formatCurrency(parseFloat(balance) || 0)}</span></p>
               </div>
             )}
           </div>

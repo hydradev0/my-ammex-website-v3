@@ -13,7 +13,9 @@
       "db:sync": "node -e \"require('./config/db').connectDB().then(() => require('./models-postgres').sequelize.sync({force: false, alter: true})).then(() => process.exit(0))\"",
       "test:cart": "node scripts/testCartAPI.js",
       "create:cart-tables": "node scripts/createCartTables.js",
-      "remove-phone": "node scripts/removePhoneNumberColumn.js"
+      "remove-phone": "node scripts/removePhoneNumberColumn.js",
+      "postinstall": "echo 'Backend dependencies installed successfully'",
+      "prestart": "echo 'Starting Ammex Backend Server...'"
     },
     "dependencies": {
       "express": "4.18.2",

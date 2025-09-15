@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, apiCall } from '../utils/apiConfig';
 
 // Get all invoices (Admin/Sales Marketing)
 export const getAllInvoices = async (page = 1, limit = 10, status = null, startDate = null, endDate = null) => {

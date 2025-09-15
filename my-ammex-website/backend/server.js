@@ -7,14 +7,44 @@ const { connectDB } = require('./config/db');
 // Load environment variables
 dotenv.config();
 
+// Validate critical environment variables on startup
+const validateEnvironment = () => {
+  const requiredVars = ['JWT_SECRET'];
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.error('❌ Missing required environment variables:', missingVars.join(', '));
+    console.error('💡 Please set the following environment variables:');
+    missingVars.forEach(varName => {
+      console.error(`   - ${varName}`);
+    });
+    console.error('📖 See RENDER_ENVIRONMENT_VARIABLES.md for configuration details');
+    process.exit(1);
+  }
+  
+  console.log('✅ Environment variables validated successfully');
+};
+
+// Validate environment before starting server
+validateEnvironment();
+
 // Create Express app
 const app = express();
 
+// CORS Configuration for Production
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || process.env.NODE_ENV === 'development' ? true : false,
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(morgan('dev'));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ArchiveModal from './ArchiveModal';
 
@@ -33,7 +33,7 @@ function TopBar() {
           </button>
         </div>
       </div>
-      <div className="absolute right-8 flex items-center space-x-4">
+      <div className="absolute right-8 flex items-center space-x-2">
         
         {user && (
           <div className="flex items-center space-x-2 text-sm">
@@ -49,10 +49,10 @@ function TopBar() {
           <div className="relative" ref={menuRef}>
             <button 
               onClick={() => setMenuOpen((o) => !o)}
-              className="p-2 hover:bg-blue-800 rounded-full transition-colors"
-              title="Settings"
+              className="p-2 hover:bg-blue-800 rounded-full transition-colors cursor-pointer"
+              title="Menu"
             >
-              <Settings size={20} />
+              <Menu size={20} />
             </button>
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded-md shadow-lg ring-1 ring-black/5 py-1">

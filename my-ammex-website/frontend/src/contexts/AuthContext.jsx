@@ -1,9 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { apiCall, checkApiHealth } from '../utils/apiConfig';
 import { initializeCartFromDatabase } from '../services/cartService';
-
-// Set axios base URL to point to backend
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AuthContext = createContext();
 
@@ -23,7 +20,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in on app start
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       checkAuthStatus();
     } else {
       setLoading(false);
@@ -32,9 +28,17 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await axios.get('/api/auth/me');
-      if (response.data.success) {
-        const currentUser = response.data.data;
+      // First check if API is healthy
+      const isApiHealthy = await checkApiHealth();
+      if (!isApiHealthy) {
+        console.warn('API is not responding, logging out user');
+        logout();
+        return;
+      }
+
+      const response = await apiCall('/auth/me');
+      if (response.success) {
+        const currentUser = response.data;
         setUser(currentUser);
         // Initialize cart from DB for clients
         if (currentUser?.role === 'Client' && currentUser?.customerPk) {
@@ -48,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         logout();
       }
     } catch (error) {
+      console.warn('Auth check failed:', error.message);
       logout();
     } finally {
       setLoading(false);
@@ -56,17 +61,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
       
-      if (response.data.success) {
-        const { token: newToken, user: userData } = response.data;
+      if (response.success) {
+        const { token: newToken, user: userData } = response;
         
         // Store in localStorage
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(userData));
-        
-        // Set axios default header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
         
         // Update state
         setToken(newToken);
@@ -92,9 +97,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('customerCart');
-    
-    // Clear axios header
-    delete axios.defaults.headers.common['Authorization'];
     
     // Clear state
     setToken(null);
