@@ -5,7 +5,7 @@ import ScrollLock from "../Components/ScrollLock";
 
 function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
   // State for form fields
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     companyName: '',
     street: '',
     city: '',
@@ -16,7 +16,8 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
     telephone2: '',
     email1: '',
     email2: ''
-  });
+  };
+  const [formData, setFormData] = useState(initialFormData);
   
   // State for validation errors
   const [errors, setErrors] = useState({});
@@ -35,12 +36,24 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
     }
   };
   
+  // Centralized close handler that resets form state
+  const handleClose = () => {
+    setFormData(initialFormData);
+    setErrors({});
+    setIsLoading(false);
+    onClose && onClose();
+  };
+  
   // Validate form
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.companyName.trim()) {
       newErrors.companyName = 'Company name is required';
+    }
+
+    if (!formData.telephone1.trim()) {
+      newErrors.telephone1 = 'Telephone 1 is required';
     }
     
     if (!formData.email1.trim()) {
@@ -76,7 +89,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isOpen && modalRef.current && event.target === modalRef.current) {
-        onClose();
+        handleClose();
       }
     };
 
@@ -84,7 +97,16 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
+
+  // Reset the form whenever modal is closed via parent state change
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData(initialFormData);
+      setErrors({});
+      setIsLoading(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -108,7 +130,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
             </div>
             
             <button 
-              onClick={onClose} 
+              onClick={handleClose} 
               className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 text-gray-500 hover:text-gray-700"
             >
               <X className="h-6 w-6" />
@@ -117,6 +139,25 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
           
           {/* Content */}
           <div className="overflow-y-auto flex-grow p-6 mr-3 bg-white">
+            {/* Error Summary Section */}
+            {Object.keys(errors).length > 0 && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">!</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-red-800">Please fix the following errors:</h3>
+                </div>
+                <ul className="list-disc list-inside space-y-1">
+                  {Object.entries(errors).map(([field, error]) => (
+                    <li key={field} className="text-red-700">
+                      <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span> {error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
             {/* Basic Information Section */}
             <div className="mb-8">
               {/* Section Header with Icon */}
@@ -267,7 +308,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
               <button
                 type="button"
                 className="px-6 py-3 border-2 cursor-pointer border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-200"
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={isLoading}
               >
                 Cancel

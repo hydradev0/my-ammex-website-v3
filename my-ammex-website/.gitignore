@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .env
+
+# Vite config (excluded from deployment)
+frontend/vite.config.js

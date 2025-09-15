@@ -33,7 +33,7 @@ const InvoiceDetailsModal = ({
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
             >
               <X className="w-6 h-6" />
             </button>

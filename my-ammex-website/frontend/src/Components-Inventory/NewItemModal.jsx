@@ -248,6 +248,25 @@ function NewItemModal({
         </div> 
         
         <div className="overflow-y-auto flex-grow p-6">
+          {/* Error Summary Section */}
+          {Object.keys(errors).length > 0 && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">!</span>
+                </div>
+                <h3 className="text-lg font-semibold text-red-800">Please fix the following errors:</h3>
+              </div>
+              <ul className="list-disc list-inside space-y-1">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field} className="text-red-700">
+                    <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}:</span> {error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
           {/* Item Details Section */}
           <div className="mb-8">
             <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
