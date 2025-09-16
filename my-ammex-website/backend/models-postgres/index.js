@@ -535,6 +535,20 @@ const initializeModels = (sequelize) => {
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
+    },
+    archivedAt: {
+      type: DataTypes.DATE,
+      field: 'archived_at',
+      allowNull: true
+    },
+    archivedBy: {
+      type: DataTypes.INTEGER,
+      field: 'archived_by',
+      allowNull: true,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
     }
   }, {
     timestamps: true,

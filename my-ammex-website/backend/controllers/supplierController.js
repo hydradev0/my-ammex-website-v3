@@ -135,7 +135,7 @@ const updateSupplier = async (req, res, next) => {
   }
 };
 
-// Delete supplier (soft delete)
+// Delete supplier (soft delete + archive metadata)
 const deleteSupplier = async (req, res, next) => {
   try {
     const { Supplier } = getModels();
@@ -149,11 +149,15 @@ const deleteSupplier = async (req, res, next) => {
       });
     }
 
-    await supplier.update({ isActive: false });
+    await supplier.update({ 
+      isActive: false,
+      archivedAt: new Date(),
+      archivedBy: req.user?.id || null
+    });
 
     res.json({
       success: true,
-      message: 'Supplier deleted successfully'
+      message: 'Supplier archived successfully'
     });
   } catch (error) {
     next(error);
@@ -196,6 +200,63 @@ const getSupplierStats = async (req, res, next) => {
   }
 };
 
+// Get archived suppliers
+const getArchivedSuppliers = async (req, res, next) => {
+  try {
+    const { Supplier } = getModels();
+    const { page = 1, limit = 10 } = req.query;
+    
+    const suppliers = await Supplier.findAndCountAll({
+      where: { isActive: false },
+      limit: parseInt(limit),
+      offset: (page - 1) * limit,
+      order: [['archivedAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: suppliers.rows,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(suppliers.count / limit),
+        totalItems: suppliers.count,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Restore supplier
+const restoreSupplier = async (req, res, next) => {
+  try {
+    const { Supplier } = getModels();
+    const { id } = req.params;
+
+    const supplier = await Supplier.findByPk(id);
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier not found'
+      });
+    }
+
+    await supplier.update({ 
+      isActive: true,
+      archivedAt: null,
+      archivedBy: null
+    });
+
+    res.json({
+      success: true,
+      message: 'Supplier restored successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSuppliers,
   getSupplierById,
@@ -203,4 +264,6 @@ module.exports = {
   updateSupplier,
   deleteSupplier,
   getSupplierStats,
+  getArchivedSuppliers,
+  restoreSupplier,
 };

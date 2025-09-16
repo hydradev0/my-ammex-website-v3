@@ -8,9 +8,12 @@ import SuccessModal from '../Components/SuccessModal';
 import { customerViewConfig, editCustomerConfig } from '../Components/viewConfigs';
 import { customerDropdownActions } from '../Components/dropdownActions';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
+import { useDataRefresh } from '../contexts/DataRefreshContext';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../services/customerService';
 
 function CustomerTable() {
+  const { refreshTriggers } = useDataRefresh();
+  
   // State for customers data
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +86,15 @@ function CustomerTable() {
   useEffect(() => {
     fetchCustomers('', filterValue);
   }, [filterValue]);
+
+  // Listen for data refresh events
+  useEffect(() => {
+    const customersRefreshTrigger = refreshTriggers.customers;
+    if (customersRefreshTrigger) {
+      // Refresh customers when they are restored
+      fetchCustomers(searchTerm, filterValue);
+    }
+  }, [refreshTriggers.customers, searchTerm, filterValue]);
 
   // Handle adding a new customer
   const handleAddCustomer = async (customerData) => {

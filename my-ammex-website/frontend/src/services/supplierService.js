@@ -45,6 +45,25 @@ export const getSupplierStats = async () => {
   return await apiCall('/suppliers/stats');
 };
 
+// Get archived suppliers
+export const getArchivedSuppliers = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.page) queryParams.append('page', params.page);
+  if (params.limit) queryParams.append('limit', params.limit);
+
+  const queryString = queryParams.toString();
+  const endpoint = `/suppliers/archived/list${queryString ? `?${queryString}` : ''}`;
+  
+  return await apiCall(endpoint);
+};
+
+// Restore supplier
+export const restoreSupplier = async (id) => {
+  return await apiCall(`/suppliers/${id}/restore`, {
+    method: 'PUT',
+  });
+};
+
 
 
 

@@ -9,7 +9,9 @@ const {
   createSupplier,
   updateSupplier,
   deleteSupplier,
-  getSupplierStats
+  getSupplierStats,
+  getArchivedSuppliers,
+  restoreSupplier
 } = require('../controllers/supplierController');
 
 // Validation middleware
@@ -69,5 +71,15 @@ router.put('/:id', protect, authorize('Admin', "Warehouse Supervisor"), updateSu
 // @desc    Delete supplier
 // @access  Private (Admin)
 router.delete('/:id', protect, authorize('Admin', "Warehouse Supervisor"), deleteSupplier);
+
+// @route   GET /api/suppliers/archived/list
+// @desc    Get archived suppliers
+// @access  Private (Admin, Warehouse Supervisor)
+router.get('/archived/list', protect, authorize('Admin', "Warehouse Supervisor"), getArchivedSuppliers);
+
+// @route   PUT /api/suppliers/:id/restore
+// @desc    Restore archived supplier
+// @access  Private (Admin, Warehouse Supervisor)
+router.put('/:id/restore', protect, authorize('Admin', "Warehouse Supervisor"), restoreSupplier);
 
 module.exports = router;

@@ -11,6 +11,7 @@ const getApiBaseUrl = () => {
   
   // Development environment
   if (import.meta.env.DEV) {
+    // Use explicit URL for development, or fallback to localhost backend
     const devApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     return devApiUrl;
   }

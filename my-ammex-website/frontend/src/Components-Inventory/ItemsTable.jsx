@@ -13,16 +13,17 @@ import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
 import { getItems, createItem, updateItem, deleteItem, updateItemStock, updateItemPrice } from '../services/inventoryService';
 import { useAuth } from '../contexts/AuthContext';
+import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 
-// Constants for category styling
-const CATEGORY_STYLES = {
-  'Hammer': 'bg-blue-100 text-blue-800',
-  'Machines': 'bg-green-100 text-green-800',
-  'Drivers': 'bg-purple-100 text-purple-800',
-  'Drill': 'bg-orange-100 text-orange-800',
-  'Tools': 'bg-red-100 text-red-800',
-};
+// // Constants for category styling
+// const CATEGORY_STYLES = {
+//   'Hammer': 'bg-blue-100 text-blue-800',
+//   'Machines': 'bg-green-100 text-green-800',
+//   'Drivers': 'bg-purple-100 text-purple-800',
+//   'Drill': 'bg-orange-100 text-orange-800',
+//   'Tools': 'bg-red-100 text-red-800',
+// };
 
 function mapStockDataToItemTableFormat(stockItem) {
   // Map StockMovement item to ItemsTable item structure
@@ -44,6 +45,7 @@ function mapStockDataToItemTableFormat(stockItem) {
 
 function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   const { user } = useAuth();
+  const { refreshTriggers } = useDataRefresh();
   const role = user?.role;
   const isReadOnly = role === 'Sales Marketing';
   // State for items data
@@ -114,6 +116,17 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       fetchItems({ page: backendPage, limit, backendPageOverride: backendPage });
     }
   }, [currentPage, itemsPerPage]);
+
+  // Listen for data refresh events
+  useEffect(() => {
+    const itemsRefreshTrigger = refreshTriggers.items;
+    if (itemsRefreshTrigger) {
+      // Refresh the current data window when items are restored
+      const backendPage = Math.floor((currentPage - 1) / PAGE_WINDOW_MULTIPLIER) + 1;
+      const limit = itemsPerPage * PAGE_WINDOW_MULTIPLIER;
+      fetchItems({ page: backendPage, limit, backendPageOverride: backendPage });
+    }
+  }, [refreshTriggers.items, currentPage, itemsPerPage]);
 
   // Fetch items from API (fetch window of 3 UI pages)
   const fetchItems = async ({ page = 1, limit = itemsPerPage * PAGE_WINDOW_MULTIPLIER, backendPageOverride } = {}) => {
@@ -189,7 +202,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       key: 'category', 
       header: 'Category',
       render: (value, item) => (
-        <span className={`px-2 py-1 rounded-full text-sm ${CATEGORY_STYLES[item.category?.name || value] || 'bg-gray-100 text-gray-800'}`}>
+        <span className={`px-2 py-1 rounded-full text-sm font-thin bg-gray-200 text-gray-900`}>
           {item.category?.name || value}
         </span>
       ),

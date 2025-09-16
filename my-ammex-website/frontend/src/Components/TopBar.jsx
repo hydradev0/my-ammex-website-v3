@@ -2,14 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
 
 function TopBar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { triggerRefresh } = useDataRefresh();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
+
+  const handleDataRestored = (dataType, restoredData) => {
+    // Trigger a refresh for the specific data type without page reload
+    const refreshType = dataType === 'item' ? 'items' : 
+                       dataType === 'customer' ? 'customers' : 
+                       dataType === 'supplier' ? 'suppliers' :
+                       dataType === 'account' ? 'accounts' : dataType;
+    triggerRefresh(refreshType, restoredData);
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -95,7 +106,11 @@ function TopBar() {
           </div>
         )}
       </div>
-      <ArchiveModal isOpen={archiveOpen} onClose={() => setArchiveOpen(false)} />
+      <ArchiveModal 
+        isOpen={archiveOpen} 
+        onClose={() => setArchiveOpen(false)} 
+        onDataRestored={handleDataRestored}
+      />
     </div>
   );
 }

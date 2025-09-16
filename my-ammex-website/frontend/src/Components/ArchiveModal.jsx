@@ -7,24 +7,26 @@ import { useAuth } from '../contexts/AuthContext';
 import { getArchivedItems, restoreItem } from '../services/inventoryService';
 import { getCustomers, updateCustomer } from '../services/customerService';
 import { getArchivedAccounts, restoreAccount } from '../services/authService';
+import { getArchivedSuppliers, restoreSupplier } from '../services/supplierService';
 
-function ArchiveModal({ isOpen = false, onClose }) {
+function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
   const { user } = useAuth();
   const role = user?.role;
 
   // Tabs by role
   const showItemsTab = role === 'Admin' || role === 'Warehouse Supervisor';
   const showCustomersTab = role === 'Admin' || role === 'Sales Marketing';
+  const showSuppliersTab = role === 'Admin' || role === 'Warehouse Supervisor';
   const showAccountsTab = role === 'Admin';
 
-  const defaultTab = showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : 'Accounts';
+  const defaultTab = showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : showSuppliersTab ? 'Suppliers' : 'Accounts';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : 'Accounts');
+      setActiveTab(showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : showSuppliersTab ? 'Suppliers' : 'Accounts');
     }
-  }, [isOpen, showItemsTab, showCustomersTab]);
+  }, [isOpen, showItemsTab, showCustomersTab, showSuppliersTab]);
 
   // Items state (server-side pagination only)
   const [items, setItems] = useState([]);
@@ -34,6 +36,7 @@ function ArchiveModal({ isOpen = false, onClose }) {
   const [itemsPerPage] = useState(10);
   const [itemsTotalPages, setItemsTotalPages] = useState(1);
   const [itemsTotal, setItemsTotal] = useState(0);
+  const [restoringItems, setRestoringItems] = useState(new Set());
 
   const fetchArchivedItemsData = async ({ page = itemsPage, limit = itemsPerPage } = {}) => {
     try {
@@ -63,13 +66,24 @@ function ArchiveModal({ isOpen = false, onClose }) {
 
   const handleRestoreItem = async (item) => {
     try {
+      setRestoringItems(prev => new Set([...prev, item.id]));
       const resp = await restoreItem(item.id);
       if (resp?.success) {
         // Refresh current page
         fetchArchivedItemsData();
+        // Notify parent component that data was restored
+        if (onDataRestored) {
+          onDataRestored('item', item);
+        }
       }
     } catch (err) {
       console.error('Restore failed:', err);
+    } finally {
+      setRestoringItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(item.id);
+        return newSet;
+      });
     }
   };
 
@@ -81,6 +95,7 @@ function ArchiveModal({ isOpen = false, onClose }) {
   const [customersPerPage] = useState(10);
   const [customersTotalPages, setCustomersTotalPages] = useState(1);
   const [customersTotal, setCustomersTotal] = useState(0);
+  const [restoringCustomers, setRestoringCustomers] = useState(new Set());
 
   const fetchArchivedCustomersData = async ({ page = customersPage, limit = customersPerPage } = {}) => {
     try {
@@ -110,13 +125,83 @@ function ArchiveModal({ isOpen = false, onClose }) {
 
   const handleRestoreCustomer = async (customer) => {
     try {
+      setRestoringCustomers(prev => new Set([...prev, customer.id]));
       const resp = await updateCustomer(customer.id, { isActive: true });
       if (resp?.success) {
         // Refresh current page
         fetchArchivedCustomersData();
+        // Notify parent component that data was restored
+        if (onDataRestored) {
+          onDataRestored('customer', customer);
+        }
       }
     } catch (err) {
       console.error('Restore customer failed:', err);
+    } finally {
+      setRestoringCustomers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(customer.id);
+        return newSet;
+      });
+    }
+  };
+
+  // Suppliers state (server-side pagination only)
+  const [suppliers, setSuppliers] = useState([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [suppliersError, setSuppliersError] = useState('');
+  const [suppliersPage, setSuppliersPage] = useState(1);
+  const [suppliersPerPage] = useState(10);
+  const [suppliersTotalPages, setSuppliersTotalPages] = useState(1);
+  const [suppliersTotal, setSuppliersTotal] = useState(0);
+  const [restoringSuppliers, setRestoringSuppliers] = useState(new Set());
+
+  const fetchArchivedSuppliersData = async ({ page = suppliersPage, limit = suppliersPerPage } = {}) => {
+    try {
+      setSuppliersLoading(true);
+      setSuppliersError('');
+      const resp = await getArchivedSuppliers({ page, limit });
+      if (resp?.success) {
+        setSuppliers(resp.data || []);
+        setSuppliersPage(resp.pagination?.currentPage || page);
+        setSuppliersTotalPages(resp.pagination?.totalPages || 1);
+        setSuppliersTotal(resp.pagination?.totalItems || 0);
+      } else {
+        setSuppliersError(resp?.message || 'Failed to load archived suppliers');
+      }
+    } catch (err) {
+      setSuppliersError(err.message || 'Failed to load archived suppliers');
+    } finally {
+      setSuppliersLoading(false);
+    }
+  };
+
+  // Fetch suppliers when modal opens or pagination changes
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'Suppliers' || !showSuppliersTab) return;
+    fetchArchivedSuppliersData({ page: suppliersPage, limit: suppliersPerPage });
+  }, [isOpen, activeTab, suppliersPage, suppliersPerPage, showSuppliersTab]);
+
+  const handleRestoreSupplier = async (supplier) => {
+    try {
+      setRestoringSuppliers(prev => new Set([...prev, supplier.id]));
+      const resp = await restoreSupplier(supplier.id);
+      if (resp?.success) {
+        // Refresh current page
+        fetchArchivedSuppliersData();
+        // Notify parent component that data was restored
+        if (onDataRestored) {
+          onDataRestored('supplier', supplier);
+        }
+      }
+    } catch (err) {
+      console.error('Restore supplier failed:', err);
+    } finally {
+      setRestoringSuppliers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(supplier.id);
+        return newSet;
+      });
     }
   };
 
@@ -128,6 +213,7 @@ function ArchiveModal({ isOpen = false, onClose }) {
   const [accountsPerPage] = useState(10);
   const [accountsTotalPages, setAccountsTotalPages] = useState(1);
   const [accountsTotal, setAccountsTotal] = useState(0);
+  const [restoringAccounts, setRestoringAccounts] = useState(new Set());
 
   const fetchArchivedAccountsData = async ({ page = accountsPage, limit = accountsPerPage } = {}) => {
     try {
@@ -158,13 +244,24 @@ function ArchiveModal({ isOpen = false, onClose }) {
 
   const handleRestoreAccount = async (account) => {
     try {
+      setRestoringAccounts(prev => new Set([...prev, account.id]));
       const resp = await restoreAccount(account.id);
       if (resp?.success) {
         // Refresh current page
         fetchArchivedAccountsData();
+        // Notify parent component that data was restored
+        if (onDataRestored) {
+          onDataRestored('account', account);
+        }
       }
     } catch (err) {
       console.error('Restore account failed:', err);
+    } finally {
+      setRestoringAccounts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(account.id);
+        return newSet;
+      });
     }
   };
 
@@ -204,6 +301,14 @@ function ArchiveModal({ isOpen = false, onClose }) {
                 onClick={() => setActiveTab('Customers')}
               >
                 Customers
+              </button>
+            )}
+            {showSuppliersTab && (
+              <button
+                className={`px-3 cursor-pointer py-2 -mb-px border-b-2 ${activeTab === 'Suppliers' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                onClick={() => setActiveTab('Suppliers')}
+              >
+                Suppliers
               </button>
             )}
             {showAccountsTab && (
@@ -250,9 +355,11 @@ function ArchiveModal({ isOpen = false, onClose }) {
                         <div className="text-right">
                           <button
                             onClick={() => handleRestoreItem(item)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                            disabled={restoringItems.has(item.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <RotateCcw className="h-4 w-4" /> Restore
+                            <RotateCcw className={`h-4 w-4 ${restoringItems.has(item.id) ? 'animate-spin' : ''}`} /> 
+                            {restoringItems.has(item.id) ? 'Restoring...' : 'Restore'}
                           </button>
                         </div>
                       </div>
@@ -316,9 +423,11 @@ function ArchiveModal({ isOpen = false, onClose }) {
                         <div className="text-right">
                           <button
                             onClick={() => handleRestoreCustomer(customer)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                            disabled={restoringCustomers.has(customer.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <RotateCcw className="h-4 w-4" /> Restore
+                            <RotateCcw className={`h-4 w-4 ${restoringCustomers.has(customer.id) ? 'animate-spin' : ''}`} /> 
+                            {restoringCustomers.has(customer.id) ? 'Restoring...' : 'Restore'}
                           </button>
                         </div>
                       </div>
@@ -342,6 +451,74 @@ function ArchiveModal({ isOpen = false, onClose }) {
                   <button
                     onClick={() => setCustomersPage(Math.min(customersTotalPages, customersPage + 1))}
                     disabled={customersPage >= customersTotalPages}
+                    className="px-3 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Suppliers' && showSuppliersTab && (
+            <div className="flex flex-col gap-4">
+              {/* Error */}
+              {suppliersError && (
+                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">{suppliersError}</div>
+              )}
+
+              {/* List */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700">
+                  <div>Supplier ID</div>
+                  <div>Company Name</div>
+                  <div>Contact Name</div>
+                  <div>Archived At</div>
+                  <div className="text-right">Action</div>
+                </div>
+                <div>
+                  {suppliersLoading ? (
+                    <div className="p-6 text-center text-gray-600">Loading...</div>
+                  ) : suppliers.length === 0 ? (
+                    <div className="p-6 text-center text-gray-600">No archived suppliers</div>
+                  ) : (
+                    suppliers.map((supplier, idx) => (
+                      <div key={supplier.id} className={`grid grid-cols-5 gap-2 px-4 py-3 text-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                        <div className="truncate" title={supplier.supplierId}>{supplier.supplierId}</div>
+                        <div className="truncate" title={supplier.companyName}>{supplier.companyName}</div>
+                        <div className="truncate" title={supplier.contactName || '-'}>{supplier.contactName || '-'}</div>
+                        <div>{supplier.archivedAt ? new Date(supplier.archivedAt).toLocaleString() : '-'}</div>
+                        <div className="text-right">
+                          <button
+                            onClick={() => handleRestoreSupplier(supplier)}
+                            disabled={restoringSuppliers.has(supplier.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <RotateCcw className={`h-4 w-4 ${restoringSuppliers.has(supplier.id) ? 'animate-spin' : ''}`} /> 
+                            {restoringSuppliers.has(supplier.id) ? 'Restoring...' : 'Restore'}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Simple Pagination */}
+              <div className="flex items-center justify-between text-sm text-gray-700">
+                <div>Total: {suppliersTotal}</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSuppliersPage(Math.max(1, suppliersPage - 1))}
+                    disabled={suppliersPage <= 1}
+                    className="px-3 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <span>Page {suppliersPage} of {suppliersTotalPages}</span>
+                  <button
+                    onClick={() => setSuppliersPage(Math.min(suppliersTotalPages, suppliersPage + 1))}
+                    disabled={suppliersPage >= suppliersTotalPages}
                     className="px-3 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
                   >
                     Next
@@ -384,9 +561,11 @@ function ArchiveModal({ isOpen = false, onClose }) {
                         <div className="text-right">
                           <button
                             onClick={() => handleRestoreAccount(account)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                            disabled={restoringAccounts.has(account.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <RotateCcw className="h-4 w-4" /> Restore
+                            <RotateCcw className={`h-4 w-4 ${restoringAccounts.has(account.id) ? 'animate-spin' : ''}`} /> 
+                            {restoringAccounts.has(account.id) ? 'Restoring...' : 'Restore'}
                           </button>
                         </div>
                       </div>
@@ -428,7 +607,8 @@ function ArchiveModal({ isOpen = false, onClose }) {
 
 ArchiveModal.propTypes = {
   isOpen: PropTypes.bool,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  onDataRestored: PropTypes.func
 };
 
 export default ArchiveModal;

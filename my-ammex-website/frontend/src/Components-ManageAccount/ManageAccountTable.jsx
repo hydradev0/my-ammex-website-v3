@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import axios from 'axios';
+import { apiCall } from '../utils/apiConfig';
 import { Search, Filter, X, ChevronDown } from 'lucide-react';
 import { TabNavigation, SalesDepartmentTab, WarehouseDepartmentTab, ClientServicesTab } from './AccountTabs';
 import { AccountModal, PasswordChangeModal } from './AccountModals';
@@ -93,12 +93,12 @@ const ManageAccountTable = () => {
     try {
       // Fetch roles and departments in parallel
       const [rolesResponse, departmentsResponse] = await Promise.all([
-        axios.get('/api/auth/roles'),
-        axios.get('/api/auth/departments')
+        apiCall('/auth/roles'),
+        apiCall('/auth/departments')
       ]);
       
-      setAvailableRoles(rolesResponse.data.data);
-      setAvailableDepartments(departmentsResponse.data.data);
+      setAvailableRoles(rolesResponse.data);
+      setAvailableDepartments(departmentsResponse.data);
     } catch (err) {
       console.error('Failed to fetch roles and departments:', err);
     } finally {
@@ -108,11 +108,8 @@ const ManageAccountTable = () => {
 
   const fetchAllUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/auth/users', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const allUsers = response.data.data;
+      const response = await apiCall('/auth/users');
+      const allUsers = response.data;
       
       // Filter users by department/role, excluding Admin
       const salesUsers = allUsers.filter(user => 
@@ -129,6 +126,7 @@ const ManageAccountTable = () => {
       setWarehouseAccounts(warehouseUsers);
       setClientAccounts(clientUsers);
     } catch (err) {
+      console.error('Failed to fetch users:', err);
       setError('Failed to fetch users');
     }
   };
@@ -254,9 +252,8 @@ const ManageAccountTable = () => {
     
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`/api/auth/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await apiCall(`/auth/users/${userId}`, {
+        method: 'DELETE'
       });
       
       // Clear any existing errors
@@ -344,13 +341,10 @@ const ManageAccountTable = () => {
         
         // When editing, exclude password and confirmPassword from the update
         const { password, confirmPassword, ...updateData } = formData;
-        await axios.put(
-          `/api/auth/users/${userId}`,
-          updateData,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        await apiCall(`/auth/users/${userId}`, {
+          method: 'PUT',
+          body: JSON.stringify(updateData)
+        });
         
         // Show success modal for updates
         setSuccessTitle('Account Updated!');
@@ -359,8 +353,9 @@ const ManageAccountTable = () => {
       } else {
         // When creating, exclude confirmPassword from the API call
         const { confirmPassword, ...createData } = formData;
-        await axios.post('/api/auth/register', createData, {
-          headers: { Authorization: `Bearer ${token}` },
+        await apiCall('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(createData)
         });
         
         // Show success modal for creation
@@ -482,16 +477,12 @@ const ManageAccountTable = () => {
         return;
       }
       
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `/api/auth/users/${userId}`,
-        {
+      await apiCall(`/auth/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
           password: passwordFormData.newPassword
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+        })
+      });
       
       // Show success modal for password change
       setSuccessTitle('Password Changed!');

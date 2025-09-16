@@ -9,9 +9,12 @@ import { supplierViewConfig, editSupplierConfig } from '../Components/viewConfig
 import { baseDropdownActions } from '../Components/dropdownActions';
 import { Plus } from 'lucide-react';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
+import { useDataRefresh } from '../contexts/DataRefreshContext';
 import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from '../services/supplierService';
 
 function SupplierTable() {
+  const { refreshTriggers } = useDataRefresh();
+  
   // State for suppliers data
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +85,15 @@ function SupplierTable() {
   useEffect(() => {
     fetchSuppliers('', filterValue);
   }, [filterValue]);
+
+  // Listen for data refresh events
+  useEffect(() => {
+    const suppliersRefreshTrigger = refreshTriggers.suppliers;
+    if (suppliersRefreshTrigger) {
+      // Refresh suppliers when they are restored
+      fetchSuppliers(searchTerm, filterValue);
+    }
+  }, [refreshTriggers.suppliers, searchTerm, filterValue]);
 
   // Handle adding a new supplier
   const handleAddSupplier = async (supplierData) => {
