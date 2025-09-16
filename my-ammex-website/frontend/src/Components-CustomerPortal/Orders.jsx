@@ -233,7 +233,7 @@ const Orders = () => {
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-medium text-gray-500">Total Amount</h3>
-              <p className="text-xs sm:text-sm font-semibold text-gray-900">${selectedOrder.totalAmount.toLocaleString()}</p>
+              <p className="text-xs sm:text-sm font-semibold text-gray-900">₱{selectedOrder.totalAmount.toLocaleString()}</p>
             </div>
           </div>
 
@@ -244,10 +244,10 @@ const Orders = () => {
                 <div key={index} className="flex justify-between items-start sm:items-center p-2 sm:p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">{item.name}</h4>
-                    <p className="text-xs sm:text-sm text-gray-500">Qty: {item.quantity} × ${item.price.toLocaleString()}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Qty: {item.quantity} × ₱{item.price.toLocaleString()}</p>
                   </div>
                   <div className="text-right ml-2">
-                    <p className="font-semibold text-gray-900 text-sm sm:text-base">${item.total.toLocaleString()}</p>
+                    <p className="font-semibold text-gray-900 text-sm sm:text-base">₱{item.total.toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -398,9 +398,9 @@ const Orders = () => {
                             {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ${order.totalAmount.toLocaleString()}
+                            ₱{order.totalAmount.toLocaleString()}
                           </td>
-                          <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium ">
                             <button
                               onClick={() => handleViewOrder(order)}
                               className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
@@ -494,7 +494,7 @@ const Orders = () => {
                             {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ${order.totalAmount.toLocaleString()}
+                            ₱{order.totalAmount.toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
                             {order.rejectionReason || 'Order rejected'}

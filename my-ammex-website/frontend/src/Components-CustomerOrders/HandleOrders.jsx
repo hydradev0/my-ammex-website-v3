@@ -7,6 +7,7 @@ import PaginationTable from '../Components/PaginationTable';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
 import { getPendingOrdersForSales, getRejectedOrdersForSales, updateOrderStatus } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
+import ErrorModal from '../Components/ErrorModal';
 //test
 function HandleOrders() {
   // Tab state
@@ -38,6 +39,8 @@ function HandleOrders() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -223,12 +226,18 @@ function HandleOrders() {
   const handleProcess = async (orderId, discount) => {
     setProcessingOrderId(orderId);
     try {
-      await updateOrderStatus(orderId, { status: 'approved' });
-      // Reflect in UI
-      setPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'approved' } : o));
-      setFilteredPendingOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'approved' } : o));
+      const response = await updateOrderStatus(orderId, { status: 'approved' });
+
+      // Remove from pending lists immediately and decrement count
+      setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+      setFilteredPendingOrders(prev => prev.filter(o => o.id !== orderId));
+      setTotalPendingCount(c => Math.max(0, c - 1));
     } catch (e) {
       console.error('Failed to process order:', e);
+      // Check if it's an insufficient inventory error
+      const msg = e?.message || 'Failed to process order. Please try again.';
+      setErrorModalMessage(msg);
+      setErrorModalOpen(true);
     } finally {
       setProcessingOrderId(null);
       handleCloseProcessModal();
@@ -532,7 +541,7 @@ function HandleOrders() {
                         <td className="py-4 whitespace-nowrap text-md font-medium flex items-center justify-end gap-1">
                           <button 
                             onClick={() => handleviewOrder(order)}
-                            className="text-blue-600 hover:text-blue-900 mr-4 flex items-center gap-1"
+                            className="text-blue-600 cursor-pointer hover:text-blue-900 mr-4 flex items-center gap-1"
                           >
                             <Eye className="w-4 h-4" />
                             View
@@ -540,7 +549,7 @@ function HandleOrders() {
                           <button 
                             onClick={() => handleReviewOrder(order)}
                             disabled={processingOrderId === order.id}
-                            className={`mr-4 flex items-center gap-1 ${
+                            className={`mr-4 flex items-center gap-1 cursor-pointer ${
                               processingOrderId === order.id 
                                 ? 'text-gray-400 cursor-not-allowed' 
                                 : 'text-green-600 hover:text-green-900'
@@ -776,6 +785,12 @@ function HandleOrders() {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
         loading={deletingOrderId === orderToDelete?.id}
+      />
+      <ErrorModal
+        isOpen={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        title="Failed to process order"
+        message={errorModalMessage}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import GenericTable from '../Components/GenericTable';
 import ScrollLock from '../Components/ScrollLock';
+import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { unitDropdownActions } from '../Components/dropdownActions';
 import { createUnit, updateUnit, deleteUnit } from '../services/inventoryService';
 
@@ -22,6 +23,11 @@ function UnitTable({ units, setUnits }) {
   const [editingUnit, setEditingUnit] = useState(null);
   const [editUnitName, setEditUnitName] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [unitToDelete, setUnitToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Auto-remove success message after 3 seconds
   useEffect(() => {
@@ -161,25 +167,29 @@ function UnitTable({ units, setUnits }) {
     }
   };
 
-  // Handle unit deletion
-  const handleDeleteUnit = async (id) => {
-    const unitToDelete = units.find(unit => unit.id === id);
-    
-    if (!window.confirm(`Are you sure you want to delete "${unitToDelete?.name}"?\n\nThis action cannot be undone.`)) {
-      return;
-    }
+  // Handle delete modal open
+  const handleDeleteUnit = (unit) => {
+    setUnitToDelete(unit);
+    setShowDeleteModal(true);
+  };
+
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!unitToDelete) return;
 
     try {
-      setLoading(true);
+      setDeleteLoading(true);
       setError(null);
       
-      const response = await deleteUnit(id);
+      const response = await deleteUnit(unitToDelete.id);
       
       if (response.success) {
         // Remove the unit from the list
-        const updatedUnits = units.filter(unit => unit.id !== id);
+        const updatedUnits = units.filter(unit => unit.id !== unitToDelete.id);
         setUnits(updatedUnits);
-        setSuccess(`Unit "${unitToDelete?.name}" deleted successfully`);
+        setSuccess(`Unit "${unitToDelete.name}" deleted successfully`);
+        setShowDeleteModal(false);
+        setUnitToDelete(null);
       } else {
         setError(response.message || 'Failed to delete unit');
       }
@@ -187,8 +197,15 @@ function UnitTable({ units, setUnits }) {
       console.error('Error deleting unit:', err);
       setError(err.message || 'Failed to delete unit');
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
+  };
+
+  // Handle delete modal close
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setUnitToDelete(null);
+    setDeleteLoading(false);
   };
 
   // Enhanced dropdown actions with API integration
@@ -203,7 +220,7 @@ function UnitTable({ units, setUnits }) {
       if (action.id === 'delete') {
         return {
           ...action,
-          onClick: (unit) => handleDeleteUnit(unit.id)
+          onClick: handleDeleteUnit
         };
       }
       return action;
@@ -423,6 +440,19 @@ function UnitTable({ units, setUnits }) {
       
       {/* Edit Modal */}
       <EditModal />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        title="Delete Unit"
+        entityName={unitToDelete?.name}
+        description="Are you sure you want to delete this unit? The unit will be removed from the table."
+        confirmLabel="Delete Unit"
+        cancelLabel="Cancel"
+        loading={deleteLoading}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

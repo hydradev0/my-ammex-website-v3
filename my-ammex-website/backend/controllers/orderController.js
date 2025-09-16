@@ -167,7 +167,7 @@ const updateOrder = async (req, res, next) => {
 // Update order status
 const updateOrderStatus = async (req, res, next) => {
   try {
-    const { Order } = getModels();
+    const { Order, OrderItem, Item } = getModels();
     const { createInvoiceFromOrder } = require('./invoiceController');
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
@@ -176,10 +176,15 @@ const updateOrderStatus = async (req, res, next) => {
     // Accept either numeric DB id or orderNumber
     let order = null;
     if (/^\d+$/.test(String(id))) {
-      order = await Order.findByPk(id);
+      order = await Order.findByPk(id, {
+        include: [{ model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }]
+      });
     }
     if (!order) {
-      order = await Order.findOne({ where: { orderNumber: String(id) } });
+      order = await Order.findOne({ 
+        where: { orderNumber: String(id) },
+        include: [{ model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }]
+      });
     }
     if (!order) {
       return res.status(404).json({
@@ -187,6 +192,80 @@ const updateOrderStatus = async (req, res, next) => {
         message: 'Order not found'
       });
     }
+
+    // Handle inventory deduction/restoration based on status changes
+    const previousStatus = order.status;
+    
+    // If moving from pending to approved, deduct inventory
+    if (previousStatus === 'pending' && status === 'approved') {
+      try {
+        console.log('Processing order approval with inventory deduction...');
+        console.log('Order items:', order.items?.length || 0);
+        
+        // Check if order has items
+        if (!order.items || order.items.length === 0) {
+          console.log('No items found in order');
+          return res.status(400).json({
+            success: false,
+            message: 'Order has no items to process'
+          });
+        }
+        
+        // Validate inventory availability before approving
+        for (const orderItem of order.items) {
+          const item = orderItem.item;
+          if (!item) {
+            console.log('Item not found for order item:', orderItem.id);
+            return res.status(400).json({
+              success: false,
+              message: `Item not found for order item ${orderItem.id}`
+            });
+          }
+          
+          console.log(`Checking inventory for item ${item.itemName}: available=${item.quantity}, required=${orderItem.quantity}`);
+          
+          if (item.quantity < orderItem.quantity) {
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient inventory for item "${item.itemName}". Available: ${item.quantity}, Required: ${orderItem.quantity}`
+            });
+          }
+        }
+        
+        // Deduct inventory quantities
+        for (const orderItem of order.items) {
+          const item = orderItem.item;
+          const newQuantity = item.quantity - orderItem.quantity;
+          console.log(`Deducting inventory for ${item.itemName}: ${item.quantity} - ${orderItem.quantity} = ${newQuantity}`);
+          await item.update({ quantity: newQuantity });
+        }
+        
+        console.log('Inventory deduction completed successfully');
+      } catch (inventoryError) {
+        console.error('Error during inventory deduction:', inventoryError);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to process inventory: ${inventoryError.message}`
+        });
+      }
+    }
+    
+    // If moving from approved to rejected, restore inventory
+    if (previousStatus === 'approved' && status === 'rejected') {
+      console.log('Processing order rejection with inventory restoration...');
+      for (const orderItem of order.items) {
+        const item = orderItem.item;
+        if (item) {
+          const newQuantity = item.quantity + orderItem.quantity;
+          console.log(`Restoring inventory for ${item.itemName}: ${item.quantity} + ${orderItem.quantity} = ${newQuantity}`);
+          await item.update({ quantity: newQuantity });
+        }
+      }
+      console.log('Inventory restoration completed successfully');
+    }
+    
+    // If moving from rejected to pending, no inventory change needed
+    // If moving from pending to rejected, no inventory change needed
 
     // Persist provided status directly. If rejecting, capture reason in notes.
     const updateData = { status };

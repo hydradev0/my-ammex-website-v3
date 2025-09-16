@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import GenericTable from '../Components/GenericTable';
 import ScrollLock from '../Components/ScrollLock';
+import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { categoryDropdownActions } from '../Components/dropdownActions';
 import { createCategory, updateCategory, deleteCategory } from '../services/inventoryService';
 
@@ -22,6 +23,11 @@ function CategoryTable({ categories, setCategories }) {
   const [editingCategory, setEditingCategory] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Auto-remove success message after 3 seconds
   useEffect(() => {
@@ -161,25 +167,29 @@ function CategoryTable({ categories, setCategories }) {
     }
   };
 
-  // Handle category deletion
-  const handleDeleteCategory = async (id) => {
-    const categoryToDelete = categories.find(cat => cat.id === id);
-    
-    if (!window.confirm(`Are you sure you want to delete "${categoryToDelete?.name}"?\n\nThis action cannot be undone.`)) {
-      return;
-    }
+  // Handle delete modal open
+  const handleDeleteCategory = (category) => {
+    setCategoryToDelete(category);
+    setShowDeleteModal(true);
+  };
+
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!categoryToDelete) return;
 
     try {
-      setLoading(true);
+      setDeleteLoading(true);
       setError(null);
       
-      const response = await deleteCategory(id);
+      const response = await deleteCategory(categoryToDelete.id);
       
       if (response.success) {
         // Remove the category from the list
-        const updatedCategories = categories.filter(cat => cat.id !== id);
+        const updatedCategories = categories.filter(cat => cat.id !== categoryToDelete.id);
         setCategories(updatedCategories);
-        setSuccess(`Category "${categoryToDelete?.name}" deleted successfully`);
+        setSuccess(`Category "${categoryToDelete.name}" deleted successfully`);
+        setShowDeleteModal(false);
+        setCategoryToDelete(null);
       } else {
         setError(response.message || 'Failed to delete category');
       }
@@ -187,8 +197,15 @@ function CategoryTable({ categories, setCategories }) {
       console.error('Error deleting category:', err);
       setError(err.message || 'Failed to delete category');
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
+  };
+
+  // Handle delete modal close
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setCategoryToDelete(null);
+    setDeleteLoading(false);
   };
 
   // Enhanced dropdown actions with API integration
@@ -203,7 +220,7 @@ function CategoryTable({ categories, setCategories }) {
       if (action.id === 'delete') {
         return {
           ...action,
-          onClick: (category) => handleDeleteCategory(category.id)
+          onClick: handleDeleteCategory
         };
       }
       return action;
@@ -423,6 +440,19 @@ function CategoryTable({ categories, setCategories }) {
       
       {/* Edit Modal */}
       <EditModal />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        title="Delete Category"
+        entityName={categoryToDelete?.name}
+        description="Are you sure you want to delete this category? The category will be removed from the table."
+        confirmLabel="Delete Category"
+        cancelLabel="Cancel"
+        loading={deleteLoading}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

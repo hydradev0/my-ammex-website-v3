@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Minus, Trash2, Package, Check, ShoppingBag, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
+import ErrorModal from "../Components/ErrorModal";
 import TopBarPortal from './TopBarPortal';
 import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +29,57 @@ const Cart = () => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [inputValues, setInputValues] = useState({});
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState("");
+
+  const refreshCartData = async () => {
+    try {
+      if (!user?.id) {
+        const local = getLocalCart();
+        const uniqueLocal = local.filter((it, i, arr) => i === arr.findIndex(t => t.id === it.id));
+        setCart(uniqueLocal);
+        setSelectedIds(new Set(uniqueLocal.map(it => it.id)));
+        return uniqueLocal;
+      }
+
+      const dbCart = await initializeCartFromDatabase(user.id);
+      if (!Array.isArray(dbCart)) return cart;
+
+      const localIds = new Set(cart.map(i => i.id));
+
+      // Update stock for existing items and append any new ones from DB
+      const merged = cart.map(localItem => {
+        const serverItem = dbCart.find(d => d.id === localItem.id);
+        return serverItem ? { ...localItem, stock: serverItem.stock } : localItem;
+      });
+
+      dbCart.forEach(serverItem => {
+        if (!localIds.has(serverItem.id)) {
+          merged.push(serverItem);
+        }
+      });
+
+      localStorage.setItem('customerCart', JSON.stringify(merged));
+      setCart(merged);
+      setSelectedIds(new Set(merged.map(it => it.id)));
+      return merged;
+    } catch (_) {
+      // silently ignore; user can adjust manually
+      return cart;
+    }
+  };
+
+  const getStockIssues = (items) => {
+    const insufficient = items.filter(item => (item.quantity || 0) > (item.stock || 0));
+    if (insufficient.length === 0) return { hasIssues: false, message: "" };
+    const details = insufficient
+      .map(i => `${i.name}: ordered ${i.quantity}, stock ${i.stock || 0}`)
+      .join('\n');
+    return {
+      hasIssues: true,
+      message: `Some items exceed available stock. Please adjust quantities and try again.\n\n${details}`
+    };
+  };
 
   // Initialize cart on component mount (prefer local, then background-merge DB)
 useEffect(() => {
@@ -286,10 +338,20 @@ useEffect(() => {
     if (cart.length === 0) return;
     if (getSelectedItems().length === 0) return;
     try {
+      // Immediate UX feedback
       setPreviewError('');
       setPreviewLoading(true);
+
+      // Fast client-side validation using current cart snapshot
+      const selectedItems = getSelectedItems();
+      const { hasIssues, message } = getStockIssues(selectedItems);
+      if (hasIssues) {
+        setErrorModalMessage(message);
+        setShowErrorModal(true);
+        return;
+      }
       // Preview from backend for accurate totals
-      const ids = getSelectedItems().map(i => i.id);
+      const ids = selectedItems.map(i => i.id);
       const preview = await checkoutPreview(user?.id, { itemIds: ids });
       setOrderNumber(preview?.data?.orderNumber || '');
       // Capture soft warnings (e.g., incomplete profile)
@@ -306,9 +368,20 @@ useEffect(() => {
 
   const handleConfirmPreview = async () => {
     try {
-      setConfirmingCheckout(true);
-      const ids = getSelectedItems().map(i => i.id);
-      const result = await checkoutConfirm(user?.id, { itemIds: ids });
+       // Final safeguard: refetch latest stock and block if insufficient
+       setConfirmingCheckout(true);
+       const latestCart = await refreshCartData();
+       const selectedItems = latestCart.filter(i => selectedIds.has(i.id));
+       const { hasIssues, message } = getStockIssues(selectedItems);
+       if (hasIssues) {
+         setErrorModalMessage(message);
+         setShowErrorModal(true);
+         setConfirmingCheckout(false);
+         return;
+       }
+ 
+       const ids = selectedItems.map(i => i.id);
+       const result = await checkoutConfirm(user?.id, { itemIds: ids });
 
       // Remove only the selected items locally
       const remaining = cart.filter(item => !selectedIds.has(item.id));
@@ -390,6 +463,21 @@ useEffect(() => {
           </div>
         </div>
 
+        {/* Stock warning if needed */}
+        {(() => {
+          const selected = getSelectedItems();
+          const { hasIssues, message } = getStockIssues(selected);
+          if (!hasIssues) return null;
+          return (
+            <div className="px-6 pt-4">
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 whitespace-pre-line">
+                <p className="font-semibold mb-1">Stock issue</p>
+                <p className="text-sm mb-2">{message}</p>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Scrollable Items Section */}
         <div className="flex-1 overflow-y-auto mr-1.5 my-1.5">
           <div className="p-6">
@@ -429,6 +517,8 @@ useEffect(() => {
             <button
               onClick={() => {
                 if (confirmingCheckout) return;
+                const { hasIssues } = getStockIssues(getSelectedItems());
+                if (hasIssues) return;
                 if (previewWarning?.profileIncomplete) {
                   setShowPreviewModal(false);
                   navigate('/Products/profile');
@@ -436,10 +526,16 @@ useEffect(() => {
                   handleConfirmPreview();
                 }
               }}
-              disabled={confirmingCheckout}
-              className={`flex-1 cursor-pointer px-4 py-3 rounded-3xl font-medium transition-colors ${confirmingCheckout ? 'bg-[#6aa3db] text-white cursor-not-allowed' : (previewWarning?.profileIncomplete ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#3182ce] text-white hover:bg-[#2c5282]')}`}
+              disabled={confirmingCheckout || getStockIssues(getSelectedItems()).hasIssues}
+              className={`flex-1 cursor-pointer px-4 py-3 rounded-3xl font-medium transition-colors ${
+                confirmingCheckout
+                  ? 'bg-[#6aa3db] text-white cursor-not-allowed'
+                  : getStockIssues(getSelectedItems()).hasIssues
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    : (previewWarning?.profileIncomplete ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#3182ce] text-white hover:bg-[#2c5282]')
+              }`}
             >
-              {previewWarning?.profileIncomplete ? 'Go to Profile' : (
+                {previewWarning?.profileIncomplete ? 'Go to Profile' : (
                 confirmingCheckout ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
@@ -798,6 +894,12 @@ useEffect(() => {
       {createPortal(previewModalContent, document.body)}
       {createPortal(successModalContent, document.body)}
       {createPortal(confirmModalContent, document.body)}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => { setShowErrorModal(false); refreshCartData(); }}
+        title="Insufficient stock"
+        message={errorModalMessage}
+      />
     </>
   );
 };
