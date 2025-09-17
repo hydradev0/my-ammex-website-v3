@@ -4,6 +4,8 @@ import { ArrowLeft, ChevronRight, X, DollarSign } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
 import QRCodeModal from './QRCodeModal';
 import { getMyInvoices } from '../services/invoiceService';
+import { fetchPaymentMethods } from '../services/paymentMethodsService';
+import { fetchBanks } from '../services/banksService';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -27,15 +29,9 @@ const Payment = () => {
   const methodMenuRef = useRef(null);
   const bankMenuRef = useRef(null);
 
-  // Bank data for bank transfer
-  const bankOptions = [
-    { key: 'bdo', label: 'BDO Unibank Inc.', accountNumber: '123-456-7890', color: 'from-red-600 to-red-800' },
-    { key: 'bpi', label: 'BPI (Bank of the Philippine Islands)', accountNumber: '987-654-3210', color: 'from-red-500 to-red-700' },
-    { key: 'metrobank', label: 'Metrobank', accountNumber: '456-789-0123', color: 'from-blue-600 to-blue-800' },
-    { key: 'security_bank', label: 'Security Bank', accountNumber: '789-012-3456', color: 'from-green-600 to-green-800' },
-    { key: 'eastwest', label: 'EastWest Bank', accountNumber: '012-345-6789', color: 'from-purple-600 to-purple-800' },
-    { key: 'chinabank', label: 'China Bank', accountNumber: '345-678-9012', color: 'from-yellow-600 to-yellow-800' }
-  ];
+  // Methods and Banks from backend
+  const [methods, setMethods] = useState([]);
+  const [bankOptions, setBankOptions] = useState([]);
 
   // Get invoice ID from URL params
   const invoiceId = new URLSearchParams(location.search).get('invoiceId');
@@ -107,6 +103,32 @@ const Payment = () => {
     loadInvoice();
   }, [invoiceId, navigate]);
 
+  // Load payment methods and banks
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const [m, b] = await Promise.all([
+          fetchPaymentMethods(),
+          fetchBanks()
+        ]);
+        const activeMethods = (m || []).filter(x => x.isActive);
+        const activeBanks = (b || []).filter(x => x.isActive);
+        setMethods(activeMethods);
+        // map banks to UI structure { key, label, accountNumber, accountName, qrCodeBase64 }
+        setBankOptions(activeBanks.map(bank => ({
+          key: String(bank.id),
+          label: bank.bankName,
+          accountName: bank.accountName,
+          accountNumber: bank.accountNumber,
+          qrCodeBase64: bank.qrCodeBase64
+        })));
+      } catch (e) {
+        console.error('Failed to load payment config', e);
+      }
+    };
+    loadConfig();
+  }, []);
+
   // Handle click outside method menu and bank menu
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -167,6 +189,14 @@ const Payment = () => {
       errors.receipt = 'Payment receipt is required';
     }
 
+    // Reference required when method requiresReference
+    if (paymentData.paymentMethod) {
+      const selectedMethod = methods.find(m => mapMethodKey(m.name) === paymentData.paymentMethod);
+      if (selectedMethod?.requiresReference && (!paymentData.reference || paymentData.reference.trim() === '')) {
+        errors.reference = 'Reference number is required for this method';
+      }
+    }
+
     // Reference number validation (if provided)
     if (paymentData.reference && paymentData.reference.length > 50) {
       errors.reference = 'Reference number must be 50 characters or less';
@@ -200,6 +230,19 @@ const Payment = () => {
     setSelectedBank(bankKey);
     setShowBankMenu(false);
   };
+  // Map method name to internal key for UI compatibility
+  const mapMethodKey = (name) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('bank') || n.includes('transfer')) return 'bank_transfer';
+    if (n.includes('gcash')) return 'gcash';
+    if (n.includes('maya')) return 'maya';
+    if (n.includes('check')) return 'check';
+    return n.replace(/\s+/g, '_');
+  };
+
+  const methodOptions = methods.map(m => ({ key: mapMethodKey(m.name), label: m.name, raw: m }));
+  const selectedMethod = methods.find(m => mapMethodKey(m.name) === paymentData.paymentMethod);
+
 
   const handleReceiptUpload = (file) => {
     if (!file) return;
@@ -490,25 +533,15 @@ const Payment = () => {
                     ${validationErrors.paymentMethod ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
                   >
                     <span className={`${paymentData.paymentMethod ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {paymentData.paymentMethod ? (
-                        {
-                          bank_transfer: 'Bank Transfer',
-                          check: 'Check',
-                          maya: 'Maya (PayMaya)',
-                          gcash: 'GCash'
-                        }[paymentData.paymentMethod]
-                      ) : 'Select payment method'}
+                      {paymentData.paymentMethod
+                        ? (methodOptions.find(o => o.key === paymentData.paymentMethod)?.label || 'Select payment method')
+                        : 'Select payment method'}
                     </span>
                     <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </button>
                   {showMethodMenu && (
                     <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
-                      {[
-                        { key: 'bank_transfer', label: 'Bank Transfer' },
-                        { key: 'check', label: 'Check' },
-                        { key: 'maya', label: 'Maya (PayMaya)' },
-                        { key: 'gcash', label: 'GCash' }
-                      ].map(option => (
+                      {methodOptions.map(option => (
                         <button
                           key={option.key}
                           type="button"
@@ -574,38 +607,27 @@ const Payment = () => {
                       onClick={() => setShowQRModal(true)}
                       title="Click to view larger QR code"
                     >
-                      {paymentData.paymentMethod === 'maya' ? (
-                        <div className="text-center">
-                          <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mb-2">
-                            <span className="text-white font-bold text-lg">M</span>
+                      {paymentData.paymentMethod === 'bank_transfer' ? (
+                        selectedBank && bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64 ? (
+                          <img
+                            src={bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64}
+                            alt="Bank QR"
+                            className="w-40 h-40 object-contain rounded"
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <div className="w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center mb-2">
+                              <span className="text-gray-600 font-bold text-lg">?</span>
+                            </div>
+                            <p className="text-xs text-gray-600">{selectedBank ? 'No QR available' : 'Select a bank'}</p>
                           </div>
-                          <p className="text-xs text-gray-600">Maya QR Code</p>
-                        </div>
-                      ) : paymentData.paymentMethod === 'gcash' ? (
-                        <div className="text-center">
-                          <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center mb-2">
-                            <span className="text-white font-bold text-lg">G</span>
-                          </div>
-                          <p className="text-xs text-gray-600">GCash QR Code</p>
-                        </div>
-                      ) : paymentData.paymentMethod === 'bank_transfer' && selectedBank ? (
-                        <div className="text-center">
-                          <div className={`w-32 h-32 bg-gradient-to-br ${bankOptions.find(bank => bank.key === selectedBank)?.color || 'from-blue-600 to-blue-800'} rounded-lg flex items-center justify-center mb-2`}>
-                            <span className="text-white font-bold text-lg">
-                              {bankOptions.find(bank => bank.key === selectedBank)?.label?.charAt(0) || 'B'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600">
-                            {bankOptions.find(bank => bank.key === selectedBank)?.label} QR
-                          </p>
-                        </div>
-                      ) : paymentData.paymentMethod === 'bank_transfer' ? (
-                        <div className="text-center">
-                          <div className="w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center mb-2">
-                            <span className="text-gray-600 font-bold text-lg">?</span>
-                          </div>
-                          <p className="text-xs text-gray-600">Select a bank</p>
-                        </div>
+                        )
+                      ) : selectedMethod?.qrCodeBase64 ? (
+                        <img
+                          src={selectedMethod.qrCodeBase64}
+                          alt="Payment QR"
+                          className="w-40 h-40 object-contain rounded"
+                        />
                       ) : (
                         <div className="text-center">
                           <div className="w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center mb-2">
@@ -640,37 +662,7 @@ const Payment = () => {
                       {/* Account Number Display */}
                       <div className="bg-white rounded-lg p-4 border border-gray-200">
                         <h6 className="font-medium text-gray-900 mb-2">Account Details</h6>
-                        {paymentData.paymentMethod === 'maya' ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Account Name:</span>
-                              <span className="text-sm font-medium text-gray-900">Ammex Trading Corp.</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Maya Account:</span>
-                              <span className="text-sm font-medium text-gray-900">0917-123-4567</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
-                            </div>
-                          </div>
-                        ) : paymentData.paymentMethod === 'gcash' ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Account Name:</span>
-                              <span className="text-sm font-medium text-gray-900">Ammex Trading Corp.</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">GCash Number:</span>
-                              <span className="text-sm font-medium text-gray-900">0917-987-6543</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
-                            </div>
-                          </div>
-                        ) : paymentData.paymentMethod === 'bank_transfer' && selectedBank ? (
+                        {paymentData.paymentMethod === 'bank_transfer' && selectedBank ? (
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Bank Name:</span>
@@ -680,7 +672,7 @@ const Payment = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Account Name:</span>
-                              <span className="text-sm font-medium text-gray-900">Ammex Trading Corp.</span>
+                              <span className="text-sm font-medium text-gray-900">{bankOptions.find(bank => bank.key === selectedBank)?.accountName || '—————'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Account Number:</span>
@@ -712,6 +704,21 @@ const Payment = () => {
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Amount:</span>
                               <span className="text-sm font-medium text-gray-900">{formatCurrency(parseFloat(paymentData.amount) || 0)}</span>
+                            </div>
+                          </div>
+                        ) : selectedMethod ? (
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Account Name:</span>
+                              <span className="text-sm font-medium text-gray-900">{selectedMethod.accountName || '—————'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Account Number:</span>
+                              <span className="text-sm font-medium text-gray-900">{selectedMethod.accountNumber || '—————'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Invoice Reference:</span>
+                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
                             </div>
                           </div>
                         ) : null}
@@ -846,6 +853,8 @@ const Payment = () => {
         paymentMethod={paymentData.paymentMethod}
         selectedBank={selectedBank}
         bankOptions={bankOptions}
+        methodQr={methodOptions.find(o => o.key === paymentData.paymentMethod)?.raw?.qrCodeBase64 || null}
+        bankQr={selectedBank ? bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64 || null : null}
         paymentAmount={paymentData.amount}
         balance={invoice?.remainingAmount}
       />

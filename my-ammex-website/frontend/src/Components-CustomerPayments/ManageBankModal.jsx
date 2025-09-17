@@ -16,15 +16,21 @@ const ManageBankModal = ({
   const [selectedBank, setSelectedBank] = useState(null);
   const [bankFormData, setBankFormData] = useState({
     bankName: '',
+    accountName: '',
     accountNumber: '',
     isActive: true,
     qrCode: null
   });
   const bankQrUploadRef = useRef(null);
+  
+  // Loading states
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(null);
 
   const resetBankForm = () => {
     setBankFormData({
       bankName: '',
+      accountName: '',
       accountNumber: '',
       isActive: true,
       qrCode: null
@@ -41,6 +47,7 @@ const ManageBankModal = ({
     setSelectedBank(bank);
     setBankFormData({
       bankName: bank.bankName,
+      accountName: bank.accountName || '',
       accountNumber: bank.accountNumber,
       isActive: bank.isActive,
       qrCode: bank.qrCode
@@ -48,24 +55,38 @@ const ManageBankModal = ({
     setShowBankFormModal(true);
   };
 
-  const handleSaveBank = () => {
+  const handleSaveBank = async () => {
     if (!bankFormData.bankName.trim() || !bankFormData.accountNumber.trim()) {
       return;
     }
 
-    if (selectedBank) {
-      onEditBank(selectedBank.id, bankFormData);
-    } else {
-      onAddBank(bankFormData);
-    }
+    setIsSaving(true);
+    try {
+      if (selectedBank) {
+        await onEditBank(selectedBank.id, bankFormData);
+      } else {
+        await onAddBank(bankFormData);
+      }
 
-    setShowBankFormModal(false);
-    resetBankForm();
+      setShowBankFormModal(false);
+      resetBankForm();
+    } catch (e) {
+      console.error('Save bank failed', e);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteBank = (bankId) => {
+  const handleDeleteBank = async (bankId) => {
     if (window.confirm('Are you sure you want to delete this bank?')) {
-      onDeleteBank(bankId);
+      setIsDeleting(bankId);
+      try {
+        await onDeleteBank(bankId);
+      } catch (e) {
+        console.error('Delete bank failed', e);
+      } finally {
+        setIsDeleting(null);
+      }
     }
   };
 
@@ -113,6 +134,7 @@ const ManageBankModal = ({
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bank Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Name</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Number</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">QR Code</th>
@@ -124,6 +146,9 @@ const ManageBankModal = ({
                     <tr key={bank.id} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {bank.bankName}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {bank.accountName || '—————'}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                         {bank.accountNumber}
@@ -159,9 +184,14 @@ const ManageBankModal = ({
                           </button>
                           <button
                             onClick={() => handleDeleteBank(bank.id)}
-                            className="text-red-600 cursor-pointer hover:text-red-800 transition-colors"
+                            disabled={isDeleting === bank.id}
+                            className="text-red-600 cursor-pointer hover:text-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {isDeleting === bank.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -219,6 +249,17 @@ const ManageBankModal = ({
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Name</label>
+                  <input
+                    type="text"
+                    value={bankFormData.accountName}
+                    onChange={(e) => setBankFormData({...bankFormData, accountName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., Ammex Trading Corp."
+                  />
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
                   <input
                     type="text"
@@ -254,7 +295,7 @@ const ManageBankModal = ({
                       />
                       <button
                         onClick={() => bankQrUploadRef.current?.click()}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <Upload className="w-4 h-4" />
                         {bankFormData.qrCode ? 'Replace QR Code' : 'Upload QR Code'}
@@ -292,11 +333,20 @@ const ManageBankModal = ({
                 </button>
                 <button
                   onClick={handleSaveBank}
-                  disabled={!bankFormData.bankName.trim() || !bankFormData.accountNumber.trim()}
+                  disabled={!bankFormData.bankName.trim() || !bankFormData.accountNumber.trim() || isSaving}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
-                  <Save className="w-4 h-4" />
-                  {selectedBank ? 'Update' : 'Save'} Bank
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      {selectedBank ? 'Updating...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {selectedBank ? 'Update' : 'Save'} Bank
+                    </>
+                  )}
                 </button>
               </div>
             </div>

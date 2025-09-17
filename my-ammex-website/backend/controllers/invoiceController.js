@@ -268,7 +268,17 @@ const getMyInvoices = async (req, res, next) => {
     const clientInvoices = invoices.map((invoice) => {
       const dueDate = new Date(invoice.dueDate);
       const today = new Date();
-      const isOverdue = dueDate < today && invoice.status === 'pending';
+      const isOverdue = dueDate < today;
+      
+      // Calculate payment status based on actual payment data, not invoice status
+      let paymentStatus = 'pending';
+      
+      if (isOverdue) {
+        paymentStatus = 'overdue';
+      } else if (invoice.status === 'completed') {
+        // If invoice is completed but no payment tracking yet, show as pending payment
+        paymentStatus = 'awaiting payment';
+      }
       
       return {
         id: invoice.id,
@@ -282,7 +292,7 @@ const getMyInvoices = async (req, res, next) => {
         totalAmount: Number(invoice.totalAmount),
         paidAmount: 0, // Will be implemented in payment phase
         remainingAmount: Number(invoice.totalAmount), // Will be updated in payment phase
-        paymentStatus: isOverdue ? 'overdue' : (invoice.status === 'completed' ? 'paid' : 'pending'),
+        paymentStatus: paymentStatus,
         paymentTerms: invoice.paymentTerms,
         items: (invoice.items || []).map((item) => ({
           name: item.item?.itemName || 'Unknown Item',
@@ -333,7 +343,7 @@ const updateInvoiceStatus = async (req, res, next) => {
 // Manual invoice creation (for Admin and Sales Marketing)
 const createInvoice = async (req, res, next) => {
   try {
-    const { Invoice, InvoiceItem, Order, OrderItem, Customer, Item } = getModels();
+    const { Invoice, Order, OrderItem, Customer, Item } = getModels();
     const { orderId, paymentTerms, notes } = req.body;
     const userId = req.user.id;
 

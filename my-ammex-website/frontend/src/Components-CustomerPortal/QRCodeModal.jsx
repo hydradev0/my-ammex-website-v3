@@ -9,6 +9,8 @@ const QRCodeModal = ({
   paymentMethod, 
   selectedBank, 
   bankOptions, 
+  methodQr,
+  bankQr,
   paymentAmount, 
   balance
 }) => {
@@ -67,38 +69,19 @@ const QRCodeModal = ({
           
           <div className="flex justify-center mb-4">
             <div className="w-80 h-80 bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center">
-              {paymentMethod === 'maya' ? (
-                <div className="text-center">
-                  <div className="w-64 h-64 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-white font-bold text-6xl">M</span>
+              {paymentMethod === 'bank_transfer' ? (
+                selectedBank && bankQr ? (
+                  <img src={bankQr} alt="Bank QR" className="w-64 h-64 object-contain rounded" />
+                ) : (
+                  <div className="text-center">
+                    <div className="w-64 h-64 bg-gray-300 rounded-lg flex items-center justify-center mb-4">
+                      <span className="text-gray-600 font-bold text-6xl">?</span>
+                    </div>
+                    <p className="text-sm text-gray-600">{selectedBank ? 'No QR uploaded for this bank' : 'Select a bank'}</p>
                   </div>
-                  <p className="text-sm text-gray-600">Maya QR Code</p>
-                </div>
-              ) : paymentMethod === 'gcash' ? (
-                <div className="text-center">
-                  <div className="w-64 h-64 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-white font-bold text-6xl">G</span>
-                  </div>
-                  <p className="text-sm text-gray-600">GCash QR Code</p>
-                </div>
-              ) : paymentMethod === 'bank_transfer' && selectedBank ? (
-                <div className="text-center">
-                  <div className={`w-64 h-64 bg-gradient-to-br ${bankOptions?.find(bank => bank.key === selectedBank)?.color || 'from-blue-600 to-blue-800'} rounded-lg flex items-center justify-center mb-4`}>
-                    <span className="text-white font-bold text-6xl">
-                      {bankOptions?.find(bank => bank.key === selectedBank)?.label?.charAt(0) || 'B'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {bankOptions?.find(bank => bank.key === selectedBank)?.label} QR
-                  </p>
-                </div>
-              ) : paymentMethod === 'bank_transfer' ? (
-                <div className="text-center">
-                  <div className="w-64 h-64 bg-gray-300 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-gray-600 font-bold text-6xl">?</span>
-                  </div>
-                  <p className="text-sm text-gray-600">Select a bank</p>
-                </div>
+                )
+              ) : methodQr ? (
+                <img src={methodQr} alt="Method QR" className="w-64 h-64 object-contain rounded" />
               ) : (
                 <div className="text-center">
                   <div className="w-64 h-64 bg-gray-300 rounded-lg flex items-center justify-center mb-4">

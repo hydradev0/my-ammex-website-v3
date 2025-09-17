@@ -112,6 +112,8 @@ const Invoice = () => {
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'overdue':
         return <XCircle className="w-4 h-4 text-red-600" />;
+      case 'awaiting payment':
+        return <Clock className="w-4 h-4 text-orange-600" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600" />;
     }
@@ -127,6 +129,8 @@ const Invoice = () => {
         return 'bg-green-100 text-green-800';
       case 'overdue':
         return 'bg-red-100 text-red-800';
+      case 'awaiting payment':
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -334,7 +338,7 @@ const Invoice = () => {
                         <div className="flex items-center gap-4">
                           <button
                             onClick={() => handleViewInvoice(invoice)}
-                            className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1"
+                            className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1"
                           >
                             <Eye className="w-6 h-6 md:w-5 md:h-5" />
                             <span className="hidden sm:inline">View</span>
@@ -342,7 +346,7 @@ const Invoice = () => {
                           {invoice.remainingAmount > 0 && (
                             <button
                               onClick={() => handlePayInvoice(invoice)}
-                              className="text-green-600 hover:text-green-800 transition-colors flex items-center gap-1"
+                              className="text-green-600 cursor-pointer hover:text-green-800 transition-colors flex items-center gap-1"
                             >
                               <CreditCard className="w-6 h-6 md:w-5 md:h-5" />
                               <span className="hidden sm:inline">Pay</span>

@@ -11,7 +11,7 @@
 
 /* Ensure proper background rendering */
 html, body {
-  background-color: #f9fafb; /* lighter neutral */
+  background-color: #f9fafb;
   min-height: 100vh;
   width: 100vw;
   margin: 0;
@@ -21,6 +21,7 @@ html, body {
 }
 
 html {
+  
   overflow-x: hidden;
   /* Prevent horizontal scrolling on mobile */
   -webkit-overflow-scrolling: touch;
@@ -32,6 +33,28 @@ body {
   position: relative;
 }
 
+/* Gradient background applied to body for specific routes */
+body.gradient-bg {
+  background: linear-gradient(
+    to bottom right,
+    #f8fafc, /* slate-50 */
+    #eff6ff, /* blue-50 */
+    #eef2ff  /* indigo-50 */
+  ) !important;
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* Ensure wrapper containers are transparent when gradient is applied */
+body.gradient-bg .app-scale-wrapper {
+  background: transparent !important;
+}
+
+body.gradient-bg .text-gray-900 {
+  background: transparent !important;
+}
+
 
 
 .app-scale-wrapper {
@@ -40,6 +63,7 @@ body {
   width: 125vw;
   min-height: 125vh;
 }
+
 
 /* Line clamp utilities for text truncation */
 .line-clamp-1 {

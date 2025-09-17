@@ -1,9 +1,13 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit2, Trash2, QrCode, Upload, Save, X, Building2 } from 'lucide-react';
 import TopBar from '../Components/TopBar';
+import ScrollLock from '../Components/ScrollLock';
 import RoleBasedLayout from '../Components/RoleBasedLayout';
 import ManageBankModal from './ManageBankModal';
+import { fetchPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } from '../services/paymentMethodsService';
+import { fetchBanks, createBank, updateBank, deleteBank } from '../services/banksService';
 
 const ManagePaymentMethods = () => {
   const navigate = useNavigate();
@@ -13,6 +17,7 @@ const ManagePaymentMethods = () => {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
+    accountName: '',
     description: '',
     isActive: true,
     requiresReference: false,
@@ -20,70 +25,36 @@ const ManagePaymentMethods = () => {
   });
   const qrUploadRef = useRef(null);
 
-  // Mock payment methods data - replace with actual API call
-  const [paymentMethods, setPaymentMethods] = useState([
-    {
-      id: '1',
-      name: 'Bank Transfer',
-      accountNumber: '1234567890',
-      isActive: true,
-      requiresReference: true,
-      qrCode: null
-    },
-    {
-      id: '2',
-      name: 'Maya (PayMaya)',
-      accountNumber: '1234567890',
-      isActive: true,
-      requiresReference: false,
-      qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-    },
-    {
-      id: '3',
-      name: 'GCash',
-      accountNumber: '1234567890',
-      isActive: true,
-      requiresReference: false,
-      qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-    },
-    {
-      id: '4',
-      name: 'Check',
-      accountNumber: '1234567890',
-      isActive: false,
-      requiresReference: true,
-      qrCode: null
-    }
-  ]);
+  // Backend data
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [banks, setBanks] = useState([]);
+  
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(null);
 
-  // Mock bank data - replace with actual API call
-  const [banks, setBanks] = useState([
-    {
-      id: '1',
-      bankName: 'BDO',
-      accountNumber: '1234567890',
-      isActive: true,
-      qrCode: null
-    },
-    {
-      id: '2',
-      bankName: 'BPI',
-      accountNumber: '0987654321',
-      isActive: true,
-      qrCode: null
-    },
-    {
-      id: '3',
-      bankName: 'Metrobank',
-      accountNumber: '1122334455',
-      isActive: false,
-      qrCode: null
-    }
-  ]);
+  // Load from backend
+  React.useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const [m, b] = await Promise.all([fetchPaymentMethods(), fetchBanks()]);
+        setPaymentMethods(m);
+        setBanks(b);
+      } catch (e) {
+        console.error('Failed to load payment config', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const resetForm = () => {
     setFormData({
       name: '',
+      accountName: '',
       accountNumber: '',
       isActive: true,
       requiresReference: false,
@@ -101,49 +72,66 @@ const ManagePaymentMethods = () => {
     setSelectedMethod(method);
     setFormData({
       name: method.name,
+      accountName: method.accountName || '',
       accountNumber: method.accountNumber,
       isActive: method.isActive,
       requiresReference: method.requiresReference,
-      qrCode: method.qrCode
+      qrCode: method.qrCodeBase64 || null
     });
     setShowEditModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) return;
-    
-    const methodData = {
-      id: selectedMethod?.id || `method-${Date.now()}`,
-      ...formData
+    setIsSaving(true);
+    const payload = {
+      name: formData.name,
+      accountName: formData.accountName || null,
+      accountNumber: formData.accountNumber || null,
+      isActive: !!formData.isActive,
+      requiresReference: !!formData.requiresReference,
+      qrCodeBase64: formData.qrCode || null
     };
-
-    if (selectedMethod) {
-      setPaymentMethods(prev => 
-        prev.map(method => method.id === selectedMethod.id ? methodData : method)
-      );
-    } else {
-      setPaymentMethods(prev => [...prev, methodData]);
+    try {
+      if (selectedMethod && selectedMethod.id) {
+        const updated = await updatePaymentMethod(selectedMethod.id, payload);
+        setPaymentMethods(prev => prev.map(m => (m.id === updated.id ? updated : m)));
+      } else {
+        const created = await createPaymentMethod(payload);
+        setPaymentMethods(prev => [...prev, created]);
+      }
+      setShowAddModal(false);
+      setShowEditModal(false);
+      resetForm();
+    } catch (e) {
+      console.error('Save method failed', e);
+    } finally {
+      setIsSaving(false);
     }
-
-    setShowAddModal(false);
-    setShowEditModal(false);
-    resetForm();
   };
 
-  const handleDeleteMethod = (methodId) => {
-    if (window.confirm('Are you sure you want to delete this payment method?')) {
+  const handleDeleteMethod = async (methodId) => {
+    if (!window.confirm('Are you sure you want to delete this payment method?')) return;
+    setIsDeleting(methodId);
+    try {
+      await deletePaymentMethod(methodId);
       setPaymentMethods(prev => prev.filter(method => method.id !== methodId));
+    } catch (e) {
+      console.error('Delete method failed', e);
+    } finally {
+      setIsDeleting(null);
     }
   };
 
-  const handleToggleActive = (methodId) => {
-    setPaymentMethods(prev => 
-      prev.map(method => 
-        method.id === methodId 
-          ? { ...method, isActive: !method.isActive }
-          : method
-      )
-    );
+  const handleToggleActive = async (methodId) => {
+    try {
+      const current = paymentMethods.find(m => m.id === methodId);
+      if (!current) return;
+      const updated = await updatePaymentMethod(methodId, { isActive: !current.isActive });
+      setPaymentMethods(prev => prev.map(m => (m.id === methodId ? updated : m)));
+    } catch (e) {
+      console.error('Toggle active failed', e);
+    }
   };
 
   const handleQRUpload = (event) => {
@@ -166,48 +154,73 @@ const ManagePaymentMethods = () => {
     setShowBankModal(true);
   };
 
-  const handleAddBank = (bankData) => {
-    const newBank = {
-      id: `bank-${Date.now()}`,
-      ...bankData
-    };
-    setBanks(prev => [...prev, newBank]);
+  const handleAddBank = async (bankData) => {
+    try {
+      const created = await createBank({
+        bankName: bankData.bankName,
+        accountName: bankData.accountName || null,
+        accountNumber: bankData.accountNumber,
+        isActive: !!bankData.isActive,
+        qrCodeBase64: bankData.qrCode || null
+      });
+      setBanks(prev => [...prev, created]);
+    } catch (e) {
+      console.error('Create bank failed', e);
+    }
   };
 
-  const handleEditBank = (bankId, bankData) => {
-    setBanks(prev => 
-      prev.map(bank => bank.id === bankId ? { ...bank, ...bankData } : bank)
-    );
+  const handleEditBank = async (bankId, bankData) => {
+    try {
+      const updated = await updateBank(bankId, {
+        bankName: bankData.bankName,
+        accountName: bankData.accountName || null,
+        accountNumber: bankData.accountNumber,
+        isActive: !!bankData.isActive,
+        qrCodeBase64: bankData.qrCode || null
+      });
+      setBanks(prev => prev.map(b => (b.id === bankId ? updated : b)));
+    } catch (e) {
+      console.error('Update bank failed', e);
+    }
   };
 
-  const handleDeleteBank = (bankId) => {
-    setBanks(prev => prev.filter(bank => bank.id !== bankId));
+  const handleDeleteBank = async (bankId) => {
+    if (!window.confirm('Are you sure you want to delete this bank?')) return;
+    try {
+      await deleteBank(bankId);
+      setBanks(prev => prev.filter(bank => bank.id !== bankId));
+    } catch (e) {
+      console.error('Delete bank failed', e);
+    }
   };
 
-  const handleToggleBankActive = (bankId) => {
-    setBanks(prev => 
-      prev.map(bank => 
-        bank.id === bankId 
-          ? { ...bank, isActive: !bank.isActive }
-          : bank
-      )
-    );
+  const handleToggleBankActive = async (bankId) => {
+    try {
+      const current = banks.find(b => b.id === bankId);
+      if (!current) return;
+      const updated = await updateBank(bankId, { isActive: !current.isActive });
+      setBanks(prev => prev.map(b => (b.id === bankId ? updated : b)));
+    } catch (e) {
+      console.error('Toggle bank active failed', e);
+    }
   };
 
   // Modal Form Component
   const MethodForm = ({ title, onSave, onCancel }) => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+    createPortal(
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[1000vh] flex flex-col" 
+      style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+        <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <button onClick={onCancel} className="text-gray-400 cursor-pointer hover:text-gray-600">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
         
-        <div className="p-6">
+        <div className="p-6 flex-1 overflow-y-auto">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Method Name</label>
@@ -221,12 +234,23 @@ const ManagePaymentMethods = () => {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Account Name</label>
+              <input
+                type="text"
+                value={formData.accountName}
+                onChange={(e) => setFormData({...formData, accountName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500"
+                placeholder="e.g., Ammex Trading Corp."
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
-              <textarea
+              <input
+                type="text"
                 value={formData.accountNumber}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows="3"
+                onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500"
                 placeholder="Account number"
               />
             </div>
@@ -266,7 +290,7 @@ const ManagePaymentMethods = () => {
                   />
                   <button
                     onClick={() => qrUploadRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center cursor-pointer gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <Upload className="w-4 h-4" />
                     {formData.qrCode ? 'Replace QR Code' : 'Upload QR Code'}
@@ -282,7 +306,7 @@ const ManagePaymentMethods = () => {
                     />
                     <button
                       onClick={removeQRCode}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute -top-2 -right-2 cursor-pointer bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -292,26 +316,53 @@ const ManagePaymentMethods = () => {
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={onCancel}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onSave}
-              disabled={!formData.name.trim()}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              {selectedMethod ? 'Update' : 'Save'} Method
-            </button>
-          </div>
+        </div>
+        <div className="border-t border-gray-200 sticky bottom-0 bg-white p-4">
+          <div className="flex gap-3">
+              <button
+                onClick={onCancel}
+                className="flex-1 px-4 py-2 cursor-pointer border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onSave}
+                disabled={!formData.name.trim() || isSaving}
+                className="flex-1 px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    {selectedMethod ? 'Updating...' : 'Saving...'}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {selectedMethod ? 'Update' : 'Save'} Method
+                  </>
+                )}
+              </button>
+            </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body)
   );
+
+  if (isLoading) {
+    return (
+      <>
+        <RoleBasedLayout />
+        <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Payment Methods...</h3>
+            <p className="text-gray-500">Please wait while we fetch the payment configuration.</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -342,6 +393,7 @@ const ManagePaymentMethods = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Name</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Number</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -353,6 +405,9 @@ const ManagePaymentMethods = () => {
                     <tr key={method.id} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {method.name}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-500">
+                        {method.accountName || '——————'}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-500">
                         {method.accountNumber}
@@ -378,9 +433,14 @@ const ManagePaymentMethods = () => {
                           </button>
                           <button
                             onClick={() => handleDeleteMethod(method.id)}
-                            className="text-red-600 cursor-pointer hover:text-red-800 transition-colors"
+                            disabled={isDeleting === method.id}
+                            className="text-red-600 cursor-pointer hover:text-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            {isDeleting === method.id ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                            ) : (
+                              <Trash2 className="w-5 h-5" />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -415,6 +475,8 @@ const ManagePaymentMethods = () => {
 
       {/* Add Method Modal */}
       {showAddModal && (
+        <>
+        <ScrollLock active={showAddModal} />
         <MethodForm
           title="Add Payment Method"
           onSave={handleSave}
@@ -423,10 +485,13 @@ const ManagePaymentMethods = () => {
             resetForm();
           }}
         />
+        </>
       )}
 
       {/* Edit Method Modal */}
       {showEditModal && (
+        <>
+        <ScrollLock active={showEditModal} />
         <MethodForm
           title="Edit Payment Method"
           onSave={handleSave}
@@ -435,6 +500,7 @@ const ManagePaymentMethods = () => {
             resetForm();
           }}
         />
+        </>
       )}
 
       {/* Bank Management Modal */}

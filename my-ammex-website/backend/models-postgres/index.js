@@ -786,6 +786,86 @@ const initializeModels = (sequelize) => {
 
   /* ================================ */
 
+  // PaymentMethod Model
+  const PaymentMethod = sequelize.define('PaymentMethod', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Payment method name is required' }
+      }
+    },
+    accountName: {
+      type: DataTypes.STRING,
+      field: 'account_name',
+      allowNull: true
+    },
+    accountNumber: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    requiresReference: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
+    qrCodeBase64: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
+  }, {
+    timestamps: true
+  });
+
+  // Bank Model (for Bank Transfer)
+  const Bank = sequelize.define('Bank', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    bankName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Bank name is required' }
+      }
+    },
+    accountName: {
+      type: DataTypes.STRING,
+      field: 'account_name',
+      allowNull: true
+    },
+    accountNumber: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Account number is required' }
+      }
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
+    qrCodeBase64: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
+  }, {
+    timestamps: true
+  });
+
   // Define relationships
   User.hasMany(Order, {
     foreignKey: 'userId',
@@ -969,7 +1049,9 @@ const initializeModels = (sequelize) => {
     Cart,
     CartItem,
     Invoice,
-    InvoiceItem
+    InvoiceItem,
+    PaymentMethod,
+    Bank
   };
 };
 

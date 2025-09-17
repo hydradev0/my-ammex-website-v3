@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './Layout';
 
 import Dashboard from './Pages/Home/Dashboard'; 
@@ -34,13 +34,30 @@ import CustomerPayments from './Pages/Sales/CustomerPayments';
 import ManagePaymentMethods from './Components-CustomerPayments/ManagePaymentMethods';
 import Invoices from './Pages/Sales/Invoices';
 
-function App() {
+import HistoricalSales from './Components-Analytics/HistoricalSales';
+
+function AppContent() {
+  const location = useLocation();
+  const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/Home/HistoricalSales';
+  
+  useEffect(() => {
+    if (shouldShowGradient) {
+      document.body.classList.add('gradient-bg');
+    } else {
+      document.body.classList.remove('gradient-bg');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('gradient-bg');
+    };
+  }, [shouldShowGradient, location.pathname]);
+  
   return (
     <>
-    <BrowserRouter>
       <Layout>
-      <div className="app-scale-wrapper">
-      <div className='text-gray-900 min-h-screen '>
+        <div className="app-scale-wrapper">
+          <div className='text-gray-900 min-h-screen'>
       <Routes>
         {/* Auth */}
         <Route path="/login" element={<Login />} />
@@ -225,15 +242,25 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+          
+        <Route path="Home/HistoricalSales" element={<HistoricalSales />} />
         
         {/* Default Page */}
         <Route path="/" element={<Login />} />
       </Routes>
+          </div>
         </div>
-      </div>
       </Layout>
-    </BrowserRouter>
     </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 
