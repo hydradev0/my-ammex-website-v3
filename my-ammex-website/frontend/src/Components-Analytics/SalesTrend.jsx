@@ -21,10 +21,11 @@ import {
   Brain,
   Loader,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Sparkles
 } from 'lucide-react';
 
-const HistoricalSales = () => {
+const SalesPerformance = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('3');
   const [historicalPeriod, setHistoricalPeriod] = useState('6');
   const [showModal, setShowModal] = useState(false);
@@ -241,26 +242,13 @@ const HistoricalSales = () => {
             <button
               onClick={generatePredictions}
               disabled={isAnalyzing}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-all duration-200"
+              className="px-6 py-2 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-all duration-200"
             >
               <Brain className="w-4 h-4" />
               Analyze
             </button>
           </div>
         </div>
-
-        {/* Loading State */}
-        {isAnalyzing && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-8">
-            <div className="flex items-center gap-3">
-              <Loader className="w-6 h-6 animate-spin text-yellow-600" />
-              <div>
-                <p className="font-medium text-yellow-800">Analyzing Sales Data...</p>
-                <p className="text-sm text-yellow-700">This may take a moment. Please wait while we generate your forecast.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Sales Trends Chart */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
@@ -351,9 +339,89 @@ const HistoricalSales = () => {
           </div>
         </div>
 
+        {/* Full Screen Loading Modal */}
+        {isAnalyzing && (
+          <div className="fixed inset-0 bg-gradient-to-br from-blue-300/40 to-indigo-200/40 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-300">
+            <div className="bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/30 backdrop-blur-xl rounded-3xl p-10 max-w-lg w-full mx-4 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-500 ease-out">
+              <div className="text-center">
+                {/* Enhanced Loading Animation */}
+                <div className="mb-8 relative">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 opacity-20 animate-ping"></div>
+                  <div className="absolute inset-2 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 opacity-30 animate-ping animation-delay-200"></div>
+                  <div className="relative bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full p-4">
+                    <Sparkles className="w-12 h-12 text-white animate-pulse" />
+                  </div>
+                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-lg font-semibold animate-pulse">Analyzing Sales Data</span>
+                </div>
+
+                <p className="text-gray-600 mb-6 text-base leading-relaxed">
+                  Our AI is processing your historical sales data to generate accurate forecasts and insights.
+                </p>
+
+                {/* Enhanced Progress Steps */}
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/40 backdrop-blur-sm border border-white/20">
+                    <div className="relative">
+                      <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse"></div>
+                      <div className="absolute inset-0 w-3 h-3 bg-blue-400 rounded-full animate-ping opacity-30"></div>
+                    </div>
+                    <span className="font-medium text-gray-700">Processing historical trends</span>
+                    <div className="ml-auto">
+                      <div className="w-6 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/30 backdrop-blur-sm border border-white/10 animation-delay-300">
+                    <div className="relative">
+                      <div className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-pulse animation-delay-500"></div>
+                      <div className="absolute inset-0 w-3 h-3 bg-indigo-400 rounded-full animate-ping opacity-30 animation-delay-500"></div>
+                    </div>
+                    <span className="font-medium text-gray-700">Applying seasonal adjustments</span>
+                    <div className="ml-auto">
+                      <div className="w-6 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-pulse animation-delay-500"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/5 animation-delay-700">
+                    <div className="relative">
+                      <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full animate-pulse animation-delay-1000"></div>
+                      <div className="absolute inset-0 w-3 h-3 bg-purple-400 rounded-full animate-ping opacity-30 animation-delay-1000"></div>
+                    </div>
+                    <span className="font-medium text-gray-700">Generating insights</span>
+                    <div className="ml-auto">
+                      <div className="w-6 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-purple-500 to-pink-600 rounded-full animate-pulse animation-delay-1000"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mb-4">
+                  <div className="w-full bg-gray-200/50 rounded-full h-2 backdrop-blur-sm">
+                    <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 h-2 rounded-full animate-pulse shadow-lg shadow-blue-500/25" style={{width: '60%'}}></div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce animation-delay-200"></div>
+                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce animation-delay-500"></div>
+                  <span className="ml-2">This usually takes 2-3 seconds</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Prediction Modal */}
         {showModal && predictions && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-5xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50 rounded-t-xl">
@@ -503,4 +571,4 @@ const HistoricalSales = () => {
   );
 };
 
-export default HistoricalSales;
+export default SalesPerformance;

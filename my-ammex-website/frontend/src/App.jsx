@@ -34,7 +34,8 @@ import CustomerPayments from './Pages/Sales/CustomerPayments';
 import ManagePaymentMethods from './Components-CustomerPayments/ManagePaymentMethods';
 import Invoices from './Pages/Sales/Invoices';
 
-import HistoricalSales from './Components-Analytics/HistoricalSales';
+import SalesTrend from './Components-Analytics/SalesTrend';
+import CustomerPurchase from './Components-Analytics/CustomerPurchase';
 
 function AppContent() {
   const location = useLocation();
@@ -64,7 +65,7 @@ function AppContent() {
         
         {/* Home */}
         <Route 
-          path="Home/Dashboard" 
+          path="home/dashboard" 
           element={
             <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor", "Sales Marketing"]}>
               <Dashboard />
@@ -72,7 +73,7 @@ function AppContent() {
           } 
         />
         <Route 
-          path="Home/Analytics" 
+          path="home/analytics" 
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor"]}>
               <Analytics />
@@ -82,7 +83,7 @@ function AppContent() {
 
         {/* Business Partners - Admin and Sales Marketing */} 
         <Route
-          path="BusinessPartners/Customers"
+          path="businesspartners/customers"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing",]}>
               <Customers />
@@ -90,7 +91,7 @@ function AppContent() {
           }
         />
         <Route
-          path="BusinessPartners/Suppliers"
+          path="businesspartners/suppliers"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor"]}>
               <Suppliers />
@@ -100,7 +101,7 @@ function AppContent() {
 
         {/* Sales - Admin and Sales Marketing */}
         <Route
-          path="Sales/Orders"
+          path="sales/orders"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <CustomerOrders />
@@ -108,7 +109,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Sales/Invoices"
+          path="sales/invoices"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <Invoices />
@@ -116,7 +117,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Sales/Payments"
+          path="sales/payments"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <CustomerPayments />
@@ -124,7 +125,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Sales/ManagePaymentMethods"
+          path="sales/managepaymentmethods"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <ManagePaymentMethods />
@@ -132,7 +133,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Sales/SalesQuotes"
+          path="sales/salesquotes"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <SalesQuotes />
@@ -140,7 +141,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Sales/SalesOrder"
+          path="sales/salesorder"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <SalesOrder />
@@ -148,7 +149,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Sales/SalesInvoice"
+          path="sales/salesinvoice"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <SalesInvoice />
@@ -157,7 +158,7 @@ function AppContent() {
         />
         {/* Inventory - Admin, Warehouse Supervisor, Sales Marketing (read-only for Sales) */}
         <Route
-          path="Inventory/*"
+          path="inventory/*"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor", "Sales Marketing"]}>
               <Inventory />
@@ -165,7 +166,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/Inventory/ProductSpecs"
+          path="/inventory/productspecs"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor"]}>
               <ProductSpecs />
@@ -175,7 +176,7 @@ function AppContent() {
 
         {/* Purchasing - Admin and Sales Marketing */}
         <Route
-          path="Purchasing/PurchaseQuotes"
+          path="purchasing/purchasequotes"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <PurchaseQuotes />
@@ -183,7 +184,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Purchasing/PurchaseOrder"
+          path="purchasing/purchaseorder"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <PurchaseOrder />
@@ -191,11 +192,11 @@ function AppContent() {
           }
         />
         {/* Administration */}
-        <Route path="Admin/AccountManagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
+        <Route path="admin/accountmanagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
         
         {/* Customer Portal - Client role only */}
         <Route
-          path="Products"
+          path="products"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <CustomerPortal />
@@ -203,7 +204,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Products/Cart"
+          path="products/cart"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Cart />
@@ -211,7 +212,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Products/Profile"
+          path="products/profile"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Profile />
@@ -219,7 +220,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Products/Orders"
+          path="products/orders"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Orders />
@@ -227,7 +228,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Products/Invoices"
+          path="products/invoices"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Invoice />
@@ -235,7 +236,7 @@ function AppContent() {
           }
         />
         <Route
-          path="Products/Payment"
+          path="products/payment"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <Payment />
@@ -244,7 +245,8 @@ function AppContent() {
         />
 
           
-        <Route path="Home/HistoricalSales" element={<HistoricalSales />} />
+        <Route path="home/salestrend" element={<SalesTrend />} />
+        <Route path="home/customerpurchase" element={<CustomerPurchase />} />
         
         {/* Default Page */}
         <Route path="/" element={<Login />} />

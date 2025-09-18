@@ -33,6 +33,7 @@ body {
   position: relative;
 }
 
+/* bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 */
 /* Gradient background applied to body for specific routes */
 body.gradient-bg {
   background: linear-gradient(
