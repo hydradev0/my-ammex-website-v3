@@ -47,12 +47,32 @@ body.gradient-bg {
   background-repeat: no-repeat;
 }
 
+body.analytics-gradient-bg {
+  background: linear-gradient(
+    to bottom right,
+    #f8fafc, /* slate-50 */
+    #faf5ff, /* purple-50 */
+    #fdf2f8  /* pink-50 */
+  ) !important;
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
 /* Ensure wrapper containers are transparent when gradient is applied */
 body.gradient-bg .app-scale-wrapper {
   background: transparent !important;
 }
 
+body.analytics-gradient-bg .app-scale-wrapper {
+  background: transparent !important;
+}
+
 body.gradient-bg .text-gray-900 {
+  background: transparent !important;
+}
+
+body.analytics-gradient-bg .text-gray-900 {
   background: transparent !important;
 }
 

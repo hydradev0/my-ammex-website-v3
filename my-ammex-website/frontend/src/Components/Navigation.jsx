@@ -20,23 +20,23 @@ function Navigation() {
     {
       name: 'Home',
       dropdownItems: [
-        { name: 'Dashboard', link: '/Home/Dashboard' },
-        { name: 'Analytics', link: '/Home/Analytics' },
+        { name: 'Dashboard', link: '/home/dashboard' },
+        { name: 'Analytics', link: '/home/analytics' },
       ]
     },
     isBusinessPartnersAllowed ? {
       name: 'Business Partners',
       dropdownItems: [
-        customerAllowed ? { name: 'Customers', link: '/BusinessPartners/Customers' } : null,
-        supplierAllowed ? { name: 'Suppliers', link: '/BusinessPartners/Suppliers' } : null,
+        customerAllowed ? { name: 'Customers', link: '/businesspartners/customers' } : null,
+        supplierAllowed ? { name: 'Suppliers', link: '/businesspartners/suppliers' } : null,
       ].filter(Boolean)
     } : null,
     isSalesAllowed ? {
       name: 'Sales',
       dropdownItems: [
-        { name: 'Orders', link: '/Sales/Orders' },
-        { name: 'Invoices', link: '/Sales/Invoices' },
-        { name: 'Payments', link: '/Sales/Payments' },
+        { name: 'Orders', link: '/sales/orders' },
+        { name: 'Invoices', link: '/sales/invoices' },
+        { name: 'Payments', link: '/sales/payments' },
         // { name: 'Sales Quotes', link: '/Sales/SalesQuotes' },
         // { name: 'Sales Order', link: '/Sales/SalesOrder' },
         // { name: 'Sales Invoice', link: '/Sales/SalesInvoice' },
@@ -47,7 +47,7 @@ function Navigation() {
       name: 'Purchasing',
       dropdownItems: [
         // { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
-        { name: 'Purchase Order', link: '/Purchasing/PurchaseOrder' },
+        { name: 'Purchase Order', link: '/purchasing/purchaseorder' },
       ]
     } : null,
     isInventoryAllowed ? {
@@ -55,12 +55,12 @@ function Navigation() {
       dropdownItems: (
         role === 'Sales Marketing'
           ? [
-              { name: 'Items', link: '/Inventory/Items' }
+              { name: 'Items', link: '/inventory/items' }
             ]
           : [
-              { name: 'Items', link: '/Inventory/Items' },
-              { name: 'Unit', link: '/Inventory/Unit' },
-              { name: 'Category', link: '/Inventory/Category' },
+              { name: 'Items', link: '/inventory/items' },
+              { name: 'Unit', link: '/inventory/unit' },
+              { name: 'Category', link: '/inventory/category' },
               // { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
             ]
       )

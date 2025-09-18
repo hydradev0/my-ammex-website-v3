@@ -200,7 +200,7 @@ const CustomerPurchaseForecast = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 p-8">
+    <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}

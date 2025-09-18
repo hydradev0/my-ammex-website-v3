@@ -40,6 +40,19 @@ import CustomerPurchase from './Components-Analytics/CustomerPurchase';
 function AppContent() {
   const location = useLocation();
   const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/Home/HistoricalSales';
+  const shouldShowAnalyticsGradient = location.pathname === '/home/salestrend' || location.pathname === '/home/customerpurchase';
+  
+  useEffect(() => {
+    if (shouldShowAnalyticsGradient) {
+      document.body.classList.add('analytics-gradient-bg');
+    } else {
+      document.body.classList.remove('analytics-gradient-bg');
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('analytics-gradient-bg');
+    };
+  }, [shouldShowAnalyticsGradient, location.pathname]);
   
   useEffect(() => {
     if (shouldShowGradient) {
@@ -53,6 +66,8 @@ function AppContent() {
       document.body.classList.remove('gradient-bg');
     };
   }, [shouldShowGradient, location.pathname]);
+
+
   
   return (
     <>
