@@ -17,15 +17,17 @@ import {
   DollarSign, 
   BarChart3, 
   Calendar,
-  X,
   Brain,
-  Loader,
   ArrowUp,
   ArrowDown,
-  Sparkles
+  Sparkles,
+  FilePlus2,
+  FileChartColumn
 } from 'lucide-react';
+import Modal from './Modal';
+import LoadingModal from './LoadingModal';
 
-const SalesPerformance = () => {
+const SalesTrend = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('3');
   const [historicalPeriod, setHistoricalPeriod] = useState('6');
   const [showModal, setShowModal] = useState(false);
@@ -242,9 +244,10 @@ const SalesPerformance = () => {
             <button
               onClick={generatePredictions}
               disabled={isAnalyzing}
-              className="px-6 py-2 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-all duration-200"
+              className="px-5 py-2 cursor-pointer text-lg bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center
+               gap-2 font-medium transition-all duration-200"
             >
-              <Brain className="w-4 h-4" />
+              <Brain className="w-5 h-5" />
               Analyze
             </button>
           </div>
@@ -258,9 +261,9 @@ const SalesPerformance = () => {
               <div className="text-sm text-gray-600">Last {historicalPeriod} months</div>
               <button
                 onClick={exportHistoricalData}
-                className="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                className="px-4 py-2 cursor-pointer bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
               >
-                <DollarSign className="w-4 h-4" />
+                <FilePlus2 className="w-4 h-4" />
                 Export
               </button>
             </div>
@@ -340,10 +343,8 @@ const SalesPerformance = () => {
         </div>
 
         {/* Full Screen Loading Modal */}
-        {isAnalyzing && (
-          <div className="fixed inset-0 bg-gradient-to-br from-blue-300/40 to-indigo-200/40 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-300">
-            <div className="bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/30 backdrop-blur-xl rounded-3xl p-10 max-w-lg w-full mx-4 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-500 ease-out">
-              <div className="text-center">
+        <LoadingModal isOpen={isAnalyzing}>
+          <div className="text-center">
                 {/* Enhanced Loading Animation */}
                 <div className="mb-8 relative">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 opacity-20 animate-ping"></div>
@@ -414,161 +415,143 @@ const SalesPerformance = () => {
                   <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce animation-delay-500"></div>
                   <span className="ml-2">This usually takes 2-3 seconds</span>
                 </div>
-              </div>
-            </div>
           </div>
-        )}
+        </LoadingModal>
 
         {/* Prediction Modal */}
-        {showModal && predictions && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-5xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50 rounded-t-xl">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                  <Brain className="w-6 h-6 text-blue-600" />
-                  AI Sales Forecast - {predictions.period}
-                </h2>
+        <Modal
+          isOpen={!!(showModal && predictions)}
+          onClose={() => setShowModal(false)}
+          title={predictions ? `AI Sales Forecast - ${predictions.period}` : ''}
+          icon={Brain}
+          footer={
+            <div className="flex justify-between items-center w-full">
+              <div className="text-sm text-gray-600">
+                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={exportPredictionData}
+                  className="px-4 py-2 bg-green-600 cursor-pointer text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <FileChartColumn className="w-4 h-4" />
+                  Export Forecast
+                </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-200 rounded-full"
+                  className="px-6 py-2 border cursor-pointer border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  Close
                 </button>
               </div>
-
-              {/* Modal Content */}
-              <div className="p-6">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-                    <h3 className="text-sm font-medium opacity-90">Total Predicted</h3>
-                    <p className="text-2xl font-bold">{formatCurrency(predictions.totalPredicted)}</p>
-                  </div>
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
-                    <h3 className="text-sm font-medium opacity-90">Monthly Average</h3>
-                    <p className="text-2xl font-bold">{formatCurrency(predictions.avgMonthly)}</p>
-                  </div>
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
-                    <h3 className="text-sm font-medium opacity-90">Confidence</h3>
-                    <p className="text-2xl font-bold">{predictions.confidence}%</p>
-                  </div>
-                </div>
-
-                {/* Monthly Breakdown Chart */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={predictions.monthlyBreakdown}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
-                      <YAxis 
-                        tick={{ fontSize: 12 }} 
-                        stroke="#64748b"
-                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
-                      />
-                      <Tooltip 
-                        formatter={(value) => [formatCurrency(value), 'Predicted Sales']}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="predicted"
-                        stroke="#3b82f6"
-                        strokeWidth={3}
-                        dot={{ r: 5, fill: '#3b82f6' }}
-                        activeDot={{ r: 7, fill: '#1d4ed8' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Monthly Details Table */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Predictions</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border border-gray-200 rounded-lg">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Month</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Predicted Sales</th>
-                          <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Confidence</th>
-                          <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Trend</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {predictions.monthlyBreakdown.map((item, index) => (
-                          <tr key={index} className="border-t border-gray-200">
-                            <td className="px-4 py-3 font-medium text-gray-900">{item.month}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                              {formatCurrency(item.predicted)}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                {item.confidence}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <TrendIndicator trend={item.trend} value={item.predicted} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* AI Insights & Recommendations */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Insights</h3>
-                    <div className="space-y-3">
-                      {predictions.insights.map((insight, index) => (
-                        <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-sm text-blue-800">{insight}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommendations</h3>
-                    <div className="space-y-3">
-                      {predictions.recommendations.map((rec, index) => (
-                        <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-sm text-green-800">{rec}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="border-t border-gray-200 p-6 flex justify-between items-center bg-gray-50 rounded-b-xl">
-                <div className="text-sm text-gray-600">
-                  Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={exportPredictionData}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    Export Forecast
-                  </button>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
             </div>
-          </div>
-        )}
+          }
+        >
+          {predictions && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                  <h3 className="text-sm font-medium opacity-90">Total Predicted</h3>
+                  <p className="text-2xl font-bold">{formatCurrency(predictions.totalPredicted)}</p>
+                </div>
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                  <h3 className="text-sm font-medium opacity-90">Monthly Average</h3>
+                  <p className="text-2xl font-bold">{formatCurrency(predictions.avgMonthly)}</p>
+                </div>
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                  <h3 className="text-sm font-medium opacity-90">Confidence</h3>
+                  <p className="text-2xl font-bold">{predictions.confidence}%</p>
+                </div>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={predictions.monthlyBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
+                    <YAxis 
+                      tick={{ fontSize: 12 }} 
+                      stroke="#64748b"
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [formatCurrency(value), 'Predicted Sales']}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="predicted"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      dot={{ r: 5, fill: '#3b82f6' }}
+                      activeDot={{ r: 7, fill: '#1d4ed8' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Predictions</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full border border-gray-200 rounded-lg">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Month</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Predicted Sales</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Confidence</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predictions.monthlyBreakdown.map((item, index) => (
+                        <tr key={index} className="border-t border-gray-200">
+                          <td className="px-4 py-3 font-medium text-gray-900">{item.month}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                            {formatCurrency(item.predicted)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                              {item.confidence}%
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <TrendIndicator trend={item.trend} value={item.predicted} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Insights</h3>
+                  <div className="space-y-3">
+                    {predictions.insights.map((insight, index) => (
+                      <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">{insight}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommendations</h3>
+                  <div className="space-y-3">
+                    {predictions.recommendations.map((rec, index) => (
+                      <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800">{rec}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </Modal>
       </div>
     </div>
   );
 };
 
-export default SalesPerformance;
+export default SalesTrend;
