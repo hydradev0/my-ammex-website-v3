@@ -3,7 +3,7 @@ import { X, User, MapPin, Mail, Phone } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
-function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
+function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
   // State for form fields
   const initialFormData = {
     companyName: '',
@@ -326,10 +326,10 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title }) {
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Adding Customer...</span>
+                    <span>Adding {title}...</span>
                   </div>
                 ) : (
-                  'Add Customer'
+                  buttonText
                 )}
               </button>
             </div>

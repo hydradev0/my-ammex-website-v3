@@ -6,12 +6,14 @@ const {
   getCategory,
   createCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  getSubcategories
 } = require('../controllers/categoryController');
 
 // Private routes (Admin, Warehouse Supervisor, Sales Marketing & Client (Read Only))
 router.get('/', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getCategories);
 router.get('/:id', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getCategory);
+router.get('/:id/subcategories', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing', 'Client'), getSubcategories);
 
 // Protected routes (Admin, Warehouse Supervisor)
 router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), createCategory);

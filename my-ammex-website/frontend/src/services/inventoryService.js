@@ -112,6 +112,10 @@ export const deleteCategory = async (id) => {
   });
 };
 
+export const getSubcategories = async (categoryId) => {
+  return await apiCall(`/categories/${categoryId}/subcategories`);
+};
+
 // ==================== UNITS API ====================
 
 export const getUnits = async () => {

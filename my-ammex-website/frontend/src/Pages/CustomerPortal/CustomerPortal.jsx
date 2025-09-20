@@ -8,6 +8,7 @@ const CustomerPortal = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cartItemCount, setCartItemCount] = useState(0);
 
   // Fetch items and categories from inventory
   useEffect(() => {
@@ -19,7 +20,7 @@ const CustomerPortal = () => {
         // Fetch items and categories in parallel
         const [itemsResponse, categoriesResponse] = await Promise.all([
           getItems({ limit: 100 }), // Get up to 100 items
-          getCategories()
+          getCategories() // This will fetch categories with subcategories
         ]);
 
         if (itemsResponse.success) {
@@ -43,7 +44,7 @@ const CustomerPortal = () => {
   if (loading) {
     return (
       <>
-        <TopBarPortal />
+        <TopBarPortal cartItemCount={cartItemCount} />
         <div className="flex items-center justify-center min-h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3182ce] mx-auto mb-4"></div>
@@ -57,7 +58,7 @@ const CustomerPortal = () => {
   if (error) {
     return (
       <>
-        <TopBarPortal />
+        <TopBarPortal cartItemCount={cartItemCount} />
         <div className="flex items-center justify-center min-h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="text-red-500 text-xl mb-4">⚠️</div>
@@ -76,10 +77,11 @@ const CustomerPortal = () => {
 
   return (
     <>
-      <TopBarPortal />
+      <TopBarPortal cartItemCount={cartItemCount} />
       <IndustrialPOS 
         items={items} 
         categories={categories}
+        onCartCountChange={setCartItemCount}
       />
     </>
   );

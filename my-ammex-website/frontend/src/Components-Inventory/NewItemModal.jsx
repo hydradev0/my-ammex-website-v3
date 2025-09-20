@@ -139,7 +139,7 @@ function NewItemModal({
     }
 
     if (!formData.vendor.trim()) {
-      newErrors.vendor = 'Vendor is required';
+      newErrors.vendor = 'Supplier is required';
     }
 
     if (!formData.price.trim()) {
@@ -276,14 +276,14 @@ function NewItemModal({
             <div className="grid grid-cols-3 gap-6">
               {/* Vendor Dropdown */}
               <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Vendor <span className="text-red-500">*</span></label>
+                <label className="block text-lg font-medium text-gray-700 mb-1">Supplier <span className="text-red-500">*</span></label>
                 <div className="relative w-full" ref={vendorDropdownRef}>
                   <button
                     type="button"
                     className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded-lg border ${errors.vendor ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
                     onClick={() => setVendorDropdownOpen((open) => !open)}
                   >
-                    <span>{formData.vendor || 'Select vendor'}</span>
+                    <span>{formData.vendor || 'Select supplier'}</span>
                     <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${vendorDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {vendorDropdownOpen && (

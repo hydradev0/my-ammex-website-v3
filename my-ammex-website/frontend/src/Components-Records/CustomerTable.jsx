@@ -405,6 +405,7 @@ function CustomerTable() {
           onClose={handleCloseModal}
           onSubmit={handleAddCustomer}
           title="Customer"
+          buttonText="Add Customer"
         />
 
         {/* View Customer Modal */}

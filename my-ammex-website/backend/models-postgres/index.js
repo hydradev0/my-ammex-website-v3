@@ -272,9 +272,16 @@ const initializeModels = (sequelize) => {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
       validate: {
         notEmpty: { msg: 'Category name is required' }
+      }
+    },
+    parentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Category',
+        key: 'id'
       }
     },
     isActive: {
@@ -886,6 +893,17 @@ const initializeModels = (sequelize) => {
   Item.belongsTo(Category, {
     foreignKey: 'categoryId',
     as: 'category'
+  });
+
+  // Category self-referential relationships for subcategories
+  Category.hasMany(Category, {
+    foreignKey: 'parentId',
+    as: 'subcategories'
+  });
+
+  Category.belongsTo(Category, {
+    foreignKey: 'parentId',
+    as: 'parent'
   });
 
   // Unit relationships

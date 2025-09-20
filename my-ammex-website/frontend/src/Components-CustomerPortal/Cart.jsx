@@ -31,6 +31,8 @@ const Cart = () => {
   const [inputValues, setInputValues] = useState({});
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("");
+  const [quantityErrors, setQuantityErrors] = useState({});
+  const errorTimeouts = useRef({});
 
   const refreshCartData = async () => {
     try {
@@ -79,6 +81,63 @@ const Cart = () => {
       hasIssues: true,
       message: `Some items exceed available stock. Please adjust quantities and try again.\n\n${details}`
     };
+  };
+
+  const validateQuantity = (itemId, quantity, stock) => {
+    const parsedQuantity = parseInt(quantity);
+    if (isNaN(parsedQuantity) || parsedQuantity < 1) {
+      return { isValid: false, error: "Quantity must be at least 1" };
+    }
+    if (parsedQuantity > stock) {
+      return { isValid: false, error: `You have exceeded the maximum quantity of ${stock}` };
+    }
+    return { isValid: true, error: null };
+  };
+
+  const setQuantityError = (itemId, error, item) => {
+    // Clear any existing timeout for this item
+    if (errorTimeouts.current[itemId]) {
+      clearTimeout(errorTimeouts.current[itemId]);
+    }
+    
+    setQuantityErrors(prev => ({
+      ...prev,
+      [itemId]: error
+    }));
+
+    // Set timeout to revert to max stock after 3 seconds
+    if (item && error.includes('maximum quantity')) {
+      errorTimeouts.current[itemId] = setTimeout(() => {
+        // Revert to max stock
+        setInputValues(prev => ({
+          ...prev,
+          [itemId]: item.stock
+        }));
+        updateQuantity(itemId, item.stock);
+        // Clear the error
+        setQuantityErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[itemId];
+          return newErrors;
+        });
+        // Clear the timeout reference
+        delete errorTimeouts.current[itemId];
+      }, 5000);
+    }
+  };
+
+  const clearQuantityError = (itemId) => {
+    // Clear any existing timeout for this item
+    if (errorTimeouts.current[itemId]) {
+      clearTimeout(errorTimeouts.current[itemId]);
+      delete errorTimeouts.current[itemId];
+    }
+    
+    setQuantityErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[itemId];
+      return newErrors;
+    });
   };
 
   // Initialize cart on component mount (prefer local, then background-merge DB)
@@ -207,6 +266,15 @@ useEffect(() => {
     }
   }, [showSuccessToast, navigate]);
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(errorTimeouts.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, []);
+
   const updateQuantity = async (itemId, newQuantity) => {
     try {
       // Find the item to get its stock limit
@@ -235,14 +303,15 @@ useEffect(() => {
         return;
       }
       
-      // If quantity exceeds max stock, automatically correct to max stock
-      if (quantity > maxStock) {
-        const result = await updateCartItem(itemId, maxStock, user?.id);
-        if (result.success) {
-          setCart(result.cart);
-        }
+      // Validate quantity against stock
+      const validation = validateQuantity(itemId, quantity, maxStock);
+      if (!validation.isValid) {
+        setQuantityError(itemId, validation.error, item);
         return;
       }
+      
+      // Clear any existing error
+      clearQuantityError(itemId);
       
       // Update quantity normally
       const result = await updateCartItem(itemId, quantity, user?.id);
@@ -264,6 +333,8 @@ useEffect(() => {
           next.delete(itemId);
           return next;
         });
+        // Clear quantity error for removed item
+        clearQuantityError(itemId);
       }
     } catch (error) {
       console.error('Error removing item:', error);
@@ -289,6 +360,12 @@ useEffect(() => {
           if (result.success) {
             setCart(result.cart);
             setSelectedIds(new Set());
+            // Clear all quantity errors and timeouts
+            setQuantityErrors({});
+            Object.values(errorTimeouts.current).forEach(timeout => {
+              if (timeout) clearTimeout(timeout);
+            });
+            errorTimeouts.current = {};
           }
         }
       });
@@ -334,9 +411,15 @@ useEffect(() => {
     setSelectedIds(allSelected ? new Set() : new Set(cart.map(item => item.id)));
   };
 
+  const hasQuantityErrors = () => {
+    return Object.keys(quantityErrors).length > 0;
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (getSelectedItems().length === 0) return;
+    if (hasQuantityErrors()) return;
+    
     try {
       // Immediate UX feedback
       setPreviewError('');
@@ -756,14 +839,15 @@ useEffect(() => {
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="w-8 h-8 bg-gray-100 text-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors"
+                                className="w-8 h-8 bg-gray-100 cursor-pointer text-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors"
                               >
                                 <Minus size={16} />
                               </button>
                               <input 
                               type="number" 
-                              className="w-12 h-8 text-center font-medium border border-gray-300 rounded-md focus:outline-none
-                              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                              className={`w-12 h-8 text-center font-medium border rounded-md focus:outline-none
+                              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                              ${quantityErrors[item.id] ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-300'}`}
                               value={inputValues[item.id] !== undefined ? inputValues[item.id] : item.quantity} 
                               onChange={(e) => {
                                 // Update local input state for typing
@@ -771,6 +855,10 @@ useEffect(() => {
                                   ...prev,
                                   [item.id]: e.target.value
                                 }));
+                                // Clear error when user starts typing
+                                if (quantityErrors[item.id]) {
+                                  clearQuantityError(item.id);
+                                }
                               }}
                               onBlur={(e) => {
                                 // Update quantity only when clicking outside the input
@@ -781,15 +869,17 @@ useEffect(() => {
                                     ...prev,
                                     [item.id]: item.quantity
                                   }));
+                                  setQuantityError(item.id, "Quantity must be at least 1", item);
                                 } else if (quantity > item.stock) {
-                                  // Set to max stock if exceeds limit
+                                  // Show error instead of auto-correcting
+                                  setQuantityError(item.id, `You have exceeded the maximum quantity of ${item.stock}`, item);
                                   setInputValues(prev => ({
                                     ...prev,
-                                    [item.id]: item.stock
+                                    [item.id]: e.target.value // Keep the invalid input visible
                                   }));
-                                  updateQuantity(item.id, item.stock);
                                 } else {
                                   // Update with valid quantity
+                                  clearQuantityError(item.id);
                                   updateQuantity(item.id, quantity);
                                 }
                               }}
@@ -804,12 +894,22 @@ useEffect(() => {
                               />
                               <button
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                disabled={item.quantity >= (item.stock || 999)}
-                                className="w-8 h-8 bg-gray-100 text-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
+                                disabled={item.quantity >= (item.stock || 999) || quantityErrors[item.id]}
+                                className={`w-8 h-8 cursor-pointer rounded-lg flex items-center justify-center transition-colors ${
+                                  item.quantity >= (item.stock || 999) || quantityErrors[item.id]
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={item.quantity >= (item.stock || 999) ? 'Maximum quantity reached' : 'Increase quantity'}
                               >
                                 <Plus size={16} />
                               </button>
                             </div>
+                            {quantityErrors[item.id] && (
+                              <p className="text-red-500 text-xs mt-1">
+                                {quantityErrors[item.id]}
+                              </p>
+                            )}
                             
                             <div className="flex items-center gap-4">
                               <span className="text-lg font-semibold text-gray-900">
@@ -863,15 +963,15 @@ useEffect(() => {
                 
                 <button
                   onClick={handleCheckout}
-                  disabled={getSelectedItems().length === 0 || previewLoading}
-                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 || previewLoading ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#2c5282]'}`}
+                  disabled={getSelectedItems().length === 0 || previewLoading || hasQuantityErrors()}
+                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 || previewLoading || hasQuantityErrors() ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#2c5282]'}`}
                 >
                   {previewLoading ? (
                     <span className="inline-flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
                       Preparing preview...
                     </span>
-                  ) : 'Proceed to Checkout'}
+                  ) : hasQuantityErrors() ? 'Cannot proceed to checkout' : 'Proceed to Checkout'}
                 </button>
                 {previewError && (
                   <div className="mt-3 text-sm text-red-600">{previewError}</div>

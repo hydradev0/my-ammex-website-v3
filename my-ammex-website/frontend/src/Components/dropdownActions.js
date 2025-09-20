@@ -157,7 +157,7 @@ export const unitDropdownActions = [
 export const categoryDropdownActions = [
   {
     id: 'view',
-    label: 'View all Products',
+    label: 'View Subcategories',
     icon: Eye,
     onClick: null,
     className: 'text-gray-700'

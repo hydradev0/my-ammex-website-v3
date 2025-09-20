@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 import ProductGrid from './ProductGrid';
 import SearchFilters from './SearchFilters';
+import FiltersPanel from './FiltersPanel';
 import Pagination from './Pagination';
 import ScrollLock from '../Components/ScrollLock';
 import ProductDetailsModal from './ProductDetailsModal';
@@ -62,7 +63,7 @@ const Toast = ({ message, isVisible, onClose }) => {
   );
 };
 
-const IndustrialPOS = ({ items = [], categories = [] }) => {
+const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,7 +92,7 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
     }));
   }, [items]);
 
-  // Get unique categories for filtering
+  // Get unique categories for filtering (for backward compatibility with SearchFilters)
   const availableCategories = useMemo(() => {
     const cats = ['All', ...categories.map(cat => cat.name)];
     return [...new Set(cats)]; // Remove duplicates
@@ -154,6 +155,13 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
   const getItemCount = () => {
     return cart.length;
   };
+
+  // Notify parent component when cart count changes
+  useEffect(() => {
+    if (onCartCountChange) {
+      onCartCountChange(cart.length);
+    }
+  }, [cart.length, onCartCountChange]);
   
 
   // Initialize cart on component mount
@@ -236,52 +244,69 @@ const IndustrialPOS = ({ items = [], categories = [] }) => {
         isOpen={showProductModal}
         onClose={handleCloseProductModal}
         onAddToCart={handleAddToCart}
+        cart={cart}
       />
       
-      <div className="flex flex-col">
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Search and Filters */}
-          <SearchFilters
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            categories={availableCategories}
-            cartItemCount={getItemCount()}
-            onPriceInputChange={({ min, max }) => setPriceRange({ min, max })}
-          />
+      <div className="flex flex-col min-h-screen">
+        {/* Search and Filters */}
+        <SearchFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          categories={availableCategories}
+          onPriceInputChange={({ min, max }) => setPriceRange({ min, max })}
+        />
 
-          {/* Product Grid */}
-          <div className="flex-1 mt-2 sm:pt-8 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-14">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-gray-600 text-sm sm:text-base">
-                Showing {((currentPage - 1) * productsPerPage) + 1}-{Math.min(currentPage * productsPerPage, filteredProducts.length)} of {filteredProducts.length} products
-              </p>
-            </div>
-
-            <ProductGrid 
-              products={paginatedProducts} 
-              onCardClick={handleCardClick} 
-            />
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
+        {/* Main Content Area */}
+        <div className="flex-1 bg-gray-50">
+          <div className="px-2 sm:px-4 md:px-6 lg:px-8 xl:px-14 py-6">
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Filters Panel */}
+              <FiltersPanel
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategorySelect={setSelectedCategory}
               />
-            )}
 
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-8 sm:py-12">
-                <p className="text-gray-500 text-base sm:text-lg">No products found matching your criteria.</p>
+              {/* Products Section */}
+              <div className="flex-1">
+                {/* Results Header */}
+                <div className="mb-6 flex items-center justify-between">
+                  <p className="text-gray-600 text-sm sm:text-base">
+                    Showing {((currentPage - 1) * productsPerPage) + 1}-{Math.min(currentPage * productsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+                  </p>
+                </div>
+
+                {/* Product Grid */}
+                <ProductGrid 
+                  products={paginatedProducts} 
+                  onCardClick={handleCardClick} 
+                />
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-8">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+
+                {/* No Results */}
+                {filteredProducts.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 text-6xl mb-4">🔍</div>
+                    <p className="text-gray-500 text-lg mb-2">No products found</p>
+                    <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
-
       </div>
     </>
   );

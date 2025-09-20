@@ -7,8 +7,24 @@ const { Op } = require('sequelize');
 const getCategories = async (req, res) => {
   try {
     const models = getModels();
-    const categories = await models.Category.findAll({
+    const { include } = req.query;
+
+    let includeOptions = [];
+    // Always include subcategories for the customer portal
+    includeOptions.push({
+      model: models.Category,
+      as: 'subcategories',
       where: { isActive: true },
+      required: false,
+      order: [['name', 'ASC']]
+    });
+
+    const categories = await models.Category.findAll({
+      where: { 
+        isActive: true,
+        parentId: null // Only get main categories (not subcategories)
+      },
+      include: includeOptions,
       order: [['name', 'ASC']]
     });
 
@@ -80,18 +96,36 @@ const getCategory = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const models = getModels();
-    const { name } = req.body;
+    const { name, parentId } = req.body;
 
-    // Check if category already exists
-    const existingCategory = await models.Category.findOne({ where: { name } });
+    // Check if category already exists with the same name and parentId
+    const whereClause = { name };
+    if (parentId) {
+      whereClause.parentId = parentId;
+    } else {
+      whereClause.parentId = null;
+    }
+
+    const existingCategory = await models.Category.findOne({ where: whereClause });
     if (existingCategory) {
       return res.status(400).json({
         success: false,
-        message: 'Category already exists'
+        message: 'Category already exists in this level'
       });
     }
 
-    const newCategory = await models.Category.create({ name });
+    // If parentId is provided, verify the parent category exists
+    if (parentId) {
+      const parentCategory = await models.Category.findByPk(parentId);
+      if (!parentCategory) {
+        return res.status(400).json({
+          success: false,
+          message: 'Parent category not found'
+        });
+      }
+    }
+
+    const newCategory = await models.Category.create({ name, parentId: parentId || null });
 
     res.status(201).json({
       success: true,
@@ -112,7 +146,7 @@ const createCategory = async (req, res) => {
 const updateCategory = async (req, res) => {
   try {
     const models = getModels();
-    const { name } = req.body;
+    const { name, parentId } = req.body;
     const currentCategory = await models.Category.findByPk(req.params.id);
 
     if (!currentCategory) {
@@ -122,19 +156,41 @@ const updateCategory = async (req, res) => {
       });
     }
 
-    // Check for duplicate name (excluding current category)
+    // Check for duplicate name (excluding current category) within the same parent level
     if (name && name !== currentCategory.name) {
+      const whereClause = {
+        name,
+        id: { [Op.ne]: req.params.id }
+      };
+      
+      if (parentId !== undefined) {
+        whereClause.parentId = parentId || null;
+      } else {
+        whereClause.parentId = currentCategory.parentId;
+      }
+
       const existingCategory = await models.Category.findOne({
-        where: {
-          name,
-          id: { [Op.ne]: req.params.id }
-        }
+        where: whereClause
       });
+      
       if (existingCategory) {
         return res.status(400).json({
           success: false,
-          message: 'Category name already exists'
+          message: 'Category name already exists in this level'
         });
+      }
+    }
+
+    // If parentId is being changed, verify the parent category exists
+    if (parentId !== undefined && parentId !== currentCategory.parentId) {
+      if (parentId) {
+        const parentCategory = await models.Category.findByPk(parentId);
+        if (!parentCategory) {
+          return res.status(400).json({
+            success: false,
+            message: 'Parent category not found'
+          });
+        }
       }
     }
 
@@ -153,7 +209,7 @@ const updateCategory = async (req, res) => {
   }
 };
 
-// @desc    Delete category
+// @desc    Delete category (hard delete)
 // @route   DELETE /api/categories/:id
 // @access  Private
 const deleteCategory = async (req, res) => {
@@ -168,11 +224,36 @@ const deleteCategory = async (req, res) => {
       });
     }
 
-    await category.update({ isActive: false });
+    // Check if category has subcategories
+    const subcategories = await models.Category.findAll({
+      where: { parentId: category.id, isActive: true }
+    });
+
+    if (subcategories.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete category with active subcategories. Please delete subcategories first.'
+      });
+    }
+
+    // Check if category has items
+    const items = await models.Item.findAll({
+      where: { categoryId: category.id, isActive: true }
+    });
+
+    if (items.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete category with active items. Please reassign or delete items first.'
+      });
+    }
+
+    // Permanently delete the category
+    await category.destroy();
 
     res.json({
       success: true,
-      message: 'Category deleted successfully'
+      message: 'Category permanently deleted'
     });
   } catch (error) {
     console.error('Error deleting category:', error);
@@ -183,10 +264,50 @@ const deleteCategory = async (req, res) => {
   }
 };
 
+// @desc    Get subcategories for a specific category
+// @route   GET /api/categories/:id/subcategories
+// @access  Public
+const getSubcategories = async (req, res) => {
+  try {
+    const models = getModels();
+    const categoryId = req.params.id;
+
+    // First verify the parent category exists
+    const parentCategory = await models.Category.findByPk(categoryId);
+    if (!parentCategory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parent category not found'
+      });
+    }
+
+    // Get all subcategories for this parent
+    const subcategories = await models.Category.findAll({
+      where: { 
+        parentId: categoryId,
+        isActive: true 
+      },
+      order: [['name', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      data: subcategories
+    });
+  } catch (error) {
+    console.error('Error fetching subcategories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching subcategories'
+    });
+  }
+};
+
 module.exports = {
   getCategories,
   getCategory,
   createCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  getSubcategories
 }; 

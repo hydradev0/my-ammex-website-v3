@@ -3,7 +3,7 @@ import { X, Plus, Minus, ShoppingCart, RotateCcw } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
-const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
+const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
   width = 'w-[800px]',
   maxHeight = 'max-h-[110vh]',
  }) => {
@@ -11,18 +11,70 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
   const [inputQuantity, setInputQuantity] = useState(1);
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [quantityError, setQuantityError] = useState(false);
+  const [quantityErrorMessage, setQuantityErrorMessage] = useState('');
   const modalRef = useRef(null);
+  const errorTimeoutRef = useRef(null);
+
+  const setQuantityErrorWithTimeout = (error, message) => {
+    // Clear any existing timeout
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
+    }
+    
+    setQuantityError(error);
+    setQuantityErrorMessage(message);
+    
+    // Set timeout to revert to max available quantity after 3 seconds for quantity exceeded errors
+    if (error && message.includes('exceeded the maximum quantity')) {
+      errorTimeoutRef.current = setTimeout(() => {
+        // Revert to max available quantity
+        const maxQuantity = Math.max(1, getAvailableQuantity());
+        setSelectedQuantity(maxQuantity);
+        setInputQuantity(maxQuantity);
+        setQuantityError(false);
+        setQuantityErrorMessage('');
+        // Clear the timeout reference
+        errorTimeoutRef.current = null;
+      }, 5000);
+    }
+  };
+
+  const clearQuantityError = () => {
+    // Clear any existing timeout
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
+    }
+    setQuantityError(false);
+    setQuantityErrorMessage('');
+  };
+
+  // Get current quantity of this product in cart
+  const getCurrentCartQuantity = () => {
+    const cartItem = cart.find(item => item.id === product.id);
+    return cartItem ? cartItem.quantity : 0;
+  };
+
+  // Get available quantity (stock - current cart quantity)
+  const getAvailableQuantity = () => {
+    const currentCartQuantity = getCurrentCartQuantity();
+    return Math.max(0, product.stock - currentCartQuantity);
+  };
 
   useEffect(() => {
     if (isOpen) {
       setIsAnimating(true);
       setInputQuantity(1);
+      clearQuantityError();
     }
   }, [isOpen]);
 
   // Keep the input field in sync when quantity changes via buttons
   useEffect(() => {
     setInputQuantity(selectedQuantity);
+    clearQuantityError();
   }, [selectedQuantity]);
 
   // Handle click outside modal
@@ -38,6 +90,15 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isOpen || !product) return null;
 
@@ -58,13 +119,16 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
   };
 
   const handleQuantityChange = (change) => {
-    const newQuantity = Math.max(1, Math.min(product.stock, selectedQuantity + change));
+    const availableQuantity = getAvailableQuantity();
+    const newQuantity = Math.max(1, Math.min(availableQuantity, selectedQuantity + change));
     setSelectedQuantity(newQuantity);
     setInputQuantity(newQuantity);
+    clearQuantityError();
   };
 
   const handleClose = () => {
     setIsAnimating(false);
+    clearQuantityError();
     setTimeout(() => {
       setSelectedQuantity(1);
       setSelectedVariation(null);
@@ -154,7 +218,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
                     <span className={`text-xs lg:text-sm font-medium ${product.stock > 10 ? 'text-green-600' : product.stock > 0 ? 'text-orange-600' : 'text-red-600'}`}>
                       {product.stock > 10 ? 'In Stock' : product.stock > 0 ? 'Low Stock' : 'Out of Stock'}
                     </span>
-                    <span className="text-xs lg:text-sm text-gray-500">({product.stock} available)</span>
+                    <span className="text-xs lg:text-lg text-gray-500">({product.stock} available)</span>
                   </div>
 
                   {/* Variations */}
@@ -192,22 +256,40 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
                       </button>
                       <input
                         type="number"
-                        className="w-10 h-8 lg:w-14 lg:h-12 text-center font-medium text-sm lg:text-lg border border-gray-300 rounded-md 
-                        lg:rounded-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`w-10 h-8 lg:w-14 lg:h-12 text-center font-medium text-sm lg:text-lg border rounded-md 
+                        lg:rounded-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                        ${quantityError ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-300'}`}
                         value={inputQuantity}
                         onChange={(e) => {
                           setInputQuantity(e.target.value);
+                          if (quantityError) {
+                            clearQuantityError();
+                          }
                         }}
                         onBlur={(e) => {
                           const parsed = parseInt(e.target.value);
-                          if (isNaN(parsed)) {
-                            // revert to current selected quantity
-                            setInputQuantity(selectedQuantity);
+                          const availableQuantity = getAvailableQuantity();
+                          const currentCartQuantity = getCurrentCartQuantity();
+                          
+                          if (isNaN(parsed) || parsed < 1) {
+                            // Show error for invalid input
+                            setQuantityErrorWithTimeout(true, "Quantity must be at least 1");
+                            setInputQuantity(e.target.value); // Keep the invalid input visible
                             return;
                           }
-                          const clamped = Math.max(1, Math.min(product.stock, parsed));
+                          if (parsed > availableQuantity) {
+                            // Show error for exceeding available quantity
+                            const errorMessage = currentCartQuantity > 0 
+                              ? `You have exceeded the maximum quantity. You already have ${currentCartQuantity} in cart, only ${availableQuantity} more available.`
+                              : `You have exceeded the maximum quantity of ${availableQuantity}`;
+                            setQuantityErrorWithTimeout(true, errorMessage);
+                            setInputQuantity(e.target.value); // Keep the invalid input visible
+                            return;
+                          }
+                          const clamped = Math.max(1, Math.min(availableQuantity, parsed));
                           setSelectedQuantity(clamped);
                           setInputQuantity(clamped);
+                          clearQuantityError();
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -215,27 +297,61 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart,
                           }
                         }}
                         min="1"
-                        max={product.stock}
-                        disabled={product.stock === 0}
+                        max={getAvailableQuantity()}
+                        disabled={product.stock === 0 || getAvailableQuantity() === 0}
                       />
                       <button
                         onClick={() => handleQuantityChange(1)}
-                        disabled={selectedQuantity >= product.stock}
-                        className="w-8 h-8 lg:w-12 lg:h-12 border cursor-pointer border-gray-300 rounded-md lg:rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={selectedQuantity >= getAvailableQuantity() || quantityError}
+                        className={`w-8 h-8 lg:w-12 lg:h-12 border cursor-pointer rounded-md lg:rounded-lg flex items-center justify-center transition-colors ${
+                          selectedQuantity >= getAvailableQuantity() || quantityError
+                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                        title={selectedQuantity >= getAvailableQuantity() ? 'Maximum quantity reached' : 'Increase quantity'}
                       >
                         <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
                       </button>
                     </div>
+                    {quantityError && (
+                      <p className="text-red-500 text-xs lg:text-sm mt-1">
+                        {quantityErrorMessage}
+                      </p>
+                    )}
+                    {!quantityError && selectedQuantity === product.stock && (
+                      <p className="text-red-600 text-xs lg:text-sm mt-1">
+                        You have reached the maximun quantity of {product.stock}
+                      </p>
+                    )}
+                    {!quantityError && getCurrentCartQuantity() >= 0 && product.stock > 0 && (
+                      <p className="text-blue-600 text-xs lg:text-sm mt-1">
+                        {getCurrentCartQuantity()} in the cart • {getAvailableQuantity()} more available
+                      </p>
+                    )}
+                    {!quantityError && getAvailableQuantity() === 0 && getCurrentCartQuantity() === 0 && (
+                      <p className="text-gray-500 text-xs lg:text-sm mt-1">
+                        Out of stock
+                      </p>
+                    )}
+                    {!quantityError && getAvailableQuantity() === 0 && getCurrentCartQuantity() > 0 && (
+                      <p className="text-orange-600 text-xs lg:text-sm mt-1">
+                        Maximum quantity reached ({getCurrentCartQuantity()}/{product.stock})
+                      </p>
+                    )}
                   </div>
 
                   {/* Add to Cart Button */}
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stock === 0}
+                    disabled={product.stock === 0 || quantityError || getAvailableQuantity() === 0}
                     className="w-full bg-[#48bb78] hover:bg-[#38a169] text-white py-2.5 lg:py-4 px-4 lg:px-6 rounded-lg lg:rounded-xl font-semibold lg:font-bold text-base lg:text-lg transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
                     <ShoppingCart className="w-4 h-4 lg:w-5 lg:h-5" />
-                    <span>{product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}</span>
+                    <span>
+                      {product.stock === 0 ? 'Out of Stock' : 
+                       getAvailableQuantity() === 0 ? 'Maximum quantity reached' :
+                       quantityError ? 'Cannot add to cart' : 'Add to Cart'}
+                    </span>
                   </button>
 
                   {/* Features */}

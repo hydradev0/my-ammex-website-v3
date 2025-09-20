@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { createPortal } from 'react-dom';
 import GenericTable from '../Components/GenericTable';
-import ScrollLock from '../Components/ScrollLock';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
+import SubcategoriesModal from './SubcategoriesModal';
 import { categoryDropdownActions } from '../Components/dropdownActions';
-import { createCategory, updateCategory, deleteCategory } from '../services/inventoryService';
+import ScrollLock from '../Components/ScrollLock';
+import { createPortal } from 'react-dom';
+import { createCategory, updateCategory, deleteCategory, getSubcategories } from '../services/inventoryService';
 
 function CategoryTable({ categories, setCategories }) {
   // State for new category input
@@ -28,6 +29,11 @@ function CategoryTable({ categories, setCategories }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // State for subcategories modal
+  const [showSubcategoriesModal, setShowSubcategoriesModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [subcategories, setSubcategories] = useState([]);
 
   // Auto-remove success message after 3 seconds
   useEffect(() => {
@@ -208,9 +214,55 @@ function CategoryTable({ categories, setCategories }) {
     setDeleteLoading(false);
   };
 
+  // Handle subcategories modal open
+  const handleViewSubcategories = async (category) => {
+    setSelectedCategory(category);
+    setShowSubcategoriesModal(true);
+    
+    try {
+      const response = await getSubcategories(category.id);
+      if (response.success) {
+        setSubcategories(response.data);
+      } else {
+        setError(response.message || 'Failed to load subcategories');
+        setSubcategories([]);
+      }
+    } catch (err) {
+      console.error('Error loading subcategories:', err);
+      setError(err.message || 'Failed to load subcategories');
+      setSubcategories([]);
+    }
+  };
+
+  // Handle subcategories modal close
+  const handleCloseSubcategoriesModal = () => {
+    setShowSubcategoriesModal(false);
+    setSelectedCategory(null);
+    setSubcategories([]);
+  };
+
+  // Handle subcategories change from modal
+  const handleSubcategoriesChange = (newSubcategories) => {
+    setSubcategories(newSubcategories);
+    // Also update the main categories list to include new subcategories
+    const updatedCategories = [...categories];
+    newSubcategories.forEach(subcategory => {
+      if (!updatedCategories.find(cat => cat.id === subcategory.id)) {
+        updatedCategories.push(subcategory);
+      }
+    });
+    setCategories(updatedCategories);
+  };
+
   // Enhanced dropdown actions with API integration
   const enhancedDropdownActions = useMemo(() => {
     return categoryDropdownActions.map(action => {
+      if (action.id === 'view') {
+        return {
+          ...action,
+          onClick: handleViewSubcategories
+        };
+      }
       if (action.id === 'edit') {
         return {
           ...action,
@@ -296,6 +348,7 @@ function CategoryTable({ categories, setCategories }) {
 
     return createPortal(modalContent, document.body);
   };
+
 
   return (
     <div className="w-full min-h-[calc(100vh-140px)]">
@@ -453,6 +506,15 @@ function CategoryTable({ categories, setCategories }) {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />
+
+      {/* Subcategories Modal */}
+      <SubcategoriesModal
+        isOpen={showSubcategoriesModal}
+        onClose={handleCloseSubcategoriesModal}
+        selectedCategory={selectedCategory}
+        subcategories={subcategories}
+        onSubcategoriesChange={handleSubcategoriesChange}
+      />
     </div>
   );
 }
@@ -461,7 +523,8 @@ CategoryTable.propTypes = {
   categories: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.number.isRequired,
-      name: PropTypes.string.isRequired 
+      name: PropTypes.string.isRequired,
+      parentId: PropTypes.number
     })
   ).isRequired,
   setCategories: PropTypes.func.isRequired

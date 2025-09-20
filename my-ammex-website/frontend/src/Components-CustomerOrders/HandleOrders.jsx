@@ -540,13 +540,6 @@ function HandleOrders() {
                         </td>
                         <td className="py-4 whitespace-nowrap text-md font-medium flex items-center justify-end gap-1">
                           <button 
-                            onClick={() => handleviewOrder(order)}
-                            className="text-blue-600 cursor-pointer hover:text-blue-900 mr-4 flex items-center gap-1"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View
-                          </button>
-                          <button 
                             onClick={() => handleReviewOrder(order)}
                             disabled={processingOrderId === order.id}
                             className={`mr-4 flex items-center gap-1 cursor-pointer ${
