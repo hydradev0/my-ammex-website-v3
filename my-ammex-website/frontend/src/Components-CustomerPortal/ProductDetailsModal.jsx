@@ -139,7 +139,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
   const modalContent = (
     <div 
       ref={modalRef}
-      className="fixed inset-0 z-50 bg-black/50 transition-opacity duration-300"
+      className="fixed inset-0 z-50 bg-black/30 transition-opacity duration-300"
       style={{ opacity: isAnimating ? 1 : 0 }}
       
     >

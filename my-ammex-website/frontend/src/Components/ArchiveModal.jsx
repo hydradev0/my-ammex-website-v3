@@ -335,7 +335,7 @@ function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700">
                   <div>Item Code</div>
-                  <div>Item Name</div>
+                  <div>Model No.</div>
                   <div>Category</div>
                   <div>Archived At</div>
                   <div className="text-right">Action</div>
@@ -349,7 +349,7 @@ function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
                     items.map((item, idx) => (
                       <div key={item.id} className={`grid grid-cols-5 gap-2 px-4 py-3 text-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                         <div className="truncate" title={item.itemCode}>{item.itemCode}</div>
-                        <div className="truncate" title={item.itemName}>{item.itemName}</div>
+                        <div className="truncate" title={item.modelNo}>{item.modelNo}</div>
                         <div className="truncate" title={item.category?.name || '-'}>{item.category?.name || '-'}</div>
                         <div>{item.archivedAt ? new Date(item.archivedAt).toLocaleString() : '-'}</div>
                         <div className="text-right">

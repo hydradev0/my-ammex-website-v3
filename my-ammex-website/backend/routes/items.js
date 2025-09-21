@@ -18,7 +18,6 @@ const {
 
 // Validation middleware
 const validateItem = [
-  check('itemName', 'Item name is required').not().isEmpty(),
   check('modelNo', 'Model number is required').not().isEmpty(),
   check('vendor', 'Vendor is required').not().isEmpty(),
   check('price', 'Price must be a positive number').isFloat({ min: 0 }),
@@ -26,6 +25,7 @@ const validateItem = [
   check('ceilingPrice', 'Ceiling price must be a positive number').isFloat({ min: 0 }),
   check('unitId', 'Unit is required').isInt({ min: 1 }),
   check('categoryId', 'Category is required').isInt({ min: 1 }),
+  check('subcategoryId', 'Subcategory must be a valid ID').optional().isInt({ min: 1 }),
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 }),
   check('minLevel', 'Minimum level must be a non-negative integer').isInt({ min: 0 }),
   check('maxLevel', 'Maximum level must be a non-negative integer').isInt({ min: 0 })

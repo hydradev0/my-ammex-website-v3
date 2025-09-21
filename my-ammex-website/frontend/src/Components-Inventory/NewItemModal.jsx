@@ -3,6 +3,7 @@ import { X, ChevronDown, Info, DollarSign, Boxes } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
+import { getSubcategories } from '../services/inventoryService';
 
 function NewItemModal({ 
   isOpen = false, 
@@ -27,6 +28,7 @@ function NewItemModal({
     unit: '',
     quantity: '',
     category: '',
+    subcategory: '',
     description: '',
     minLevel: '',
     maxLevel: ''
@@ -47,9 +49,16 @@ function NewItemModal({
   const vendorDropdownRef = useRef(null);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef(null);
+  const [subcategoryDropdownOpen, setSubcategoryDropdownOpen] = useState(false);
+  const subcategoryDropdownRef = useRef(null);
   const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
   const unitDropdownRef = useRef(null);
   const modalRef = useRef(null);
+
+  // State for subcategories
+  const [subcategories, setSubcategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -65,13 +74,45 @@ function NewItemModal({
         unit: '',
         quantity: '',
         category: '',
+        subcategory: '',
         description: '',
         minLevel: '',
         maxLevel: ''
       });
       setErrors({});
+      setSelectedCategoryId(null);
+      setSubcategories([]);
+      setLoadingSubcategories(false);
     }
   }, [isOpen]);
+
+  // Fetch subcategories when category is selected
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      if (selectedCategoryId) {
+        setLoadingSubcategories(true);
+        try {
+          const response = await getSubcategories(selectedCategoryId);
+          if (response.success) {
+            setSubcategories(response.data || []);
+          } else {
+            console.error('Failed to fetch subcategories:', response.message);
+            setSubcategories([]);
+          }
+        } catch (error) {
+          console.error('Error fetching subcategories:', error);
+          setSubcategories([]);
+        } finally {
+          setLoadingSubcategories(false);
+        }
+      } else {
+        setSubcategories([]);
+        setLoadingSubcategories(false);
+      }
+    };
+
+    fetchSubcategories();
+  }, [selectedCategoryId]);
 
   // Update errors when backend errors change
   useEffect(() => {
@@ -89,17 +130,20 @@ function NewItemModal({
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
         setCategoryDropdownOpen(false);
       }
+      if (subcategoryDropdownRef.current && !subcategoryDropdownRef.current.contains(event.target)) {
+        setSubcategoryDropdownOpen(false);
+      }
       if (unitDropdownRef.current && !unitDropdownRef.current.contains(event.target)) {
         setUnitDropdownOpen(false);
       }
     };
-    if (vendorDropdownOpen || categoryDropdownOpen || unitDropdownOpen) {
+    if (vendorDropdownOpen || categoryDropdownOpen || subcategoryDropdownOpen || unitDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [vendorDropdownOpen, categoryDropdownOpen, unitDropdownOpen]);
+  }, [vendorDropdownOpen, categoryDropdownOpen, subcategoryDropdownOpen, unitDropdownOpen]);
 
   // Handle click outside modal
   useEffect(() => {
@@ -134,9 +178,6 @@ function NewItemModal({
       newErrors.modelNo = 'Model number is required';
     }
 
-    if (!formData.itemName.trim()) {
-      newErrors.itemName = 'Item name is required';
-    }
 
     if (!formData.vendor.trim()) {
       newErrors.vendor = 'Supplier is required';
@@ -187,6 +228,11 @@ function NewItemModal({
       newErrors.category = 'Category is required';
     }
 
+    // Only require subcategory if there are subcategories available for the selected category
+    if (selectedCategoryId && subcategories.length > 0 && !formData.subcategory.trim()) {
+      newErrors.subcategory = 'Subcategory is required';
+    }
+
     // Validate minimum level
     if (!formData.minLevel.trim()) {
       newErrors.minLevel = 'Minimum level is required';
@@ -216,7 +262,18 @@ function NewItemModal({
     if (validateForm()) {
       setIsLoading(true);
       try {
-        await onSubmit(formData);
+        // Find the selected category and subcategory IDs
+        const selectedCategory = categories.find(cat => cat.name === formData.category);
+        const selectedSubcategory = subcategories.find(sub => sub.name === formData.subcategory);
+        
+        // Prepare submission data with IDs
+        const submissionData = {
+          ...formData,
+          categoryId: selectedCategory?.id,
+          subcategoryId: selectedSubcategory?.id || null // Allow null if no subcategory selected
+        };
+        
+        await onSubmit(submissionData);
       } catch (error) {
         console.error('Error submitting form:', error);
       } finally {
@@ -389,6 +446,87 @@ function NewItemModal({
               Stock Information
             </h3>
             <div className="grid grid-cols-2 gap-6">
+              {/* Category Dropdown */}
+              <div className="m-4">
+                <label className="block text-lg font-medium text-gray-700 mb-1">Category <span className="text-red-500">*</span></label>
+                <div className="relative w-1/2" ref={categoryDropdownRef}>
+                  <button
+                    type="button"
+                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded-lg border ${errors.category ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
+                    onClick={() => setCategoryDropdownOpen((open) => !open)}
+                  >
+                    <span>{formData.category || 'Select category'}</span>
+                    <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {categoryDropdownOpen && (
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {categories.map(cat => (
+                        <li
+                          key={cat.id}
+                          className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.category === cat.name ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
+                          onClick={() => {
+                            setFormData({ ...formData, category: cat.name, subcategory: '' });
+                            setSelectedCategoryId(cat.id);
+                            setCategoryDropdownOpen(false);
+                          }}
+                        >
+                          {cat.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {errors.category && (
+                  <p className="text-red-500 text-md mt-1">{errors.category}</p>
+                )}
+              </div>
+              
+              
+              {/* Subcategory Dropdown */}
+              <div className="m-4">
+                <label className="block text-lg font-medium text-gray-700 mb-1">
+                  Subcategory 
+                  {selectedCategoryId && subcategories.length > 0 && <span className="text-red-500">*</span>}
+                </label>
+                <div className="relative w-1/2" ref={subcategoryDropdownRef}>
+                  <button
+                    type="button"
+                    className={`cursor-pointer w-full text-sm pl-4 pr-4 py-2 rounded-lg border ${errors.subcategory ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center ${!selectedCategoryId || loadingSubcategories || subcategories.length === 0 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    onClick={() => selectedCategoryId && !loadingSubcategories && subcategories.length > 0 && setSubcategoryDropdownOpen((open) => !open)}
+                    disabled={!selectedCategoryId || loadingSubcategories || subcategories.length === 0}
+                  >
+                    <span>
+                      {loadingSubcategories 
+                        ? 'Loading subcategories...' 
+                        : formData.subcategory || (selectedCategoryId 
+                            ? (subcategories.length > 0 ? 'Select subcategory' : 'No subcategories available')
+                            : 'Select category first')
+                      }
+                    </span>
+                    <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${subcategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {subcategoryDropdownOpen && subcategories.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {subcategories.map(subcat => (
+                        <li
+                          key={subcat.id}
+                          className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.subcategory === subcat.name ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
+                          onClick={() => {
+                            setFormData({ ...formData, subcategory: subcat.name });
+                            setSubcategoryDropdownOpen(false);
+                          }}
+                        >
+                          {subcat.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {errors.subcategory && (
+                  <p className="text-red-500 text-md mt-1">{errors.subcategory}</p>
+                )}
+              </div>
+
               {/* Unit Dropdown */}
               <div className="m-4">
                 <label className="block text-lg font-medium text-gray-700 mb-1">Unit <span className="text-red-500">*</span></label>
@@ -420,39 +558,6 @@ function NewItemModal({
                 </div>
                 {errors.unit && (
                   <p className="text-red-500 text-md mt-1">{errors.unit}</p>
-                )}
-              </div>
-              {/* Category Dropdown */}
-              <div className="m-4">
-                <label className="block text-lg font-medium text-gray-700 mb-1">Category <span className="text-red-500">*</span></label>
-                <div className="relative w-1/2" ref={categoryDropdownRef}>
-                  <button
-                    type="button"
-                    className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded-lg border ${errors.category ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
-                    onClick={() => setCategoryDropdownOpen((open) => !open)}
-                  >
-                    <span>{formData.category || 'Select category'}</span>
-                    <ChevronDown className={`h-6 w-6 ml-2 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {categoryDropdownOpen && (
-                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {categories.map(cat => (
-                        <li
-                          key={cat.id}
-                          className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.category === cat.name ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
-                          onClick={() => {
-                            setFormData({ ...formData, category: cat.name });
-                            setCategoryDropdownOpen(false);
-                          }}
-                        >
-                          {cat.name}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {errors.category && (
-                  <p className="text-red-500 text-md mt-1">{errors.category}</p>
                 )}
               </div>
               <FormField

@@ -79,11 +79,12 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
   const products = useMemo(() => {
     return items.map(item => ({
       id: item.id,
-      name: item.itemName,
+      modelNo: item.modelNo,
       category: item.category?.name || 'Uncategorized',
+      subcategory: item.subcategory?.name || null,
       price: parseFloat(item.price) || 0,
       image: 'Undefined', // Default image
-      alt: item.itemName,
+      alt: item.modelNo,
       stock: item.quantity || 0,
       itemCode: item.itemCode,
       vendor: item.vendor,
@@ -92,22 +93,50 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
     }));
   }, [items]);
 
-  // Get unique categories for filtering (for backward compatibility with SearchFilters)
+  // Get unique categories and subcategories for filtering (for backward compatibility with SearchFilters)
   const availableCategories = useMemo(() => {
-    const cats = ['All', ...categories.map(cat => cat.name)];
+    const cats = ['All'];
+    
+    // Add main categories
+    categories.forEach(cat => {
+      cats.push(cat.name);
+      
+      // Add subcategories
+      if (cat.subcategories && cat.subcategories.length > 0) {
+        cat.subcategories.forEach(sub => {
+          cats.push(sub.name);
+        });
+      }
+    });
+    
     return [...new Set(cats)]; // Remove duplicates
   }, [categories]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      // Check if selectedCategory is a subcategory by looking in all subcategories
+      const isSubcategory = categories.some(cat => 
+        cat.subcategories && cat.subcategories.some(sub => sub.name === selectedCategory)
+      );
+      
+      let matchesCategory;
+      if (selectedCategory === 'All') {
+        matchesCategory = true;
+      } else if (isSubcategory) {
+        // Filter by subcategory
+        matchesCategory = product.subcategory === selectedCategory;
+      } else {
+        // Filter by main category
+        matchesCategory = product.category === selectedCategory;
+      }
+      
+      const matchesSearch = product.modelNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.itemCode?.toLowerCase().includes(searchTerm.toLowerCase());
       const meetsMin = priceRange.min == null || product.price >= priceRange.min;
       const meetsMax = priceRange.max == null || product.price <= priceRange.max;
       return matchesCategory && matchesSearch && meetsMin && meetsMax;
     });
-  }, [products, selectedCategory, searchTerm, priceRange.min, priceRange.max]);
+  }, [products, selectedCategory, searchTerm, priceRange.min, priceRange.max, categories]);
 
   const paginatedProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * productsPerPage;
@@ -140,7 +169,7 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
         // Show success toast
         setToast({ 
           show: true, 
-          message: `${product.name} added to cart!` 
+          message: `${product.modelNo} added to cart!` 
         });
       }
     } catch (error) {

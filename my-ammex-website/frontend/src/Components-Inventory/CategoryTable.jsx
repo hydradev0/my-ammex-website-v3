@@ -48,6 +48,7 @@ function CategoryTable({ categories, setCategories }) {
   // Auto-remove error message after 5 seconds
   useEffect(() => {
     if (error) {
+      setShowDeleteModal(false);
       const timer = setTimeout(() => {
         setError(null);
       }, 5000);

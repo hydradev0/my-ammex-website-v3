@@ -11,13 +11,14 @@ const getAllItems = async (req, res, next) => {
     const whereClause = { isActive: true };
     if (category) whereClause.categoryId = category;
     if (search) {
-      whereClause.itemName = { [require('sequelize').Op.iLike]: `%${search}%` };
+      whereClause.modelNo = { [require('sequelize').Op.iLike]: `%${search}%` };
     }
 
     const items = await Item.findAndCountAll({
       where: whereClause,
       include: [
         { model: Category, as: 'category' },
+        { model: Category, as: 'subcategory' },
         { model: Unit, as: 'unit' }
       ],
       limit: parseInt(limit),
@@ -49,6 +50,7 @@ const getItemById = async (req, res, next) => {
     const item = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
+        { model: Category, as: 'subcategory' },
         { model: Unit, as: 'unit' }
       ]
     });
@@ -140,6 +142,7 @@ const createItem = async (req, res, next) => {
     const createdItem = await Item.findByPk(item.id, {
       include: [
         { model: Category, as: 'category' },
+        { model: Category, as: 'subcategory' },
         { model: Unit, as: 'unit' },
         { model: Supplier, as: 'supplier' }
       ]
@@ -221,6 +224,7 @@ const updateItem = async (req, res, next) => {
     const updatedItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
+        { model: Category, as: 'subcategory' },
         { model: Unit, as: 'unit' }
       ]
     });
@@ -271,7 +275,7 @@ const getArchivedItems = async (req, res, next) => {
 
     const whereClause = { isActive: false };
     if (search) {
-      whereClause.itemName = { [require('sequelize').Op.iLike]: `%${search}%` };
+      whereClause.modelNo = { [require('sequelize').Op.iLike]: `%${search}%` };
     }
 
     const items = await Item.findAndCountAll({
@@ -385,6 +389,7 @@ const updateItemStock = async (req, res, next) => {
     const updatedItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
+        { model: Category, as: 'subcategory' },
         { model: Unit, as: 'unit' }
       ]
     });
@@ -438,6 +443,7 @@ const updateItemPrice = async (req, res, next) => {
     const updatedItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
+        { model: Category, as: 'subcategory' },
         { model: Unit, as: 'unit' }
       ]
     });

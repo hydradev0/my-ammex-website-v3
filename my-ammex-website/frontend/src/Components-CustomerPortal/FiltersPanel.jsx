@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronUp, ChevronDown, CircleSmall } from 'lucide-react';
 
 const FiltersPanel = ({ 
   categories = [], 
@@ -46,11 +47,15 @@ const FiltersPanel = ({
           style={{ marginLeft: level * 16 }}
         >
           <div className="flex items-center justify-between">
-            <span>{category.name}</span>
-            {hasSubcategories && (
-              <span className="text-lg text-gray-700">
-                {isExpanded ? '−' : '+'}
-              </span>
+              <span className="font-medium text-gray-800">{category.name}</span>
+              {hasSubcategories && (
+                <span className="text-lg text-gray-600 ml-2">
+                  {isExpanded ? (
+                    <ChevronUp className="h-5 w-5 transition-transform duration-300" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 transition-transform duration-300" />
+                  )}
+                </span>
             )}
           </div>
         </button>
@@ -68,7 +73,7 @@ const FiltersPanel = ({
                 }`}
               >
                 <div className="flex items-center">
-                  <div className="w-1 h-1 bg-gray-400 rounded-full mr-3"></div>
+                  <CircleSmall className="h-2 w-2 mr-2 text-gray-400" />
                   <span>{subcategory.name}</span>
                 </div>
               </button>

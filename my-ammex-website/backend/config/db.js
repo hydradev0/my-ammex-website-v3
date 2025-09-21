@@ -94,8 +94,7 @@ process.on('SIGTERM', async () => {
 // Export both the connection function and sequelize instance
 module.exports = { 
   connectDB, 
-  sequelize, 
+  getSequelize: () => sequelize,
   closeDB, 
-  getModels: () => models,
-  getSequelize: () => sequelize?.Sequelize
+  getModels: () => models
 }; 

@@ -13,7 +13,7 @@ const ProductCard = ({ product, onCardClick }) => {
         {product.image.startsWith('/') || product.image.startsWith('http') ? (
           <img 
             src={product.image} 
-            alt={product.name}
+            alt={product.modelNo}
             className="object-contain w-full h-full"
           />
         ) : (
@@ -22,7 +22,7 @@ const ProductCard = ({ product, onCardClick }) => {
       </div>
       {/* Product Info */}
       <div className="p-2 sm:p-4 flex flex-col flex-1">
-        <h3 className="text-sm sm:text-base font-bold mb-1 sm:mb-2 text-gray-700 line-clamp-2 leading-tight">{product.name}</h3>
+        <h3 className="text-sm sm:text-base font-bold mb-1 sm:mb-2 text-gray-700 line-clamp-2 leading-tight">{product.modelNo}</h3>
         <p className="text-gray-500 mb-1 sm:mb-2 text-xs leading-tight">{product.category}</p>
         <div className="flex flex-col sm:flex-row sm:justify-between mb-2 sm:mb-3">
           <div className="text-sm sm:text-lg font-bold text-[#2c5282] mb-1 sm:mb-0">₱{product.price.toLocaleString()}</div>

@@ -86,10 +86,8 @@ const initializeModels = (sequelize) => {
     },
     itemName: {
       type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: 'Item name is required' }
-      }
+      allowNull: true,
+    
     },
     modelNo: {
       type: DataTypes.STRING,
@@ -170,6 +168,14 @@ const initializeModels = (sequelize) => {
       validate: {
         notEmpty: { msg: 'Category is required' }
       }
+    },
+    subcategoryId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'Category',
+        key: 'id'
+      },
+      allowNull: true
     },
     description: {
       type: DataTypes.TEXT,
@@ -893,6 +899,11 @@ const initializeModels = (sequelize) => {
   Item.belongsTo(Category, {
     foreignKey: 'categoryId',
     as: 'category'
+  });
+
+  Item.belongsTo(Category, {
+    foreignKey: 'subcategoryId',
+    as: 'subcategory'
   });
 
   // Category self-referential relationships for subcategories

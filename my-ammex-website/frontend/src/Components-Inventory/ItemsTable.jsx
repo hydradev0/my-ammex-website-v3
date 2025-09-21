@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
-import { Plus, AlertTriangle, X } from 'lucide-react';
+import { Plus, } from 'lucide-react';
 import NewItemModal from './NewItemModal';
 import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
@@ -168,8 +168,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
       truncate: true
     },
     { 
-      key: 'itemName', 
-      header: 'Item Name',
+      key: 'modelNo', 
+      header: 'Model No.',
       width: 'w-80',
       cellClassName: 'w-80',
       truncate: true
@@ -264,6 +264,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
         unitId: units.find(u => u.name === newItem.unit)?.id,
         quantity: Number(newItem.quantity),
         categoryId: categories.find(c => c.name === newItem.category)?.id,
+        subcategoryId: newItem.subcategoryId, // Include subcategoryId from the modal
         description: newItem.description,
         minLevel: Number(newItem.minLevel),
         maxLevel: Number(newItem.maxLevel)
