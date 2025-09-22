@@ -28,7 +28,7 @@ const SearchFilters = ({
                 </div>
                 <input
                   type="text"
-                  placeholder="Search for products, brands, categories, and more..."
+                  placeholder="Search for products, categories, models etc."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1 py-6 pr-6 text-xl border-none outline-none placeholder-gray-400 focus:placeholder-gray-300 transition-colors duration-200"

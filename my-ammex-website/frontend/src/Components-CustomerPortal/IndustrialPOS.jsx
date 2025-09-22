@@ -131,7 +131,9 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
       }
       
       const matchesSearch = product.modelNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           product.itemCode?.toLowerCase().includes(searchTerm.toLowerCase());
+                           product.itemCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.subcategory?.toLowerCase().includes(searchTerm.toLowerCase());
       const meetsMin = priceRange.min == null || product.price >= priceRange.min;
       const meetsMax = priceRange.max == null || product.price <= priceRange.max;
       return matchesCategory && matchesSearch && meetsMin && meetsMax;

@@ -825,12 +825,12 @@ useEffect(() => {
                             {item.name}
                           </h3>
                           <div className="flex justify-between">
-                          <p className="text-gray-600 mb-3">
-                            ₱{item.price.toLocaleString()}
-                          </p>
-                          <p className="text-gray-600 mb-3">
-                            Stock: {item.stock} 
-                          </p>
+                            <p className="text-gray-600 mb-3">
+                              ₱{item.price.toLocaleString()}
+                            </p>
+                            <p className="text-gray-600 mb-3">
+                              Quantity: {item.quantity} 
+                            </p>
                           </div>
                     
                           

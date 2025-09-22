@@ -66,14 +66,14 @@ const FiltersPanel = ({
               <button
                 key={subcategory.id}
                 onClick={() => handleCategorySelect(subcategory.name)}
-                className={`w-full text-left px-3 cursor-pointer lg:px-4 py-2 lg:py-3 rounded-lg transition-colors border text-sm lg:text-base ${
+                className={`w-full text-left px-3 cursor-pointer border-2 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors text-sm lg:text-base ${
                   selectedCategory === subcategory.name
-                    ? 'bg-blue-50 text-[#3182ce] font-medium border-blue-200'
+                    ? 'bg-blue-50 text-[#3182ce] font-medium border-blue-300 '
                     : 'text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="flex items-center">
-                  <CircleSmall className="h-2 w-2 mr-2 text-gray-400" />
+                  {selectedCategory === subcategory.name ? <CircleSmall className="h-2 w-2 mr-2 text-[#3182ce]" /> : <CircleSmall className="h-2 w-2 mr-2 text-gray-400" />}
                   <span>{subcategory.name}</span>
                 </div>
               </button>

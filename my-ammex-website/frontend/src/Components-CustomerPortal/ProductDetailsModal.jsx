@@ -37,7 +37,17 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
         setQuantityErrorMessage('');
         // Clear the timeout reference
         errorTimeoutRef.current = null;
-      }, 5000);
+      }, 3000);
+    }
+    else if (error && message.includes('Quantity must')) {
+      errorTimeoutRef.current = setTimeout(() => {
+      setSelectedQuantity(1);
+      setInputQuantity(1);
+        setQuantityError(false);
+        setQuantityErrorMessage('');
+        // Clear the timeout reference
+        errorTimeoutRef.current = null;
+      }, 3000);
     }
   };
 
@@ -102,17 +112,11 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
 
   if (!isOpen || !product) return null;
 
-  // Mock variations data - in real app this would come from the product
-  const variations = [
-    { id: 1, name: 'Model', options: ['ER32', 'BT40', 'CR2'] },
-    { id: 2, name: 'Accessories', options: ['4" disc', '5" disc', '6" disc'] },
-  ];
 
   const handleAddToCart = () => {
     const productToAdd = {
       ...product,
       quantity: selectedQuantity,
-      variation: selectedVariation
     };
     onAddToCart(productToAdd);
     onClose();
@@ -221,27 +225,12 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                     <span className="text-xs lg:text-lg text-gray-500">({product.stock} available)</span>
                   </div>
 
-                  {/* Variations */}
-                  {variations.map((variation) => (
-                    <div key={variation.id} className="space-y-1.5 lg:space-y-2">
-                      <label className="text-sm lg:text-lg font-medium text-gray-700">{variation.name}</label>
-                      <div className="flex flex-wrap gap-1.5 lg:gap-2">
-                        {variation.options.map((option) => (
-                          <button
-                            key={option}
-                            onClick={() => setSelectedVariation({ ...selectedVariation, [variation.name]: option })}
-                            className={`px-2 py-1.5 lg:px-3 lg:py-2 cursor-pointer border rounded-md lg:rounded-lg text-sm lg:text-lg transition-colors ${
-                              selectedVariation?.[variation.name] === option
-                                ? 'border-[#2c5282] bg-[#2c5282] text-white'
-                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                  {/*Space*/}
+
+                  {/*subcategory*/}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs lg:text-sm text-gray-500">{product.subcategory}</span>
+                  </div>
 
                   {/* Quantity Selector */}
                   <div className="space-y-1.5 lg:space-y-2">
@@ -271,9 +260,14 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                           const availableQuantity = getAvailableQuantity();
                           const currentCartQuantity = getCurrentCartQuantity();
                           
-                          if (isNaN(parsed) || parsed < 1) {
+                          if (parsed < 1) {
                             // Show error for invalid input
                             setQuantityErrorWithTimeout(true, "Quantity must be at least 1");
+                            setInputQuantity(e.target.value); // Keep the invalid input visible
+                            return;
+                          }
+                          if (isNaN(parsed)) {
+                            setQuantityErrorWithTimeout(true, "Quantity must not be empty");
                             setInputQuantity(e.target.value); // Keep the invalid input visible
                             return;
                           }
@@ -366,10 +360,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                   <div className="pt-2 lg:pt-4 border-t border-gray-200">
                     <h3 className="font-medium text-gray-900 mb-1.5 lg:mb-2 text-sm lg:text-xl">Description</h3>
                     <p className="text-xs lg:text-lg text-gray-600 leading-relaxed">
-                      This high-quality industrial product is designed for professional use in demanding environments. 
-                      Built with premium materials and engineered for durability, it provides reliable performance 
-                      for your industrial applications. Features include advanced safety mechanisms, ergonomic design, 
-                      and compatibility with standard industrial protocols.
+                      {product.description}
                     </p>
                   </div>
                 </div>
