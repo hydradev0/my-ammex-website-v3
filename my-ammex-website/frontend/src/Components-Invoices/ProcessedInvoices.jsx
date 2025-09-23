@@ -40,8 +40,8 @@ const ProcessedInvoices = () => {
     const loadInvoices = async () => {
       setIsLoading(true);
       try {
-        // Load pending invoices (current)
-        const pendingResponse = await getInvoicesByStatus('pending');
+        // Load pending invoices (current) - using 'awaiting payment' status
+        const pendingResponse = await getInvoicesByStatus('awaiting payment');
         const pendingInvoices = pendingResponse.data || [];
         
         // Load completed invoices (history)
@@ -60,8 +60,9 @@ const ProcessedInvoices = () => {
           dueDate: invoice.dueDate,
           totalAmount: Number(invoice.totalAmount),
           items: (invoice.items || []).map(item => ({
-            name: item.item?.itemName || 'Unknown Item',
-            description: item.item?.description || '',
+            category: item.item?.category?.name || 'Unknown Category',
+            subcategory: item.item?.subcategory?.name || '',
+            modelNo: item.item?.modelNo || '',
             quantity: Number(item.quantity),
             unit: item.item?.unit?.name || 'pcs',
             unitPrice: Number(item.unitPrice),

@@ -388,6 +388,7 @@ const initializeModels = (sequelize) => {
     },
     customerName: {
       type: DataTypes.STRING,
+      field: 'customer_name',
       allowNull: true,
       validate: {
         notEmpty: { msg: 'Company name is required' }
@@ -411,6 +412,7 @@ const initializeModels = (sequelize) => {
     },
     contactName: {
       type: DataTypes.STRING,
+      field: 'contact_name',
       allowNull: true
     },
     telephone1: {
@@ -487,6 +489,7 @@ const initializeModels = (sequelize) => {
     },
     companyName: {
       type: DataTypes.STRING,
+      field: 'company_name',
       allowNull: false,
       validate: {
         notEmpty: { msg: 'Company name is required' }
@@ -719,9 +722,22 @@ const initializeModels = (sequelize) => {
         min: { args: [0], msg: 'Total amount must be a positive number' }
       }
     },
+    paidAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0.00,
+      validate: {
+        min: { args: [0], msg: 'Paid amount must be non-negative' }
+      }
+    },
+    remainingBalance: {
+      type: DataTypes.DECIMAL(10, 2),
+      validate: {
+        min: { args: [0], msg: 'Remaining balance must be non-negative' }
+      }
+    },
     status: {
-      type: DataTypes.ENUM('pending', 'completed'),
-      defaultValue: 'pending'
+      type: DataTypes.ENUM('awaiting payment', 'partially paid', 'completed', 'rejected', 'overdue'),
+      defaultValue: 'awaiting payment'
     },
     paymentTerms: {
       type: DataTypes.STRING,
@@ -876,6 +892,220 @@ const initializeModels = (sequelize) => {
       allowNull: true
     }
   }, {
+    timestamps: true
+  });
+
+  // Payment Model (Customer Payment Submissions)
+  const Payment = sequelize.define('Payment', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    paymentNumber: {
+      type: DataTypes.STRING,
+      field: 'payment_number',
+      allowNull: false,
+      unique: true,
+      validate: {
+        notEmpty: { msg: 'Payment number is required' }
+      }
+    },
+    invoiceId: {
+      type: DataTypes.INTEGER,
+      field: 'invoice_id',
+      allowNull: false,
+      references: {
+        model: 'Invoice',
+        key: 'id'
+      }
+    },
+    customerId: {
+      type: DataTypes.INTEGER,
+      field: 'customer_id',
+      allowNull: false,
+      references: {
+        model: 'Customer',
+        key: 'id'
+      }
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        min: { args: [0.01], msg: 'Payment amount must be greater than 0' }
+      }
+    },
+    paymentMethod: {
+      type: DataTypes.STRING,
+      field: 'payment_method',
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Payment method is required' }
+      }
+    },
+    reference: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    status: {
+      type: DataTypes.ENUM('pending_approval', 'approved', 'rejected'),
+      allowNull: false,
+      defaultValue: 'pending_approval'
+    },
+    rejectionReason: {
+      type: DataTypes.TEXT,
+      field: 'rejection_reason',
+      allowNull: true
+    },
+    submittedAt: {
+      type: DataTypes.DATE,
+      field: 'submitted_at',
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    reviewedAt: {
+      type: DataTypes.DATE,
+      field: 'reviewed_at',
+      allowNull: true
+    },
+    reviewedBy: {
+      type: DataTypes.INTEGER,
+      field: 'reviewed_by',
+      allowNull: true,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
+    },
+    attachments: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: []
+    }
+  }, {
+    tableName: 'Payment',
+    timestamps: true
+  });
+
+  // PaymentHistory Model (for tracking all payment activities)
+  const PaymentHistory = sequelize.define('PaymentHistory', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    paymentId: {
+      type: DataTypes.INTEGER,
+      field: 'payment_id',
+      allowNull: true,
+      references: {
+        model: 'Payment',
+        key: 'id'
+      }
+    },
+    invoiceId: {
+      type: DataTypes.INTEGER,
+      field: 'invoice_id',
+      allowNull: false,
+      references: {
+        model: 'Invoice',
+        key: 'id'
+      }
+    },
+    customerId: {
+      type: DataTypes.INTEGER,
+      field: 'customer_id',
+      allowNull: false,
+      references: {
+        model: 'Customer',
+        key: 'id'
+      }
+    },
+    action: {
+      type: DataTypes.ENUM('submitted', 'approved', 'rejected', 'manual_entry', 'refund'),
+      allowNull: false
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false
+    },
+    paymentMethod: {
+      type: DataTypes.STRING,
+      field: 'payment_method',
+      allowNull: true
+    },
+    reference: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    performedBy: {
+      type: DataTypes.INTEGER,
+      field: 'performed_by',
+      allowNull: true,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
+    }
+  }, {
+    tableName: 'PaymentHistory',
+    timestamps: true
+  });
+
+  // Notification Model (for customer notifications)
+  const Notification = sequelize.define('Notification', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    customerId: {
+      type: DataTypes.INTEGER,
+      field: 'customer_id',
+      allowNull: false,
+      references: {
+        model: 'Customer',
+        key: 'id'
+      }
+    },
+    type: {
+      type: DataTypes.ENUM('payment_rejected', 'payment_approved', 'invoice_overdue', 'general'),
+      allowNull: false
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    data: {
+      type: DataTypes.JSON,
+      allowNull: true
+    },
+    isRead: {
+      type: DataTypes.BOOLEAN,
+      field: 'is_read',
+      allowNull: false,
+      defaultValue: false
+    },
+    readAt: {
+      type: DataTypes.DATE,
+      field: 'read_at',
+      allowNull: true
+    }
+  }, {
+    tableName: 'Notification',
     timestamps: true
   });
 
@@ -1061,6 +1291,89 @@ const initializeModels = (sequelize) => {
     as: 'item'
   });
 
+  // Payment relationships
+  Invoice.hasMany(Payment, {
+    foreignKey: 'invoiceId',
+    as: 'payments'
+  });
+
+  Payment.belongsTo(Invoice, {
+    foreignKey: 'invoiceId',
+    as: 'invoice'
+  });
+
+  Customer.hasMany(Payment, {
+    foreignKey: 'customerId',
+    as: 'payments'
+  });
+
+  Payment.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+
+  User.hasMany(Payment, {
+    foreignKey: 'reviewedBy',
+    as: 'reviewedPayments'
+  });
+
+  Payment.belongsTo(User, {
+    foreignKey: 'reviewedBy',
+    as: 'reviewer'
+  });
+
+  // PaymentHistory relationships
+  Payment.hasMany(PaymentHistory, {
+    foreignKey: 'paymentId',
+    as: 'history'
+  });
+
+  PaymentHistory.belongsTo(Payment, {
+    foreignKey: 'paymentId',
+    as: 'payment'
+  });
+
+  Invoice.hasMany(PaymentHistory, {
+    foreignKey: 'invoiceId',
+    as: 'paymentHistory'
+  });
+
+  PaymentHistory.belongsTo(Invoice, {
+    foreignKey: 'invoiceId',
+    as: 'invoice'
+  });
+
+  Customer.hasMany(PaymentHistory, {
+    foreignKey: 'customerId',
+    as: 'paymentHistory'
+  });
+
+  PaymentHistory.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+
+  User.hasMany(PaymentHistory, {
+    foreignKey: 'performedBy',
+    as: 'performedPaymentHistory'
+  });
+
+  PaymentHistory.belongsTo(User, {
+    foreignKey: 'performedBy',
+    as: 'performer'
+  });
+
+  // Notification relationships
+  Customer.hasMany(Notification, {
+    foreignKey: 'customerId',
+    as: 'notifications'
+  });
+
+  Notification.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
@@ -1080,7 +1393,10 @@ const initializeModels = (sequelize) => {
     Invoice,
     InvoiceItem,
     PaymentMethod,
-    Bank
+    Bank,
+    Payment,
+    PaymentHistory,
+    Notification
   };
 };
 

@@ -133,7 +133,7 @@ const PaymentTable = ({ payments = [], onViewPayment, getPaymentMethodName }) =>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => onViewPayment(payment)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors flex items-center gap-1"
+                        className="text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors flex items-center gap-1"
                         title="Review Payment"
                       >
                         <Eye className="w-4 h-4" />

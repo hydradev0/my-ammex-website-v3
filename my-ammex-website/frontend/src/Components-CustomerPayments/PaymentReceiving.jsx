@@ -8,6 +8,17 @@ import RejectedPaymentsTable from './RejectedPaymentsTable';
 import PaymentApprovalModal from './PaymentApprovalModal';
 import PaymentHistoryTab from './PaymentHistoryTab';
 import BalanceTab from './BalanceTab';
+import { 
+  getPendingPayments, 
+  getRejectedPayments, 
+  approvePayment, 
+  rejectPayment,
+  getPaymentMethods,
+  getBalanceHistory,
+  getAllPaymentHistory,
+  reapprovePayment,
+  deleteRejectedPayment
+} from '../services/paymentService';
 
 const PaymentReceiving = () => {
   const navigate = useNavigate();
@@ -44,272 +55,135 @@ const PaymentReceiving = () => {
   // Payment methods management
   const [paymentMethods, setPaymentMethods] = useState([]);
 
-  // Mock data initialization
+  // Load data from API
   useEffect(() => {
-    const mockPendingPayments = [
-      {
-        id: 'PAY-001',
-        invoiceNumber: 'INV-2024-001',
-        customerName: 'ABC Manufacturing Corp',
-        customerEmail: 'purchasing@abcmfg.com',
-        amount: 1450.00,
-        paymentMethod: 'bank_transfer',
-        reference: 'TXN-ABC-002',
-        submittedDate: new Date('2024-01-22').toISOString(),
-        notes: 'Payment for outstanding invoice balance',
-        status: 'pending_approval',
-        attachments: ['receipt_abc_001.pdf']
-      },
-      {
-        id: 'PAY-002',
-        invoiceNumber: 'INV-2024-002',
-        customerName: 'XYZ Healthcare Services',
-        customerEmail: 'orders@xyzhealthcare.com',
-        amount: 1850.75,
-        paymentMethod: 'check',
-        reference: 'CHK-9876',
-        submittedDate: new Date('2024-01-23').toISOString(),
-        notes: 'Check payment for full invoice amount',
-        status: 'pending_approval',
-        attachments: ['check_image_xyz.jpg']
-      },
-      {
-        id: 'PAY-003',
-        invoiceNumber: 'INV-2024-005',
-        customerName: 'JKL Chemical Solutions',
-        customerEmail: 'accounts@jklchem.com',
-        amount: 625.25,
-        paymentMethod: 'gcash',
-        reference: 'GCASH-789456123',
-        submittedDate: new Date('2024-01-24').toISOString(),
-        notes: 'Partial payment via GCash',
-        status: 'pending_approval',
-        attachments: ['gcash_receipt.png']
-      },
-      {
-        id: 'PAY-004',
-        invoiceNumber: 'INV-2024-003',
-        customerName: 'DEF Construction Ltd',
-        customerEmail: 'procurement@defconstruction.com',
-        amount: 500.00,
-        paymentMethod: 'maya',
-        reference: 'MAYA-REF-456789',
-        submittedDate: new Date('2024-01-21').toISOString(),
-        notes: 'Additional payment via Maya',
-        status: 'pending_approval',
-        attachments: ['maya_screenshot.jpg']
+    const loadData = async () => {
+      try {
+        // Load pending payments
+        const pendingResponse = await getPendingPayments();
+        const pendingData = (pendingResponse.data || []).map(p => ({
+          id: p.id,
+          customerName: p.customer?.customer_name || p.customerName || 'Unknown',
+          customerEmail: p.customer?.email1 || p.customerEmail || '',
+          invoiceNumber: p.invoice?.invoiceNumber || p.invoiceNumber || '',
+          amount: Number(p.amount) || 0,
+          paymentMethod: p.paymentMethod || p.payment_method || '',
+          reference: p.reference || '',
+          status: p.status || 'pending_approval',
+          submittedDate: p.submittedAt || p.submitted_at || p.createdAt || p.created_at,
+          attachments: p.attachments || []
+        }));
+        setPendingPayments(pendingData);
+        setFilteredPayments(pendingData);
+
+        // Load rejected payments
+        const rejectedResponse = await getRejectedPayments();
+        const rejectedData = (rejectedResponse.data || []).map(p => ({
+          id: p.id,
+          customerName: p.customer?.customer_name || p.customerName || 'Unknown',
+          customerEmail: p.customer?.email1 || p.customerEmail || '',
+          invoiceNumber: p.invoice?.invoiceNumber || p.invoiceNumber || '',
+          amount: Number(p.amount) || 0,
+          paymentMethod: p.paymentMethod || p.payment_method || '',
+          reference: p.reference || '',
+          status: 'rejected',
+          rejectedDate: p.reviewedAt || p.reviewed_at || p.updatedAt || p.updated_at,
+          rejectionReason: p.rejectionReason || p.rejection_reason || '',
+          attachments: p.attachments || []
+        }));
+        setRejectedPayments(rejectedData);
+        setFilteredRejectedPayments(rejectedData);
+
+        // Load payment methods
+        try {
+          const paymentMethodsResponse = await getPaymentMethods();
+          setPaymentMethods(paymentMethodsResponse.data || []);
+        } catch (error) {
+          console.error('Failed to load payment methods:', error);
+          // Fallback to empty array if API fails
+          setPaymentMethods([]);
+        }
+
+        // Load balance history
+        try {
+          const balanceHistoryResponse = await getBalanceHistory();
+          const bhRaw = (balanceHistoryResponse.data || []).map(h => ({
+            id: h.id,
+            customerName: h.customer?.customer_name || 'Unknown',
+            invoiceNumber: h.invoice?.invoiceNumber || '',
+            invoiceId: h.invoice?.id,
+            action: h.action,
+            timestamp: h.createdAt || h.created_at,
+            dueDate: h.invoice?.dueDate || h.invoice?.due_date,
+            paidAmount: Number(h.invoice?.paidAmount ?? h.invoice?.paid_amount ?? 0),
+            remainingAmount: Number(h.invoice?.remainingBalance ?? h.invoice?.remaining_balance ?? 0),
+            details: {
+              amount: Number(h.amount) || 0,
+              paymentMethod: h.paymentMethod || h.payment_method || '',
+              reference: h.reference || ''
+            }
+          }));
+          const outstanding = bhRaw.filter(h => h.remainingAmount > 0);
+          // Deduplicate by invoice (keep latest timestamp per invoice)
+          const latestBalanceByInvoice = Object.values(
+            outstanding.reduce((acc, cur) => {
+              const key = cur.invoiceId || cur.invoiceNumber || cur.id;
+              const prev = acc[key];
+              if (!prev || new Date(cur.timestamp) > new Date(prev.timestamp)) {
+                acc[key] = cur;
+              }
+              return acc;
+            }, {})
+          );
+          setBalanceHistory(latestBalanceByInvoice);
+        } catch (error) {
+          console.error('Failed to load balance history:', error);
+          // Fallback to empty array if API fails
+          setBalanceHistory([]);
+        }
+
+        // Load payment history (completed payments only, deduplicated per invoice)
+        try {
+          const paymentHistoryResponse = await getAllPaymentHistory();
+          const phRaw = (paymentHistoryResponse.data || []).map(h => ({
+            id: h.id,
+            customerName: h.customer?.customer_name || 'Unknown',
+            invoiceNumber: h.invoice?.invoice_number || h.invoice?.invoiceNumber || '',
+            invoiceId: h.invoice?.id,
+            action: h.action,
+            timestamp: h.createdAt || h.created_at,
+            remainingAmount: Number(h.invoice?.remainingBalance ?? h.invoice?.remaining_balance ?? 0),
+            details: {
+              amount: Number(h.amount) || 0,
+              paymentMethod: h.paymentMethod || h.payment_method || '',
+              reference: h.reference || ''
+            }
+          }));
+          // Keep only latest record per invoiceId
+          const completed = phRaw.filter(h => h.remainingAmount === 0);
+          const latestCompletedByInvoice = Object.values(
+            completed.reduce((acc, cur) => {
+              const key = cur.invoiceId || cur.invoiceNumber || cur.id;
+              const prev = acc[key];
+              if (!prev || new Date(cur.timestamp) > new Date(prev.timestamp)) {
+                acc[key] = cur;
+              }
+              return acc;
+            }, {})
+          ).map(h => ({ ...h, action: 'Payment Completed' }));
+          const ph = latestCompletedByInvoice;
+          setPaymentHistory(ph);
+        } catch (error) {
+          console.error('Failed to load payment history:', error);
+          // Fallback to empty array if API fails
+          setPaymentHistory([]);
+        }
+      } catch (error) {
+        console.error('Failed to load payment data:', error);
       }
-    ];
+    };
 
-    const mockPaymentMethods = [
-      {
-        id: 'method-1',
-        name: 'Bank Transfer',
-        description: 'Direct bank to bank transfer',
-        isActive: true,
-        requiresReference: true,
-        qrCode: null
-      },
-      {
-        id: 'method-2',
-        name: 'Check Payment',
-        description: 'Company or personal check',
-        isActive: true,
-        requiresReference: true,
-        qrCode: null
-      },
-      {
-        id: 'method-3',
-        name: 'GCash',
-        description: 'GCash mobile payment',
-        isActive: true,
-        requiresReference: true,
-        qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' // Placeholder
-      },
-      {
-        id: 'method-4',
-        name: 'Maya (PayMaya)',
-        description: 'Maya digital wallet',
-        isActive: true,
-        requiresReference: true,
-        qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' // Placeholder
-      },
-      {
-        id: 'method-5',
-        name: 'Cash Payment',
-        description: 'Cash payment at office',
-        isActive: true,
-        requiresReference: false,
-        qrCode: null
-      }
-    ];
-
-    const mockBalanceHistory = [
-      {
-        id: 'BAL-001',
-        customerName: 'ABC Manufacturing Corp',
-        invoiceNumber: 'INV-2024-001',
-        action: 'Overdue',
-        timestamp: new Date('2024-01-25T14:30:00').toISOString(),
-        dueDate: new Date('2025-07-20').toISOString(), // 5 days overdue
-        details: {
-          amount: 1500.00,
-          previousBalance: 2300.00,
-          newBalance: 1000.00,
-        }
-      },
-      {
-        id: 'BAL-002',
-        customerName: 'QWE Pharmaceuticals',
-        invoiceNumber: 'INV-2024-001',
-        action: 'Partially paid',
-        timestamp: new Date('2024-01-25T14:35:00').toISOString(),
-        dueDate: new Date('2025-09-15').toISOString(), // Future due date
-        details: {
-          amount: 1000.00,
-          previousBalance: 1500.00,
-          newBalance: 500.00,
-        }
-      },
-      {
-        id: 'BAL-003',
-        customerName: 'XYZ Healthcare Services',
-        invoiceNumber: 'INV-2024-002',
-        action: 'Unpaid',
-        timestamp: new Date('2024-02-08T11:30:00').toISOString(),
-        dueDate: new Date('2025-10-10').toISOString(), // Recently overdue
-        details: {
-          amount: 1300.00,
-        }
-      }
-    ];
-
-    const mockPaymentHistory = [
-      {
-        id: 'HIST-001',
-        customerName: 'ABC Manufacturing Corp',
-        invoiceNumber: 'INV-2024-001',
-        action: 'Payment Completed',
-        timestamp: new Date('2024-01-25T15:00:00').toISOString(),
-        details: { 
-          amount: 1500.00, 
-          paymentMethod: 'Bank Transfer',
-          reference: 'TXN-ABC-001',
-
-        }
-      },
-      {
-        id: 'HIST-002',
-        customerName: 'XYZ Healthcare Services',
-        invoiceNumber: 'INV-2024-002',
-        action: 'Payment Completed',
-        timestamp: new Date('2024-02-08T12:00:00').toISOString(),
-        details: { 
-          amount: 2300.00, 
-          paymentMethod: 'Check',
-          reference: 'CHK-9876',
-  
-        }
-      },
-      {
-        id: 'HIST-003',
-        customerName: 'DEF Construction Ltd',
-        invoiceNumber: 'INV-2024-003',
-        action: 'Payment Completed',
-        timestamp: new Date('2024-01-30T14:20:00').toISOString(),
-        details: { 
-          amount: 800.00, 
-          paymentMethod: 'Maya',
-          reference: 'MAYA-REF-456789',
-    
-        }
-      },
-      {
-        id: 'HIST-004',
-        customerName: 'JKL Chemical Solutions',
-        invoiceNumber: 'INV-2024-005',
-        action: 'Payment Completed',
-        timestamp: new Date('2024-01-24T17:00:00').toISOString(),
-        details: { 
-          amount: 625.25, 
-          paymentMethod: 'GCash',
-          reference: 'GCASH-789456123',
-   
-        }
-      }
-    ];
-
-    // Mock rejected payments data
-    const mockRejectedPayments = [
-      {
-        id: 'REJ-001',
-        invoiceNumber: 'INV-2024-006',
-        customerName: 'MNO Electronics Corp',
-        customerEmail: 'finance@mnoelectronics.com',
-        amount: 2750.50,
-        paymentMethod: 'bank_transfer',
-        reference: 'TXN-MNO-001',
-        submittedDate: new Date('2024-01-15').toISOString(),
-        rejectedDate: new Date('2024-01-16').toISOString(),
-        notes: 'Payment for electronic components order',
-        status: 'rejected',
-        rejectionReason: 'Insufficient documentation provided',
-        attachments: ['receipt_mno_001.pdf']
-      },
-      {
-        id: 'REJ-002',
-        invoiceNumber: 'INV-2024-007',
-        customerName: 'PQR Manufacturing Ltd',
-        customerEmail: 'accounts@pqrmfg.com',
-        amount: 1200.00,
-        paymentMethod: 'check',
-        reference: 'CHK-5432',
-        submittedDate: new Date('2024-01-18').toISOString(),
-        rejectedDate: new Date('2024-01-19').toISOString(),
-        notes: 'Check payment for manufacturing supplies',
-        status: 'rejected',
-        rejectionReason: 'Check amount does not match invoice total',
-        attachments: ['check_image_pqr.jpg']
-      },
-      {
-        id: 'REJ-003',
-        invoiceNumber: 'INV-2024-008',
-        customerName: 'STU Logistics Inc',
-        customerEmail: 'payments@stulogistics.com',
-        amount: 850.75,
-        paymentMethod: 'gcash',
-        reference: 'GCASH-456789123',
-        submittedDate: new Date('2024-01-20').toISOString(),
-        rejectedDate: new Date('2024-01-21').toISOString(),
-        notes: 'Partial payment for logistics services',
-        status: 'rejected',
-        rejectionReason: 'Payment reference number not found in our records',
-        attachments: ['gcash_receipt_stu.png']
-      },
-      {
-        id: 'REJ-004',
-        invoiceNumber: 'INV-2024-009',
-        customerName: 'VWX Construction Group',
-        customerEmail: 'billing@vwxconstruction.com',
-        amount: 3200.00,
-        paymentMethod: 'maya',
-        reference: 'MAYA-REF-789123',
-        submittedDate: new Date('2024-01-22').toISOString(),
-        rejectedDate: new Date('2024-01-23').toISOString(),
-        notes: 'Payment for construction materials',
-        status: 'rejected',
-        rejectionReason: 'Customer account on hold due to outstanding balance',
-        attachments: ['maya_screenshot_vwx.jpg']
-      }
-    ];
-
-    setPendingPayments(mockPendingPayments);
-    setFilteredPayments(mockPendingPayments);
-    setRejectedPayments(mockRejectedPayments);
-    setFilteredRejectedPayments(mockRejectedPayments);
-    setPaymentMethods(mockPaymentMethods);
-    setBalanceHistory(mockBalanceHistory);
-    setPaymentHistory(mockPaymentHistory);
+    loadData();
   }, []);
 
   // Filter payments based on search and filters
@@ -318,10 +192,11 @@ const PaymentReceiving = () => {
 
     // Search filter
     if (searchTerm) {
+      const q = searchTerm.toLowerCase();
       filtered = filtered.filter(payment => 
-        payment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.reference.toLowerCase().includes(searchTerm.toLowerCase())
+        String(payment.customerName || '').toLowerCase().includes(q) ||
+        String(payment.invoiceNumber || '').toLowerCase().includes(q) ||
+        String(payment.reference || '').toLowerCase().includes(q)
       );
     }
 
@@ -349,10 +224,11 @@ const PaymentReceiving = () => {
 
     // Search filter
     if (rejectedSearchTerm) {
+      const q = rejectedSearchTerm.toLowerCase();
       filtered = filtered.filter(payment => 
-        payment.customerName.toLowerCase().includes(rejectedSearchTerm.toLowerCase()) ||
-        payment.invoiceNumber.toLowerCase().includes(rejectedSearchTerm.toLowerCase()) ||
-        payment.reference.toLowerCase().includes(rejectedSearchTerm.toLowerCase())
+        String(payment.customerName || '').toLowerCase().includes(q) ||
+        String(payment.invoiceNumber || '').toLowerCase().includes(q) ||
+        String(payment.reference || '').toLowerCase().includes(q)
       );
     }
 
@@ -382,31 +258,107 @@ const PaymentReceiving = () => {
     setShowApprovalModal(true);
   };
 
-  const handleApprovePayment = () => {
+  const handleApprovePayment = async (editedAmount) => {
     if (!selectedPayment) return;
     
-    const updatedPayments = pendingPayments.filter(p => p.id !== selectedPayment.id);
-    setPendingPayments(updatedPayments);
-    closeApprovalModal();
+    try {
+      await approvePayment(selectedPayment.id, editedAmount);
+      
+      // Remove from pending payments
+      const updatedPayments = pendingPayments.filter(p => p.id !== selectedPayment.id);
+      setPendingPayments(updatedPayments);
+      setFilteredPayments(updatedPayments);
+
+      // Refresh balance tracking and payment history (reuse dedup/completed logic)
+      try {
+        const [bhRes, phRes] = await Promise.all([
+          getBalanceHistory(),
+          getAllPaymentHistory()
+        ]);
+        const bhRaw = (bhRes.data || []).map(h => ({
+          id: h.id,
+          customerName: h.customer?.customer_name || 'Unknown',
+          invoiceNumber: h.invoice?.invoiceNumber || '',
+          invoiceId: h.invoice?.id,
+          action: h.action,
+          timestamp: h.createdAt || h.created_at,
+          dueDate: h.invoice?.dueDate || h.invoice?.due_date,
+          paidAmount: Number(h.invoice?.paidAmount ?? h.invoice?.paid_amount ?? 0),
+          remainingAmount: Number(h.invoice?.remainingBalance ?? h.invoice?.remaining_balance ?? 0),
+          details: { amount: Number(h.amount) || 0, paymentMethod: h.paymentMethod || h.payment_method || '', reference: h.reference || '' }
+        }));
+        const outstanding = bhRaw.filter(h => h.remainingAmount > 0);
+        const latestBalanceByInvoice = Object.values(
+          outstanding.reduce((acc, cur) => {
+            const key = cur.invoiceId || cur.invoiceNumber || cur.id;
+            const prev = acc[key];
+            if (!prev || new Date(cur.timestamp) > new Date(prev.timestamp)) {
+              acc[key] = cur;
+            }
+            return acc;
+          }, {})
+        );
+        setBalanceHistory(latestBalanceByInvoice);
+
+        const phRaw = (phRes.data || []).map(h => ({
+          id: h.id,
+          customerName: h.customer?.customer_name || 'Unknown',
+          invoiceNumber: h.invoice?.invoice_number || h.invoice?.invoiceNumber || '',
+          invoiceId: h.invoice?.id,
+          action: h.action,
+          timestamp: h.createdAt || h.created_at,
+          remainingAmount: Number(h.invoice?.remainingBalance ?? h.invoice?.remaining_balance ?? 0),
+          details: { amount: Number(h.amount) || 0, paymentMethod: h.paymentMethod || h.payment_method || '', reference: h.reference || '' }
+        }));
+        const completed = phRaw.filter(h => h.remainingAmount === 0);
+        const latestCompletedByInvoice = Object.values(
+          completed.reduce((acc, cur) => {
+            const key = cur.invoiceId || cur.invoiceNumber || cur.id;
+            const prev = acc[key];
+            if (!prev || new Date(cur.timestamp) > new Date(prev.timestamp)) {
+              acc[key] = cur;
+            }
+            return acc;
+          }, {})
+        ).map(h => ({ ...h, action: 'Payment Completed' }));
+        setPaymentHistory(latestCompletedByInvoice);
+      } catch (e) {
+        console.error('Failed to refresh histories:', e);
+      }
+      
+      closeApprovalModal();
+    } catch (error) {
+      console.error('Failed to approve payment:', error);
+      // You might want to show an error message to the user
+    }
   };
 
-  const handleRejectPayment = () => {
-    if (!selectedPayment) return;
+  const handleRejectPayment = async (payment, rejectionReason) => {
+    if (!payment) return;
     
-    // Remove from pending payments
-    const updatedPendingPayments = pendingPayments.filter(p => p.id !== selectedPayment.id);
-    setPendingPayments(updatedPendingPayments);
-    
-    // Add to rejected payments with rejection timestamp
-    const rejectedPayment = {
-      ...selectedPayment,
-      status: 'rejected',
-      rejectedDate: new Date().toISOString(),
-      rejectionReason: 'Payment rejected by admin' // This could be made configurable
-    };
-    setRejectedPayments([rejectedPayment, ...rejectedPayments]);
-    
-    closeApprovalModal();
+    try {
+      await rejectPayment(payment.id, rejectionReason);
+      
+      // Remove from pending payments
+      const updatedPendingPayments = pendingPayments.filter(p => p.id !== payment.id);
+      setPendingPayments(updatedPendingPayments);
+      setFilteredPayments(updatedPendingPayments);
+      
+      // Add to rejected payments with rejection timestamp
+      const rejectedPayment = {
+        ...payment,
+        status: 'rejected',
+        rejectedDate: new Date().toISOString(),
+        rejectionReason: rejectionReason || 'Payment rejected by admin'
+      };
+      setRejectedPayments([rejectedPayment, ...rejectedPayments]);
+      setFilteredRejectedPayments([rejectedPayment, ...filteredRejectedPayments]);
+      
+      closeApprovalModal();
+    } catch (error) {
+      console.error('Failed to reject payment:', error);
+      // You might want to show an error message to the user
+    }
   };
 
   const closeApprovalModal = () => {
@@ -415,25 +367,75 @@ const PaymentReceiving = () => {
   };
 
   // Re-approve rejected payment
-  const handleReApprovePayment = (payment) => {
-    // Remove from rejected payments
-    const updatedRejectedPayments = rejectedPayments.filter(p => p.id !== payment.id);
-    setRejectedPayments(updatedRejectedPayments);
-    
-    // Add back to pending payments (remove rejection metadata)
-    const { rejectedDate, rejectionReason, ...cleanPayment } = payment;
-    const reApprovedPayment = {
-      ...cleanPayment,
-      status: 'pending_approval',
-      reApprovedDate: new Date().toISOString()
-    };
-    setPendingPayments([reApprovedPayment, ...pendingPayments]);
+  const handleReApprovePayment = async (payment) => {
+    try {
+      await reapprovePayment(payment.id);
+
+      // Refresh lists from server to avoid reappearing on reload
+      const [pendingRes, rejectedRes] = await Promise.all([
+        getPendingPayments(),
+        getRejectedPayments()
+      ]);
+
+      const pendingData = (pendingRes.data || []).map(p => ({
+        id: p.id,
+        customerName: p.customer?.customer_name || p.customerName || 'Unknown',
+        customerEmail: p.customer?.email1 || p.customerEmail || '',
+        invoiceNumber: p.invoice?.invoiceNumber || p.invoiceNumber || '',
+        amount: Number(p.amount) || 0,
+        paymentMethod: p.paymentMethod || p.payment_method || '',
+        reference: p.reference || '',
+        status: p.status || 'pending_approval',
+        submittedDate: p.submittedAt || p.submitted_at || p.createdAt || p.created_at,
+        attachments: p.attachments || []
+      }));
+      setPendingPayments(pendingData);
+      setFilteredPayments(pendingData);
+
+      const rejectedData = (rejectedRes.data || []).map(p => ({
+        id: p.id,
+        customerName: p.customer?.customer_name || p.customerName || 'Unknown',
+        customerEmail: p.customer?.email1 || p.customerEmail || '',
+        invoiceNumber: p.invoice?.invoiceNumber || p.invoiceNumber || '',
+        amount: Number(p.amount) || 0,
+        paymentMethod: p.paymentMethod || p.payment_method || '',
+        reference: p.reference || '',
+        status: 'rejected',
+        rejectedDate: p.reviewedAt || p.reviewed_at || p.updatedAt || p.updated_at,
+        rejectionReason: p.rejectionReason || p.rejection_reason || '',
+        attachments: p.attachments || []
+      }));
+      setRejectedPayments(rejectedData);
+      setFilteredRejectedPayments(rejectedData);
+
+    } catch (error) {
+      console.error('Failed to re-approve payment:', error);
+    }
   };
 
-  // Permanently delete rejected payment
-  const handleDeleteRejectedPayment = (paymentId) => {
-    const updatedRejectedPayments = rejectedPayments.filter(p => p.id !== paymentId);
-    setRejectedPayments(updatedRejectedPayments);
+  // Permanently delete rejected payment (persist to backend and refresh)
+  const handleDeleteRejectedPayment = async (payment) => {
+    try {
+      await deleteRejectedPayment(payment.id);
+      const rejectedRes = await getRejectedPayments();
+      const rejectedData = (rejectedRes.data || []).map(p => ({
+        id: p.id,
+        customerName: p.customer?.customer_name || p.customerName || 'Unknown',
+        customerEmail: p.customer?.email1 || p.customerEmail || '',
+        invoiceNumber: p.invoice?.invoiceNumber || p.invoiceNumber || '',
+        amount: Number(p.amount) || 0,
+        paymentMethod: p.paymentMethod || p.payment_method || '',
+        reference: p.reference || '',
+        status: 'rejected',
+        rejectedDate: p.reviewedAt || p.reviewed_at || p.updatedAt || p.updated_at,
+        rejectionReason: p.rejectionReason || p.rejection_reason || '',
+        attachments: p.attachments || []
+      }));
+      setRejectedPayments(rejectedData);
+      setFilteredRejectedPayments(rejectedData);
+    } catch (error) {
+      console.error('Failed to delete rejected payment:', error);
+    }
   };
 
   // Payment methods management handlers

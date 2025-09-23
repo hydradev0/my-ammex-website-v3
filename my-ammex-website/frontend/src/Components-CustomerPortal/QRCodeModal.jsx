@@ -53,8 +53,8 @@ const QRCodeModal = ({
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-        style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        style={{ transform: 'scale(0.95)', transformOrigin: 'center' }}
       >
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
@@ -68,10 +68,10 @@ const QRCodeModal = ({
           </div>
           
           <div className="flex justify-center mb-4">
-            <div className="w-80 h-80 bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center">
+            <div className="w-[30rem] h-[30rem] bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center">
               {paymentMethod === 'bank_transfer' ? (
                 selectedBank && bankQr ? (
-                  <img src={bankQr} alt="Bank QR" className="w-64 h-64 object-contain rounded" />
+                  <img src={bankQr} alt="Bank QR" className="w-96 h-96 object-contain rounded" />
                 ) : (
                   <div className="text-center">
                     <div className="w-64 h-64 bg-gray-300 rounded-lg flex items-center justify-center mb-4">
@@ -81,10 +81,10 @@ const QRCodeModal = ({
                   </div>
                 )
               ) : methodQr ? (
-                <img src={methodQr} alt="Method QR" className="w-64 h-64 object-contain rounded" />
+                <img src={methodQr} alt="Method QR" className="w-[26rem] h-[26rem] object-contain rounded" />
               ) : (
                 <div className="text-center">
-                  <div className="w-64 h-64 bg-gray-300 rounded-lg flex items-center justify-center mb-4">
+                  <div className="w-96 h-96 bg-gray-300 rounded-lg flex items-center justify-center mb-4">
                     <span className="text-gray-600 font-bold text-6xl">?</span>
                   </div>
                   <p className="text-sm text-gray-600">QR Code</p>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, XCircle, Image, Eye, Download } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
@@ -14,6 +14,15 @@ const PaymentApprovalModal = ({
 }) => {
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(payment?.amount || 0);
+
+  // Sync paymentAmount with payment prop when payment changes
+  useEffect(() => {
+    if (payment?.amount) {
+      setPaymentAmount(payment.amount);
+    }
+  }, [payment?.amount]);
 
   if (!isOpen || !payment) return null;
 
@@ -31,8 +40,45 @@ const PaymentApprovalModal = ({
     return `₱${amount.toLocaleString()}`;
   };
 
+  const getAttachmentName = (file) => {
+    if (!file) return '';
+    if (typeof file === 'string') return file;
+    if (typeof file === 'object' && file.name) return file.name;
+    return String(file);
+  };
+
+  const getAttachmentUrl = (file) => {
+    if (typeof file === 'string' && (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('data:'))) {
+      return file;
+    }
+    return null;
+  };
+
+  const isImageFile = (file) => {
+    const filename = getAttachmentName(file);
+    if (typeof filename !== 'string') return false;
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+    const lower = filename.toLowerCase();
+    return imageExtensions.some(ext => lower.endsWith(ext));
+  };
+
+  const isPdfFile = (file) => {
+    const filename = getAttachmentName(file);
+    if (typeof filename !== 'string') return false;
+    return filename.toLowerCase().endsWith('.pdf');
+  };
+
+  const getFileIcon = (file) => {
+    const name = getAttachmentName(file);
+    if (isImageFile(name)) return '🖼️';
+    if (isPdfFile(name)) return '📄';
+    return '📎';
+  };
+
   const handleViewAttachment = (attachment) => {
-    setSelectedAttachment(attachment);
+    const url = getAttachmentUrl(attachment);
+    if (!url) return;
+    setSelectedAttachment(url);
     setShowAttachmentModal(true);
   };
 
@@ -41,19 +87,12 @@ const PaymentApprovalModal = ({
     setSelectedAttachment(null);
   };
 
-  const isImageFile = (filename) => {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
-    return imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+  const handleReject = () => {
+    if (!rejectionReason || !rejectionReason.trim()) return;
+    onReject(payment, rejectionReason.trim());
   };
-
-  const isPdfFile = (filename) => {
-    return filename.toLowerCase().endsWith('.pdf');
-  };
-
-  const getFileIcon = (filename) => {
-    if (isImageFile(filename)) return '🖼️';
-    if (isPdfFile(filename)) return '📄';
-    return '📎';
+  const handleApprove = () => {
+    onApprove(paymentAmount);
   };
 
   const modalContent = (
@@ -86,8 +125,15 @@ const PaymentApprovalModal = ({
                 <p className="text-sm text-gray-900">{payment.invoiceNumber}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Payment Amount</h3>
-                <p className="text-lg font-semibold text-green-600">{formatCurrency(payment.amount)}</p>
+                {/* Editable Payment Amount*/}
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Amount</h3>
+                <input 
+                  type="number" 
+                  value={paymentAmount} 
+                  onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                  text-sm text-gray-900 border border-gray-500 rounded-lg p-2" 
+                />
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Payment Method</h3>
@@ -103,53 +149,66 @@ const PaymentApprovalModal = ({
               </div>
             </div>
 
-            {payment.notes && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Notes</h3>
-                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">{payment.notes}</p>
-              </div>
-            )}
 
-            {payment.attachments && payment.attachments.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Attachments</h3>
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Attachments</h3>
+              {payment.attachments && payment.attachments.length > 0 ? (
                 <div className="space-y-2">
-                  {payment.attachments.map((attachment, index) => (
-                    <div key={index} className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-lg">{getFileIcon(attachment)}</span>
-                        <span className="text-sm text-gray-700 truncate">{attachment}</span>
+                  {payment.attachments.map((attachment, index) => {
+                    const label = getAttachmentName(attachment);
+                    const url = getAttachmentUrl(attachment);
+                    const canOpen = Boolean(url);
+                    return (
+                      <div key={index} className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-lg">{getFileIcon(attachment)}</span>
+                          <span className="text-sm text-gray-700 truncate" title={label}>{label}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => canOpen && handleViewAttachment(attachment)}
+                            disabled={!canOpen}
+                            className={`p-1 ${canOpen ? 'cursor-pointer text-gray-500 hover:text-blue-600' : 'text-gray-300 cursor-not-allowed'}`}
+                            title={canOpen ? 'View attachment' : 'No preview available'}
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!canOpen) return;
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = label.split('/').pop() || 'attachment';
+                              link.target = '_blank';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            disabled={!canOpen}
+                            className={`p-1 ${canOpen ? 'cursor-pointer text-gray-500 hover:text-green-600' : 'text-gray-300 cursor-not-allowed'}`}
+                            title={canOpen ? 'Download attachment' : 'No download available'}
+                          >
+                            <Download className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleViewAttachment(attachment)}
-                          className="p-1 cursor-pointer text-gray-500 hover:text-blue-600 transition-colors"
-                          title="View attachment"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Create a temporary link to download the file
-                            const link = document.createElement('a');
-                            link.href = attachment; // Assuming attachment is a URL
-                            link.download = attachment.split('/').pop() || 'attachment';
-                            link.target = '_blank';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }}
-                          className="p-1 cursor-pointer text-gray-500 hover:text-green-600 transition-colors"
-                          title="Download attachment"
-                        >
-                          <Download className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-sm text-gray-500">
+                  No attachments provided.
+                </div>
+              )}
+            </div>
+
+            {/* Rejection Reason Section */}
+            <div className="mb-6">
+              <label htmlFor="rejectionReason" className="block text-sm font-medium text-gray-700 mb-2">
+                Rejection Reason<span className="text-red-500">*</span> (if rejecting)
+              </label>
+              <textarea id="rejectionReason" name="rejectionReason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Enter reason for rejection..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-red-500 resize-none" rows="3" />
+            </div>
 
             <div className="flex gap-3">
               <button
@@ -159,14 +218,15 @@ const PaymentApprovalModal = ({
                 Cancel
               </button>
               <button
-                onClick={onReject}
-                className="flex-1 cursor-pointer px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                onClick={handleReject}
+                disabled={!rejectionReason || !rejectionReason.trim()}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${(!rejectionReason || !rejectionReason.trim()) ? 'bg-red-300 text-white cursor-not-allowed' : 'cursor-pointer bg-red-600 text-white hover:bg-red-700'}`}
               >
                 <XCircle className="w-4 h-4" />
                 Reject
               </button>
               <button
-                onClick={onApprove}
+                onClick={handleApprove}
                 className="flex-1 cursor-pointer px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />

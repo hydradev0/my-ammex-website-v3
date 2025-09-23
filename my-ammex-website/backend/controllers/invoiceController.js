@@ -14,7 +14,7 @@ function generateInvoiceNumber() {
 // Create invoice automatically from approved order
 const createInvoiceFromOrder = async (orderId, userId) => {
   try {
-    const { Invoice, InvoiceItem, Order, OrderItem, Customer, Item } = getModels();
+    const { Invoice, InvoiceItem, Order, OrderItem, Customer, Item, Category } = getModels();
     
     // Get the approved order with items
     const order = await Order.findByPk(orderId, {
@@ -53,7 +53,9 @@ const createInvoiceFromOrder = async (orderId, userId) => {
       invoiceDate: new Date(),
       dueDate,
       totalAmount: order.totalAmount,
-      status: 'pending',
+      paidAmount: 0.00,
+      remainingBalance: order.totalAmount,
+      status: 'awaiting payment',
       paymentTerms: '30 days',
       createdBy: userId
     });
@@ -99,7 +101,7 @@ const createInvoiceFromOrder = async (orderId, userId) => {
 // Get all invoices (for Admin and Sales Marketing)
 const getAllInvoices = async (req, res, next) => {
   try {
-    const { Invoice, InvoiceItem, Customer, Item, Order } = getModels();
+    const { Invoice, InvoiceItem, Customer, Item, Order, Category } = getModels();
     const { page = 1, limit = 10, status, startDate, endDate } = req.query;
     
     const whereClause = {};
@@ -116,7 +118,14 @@ const getAllInvoices = async (req, res, next) => {
         {
           model: InvoiceItem,
           as: 'items',
-          include: [{ model: Item, as: 'item' }]
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' }
+            ]
+          }]
         },
         {
           model: Customer,
@@ -150,7 +159,7 @@ const getAllInvoices = async (req, res, next) => {
 // Get invoices by status
 const getInvoicesByStatus = async (req, res, next) => {
   try {
-    const { Invoice, InvoiceItem, Customer, Item, Order } = getModels();
+    const { Invoice, InvoiceItem, Customer, Item, Order, Category } = getModels();
     const { status } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
@@ -160,7 +169,14 @@ const getInvoicesByStatus = async (req, res, next) => {
         {
           model: InvoiceItem,
           as: 'items',
-          include: [{ model: Item, as: 'item' }]
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' }
+            ]
+          }]
         },
         {
           model: Customer,
@@ -194,7 +210,7 @@ const getInvoicesByStatus = async (req, res, next) => {
 // Get single invoice by ID
 const getInvoiceById = async (req, res, next) => {
   try {
-    const { Invoice, InvoiceItem, Customer, Item, Order } = getModels();
+    const { Invoice, InvoiceItem, Customer, Item, Order, Category } = getModels();
     const { id } = req.params;
 
     const invoice = await Invoice.findByPk(id, {
@@ -202,7 +218,14 @@ const getInvoiceById = async (req, res, next) => {
         {
           model: InvoiceItem,
           as: 'items',
-          include: [{ model: Item, as: 'item' }]
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' }
+            ]
+          }]
         },
         {
           model: Customer,
@@ -234,7 +257,7 @@ const getInvoiceById = async (req, res, next) => {
 // Get authenticated client's own invoices
 const getMyInvoices = async (req, res, next) => {
   try {
-    const { Invoice, InvoiceItem, Customer, Item, Order } = getModels();
+    const { Invoice, InvoiceItem, Customer, Item, Order, Category } = getModels();
     const { status } = req.query;
 
     // Map auth user -> customer
@@ -254,7 +277,14 @@ const getMyInvoices = async (req, res, next) => {
         {
           model: InvoiceItem,
           as: 'items',
-          include: [{ model: Item, as: 'item' }]
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' }
+            ]
+          }]
         },
         {
           model: Order,
@@ -265,22 +295,45 @@ const getMyInvoices = async (req, res, next) => {
     });
 
     // Shape to client-friendly structure matching frontend expectations
-    const clientInvoices = invoices.map((invoice) => {
+    const clientInvoices = [];
+    
+    for (const invoice of invoices) {
       const dueDate = new Date(invoice.dueDate);
       const today = new Date();
       const isOverdue = dueDate < today;
       
-      // Calculate payment status based on actual payment data, not invoice status
-      let paymentStatus = 'pending';
+      // Use database columns for payment amounts
+      const paidAmount = Number(invoice.paidAmount || 0);
+      const remainingAmount = invoice.remainingBalance !== null && invoice.remainingBalance !== undefined 
+        ? Number(invoice.remainingBalance) 
+        : Number(invoice.totalAmount);
       
-      if (isOverdue) {
+      // Determine payment status based on remaining amount and invoice status
+      let paymentStatus;
+      if (remainingAmount <= 0) {
+        // Only mark as completed if balance is 0 or negative
+        paymentStatus = 'completed';
+      } else if (isOverdue) {
+        // Overdue if past due date and still has balance
         paymentStatus = 'overdue';
-      } else if (invoice.status === 'completed') {
-        // If invoice is completed but no payment tracking yet, show as pending payment
+      } else if (paidAmount > 0 && remainingAmount > 0) {
+        // Partially paid if some payment has been made
+        paymentStatus = 'partially paid';
+      } else {
+        // Default to awaiting payment
         paymentStatus = 'awaiting payment';
       }
       
-      return {
+      // Update database status if it doesn't match the calculated payment status
+      if (invoice.status !== paymentStatus) {
+        try {
+          await invoice.update({ status: paymentStatus });
+        } catch (error) {
+          console.error(`Failed to update invoice ${invoice.id} status:`, error);
+        }
+      }
+      
+      clientInvoices.push({
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
         orderId: invoice.order?.orderNumber || `ORD-${invoice.orderId}`,
@@ -290,8 +343,8 @@ const getMyInvoices = async (req, res, next) => {
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         totalAmount: Number(invoice.totalAmount),
-        paidAmount: 0, // Will be implemented in payment phase
-        remainingAmount: Number(invoice.totalAmount), // Will be updated in payment phase
+        paidAmount: paidAmount,
+        remainingAmount: remainingAmount,
         paymentStatus: paymentStatus,
         paymentTerms: invoice.paymentTerms,
         items: (invoice.items || []).map((item) => ({
@@ -305,8 +358,8 @@ const getMyInvoices = async (req, res, next) => {
         discountApplied: 0,
         createdDate: invoice.createdAt,
         lastUpdated: invoice.updatedAt
-      };
-    });
+      });
+    }
 
     res.json({ success: true, data: clientInvoices });
   } catch (error) {
@@ -406,6 +459,121 @@ const createInvoice = async (req, res, next) => {
   }
 };
 
+// Get invoice payment history (Admin, Sales Marketing)
+const getInvoicePaymentHistory = async (req, res, next) => {
+  try {
+    const { PaymentHistory, Invoice, Customer, User } = getModels();
+    const { invoiceId } = req.params;
+    const customerId = req.user.customerId;
+
+    // Verify invoice belongs to customer
+    const invoice = await Invoice.findByPk(invoiceId);
+    if (!invoice || invoice.customerId !== customerId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found or access denied'
+      });
+    }
+
+    const history = await PaymentHistory.findAll({
+      where: { invoiceId },
+      include: [
+        { 
+          model: Customer, 
+          as: 'customer',
+          attributes: ['id', 'companyName']
+        },
+        { 
+          model: User, 
+          as: 'performer',
+          attributes: ['id', 'firstName', 'lastName']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: history
+    });
+
+  } catch (error) {
+    console.error('Error fetching invoice payment history:', error);
+    next(error);
+  }
+};
+
+// Admin: Get all invoices with payment details
+const getAllInvoicesWithPayments = async (req, res, next) => {
+  try {
+    const { Invoice, InvoiceItem, Customer, Item, Payment, Category } = getModels();
+    const { page = 1, limit = 10, status, search } = req.query;
+
+    const offset = (page - 1) * limit;
+    const whereClause = {};
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { invoiceNumber: { [Op.iLike]: `%${search}%` } },
+        { '$customer.companyName$': { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows: invoices } = await Invoice.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'companyName', 'contactPerson', 'email']
+        },
+        {
+          model: InvoiceItem,
+          as: 'items',
+          include: [{ 
+            model: Item, 
+            as: 'item', 
+            attributes: ['id', 'name', 'description'],
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' }
+            ]
+          }]
+        },
+        {
+          model: Payment,
+          as: 'payments',
+          attributes: ['id', 'amount', 'status', 'paymentMethod', 'submittedAt', 'reviewedAt']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: {
+        invoices,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(count / limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching invoices with payments:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoicesByStatus,
@@ -413,5 +581,7 @@ module.exports = {
   getMyInvoices,
   updateInvoiceStatus,
   createInvoice,
-  createInvoiceFromOrder
+  createInvoiceFromOrder,
+  getInvoicePaymentHistory,
+  getAllInvoicesWithPayments
 };

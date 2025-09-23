@@ -6,6 +6,7 @@ import QRCodeModal from './QRCodeModal';
 import { getMyInvoices } from '../services/invoiceService';
 import { fetchPaymentMethods } from '../services/paymentMethodsService';
 import { fetchBanks } from '../services/banksService';
+import { submitPayment } from '../services/paymentService';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -184,17 +185,10 @@ const Payment = () => {
       errors.paymentMethod = 'Payment method is required';
     }
 
-    // Payment receipt validation
-    if (!invoiceReceipts[invoice.id] || !invoiceReceipts[invoice.id].file) {
-      errors.receipt = 'Payment receipt is required';
-    }
 
-    // Reference required when method requiresReference
-    if (paymentData.paymentMethod) {
-      const selectedMethod = methods.find(m => mapMethodKey(m.name) === paymentData.paymentMethod);
-      if (selectedMethod?.requiresReference && (!paymentData.reference || paymentData.reference.trim() === '')) {
-        errors.reference = 'Reference number is required for this method';
-      }
+    // Reference number is required for all payment submissions
+    if (!paymentData.reference || paymentData.reference.trim() === '') {
+      errors.reference = 'Reference number is required';
     }
 
     // Reference number validation (if provided)
@@ -282,7 +276,7 @@ const Payment = () => {
     clearValidationErrors();
 
     // Validate payment data
-    const { isValid, errors } = validatePaymentData();
+    const { isValid } = validatePaymentData();
 
     if (!isValid) {
       // Show validation errors and prevent submission
@@ -293,38 +287,22 @@ const Payment = () => {
 
     try {
       const paymentAmount = parseFloat(paymentData.amount);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Here you would typically make an API call to submit the payment
-      console.log('Payment submitted:', {
+      const receipt = invoiceReceipts[invoice.id];
+      const payload = {
         invoiceId: invoice.id,
         amount: paymentAmount,
-        method: paymentData.paymentMethod,
-        reference: paymentData.reference,
-        receipt: invoiceReceipts[invoice.id]?.file
-      });
-
-      // Simulate successful payment
-      const updatedInvoice = {
-        ...invoice,
-        paidAmount: invoice.paidAmount + paymentAmount,
-        remainingAmount: invoice.remainingAmount - paymentAmount,
-        paymentStatus: invoice.remainingAmount - paymentAmount <= 0 ? 'paid' : 'partial',
-        lastPayment: {
-          date: new Date().toISOString(),
-          amount: paymentAmount,
-          method: paymentData.paymentMethod,
-          reference: paymentData.reference
-        }
+        paymentMethod: paymentData.paymentMethod,
+        reference: paymentData.reference || undefined,
+        attachments: receipt ? [{ name: receipt.name, type: receipt.type, size: receipt.size }] : []
       };
 
-      // Navigate back to invoices after successful submission
+      await submitPayment(payload);
+
       navigate('/Products/Invoices');
     } catch (error) {
       console.error('Payment submission failed:', error);
-      setValidationErrors({ submit: 'Payment submission failed. Please try again.' });
+      setValidationErrors({ submit: typeof error === 'string' ? error : 'Payment submission failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -506,7 +484,7 @@ const Payment = () => {
 
               {/* Reference Number */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number (Optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number<span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={paymentData.reference}
@@ -529,7 +507,7 @@ const Payment = () => {
                   <button
                     type="button"
                     onClick={() => setShowMethodMenu(!showMethodMenu)}
-                    className={`w-full px-3 py-3 border rounded-lg text-left focus:ring-2 focus:outline-none flex items-center justify-between
+                    className={`w-full px-3 py-3 border cursor-pointer rounded-lg text-left focus:ring-2 focus:outline-none flex items-center justify-between
                     ${validationErrors.paymentMethod ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
                   >
                     <span className={`${paymentData.paymentMethod ? 'text-gray-700' : 'text-gray-400'}`}>
@@ -744,7 +722,7 @@ const Payment = () => {
 
             {/* Payment Receipt - Moved to bottom */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Receipt <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Receipt (Optional)</label>
               <div className="space-y-3">
                 <div>
                   <input
@@ -793,10 +771,10 @@ const Payment = () => {
               </div>
             </div>
             {/* Form validation note */}
-              <p className="text-xs text-red-500">
-                <strong>Note:</strong> Required fields are marked with <span className="text-red-500">*</span>. 
-                Please fill in all required fields (Payment Amount, Payment Method, and Payment Receipt) before submitting your payment.
-              </p>
+            <p className="text-xs text-red-500">
+              <strong>Note:</strong> Required fields are marked with <span className="text-red-500">*</span>. 
+              Please fill in all required fields (Payment Amount, Reference Number, and Payment Method) before submitting your payment.
+            </p>
 
             {/* Global validation error */}
             {validationErrors.submit && (

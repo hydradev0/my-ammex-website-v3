@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { X, CheckCircle, Send, DollarSign, AlertCircle, Mail } from 'lucide-react';
 
 const InvoiceActionsModal = ({
   invoice,

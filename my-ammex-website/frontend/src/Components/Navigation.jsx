@@ -43,13 +43,13 @@ function Navigation() {
         // { name: 'Delivery', link: '/Sales/Delivery' }
       ]
     } : null,
-    isPurchasingAllowed ? {
-      name: 'Purchasing',
-      dropdownItems: [
-        // { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
-        { name: 'Purchase Order', link: '/purchasing/purchaseorder' },
-      ]
-    } : null,
+    // isPurchasingAllowed ? {
+    //   name: 'Purchasing',
+    //   dropdownItems: [
+    //     // { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
+    //     { name: 'Purchase Order', link: '/purchasing/purchaseorder' },
+    //   ]
+    // } : null,
     isInventoryAllowed ? {
       name: 'Inventory',
       dropdownItems: (

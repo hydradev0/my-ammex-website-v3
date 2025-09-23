@@ -46,15 +46,33 @@ const BalanceTab = ({
   // Balance-specific action color function
   const getBalanceActionColor = (action) => {
     switch (action) {
-      case 'Partially paid': return 'text-yellow-600 bg-yellow-100';
+      case 'Partially Paid': return 'text-yellow-600 bg-yellow-100';
       case 'Overdue': return 'text-red-600 bg-red-100';
-      case 'Unpaid': return 'text-blue-600 bg-blue-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
 
-  // Extract unique actions for filtering
-  const uniqueActions = [...new Set(historyData.map(item => item.action))].filter(Boolean);
+  // Derive a normalized display action from item amounts and due date
+  const getDisplayAction = (item) => {
+    const paidAmount = Number(item?.paidAmount ?? item?.details?.paidAmount ?? 0);
+    const remainingAmount = Number(
+      item?.remainingAmount ?? item?.details?.remainingAmount ?? item?.details?.newBalance ?? 0
+    );
+
+    if (paidAmount > 0 && remainingAmount > 0) {
+      return 'Partially Paid';
+    }
+
+    const isPastDue = item?.dueDate ? new Date(item.dueDate) < new Date() : false;
+    if (isPastDue && remainingAmount > 0) {
+      return 'Overdue';
+    }
+
+    return item?.action || 'Unpaid';
+  };
+
+  // Extract unique actions for filtering (use derived display action)
+  const uniqueActions = [...new Set(historyData.map(item => getDisplayAction(item)))].filter(Boolean);
 
   // Filter history data
   useEffect(() => {
@@ -66,7 +84,7 @@ const BalanceTab = ({
         const searchFields = [
           item.customerName,
           item.invoiceNumber,
-          item.action
+          getDisplayAction(item)
         ].filter(Boolean);
 
         return searchFields.some(field => 
@@ -75,9 +93,9 @@ const BalanceTab = ({
       });
     }
 
-    // Action filter
+    // Action filter (use derived display action)
     if (selectedAction !== 'all') {
-      filtered = filtered.filter(item => item.action === selectedAction);
+      filtered = filtered.filter(item => getDisplayAction(item) === selectedAction);
     }
 
     // Date range filter
@@ -192,16 +210,22 @@ const BalanceTab = ({
       icon: Send,
       label: 'Send Reminder',
       title: 'Send Reminder',
-      className: 'text-blue-600 hover:text-blue-900 p-1 rounded transition-colors',
-      condition: (item) => item.action === 'Unpaid' || item.action === 'Overdue' 
+      className: 'text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors',
+      condition: (item) => {
+        const status = getDisplayAction(item);
+        return status === 'Unpaid' || status === 'Overdue';
+      }
     },
     {
       key: 'mark_as_paid',
       icon: CheckCircle,
       label: 'Mark as Paid',
       title: 'Mark as Paid',
-      className: 'text-green-600 hover:text-green-900 p-1 rounded transition-colors ',
-      condition: (item) => item.action === 'Unpaid' || item.action === 'Overdue' || item.action === 'Partially paid'
+      className: 'text-green-600 cursor-pointer hover:text-green-900 p-1 rounded transition-colors ',
+      condition: (item) => {
+        const status = getDisplayAction(item);
+        return status === 'Unpaid' || status === 'Overdue' || status === 'Partially Paid';
+      }
     }
   ];
 
@@ -258,8 +282,8 @@ const BalanceTab = ({
                     {/* Customer & Status */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full inline-flex w-fit mb-2 ${getBalanceActionColor(item.action)}`}>
-                          {item.action}
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full inline-flex w-fit mb-2 ${getBalanceActionColor(getDisplayAction(item))}`}>
+                          {getDisplayAction(item)}
                         </span>
                         <div className="text-sm font-medium text-blue-600">
                           {item.invoiceNumber}

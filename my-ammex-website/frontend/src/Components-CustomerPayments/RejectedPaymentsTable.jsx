@@ -20,7 +20,7 @@ const RejectedPaymentsTable = ({
 
   const handleConfirmDelete = () => {
     if (selectedPayment) {
-      onDelete(selectedPayment.id);
+      onDelete(selectedPayment);
       setIsDeleteModalOpen(false);
       setSelectedPayment(null);
     }

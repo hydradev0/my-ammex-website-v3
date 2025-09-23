@@ -9,7 +9,9 @@ const {
   getInvoiceById,
   getMyInvoices,
   updateInvoiceStatus,
-  createInvoice
+  createInvoice,
+  getInvoicePaymentHistory,
+  getAllInvoicesWithPayments
 } = require('../controllers/invoiceController');
 
 // Validation middleware
@@ -20,7 +22,7 @@ const validateInvoiceCreation = [
 ];
 
 const validateInvoiceStatusUpdate = [
-  check('status', 'Status is required').isIn(['pending', 'completed'])
+  check('status', 'Status is required').isIn(['awaiting payment', 'partially paid', 'completed', 'rejected', 'overdue'])
 ];
 
 // @route   GET /api/invoices
@@ -52,5 +54,15 @@ router.post('/', protect, authorize('Admin', 'Sales Marketing'), validateInvoice
 // @desc    Update invoice status
 // @access  Private (Admin, Sales Marketing)
 router.patch('/:id/status', protect, authorize('Admin', 'Sales Marketing'), validateInvoiceStatusUpdate, handleValidationErrors, updateInvoiceStatus);
+
+// @route   GET /api/invoices/:id/payment-history
+// @desc    Get payment history for an invoice
+// @access  Private (Client)
+router.get('/:id/payment-history', protect, authorize('Client'), getInvoicePaymentHistory);
+
+// @route   GET /api/invoices/with-payments
+// @desc    Get all invoices with payment details
+// @access  Private (Admin, Sales Marketing)
+router.get('/with-payments', protect, authorize('Admin', 'Sales Marketing'), getAllInvoicesWithPayments);
 
 module.exports = router;

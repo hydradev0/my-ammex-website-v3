@@ -43,7 +43,7 @@ const InvoiceTable = ({
       icon: Eye,
       label: 'View Details',
       title: 'View Details',
-      className: 'text-blue-600 hover:text-blue-900 p-1 rounded transition-colors'
+      className: 'text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors'
     }
   ];
 

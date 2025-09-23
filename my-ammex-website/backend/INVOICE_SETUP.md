@@ -11,8 +11,11 @@ This document describes the invoice backend functionality that has been implemen
 - **Relationships**: Proper foreign key relationships with Orders, Customers, Items, and Users
 
 ### 2. Invoice Status Flow
-- **Pending**: Invoices created from approved orders (shown in "Current Invoices")
+- **Awaiting Payment**: Invoices created from approved orders (shown in "Current Invoices")
 - **Completed**: Manually marked as completed (shown in "Invoice History")
+- **Partially Paid**: Invoices with some payments made
+- **Overdue**: Invoices past due date with remaining balance
+- **Rejected**: Invoices that have been rejected
 
 ### 3. Automatic Invoice Generation
 - Invoices are automatically created when orders are approved by Admin or Sales Marketing staff
@@ -22,7 +25,7 @@ This document describes the invoice backend functionality that has been implemen
 
 #### Admin/Sales Marketing Access
 - `GET /api/invoices` - Get all invoices with pagination and filtering
-- `GET /api/invoices/status/:status` - Get invoices by status (pending/completed)
+- `GET /api/invoices/status/:status` - Get invoices by status (awaiting payment/completed/partially paid/overdue/rejected)
 - `GET /api/invoices/:id` - Get single invoice details
 - `POST /api/invoices` - Manually create invoice from approved order
 - `PATCH /api/invoices/:id/status` - Update invoice status
@@ -41,7 +44,7 @@ This document describes the invoice backend functionality that has been implemen
 - invoiceDate (Date, Default: Now)
 - dueDate (Date, 30 days from invoice date)
 - totalAmount (Decimal 10,2)
-- status (Enum: 'pending', 'completed')
+- status (Enum: 'awaiting payment', 'partially paid', 'completed', 'rejected', 'overdue')
 - paymentTerms (String, Default: '30 days')
 - notes (Text, Optional)
 - createdBy (Foreign Key to User)
@@ -84,12 +87,12 @@ When an Admin or Sales Marketing user approves an order:
   "status": "approved"
 }
 ```
-This automatically creates an invoice with status "pending".
+This automatically creates an invoice with status "awaiting payment".
 
-### 2. Get Current Invoices (Pending)
+### 2. Get Current Invoices (Awaiting Payment)
 ```javascript
-// GET /api/invoices/status/pending
-// Returns invoices with status "pending"
+// GET /api/invoices/status/awaiting payment
+// Returns invoices with status "awaiting payment"
 ```
 
 ### 3. Get Invoice History (Completed)
@@ -117,18 +120,18 @@ This automatically creates an invoice with status "pending".
 The backend is designed to work with your existing frontend components:
 
 ### ProcessedInvoices.jsx
-- **Current Invoices Tab**: Shows invoices with status "pending"
+- **Current Invoices Tab**: Shows invoices with status "awaiting payment"
 - **Invoice History Tab**: Shows invoices with status "completed"
 
 ### Invoice.jsx (Client Portal)
 - Shows client's own invoices with proper formatting
-- Includes payment status logic (pending/overdue/paid)
+- Includes payment status logic (awaiting payment/overdue/partially paid/completed)
 
 ## Data Flow
 
 1. **Order Creation**: Customer creates order
 2. **Order Approval**: Admin/Sales approves order → Invoice automatically created
-3. **Current Invoices**: Shows pending invoices to staff
+3. **Current Invoices**: Shows awaiting payment invoices to staff
 4. **Invoice Completion**: Staff marks invoice as completed → Moves to history
 5. **Client Access**: Clients can view their invoices in the portal
 
