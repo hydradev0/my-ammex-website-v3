@@ -161,18 +161,43 @@ class AnalyticsController {
 
   // Customer Analytics
   async getCustomerMetrics() {
-    const { User, Order } = getModels();
+    const { Customer, Order } = getModels();
     const now = moment();
     const lastMonth = moment().subtract(1, 'month');
 
-    // Get customer data
-    const customers = await User.findAll({
-      where: { role: 'Sales Marketing' } // Match frontend role naming
+    // Get total customers
+    const totalCustomers = await Customer.count({
+      where: { isActive: true }
     });
+
+    // Get new customers this month using Customer table's createdAt
+    const newCustomersThisMonth = await Customer.count({
+      where: {
+        isActive: true,
+        createdAt: {
+          [Op.gte]: now.startOf('month').toDate()
+        }
+      }
+    });
+
+    // Get new customers last month for comparison
+    const newCustomersLastMonth = await Customer.count({
+      where: {
+        isActive: true,
+        createdAt: {
+          [Op.gte]: lastMonth.startOf('month').toDate(),
+          [Op.lt]: now.startOf('month').toDate()
+        }
+      }
+    });
+
+    // Calculate growth percentage
+    const newCustomerGrowth = newCustomersLastMonth > 0 ? 
+      ((newCustomersThisMonth - newCustomersLastMonth) / newCustomersLastMonth) * 100 : 0;
 
     const currentMonthOrders = await Order.findAll({
       where: {
-        isActive: true, // Filter for active orders
+        isActive: true,
         orderDate: {
           [Op.gte]: now.startOf('month').toDate()
         }
@@ -186,9 +211,10 @@ class AnalyticsController {
     const customerLTV = await this.calculateCustomerLTV();
 
     return {
-      totalCustomers: customers.length,
+      totalCustomers,
+      newCustomers: newCustomersThisMonth,
+      newCustomerGrowth: Math.round(newCustomerGrowth * 100) / 100,
       activeCustomers: customerSegments.active,
-      newCustomers: customerSegments.new,
       repeatCustomers: customerSegments.repeat,
       averageLTV: customerLTV.average,
       topCustomers: customerLTV.top
@@ -302,14 +328,14 @@ class AnalyticsController {
 
   // Customer segmentation
   async segmentCustomers() {
-    const { User, Order } = getModels();
-    const customers = await User.findAll({
-      where: { role: 'Sales Marketing' }
+    const { Customer, Order } = getModels();
+    const customers = await Customer.findAll({
+      where: { isActive: true }
     });
 
     const customerOrders = await Order.findAll({
       where: {
-        isActive: true, // Filter for active orders
+        isActive: true,
         orderDate: {
           [Op.gte]: moment().subtract(12, 'months').toDate()
         }

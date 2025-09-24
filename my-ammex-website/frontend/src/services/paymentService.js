@@ -46,13 +46,20 @@ export const getPaymentHistory = async (invoiceId) => {
 };
 
 // Get customer notifications
-export const getNotifications = async () => {
+export const getPaymentNotifications = async () => {
   return apiRequest('/payments/notifications/my');
 };
 
 // Mark notification as read
 export const markNotificationAsRead = async (notificationId) => {
   return apiRequest(`/payments/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+};
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = async () => {
+  return apiRequest('/payments/notifications/read-all', {
     method: 'PATCH',
   });
 };
@@ -95,6 +102,14 @@ export const reapprovePayment = async (paymentId) => {
 export const deleteRejectedPayment = async (paymentId) => {
   return apiRequest(`/payments/${paymentId}`, {
     method: 'DELETE',
+  });
+};
+
+// Client: Appeal a rejected payment
+export const appealRejectedPayment = async (paymentId, appealReason) => {
+  return apiRequest(`/payments/${paymentId}/appeal`, {
+    method: 'POST',
+    body: JSON.stringify({ appealReason }),
   });
 };
 

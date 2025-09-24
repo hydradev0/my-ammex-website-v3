@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { getNotifications, markNotificationAsRead } from '../services/paymentService';
+import { getPaymentNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../services/paymentService';
+import { getOrderNotifications, markOrderNotificationAsRead, markAllOrderNotificationsAsRead } from '../services/orderService';
 
 const NotificationContext = createContext();
 
@@ -18,14 +19,45 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch notifications from API
+  // Fetch notifications from API (both payment and order notifications)
   const fetchNotifications = async () => {
     if (!user?.id) return [];
     
     setIsLoading(true);
     try {
-      const response = await getNotifications();
-      return response.data?.notifications || [];
+      const [paymentResponse, orderResponse] = await Promise.all([
+        getPaymentNotifications().catch(e => {
+          console.error('❌ Payment notifications error:', e);
+          return { data: { notifications: [] } };
+        }),
+        getOrderNotifications().catch(e => {
+          console.error('❌ Order notifications error:', e);
+          return { data: { notifications: [] } };
+        })
+      ]);
+      
+      const paymentNotifications = paymentResponse.data?.notifications || [];
+      const orderNotifications = orderResponse.data?.notifications || [];
+      
+      // Combine and deduplicate by ID, then sort by creation date
+      const allNotificationsMap = new Map();
+      
+      // Add payment notifications
+      paymentNotifications.forEach(notif => {
+        allNotificationsMap.set(notif.id, notif);
+      });
+      
+      // Add order notifications (will overwrite if same ID exists)
+      orderNotifications.forEach(notif => {
+        allNotificationsMap.set(notif.id, notif);
+      });
+      
+      // Convert back to array and sort by creation date
+      const allNotifications = Array.from(allNotificationsMap.values()).sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      
+      return allNotifications;
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       return [];
@@ -34,13 +66,23 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  // Helper: compute unread count according to role
+  const computeUnreadCount = (list) => {
+    if (!Array.isArray(list)) return 0;
+    const role = user?.role;
+    if (role === 'Admin' || role === 'Sales Marketing') {
+      return list.filter(n => !n.adminIsRead).length;
+    }
+    return list.filter(n => !n.isRead).length;
+  };
+
   // Load notifications on user change
   useEffect(() => {
     const loadNotifications = async () => {
       if (user?.id) {
         const fetchedNotifications = await fetchNotifications();
         setNotifications(fetchedNotifications);
-        setUnreadCount(fetchedNotifications.filter(n => !n.isRead).length);
+        setUnreadCount(computeUnreadCount(fetchedNotifications));
       } else {
         setNotifications([]);
         setUnreadCount(0);
@@ -50,30 +92,53 @@ export const NotificationProvider = ({ children }) => {
     loadNotifications();
   }, [user?.id]);
 
-  // Mark notification as read
+  // Lightweight polling to simulate real-time updates
+  useEffect(() => {
+    if (!user?.id) return;
+    const intervalId = setInterval(async () => {
+      const fetchedNotifications = await fetchNotifications();
+      setNotifications(fetchedNotifications);
+      setUnreadCount(computeUnreadCount(fetchedNotifications));
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [user?.id]);
+
+  // Mark notification as read (dynamic based on notification type)
   const markAsRead = async (notificationId) => {
     try {
-      await markNotificationAsRead(notificationId);
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
-            ? { ...notification, isRead: true, readAt: new Date().toISOString() }
-            : notification
-        )
-      );
+      // Determine if it's an order notification based on type
+      const notification = notifications.find(n => n.id === notificationId);
+      const isOrderNotification = notification && ['order_rejected', 'order_appeal'].includes(notification.type);
       
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (isOrderNotification) {
+        await markOrderNotificationAsRead(notificationId);
+      } else {
+        await markNotificationAsRead(notificationId);
+      }
+      
+      // Re-fetch from server to persist across reloads
+      const fetchedNotifications = await fetchNotifications();
+      setNotifications(fetchedNotifications);
+      setUnreadCount(computeUnreadCount(fetchedNotifications));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
   };
 
-  // Mark all notifications as read
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, isRead: true }))
-    );
-    setUnreadCount(0);
+  // Mark all notifications as read (both payment and order notifications)
+  const markAllAsRead = async () => {
+    try {
+      await Promise.all([
+        markAllNotificationsAsRead(),
+        markAllOrderNotificationsAsRead()
+      ]);
+      const fetchedNotifications = await fetchNotifications();
+      setNotifications(fetchedNotifications);
+      setUnreadCount(computeUnreadCount(fetchedNotifications));
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
   };
 
   // Remove notification
@@ -99,7 +164,7 @@ export const NotificationProvider = ({ children }) => {
     if (user?.id) {
       const fetchedNotifications = await fetchNotifications();
       setNotifications(fetchedNotifications);
-      setUnreadCount(fetchedNotifications.filter(n => !n.isRead).length);
+      setUnreadCount(computeUnreadCount(fetchedNotifications));
     }
   };
 

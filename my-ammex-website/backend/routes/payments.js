@@ -55,6 +55,11 @@ router.patch('/:id/approve', protect, authorize('Admin', 'Sales Marketing'), val
 // @access  Private (Admin, Sales Marketing)
 router.patch('/:id/reject', protect, authorize('Admin', 'Sales Marketing'), validatePaymentAction, validateRejectionReason, handleValidationErrors, ctrl.rejectPayment);
 
+// @route   POST /api/payments/:id/appeal
+// @desc    Client appeals a rejected payment
+// @access  Private (Client)
+router.post('/:id/appeal', protect, authorize('Client'), ctrl.appealRejectedPayment);
+
 // @route   PATCH /api/payments/:id/reapprove
 // @desc    Move a rejected payment back to pending approval
 // @access  Private (Admin, Sales Marketing)
@@ -83,12 +88,17 @@ router.get('/history/customer/:customerId', protect, authorize('Admin', 'Sales M
 // @route   GET /api/notifications/my
 // @desc    Get authenticated user's own notifications
 // @access  Private (Client, Admin, Sales Marketing)
-router.get('/notifications/my', protect, authorize('Client', 'Admin', 'Sales Marketing'), ctrl.getNotifications);
+router.get('/notifications/my', protect, authorize('Client', 'Admin', 'Sales Marketing'), ctrl.getPaymentNotifications);
 
 // @route   PATCH /api/notifications/:id/read
 // @desc    Mark a notification as read
 // @access  Private (Client, Admin, Sales Marketing)
 router.patch('/notifications/:id/read', protect, authorize('Client', 'Admin', 'Sales Marketing'), ctrl.markNotificationAsRead);
+
+// @route   PATCH /api/notifications/read-all
+// @desc    Mark all notifications as read for current user (or all admin notifications)
+// @access  Private (Client, Admin, Sales Marketing)
+router.patch('/notifications/read-all', protect, authorize('Client', 'Admin', 'Sales Marketing'), ctrl.markAllNotificationsAsRead);
 
 // @route   GET /api/payments/balance-history
 // @desc    Get balance history (for admin)

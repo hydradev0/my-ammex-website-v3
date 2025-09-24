@@ -1078,7 +1078,7 @@ const initializeModels = (sequelize) => {
       }
     },
     type: {
-      type: DataTypes.ENUM('payment_rejected', 'payment_approved', 'invoice_overdue', 'general'),
+      type: DataTypes.ENUM('payment_rejected', 'payment_approved', 'invoice_overdue', 'order_rejected', 'order_appeal', 'general'),
       allowNull: false
     },
     title: {
@@ -1102,6 +1102,18 @@ const initializeModels = (sequelize) => {
     readAt: {
       type: DataTypes.DATE,
       field: 'read_at',
+      allowNull: true
+    },
+    // Admin/Sales read tracking (separate from client read state)
+    adminIsRead: {
+      type: DataTypes.BOOLEAN,
+      field: 'admin_is_read',
+      allowNull: false,
+      defaultValue: false
+    },
+    adminReadAt: {
+      type: DataTypes.DATE,
+      field: 'admin_read_at',
       allowNull: true
     }
   }, {

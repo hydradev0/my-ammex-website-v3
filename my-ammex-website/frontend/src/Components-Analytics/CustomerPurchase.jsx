@@ -22,7 +22,8 @@ import {
   ArrowDown,
   UserPlus,
   FilePlus2,
-  FileChartColumn
+  FileChartColumn,
+  AlignEndHorizontal
 } from 'lucide-react';
 import Modal from './Modal';
 import LoadingModal from './LoadingModal';
@@ -159,16 +160,16 @@ const CustomerPurchaseForecast = () => {
   };
 
   const formatNumber = (value) => {
-    return new Intl.NumberFormat('en-US').format(value);
+    return new Intl.NumberFormat('en-PH').format(value);
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 0
     }).format(value);
-  };
+};
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -388,11 +389,16 @@ const CustomerPurchaseForecast = () => {
                 dataKey="avgOrderValue"
                 stroke="#f59e0b"
                 strokeWidth={3}
-                name="Avg Order Value $"
+                name="Avg Order Value"
                 dot={{ r: 4 }}
               />
             </ComposedChart>
           </ResponsiveContainer>
+        </div>
+
+        <div className="mb-4 p-2 flex items-center gap-2">
+          <AlignEndHorizontal className="w-6 h-6 text-orange-500" />
+          <h2 className="text-xl font-semibold text-gray-900">This Month's Performance</h2>
         </div>
 
         {/* Customer Summary Cards */}

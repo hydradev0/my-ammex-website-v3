@@ -56,6 +56,20 @@ exports.protect = async (req, res, next) => {
     // Update last login
     await user.update({ lastLogin: new Date() });
 
+    // Attach customerId for Client users so downstream controllers can authorize
+    try {
+      if (user.role === 'Client') {
+        const { Customer } = getModels();
+        const customer = await Customer.findOne({ where: { userId: user.id }, attributes: ['id'] });
+        if (customer) {
+          // attach numeric customerId (not persisted)
+          user.customerId = customer.id;
+        }
+      }
+    } catch (_) {
+      // If customer lookup fails, proceed without attaching; controllers may handle it
+    }
+
     req.user = user;
     next();
   } catch (err) {

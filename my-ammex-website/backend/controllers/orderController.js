@@ -284,6 +284,30 @@ const updateOrderStatus = async (req, res, next) => {
 
     await order.update(updateData);
 
+    // Create notification when order is rejected
+    if (status === 'rejected') {
+      try {
+        const { Notification, Customer } = getModels();
+        const customer = await Customer.findByPk(order.customerId);
+        
+        await Notification.create({
+          customerId: order.customerId,
+          type: 'order_rejected',
+          title: 'Order Rejected',
+          message: `Your order <span class=\"font-semibold\">${order.orderNumber}</span> has been rejected. ${rejectionReason ? `Reason: <span class="font-medium text-red-500">${rejectionReason}</span>` : ''}`,
+          data: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            totalAmount: order.totalAmount,
+            rejectionReason
+          }
+        });
+      } catch (notificationError) {
+        console.error('Failed to create rejection notification:', notificationError);
+        // Don't fail the order update if notification fails
+      }
+    }
+
     // Automatically create invoice when order is approved
     let createdInvoice = null;
     if (status === 'approved') {
@@ -479,6 +503,206 @@ const cancelMyOrder = async (req, res, next) => {
   }
 };
 
+// Client appeals a rejected order
+const appealRejectedOrder = async (req, res, next) => {
+  try {
+    const { Order, Customer, Notification } = getModels();
+    const { id } = req.params; // can be numeric id or orderNumber
+    const { appealReason } = req.body || {};
+
+    if (!appealReason || String(appealReason).trim() === '') {
+      return res.status(400).json({ success: false, message: 'Appeal reason is required' });
+    }
+
+    // Resolve authenticated user's customer
+    const customer = await Customer.findOne({ where: { userId: req.user.id } });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found for user' });
+    }
+
+    // Resolve order by id or orderNumber, and ensure ownership
+    let order = null;
+    if (/^\d+$/.test(String(id))) {
+      order = await Order.findOne({ where: { id: Number(id), customerId: customer.id } });
+    }
+    if (!order) {
+      order = await Order.findOne({ where: { orderNumber: String(id), customerId: customer.id } });
+    }
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'rejected') {
+      return res.status(400).json({ success: false, message: 'Only rejected orders can be appealed' });
+    }
+
+
+
+    // Create notification for Admin/Sales
+    await Notification.create({
+      customerId: order.customerId,
+      type: 'order_appeal',
+      title: 'Order Appeal Submitted',
+      message: `Customer <span class=\"font-semibold\">${customer.customerName || 'Unknown Customer'}</span> appealed order <span class=\"font-semibold\">${order.orderNumber}</span>. Reason: <span class=\"font-medium text-red-500\">${appealReason}</span>`,
+      data: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        totalAmount: order.totalAmount,
+        appealReason
+      }
+    });
+
+    res.json({ success: true, message: 'Appeal submitted successfully' });
+  } catch (error) {
+    console.error('Error submitting order appeal:', error);
+    next(error);
+  }
+};
+
+// Get order notifications
+const getOrderNotifications = async (req, res, next) => {
+  try {
+    const { Notification } = getModels();
+    const { role, customerId } = req.user;
+
+    // Admin and Sales Marketing: show order appeals and general order notifications
+    if (role === 'Admin' || role === 'Sales Marketing') {
+      const adminNotifications = await Notification.findAll({
+        where: { 
+          type: { [Op.in]: ['order_appeal', 'general'] }
+        },
+        order: [['createdAt', 'DESC']]
+      });
+      const unreadCount = adminNotifications.filter(n => !n.adminIsRead).length;
+      return res.json({ success: true, data: { notifications: adminNotifications, unreadCount } });
+    }
+
+    // For Client users, check customerId
+    if (!customerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Customer authentication required'
+      });
+    }
+
+    // Get order-related notifications for customers
+    const notifications = await Notification.findAll({
+      where: { 
+        customerId,
+        type: { [Op.in]: ['order_rejected', 'order_appeal'] }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+
+    res.json({
+      success: true,
+      data: {
+        notifications,
+        unreadCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching order notifications:', error);
+    next(error);
+  }
+};
+
+// Mark order notification as read
+const markOrderNotificationAsRead = async (req, res, next) => {
+  try {
+    const { Notification } = getModels();
+    const { id } = req.params;
+    const { role, customerId } = req.user;
+
+    const notification = await Notification.findByPk(id);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    // Check ownership for clients
+    if (role === 'Client' && notification.customerId !== customerId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Update read status based on role
+    if (role === 'Admin' || role === 'Sales Marketing') {
+      await notification.update({
+        adminIsRead: true,
+        adminReadAt: new Date()
+      });
+    } else {
+      await notification.update({
+        isRead: true,
+        readAt: new Date()
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    next(error);
+  }
+};
+
+// Mark all order notifications as read
+const markAllOrderNotificationsAsRead = async (req, res, next) => {
+  try {
+    const { Notification } = getModels();
+    const { role, customerId } = req.user;
+
+    if (role === 'Admin' || role === 'Sales Marketing') {
+      await Notification.update(
+        {
+          adminIsRead: true,
+          adminReadAt: new Date()
+        },
+        {
+          where: { 
+            type: { [Op.in]: ['order_appeal', 'general'] },
+            adminIsRead: false
+          }
+        }
+      );
+    } else {
+      await Notification.update(
+        {
+          isRead: true,
+          readAt: new Date()
+        },
+        {
+          where: { 
+            customerId,
+            type: { [Op.in]: ['order_rejected', 'order_appeal'] },
+            isRead: false
+          }
+        }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getAllOrders,
   getOrderById,
@@ -488,5 +712,9 @@ module.exports = {
   deleteOrder,
   getOrdersByStatus,
   getMyOrders,
-  cancelMyOrder
+  cancelMyOrder,
+  appealRejectedOrder,
+  getOrderNotifications,
+  markOrderNotificationAsRead,
+  markAllOrderNotificationsAsRead
 }; 

@@ -76,4 +76,61 @@ export const cancelMyOrder = async (orderIdOrNumber) => {
   return data;
 };
 
+// Client: appeal a rejected order (by numeric id or orderNumber)
+export const appealRejectedOrder = async (orderIdOrNumber, appealReason) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/orders/${orderIdOrNumber}/appeal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ appealReason })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to submit appeal');
+  return data;
+};
+
+// Get order notifications
+export const getOrderNotifications = async () => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/orders/notifications/my`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch order notifications');
+  return data;
+};
+
+// Mark order notification as read
+export const markOrderNotificationAsRead = async (notificationId) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/orders/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to mark notification as read');
+  return data;
+};
+
+// Mark all order notifications as read
+export const markAllOrderNotificationsAsRead = async () => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/orders/notifications/read-all`, {
+    method: 'PATCH',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to mark all notifications as read');
+  return data;
+};
+
 

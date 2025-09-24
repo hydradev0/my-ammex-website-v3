@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, User, ShoppingCart, X, AlertCircle, CreditCard, ExternalLink } from 'lucide-react';
+import { Bell, User, ShoppingCart, X, AlertCircle, CreditCard, ExternalLink, Package, AlertTriangle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
+import { appealRejectedPayment } from '../services/paymentService';
 
 function TopBar({ cartItemCount = 0 }) {
   const navigate = useNavigate();
@@ -9,7 +11,41 @@ function TopBar({ cartItemCount = 0 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationsRef = useRef(null);
   
-  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, refreshNotifications } = useNotifications();
+
+  // Appeal modal state
+  const [isAppealOpen, setIsAppealOpen] = useState(false);
+  const [appealPaymentId, setAppealPaymentId] = useState(null);
+  const [appealNotificationId, setAppealNotificationId] = useState(null);
+  const [appealReason, setAppealReason] = useState('');
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
+
+  // Scroll lock while appeal modal is open
+  useEffect(() => {
+    if (!isAppealOpen) return;
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    const original = {
+      bodyOverflow: document.body.style.overflow,
+      bodyPosition: document.body.style.position,
+      bodyTop: document.body.style.top,
+      bodyWidth: document.body.style.width,
+      htmlOverflow: document.documentElement.style.overflow,
+    };
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.documentElement.style.overflow = original.htmlOverflow;
+      document.body.style.overflow = original.bodyOverflow;
+      document.body.style.position = original.bodyPosition;
+      document.body.style.top = original.bodyTop;
+      document.body.style.width = original.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isAppealOpen]);
 
   // Handle click outside to close notifications dropdown
   useEffect(() => {
@@ -42,7 +78,9 @@ function TopBar({ cartItemCount = 0 }) {
         {/* Notifications */}
         <div className="relative" ref={notificationsRef}>
           <button 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              setShowNotifications(!showNotifications);
+            }}
             className="p-1.5 sm:p-2 text-white cursor-pointer hover:bg-gray-700 hover:text-white rounded-full transition-colors relative"
           >
             <Bell size={20} className="sm:w-6 sm:h-6" />
@@ -81,19 +119,26 @@ function TopBar({ cartItemCount = 0 }) {
                     {notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`p-4 hover:bg-gray-50 transition-colors ${
+                        className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
                           !notification.isRead ? 'bg-blue-50' : ''
                         }`}
+                        onClick={() => markAsRead(notification.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start space-x-3 flex-1">
                             <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                              notification.type === 'payment_rejected' 
+                              notification.type === 'payment_rejected' || notification.type === 'order_rejected'
                                 ? 'bg-red-100 text-red-600' 
+                                : notification.type === 'order_appeal'
+                                ? 'bg-orange-100 text-orange-600'
                                 : 'bg-blue-100 text-blue-600'
                             }`}>
                               {notification.type === 'payment_rejected' ? (
                                 <CreditCard className="w-4 h-4" />
+                              ) : notification.type === 'order_rejected' ? (
+                                <Package className="w-4 h-4" />
+                              ) : notification.type === 'order_appeal' ? (
+                                <AlertTriangle className="w-4 h-4" />
                               ) : (
                                 <AlertCircle className="w-4 h-4" />
                               )}
@@ -109,29 +154,44 @@ function TopBar({ cartItemCount = 0 }) {
                                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {notification.message}
-                              </p>
+                              <p
+                                className="text-sm text-gray-600 mt-1"
+                                dangerouslySetInnerHTML={{ __html: notification.message }}
+                              />
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
                               {notification.type === 'payment_rejected' && (
-                                <button
-                                  onClick={() => {
-                                    markAsRead(notification.id);
-                                    navigate('/Products/Payment');
-                                  }}
-                                  className="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  View Payment
-                                  <ExternalLink className="w-3 h-3" />
-                                </button>
+                                <div className="mt-2 flex items-center gap-3">
+                                  <button
+                                    onClick={() => {
+                                      setAppealPaymentId(notification?.data?.paymentId);
+                                      setAppealNotificationId(notification.id);
+                                      setAppealReason('');
+                                      setIsAppealOpen(true);
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                  >
+                                    Appeal
+                                  </button>
+                                  <button
+                                    onClick={() => navigate('/Products/Payment')}
+                                    className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                  >
+                                    View Payment
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
                           <button
-                            onClick={() => removeNotification(notification.id)}
-                            className="flex-shrink-0 text-gray-400 hover:text-gray-600 ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeNotification(notification.id);
+                            }}
+                            className="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-600 ml-2"
+                            title="Dismiss"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -145,10 +205,9 @@ function TopBar({ cartItemCount = 0 }) {
               {notifications.length > 0 && (
                 <div className="p-3 border-t border-gray-200 bg-gray-50">
                   <button
-                    onClick={() => navigate('/Products/Payment')}
                     className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
-                    View All Payments
+                    
                   </button>
                 </div>
               )}
@@ -216,6 +275,65 @@ function TopBar({ cartItemCount = 0 }) {
           )}
         </button>
       </div>
+      {/* Appeal Modal (Portal + Scroll Lock) */}
+      {isAppealOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-3">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Appeal Rejected Payment</h3>
+              <button
+                className="text-gray-400 hover:text-gray-600"
+                onClick={() => setIsAppealOpen(false)}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reason for appeal</label>
+              <textarea
+                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                value={appealReason}
+                onChange={(e) => setAppealReason(e.target.value)}
+                placeholder="Provide details or evidence for your appeal"
+              />
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                onClick={() => setIsAppealOpen(false)}
+                disabled={appealSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
+                disabled={appealSubmitting || !appealReason.trim()}
+                onClick={async () => {
+                  if (!appealPaymentId) return;
+                  try {
+                    setAppealSubmitting(true);
+                    await appealRejectedPayment(appealPaymentId, appealReason.trim());
+                    setIsAppealOpen(false);
+                    // Mark the original notification as read and refresh list
+                    if (appealNotificationId) {
+                      await markAsRead(appealNotificationId);
+                    }
+                    await refreshNotifications();
+                  } catch (_) {
+                  } finally {
+                    setAppealSubmitting(false);
+                  }
+                }}
+              >
+                {appealSubmitting ? 'Submitting…' : 'Submit Appeal'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -12,7 +12,11 @@ const {
   deleteOrder,
   getOrdersByStatus,
   getMyOrders,
-  cancelMyOrder
+  cancelMyOrder,
+  appealRejectedOrder,
+  getOrderNotifications,
+  markOrderNotificationAsRead,
+  markAllOrderNotificationsAsRead
 } = require('../controllers/orderController');
 const { getModels } = require('../config/db');
 
@@ -47,6 +51,26 @@ router.get('/my', protect, authorize('Client'), getMyOrders);
 // @desc    Client cancels own order (pending or processing)
 // @access  Private (Client)
 router.patch('/:id/cancel', protect, authorize('Client'), cancelMyOrder);
+
+// @route   POST /api/orders/:id/appeal
+// @desc    Client appeals a rejected order
+// @access  Private (Client)
+router.post('/:id/appeal', protect, authorize('Client'), appealRejectedOrder);
+
+// @route   GET /api/orders/notifications/my
+// @desc    Get authenticated user's order notifications
+// @access  Private (Client, Admin, Sales Marketing)
+router.get('/notifications/my', protect, authorize('Client', 'Admin', 'Sales Marketing'), getOrderNotifications);
+
+// @route   PATCH /api/orders/notifications/:id/read
+// @desc    Mark an order notification as read
+// @access  Private (Client, Admin, Sales Marketing)
+router.patch('/notifications/:id/read', protect, authorize('Client', 'Admin', 'Sales Marketing'), markOrderNotificationAsRead);
+
+// @route   PATCH /api/orders/notifications/read-all
+// @desc    Mark all order notifications as read for current user
+// @access  Private (Client, Admin, Sales Marketing)
+router.patch('/notifications/read-all', protect, authorize('Client', 'Admin', 'Sales Marketing'), markAllOrderNotificationsAsRead);
 
 // @route   GET /api/orders/:id
 // @desc    Get single order by ID

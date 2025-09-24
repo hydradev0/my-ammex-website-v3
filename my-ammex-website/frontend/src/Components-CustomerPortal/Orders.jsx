@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle, ChevronDown, ChevronUp, Trash } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Eye, Package, Clock, CheckCircle, X, XCircle, ChevronDown, ChevronUp, Trash, AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
-import { getMyOrders, cancelMyOrder } from '../services/orderService';
+import { getMyOrders, cancelMyOrder, appealRejectedOrder } from '../services/orderService';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const Orders = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { refreshNotifications } = useNotifications();
   
   // Tab state
   const [activeTab, setActiveTab] = useState('pending');
@@ -37,6 +39,12 @@ const Orders = () => {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
+  
+  // Appeal modal state
+  const [isAppealOpen, setIsAppealOpen] = useState(false);
+  const [appealOrder, setAppealOrder] = useState(null);
+  const [appealReason, setAppealReason] = useState('');
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
 
   // Load orders from backend (on login changes)
   useEffect(() => {
@@ -59,6 +67,11 @@ const Orders = () => {
         if (!isMounted) return;
         setPendingOrders(resPending?.data || []);
         setRejectedOrders(resRejected?.data || []);
+        
+        // Refresh notifications to show any new order rejection notifications
+        if (refreshNotifications) {
+          refreshNotifications();
+        }
       } catch (e) {
         console.error('Failed to load orders:', e);
         setPendingOrders([]);
@@ -101,6 +114,12 @@ const Orders = () => {
   const handleCancelOrder = async (order) => {
     setOrderToCancel(order);
     setIsCancelOpen(true);
+  };
+
+  const handleAppealOrder = (order) => {
+    setAppealOrder(order);
+    setAppealReason('');
+    setIsAppealOpen(true);
   };
 
   const closeOrderModal = () => {
@@ -500,13 +519,22 @@ const Orders = () => {
                             {order.rejectionReason || 'Order rejected'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleViewOrder(order)} // TODO: Add an edit button and checkout button
-                              className="text-[#3182ce] hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
-                            >
-                              <Eye className="w-4 h-4" />
-                              View
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleViewOrder(order)}
+                                className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View
+                              </button>
+                              <button
+                                onClick={() => handleAppealOrder(order)}
+                                className="text-orange-600 cursor-pointer hover:text-orange-800 transition-colors flex items-center gap-1"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                                Appeal
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -559,6 +587,87 @@ const Orders = () => {
           }
         }}
       />
+
+      {/* Appeal Modal */}
+      <ScrollLock active={isAppealOpen} />
+      {isAppealOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-3">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Appeal Rejected Order</h3>
+              <button
+                className="text-gray-400 cursor-pointer hover:text-gray-600"
+                onClick={() => setIsAppealOpen(false)}
+                aria-label="Close"
+                disabled={appealSubmitting}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="mb-3">
+                <p className="text-sm text-gray-600">
+                  Order: <span className="font-semibold">{appealOrder?.orderNumber}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Amount: <span className="font-semibold">₱{appealOrder?.totalAmount?.toLocaleString()}</span>
+                </p>
+              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reason for appeal</label>
+              <textarea
+                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                value={appealReason}
+                onChange={(e) => setAppealReason(e.target.value)}
+                placeholder="Provide details or evidence for your appeal"
+                disabled={appealSubmitting}
+              />
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800"
+                onClick={() => setIsAppealOpen(false)}
+                disabled={appealSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm cursor-pointer bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-60"
+                disabled={appealSubmitting || !appealReason.trim()}
+                onClick={async () => {
+                  if (!appealOrder) return;
+                  try {
+                    setAppealSubmitting(true);
+                    await appealRejectedOrder(appealOrder.orderNumber || appealOrder.id, appealReason.trim());
+                    setIsAppealOpen(false);
+                    setAppealReason('');
+                    setAppealOrder(null);
+                    // Refresh orders to show updated notes
+                    const [resPending, resRejected] = await Promise.all([
+                      getMyOrders('pending'),
+                      getMyOrders('rejected')
+                    ]);
+                    setPendingOrders(resPending?.data || []);
+                    setRejectedOrders(resRejected?.data || []);
+                    
+                    // Refresh notifications to show any new appeal notifications
+                    if (refreshNotifications) {
+                      refreshNotifications();
+                    }
+                  } catch (e) {
+                    console.error('Failed to submit appeal:', e);
+                  } finally {
+                    setAppealSubmitting(false);
+                  }
+                }}
+              >
+                {appealSubmitting ? 'Submitting…' : 'Submit Appeal'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 };

@@ -40,7 +40,7 @@ import CustomerPurchase from './Components-Analytics/CustomerPurchase';
 function AppContent() {
   const location = useLocation();
   const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/Home/HistoricalSales';
-  const shouldShowAnalyticsGradient = location.pathname === '/home/salestrend' || location.pathname === '/home/customerpurchase';
+  const shouldShowAnalyticsGradient = location.pathname === '/home/analytics/salestrend' || location.pathname === '/home/analytics/customerpurchase';
   
   useEffect(() => {
     if (shouldShowAnalyticsGradient) {
@@ -260,8 +260,8 @@ function AppContent() {
         />
 
           
-        <Route path="home/salestrend" element={<SalesTrend />} />
-        <Route path="home/customerpurchase" element={<CustomerPurchase />} />
+        <Route path="home/analytics/salestrend" element={<SalesTrend />} />
+        <Route path="home/analytics/customerpurchase" element={<CustomerPurchase />} />
         
         {/* Default Page */}
         <Route path="/" element={<Login />} />

@@ -22,7 +22,8 @@ import {
   ArrowDown,
   Sparkles,
   FilePlus2,
-  FileChartColumn
+  FileChartColumn,
+  AlignEndHorizontal
 } from 'lucide-react';
 import Modal from './Modal';
 import LoadingModal from './LoadingModal';
@@ -156,12 +157,12 @@ const SalesTrend = () => {
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 0
     }).format(value);
-  };
+};
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -289,7 +290,7 @@ const SalesTrend = () => {
               <YAxis 
                 tick={{ fontSize: 12 }} 
                 stroke="#64748b"
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+                tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
               />
               <Tooltip content={<CustomTooltip />} />
               <Area
@@ -305,12 +306,17 @@ const SalesTrend = () => {
           </ResponsiveContainer>
         </div>
 
+        <div className="mb-4 p-2 flex items-center gap-2">
+          <AlignEndHorizontal className="w-6 h-6 text-orange-500" />
+          <h2 className="text-xl font-semibold text-gray-900">This Month's Performance</h2>
+        </div>
+
         {/* Sales Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-4">
               <DollarSign className="w-6 h-6 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Current Month</h3>
+              <h3 className="font-semibold text-gray-900">Sales</h3>
             </div>
             <p className="text-2xl font-bold text-gray-900 mb-2">
               {formatCurrency(historicalSalesData[historicalSalesData.length - 1].sales)}
@@ -473,7 +479,7 @@ const SalesTrend = () => {
                     <YAxis 
                       tick={{ fontSize: 12 }} 
                       stroke="#64748b"
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+                      tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
                     />
                     <Tooltip 
                       formatter={(value) => [formatCurrency(value), 'Predicted Sales']}

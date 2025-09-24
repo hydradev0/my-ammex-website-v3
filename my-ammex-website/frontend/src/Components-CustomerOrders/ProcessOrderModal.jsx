@@ -34,7 +34,7 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
       </button>
       <button
         onClick={handleReject}
-        disabled={isRejecting || isProcessing}
+        disabled={isRejecting || isProcessing || !rejectionReason || !rejectionReason.trim()}
         className={`px-4 py-2 cursor-pointer text-sm font-medium text-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
           isRejecting || isProcessing
             ? 'bg-gray-400 cursor-not-allowed'

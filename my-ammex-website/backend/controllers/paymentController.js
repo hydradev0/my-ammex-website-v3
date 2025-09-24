@@ -306,7 +306,7 @@ const approvePayment = async (req, res, next) => {
       customerId: payment.customerId,
       type: 'payment_approved',
       title: 'Payment Approved',
-      message: `Your payment of $${amountToApply} for invoice ${payment.invoice.invoiceNumber} has been approved and applied to your account.`,
+      message: `Your payment of <span class=\"font-semibold\">₱${amountToApply}</span> for invoice <span class=\"font-semibold\">${payment.invoice.invoiceNumber}</span> has been approved and applied to your account.`,
       data: {
         paymentId: payment.id,
         invoiceId: payment.invoiceId,
@@ -388,7 +388,7 @@ const rejectPayment = async (req, res, next) => {
       customerId: payment.customerId,
       type: 'payment_rejected',
       title: 'Payment Rejected',
-      message: `Your payment of $${payment.amount} for invoice ${payment.invoice.invoiceNumber} has been rejected. Reason: ${rejectionReason}`,
+      message: `Your payment of <span class=\"font-semibold\">₱${payment.amount}</span> for invoice <span class=\"font-semibold\">${payment.invoice.invoiceNumber}</span> has been rejected. Reason: <span class=\"font-bold text-red-500\">${rejectionReason}</span>`,
       data: {
         paymentId: payment.id,
         invoiceId: payment.invoiceId,
@@ -405,6 +405,66 @@ const rejectPayment = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error rejecting payment:', error);
+    next(error);
+  }
+};
+
+// Client: Appeal a rejected payment
+const appealRejectedPayment = async (req, res, next) => {
+  try {
+    const { Payment, PaymentHistory, Notification, Invoice, Customer } = getModels();
+    const paymentId = req.params.id;
+    const { appealReason } = req.body || {};
+    const customerId = req.user.customerId;
+
+    if (!customerId) {
+      return res.status(401).json({ success: false, message: 'Customer authentication required' });
+    }
+
+    if (!appealReason || String(appealReason).trim() === '') {
+      return res.status(400).json({ success: false, message: 'Appeal reason is required' });
+    }
+
+    const payment = await Payment.findByPk(paymentId, { include: [{ model: Invoice, as: 'invoice' }] });
+    if (!payment || payment.customerId !== customerId) {
+      return res.status(404).json({ success: false, message: 'Payment not found' });
+    }
+
+    if (payment.status !== 'rejected') {
+      return res.status(400).json({ success: false, message: 'Only rejected payments can be appealed' });
+    }
+
+    const customer = await Customer.findByPk(customerId);
+
+    // Record in history
+    await PaymentHistory.create({
+      paymentId: payment.id,
+      invoiceId: payment.invoiceId,
+      customerId: payment.customerId,
+      action: 'rejected',
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      reference: payment.reference,
+      notes: `Appeal submitted: ${appealReason}`
+    });
+
+    // Notify Admin/Sales (create a general notification titled Payment Appeal Submitted)
+    await Notification.create({
+      customerId: payment.customerId,
+      type: 'general',
+      title: 'Payment Appeal Submitted',
+      message: `Customer <span class=\"font-semibold\">${customer?.customerName || 'Unknown Customer'}</span> appealed payment <span class=\"font-semibold\">${payment.paymentNumber}</span> for invoice ${payment.invoice.invoiceNumber}. Reason: <span class=\"font-bold text-red-500\">${appealReason}</span>`,
+      data: {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        amount: payment.amount,
+        appealReason
+      }
+    });
+
+    res.json({ success: true, message: 'Appeal submitted successfully' });
+  } catch (error) {
+    console.error('Error submitting payment appeal:', error);
     next(error);
   }
 };
@@ -531,22 +591,20 @@ const getAllPaymentHistory = async (req, res, next) => {
 };
 
 // Get customer notifications
-const getNotifications = async (req, res, next) => {
+const getPaymentNotifications = async (req, res, next) => {
   try {
     const { Notification } = getModels();
     const { role, customerId } = req.user;
 
-    // For Admin and Sales Marketing users, return empty notifications
-    // as they don't have customer-specific notifications
-    if (role === 'Admin' || role === 'Sales Marketing') {
-      return res.json({
-        success: true,
-        data: {
-          notifications: [],
-          unreadCount: 0
-        }
-      });
-    }
+  // Admin and Sales Marketing: show payment appeals
+  if (role === 'Admin' || role === 'Sales Marketing') {
+    const adminNotifications = await Notification.findAll({
+      where: { type: 'general' },
+      order: [['createdAt', 'DESC']]
+    });
+    const unreadCount = adminNotifications.filter(n => !n.adminIsRead).length;
+    return res.json({ success: true, data: { notifications: adminNotifications, unreadCount } });
+  }
 
     // For Client users, check customerId
     if (!customerId) {
@@ -581,16 +639,16 @@ const getNotifications = async (req, res, next) => {
 const markNotificationAsRead = async (req, res, next) => {
   try {
     const { Notification } = getModels();
-    const { notificationId } = req.params;
+    const { id } = req.params; // matches /notifications/:id/read
     const { role, customerId } = req.user;
 
-    // For Admin and Sales Marketing users, return success without doing anything
-    // as they don't have customer-specific notifications
     if (role === 'Admin' || role === 'Sales Marketing') {
-      return res.json({
-        success: true,
-        message: 'Notification marked as read'
-      });
+      const notification = await Notification.findByPk(id);
+      if (!notification) {
+        return res.status(404).json({ success: false, message: 'Notification not found' });
+      }
+      await notification.update({ adminIsRead: true, adminReadAt: new Date() });
+      return res.json({ success: true, message: 'Notification marked as read' });
     }
 
     // For Client users, check customerId and find notification
@@ -602,7 +660,7 @@ const markNotificationAsRead = async (req, res, next) => {
     }
 
     const notification = await Notification.findOne({
-      where: { id: notificationId, customerId }
+      where: { id, customerId }
     });
 
     if (!notification) {
@@ -624,6 +682,34 @@ const markNotificationAsRead = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error marking notification as read:', error);
+    next(error);
+  }
+};
+
+// Mark all notifications as read for the authenticated user
+const markAllNotificationsAsRead = async (req, res, next) => {
+  try {
+    const { Notification } = getModels();
+    const { role, customerId } = req.user;
+
+    if (role === 'Admin' || role === 'Sales Marketing') {
+      await Notification.update(
+        { adminIsRead: true, adminReadAt: new Date() },
+        { where: { adminIsRead: false } }
+      );
+    } else {
+      if (!customerId) {
+        return res.status(401).json({ success: false, message: 'Customer authentication required' });
+      }
+      await Notification.update(
+        { isRead: true, readAt: new Date() },
+        { where: { customerId, isRead: false } }
+      );
+    }
+
+    res.json({ success: true, message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
     next(error);
   }
 };
@@ -742,11 +828,13 @@ module.exports = {
   getRejectedPayments,
   approvePayment,
   rejectPayment,
+  appealRejectedPayment,
   getPaymentHistory,
   getAllPaymentHistory,
   getCustomerPaymentHistory,
-  getNotifications,
+  getPaymentNotifications,
   markNotificationAsRead,
+  markAllNotificationsAsRead,
   getBalanceHistory,
   reapproveRejectedPayment,
   deleteRejectedPayment
