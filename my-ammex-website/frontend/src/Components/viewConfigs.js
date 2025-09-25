@@ -128,7 +128,6 @@ export const editItemConfig = {
           key: 'itemName',
           width: 'w-2/3',
           type: 'text',
-          required: true
         },
       ]
     },

@@ -77,20 +77,29 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
 
   // Transform inventory items to product format
   const products = useMemo(() => {
-    return items.map(item => ({
-      id: item.id,
-      modelNo: item.modelNo,
-      category: item.category?.name || 'Uncategorized',
-      subcategory: item.subcategory?.name || null,
-      price: parseFloat(item.price) || 0,
-      image: 'Undefined', // Default image
-      alt: item.modelNo,
-      stock: item.quantity || 0,
-      itemCode: item.itemCode,
-      vendor: item.vendor,
-      description: item.description || '',
-      unit: item.unit?.name || 'pcs'
-    }));
+   
+    return items.map(item => {
+      // Get the first image from images array or fallback to single image
+      const displayImage = (item.images && Array.isArray(item.images) && item.images.length > 0) 
+        ? item.images[0] 
+        : item.image || '📦';
+      
+      return {
+        id: item.id,
+        modelNo: item.modelNo,
+        category: item.category?.name || 'Uncategorized',
+        subcategory: item.subcategory?.name || null,
+        price: parseFloat(item.price) || 0,
+        image: displayImage,
+        images: item.images || [], // Include full images array
+        alt: item.modelNo,
+        stock: item.quantity || 0,
+        itemCode: item.itemCode,
+        vendor: item.vendor,
+        description: item.description || '',
+        unit: item.unit?.name || 'pcs'
+      };
+    });
   }, [items]);
 
   // Get unique categories and subcategories for filtering (for backward compatibility with SearchFilters)

@@ -28,7 +28,9 @@ const validateItem = [
   check('subcategoryId', 'Subcategory must be a valid ID').optional().isInt({ min: 1 }),
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 }),
   check('minLevel', 'Minimum level must be a non-negative integer').isInt({ min: 0 }),
-  check('maxLevel', 'Maximum level must be a non-negative integer').isInt({ min: 0 })
+  check('maxLevel', 'Maximum level must be a non-negative integer').isInt({ min: 0 }),
+  check('images', 'Images must be an array').optional().isArray(),
+  check('images.*', 'Each image must be a valid URL').optional().isURL()
 ];
 
 // @route   GET /api/items

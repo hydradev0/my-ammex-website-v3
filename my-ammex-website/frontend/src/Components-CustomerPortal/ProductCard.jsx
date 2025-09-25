@@ -10,15 +10,24 @@ const ProductCard = ({ product, onCardClick }) => {
     >
       {/* Product Image */}
       <div className="w-full h-[120px] sm:h-[180px] bg-gray-200 flex items-center justify-center text-2xl sm:text-4xl text-gray-400">
-        {product.image.startsWith('/') || product.image.startsWith('http') ? (
-          <img 
-            src={product.image} 
-            alt={product.modelNo}
-            className="object-contain w-full h-full"
-          />
-        ) : (
-          <span>{product.image}</span>
-        )}
+        {(() => {
+          // Get the first image from images array or fallback to single image
+          const displayImage = (product.images && Array.isArray(product.images) && product.images.length > 0) 
+            ? product.images[0] 
+            : product.image;
+          
+          if (displayImage && (displayImage.startsWith('/') || displayImage.startsWith('http'))) {
+            return (
+              <img 
+                src={displayImage} 
+                alt={product.modelNo}
+                className="object-contain w-full h-full"
+              />
+            );
+          } else {
+            return <span>{displayImage || '📦'}</span>;
+          }
+        })()}
       </div>
       {/* Product Info */}
       <div className="p-2 sm:p-4 flex flex-col flex-1">

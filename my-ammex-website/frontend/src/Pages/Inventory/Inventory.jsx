@@ -4,6 +4,7 @@ import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import Categories from '../../Components-Inventory/CategoryTable';
 import Items from '../../Components-Inventory/ItemsTable';
 import Units from '../../Components-Inventory/UnitTable';
+import NewItem from '../../Components-Inventory/NewItem';
 import { getCategories, getUnits } from '../../services/inventoryService';
 import { getSuppliers } from '../../services/supplierService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -147,6 +148,17 @@ function Inventory() {
                 <Units 
                   units={units}
                   setUnits={handleUnitUpdate}
+                />
+              } 
+            />
+            <Route 
+              path="/NewItem" 
+              element={
+                <NewItem 
+                  categories={categories} 
+                  setCategories={handleCategoryUpdate}
+                  units={units}
+                  suppliers={suppliers}
                 />
               } 
             />

@@ -214,6 +214,11 @@ const initializeModels = (sequelize) => {
         model: 'User',
         key: 'id'
       }
+    },
+    images: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: []
     }
   }, {
     timestamps: true,

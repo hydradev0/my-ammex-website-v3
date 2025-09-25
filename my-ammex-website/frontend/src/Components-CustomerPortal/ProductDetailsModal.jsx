@@ -13,6 +13,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
   const [isAnimating, setIsAnimating] = useState(false);
   const [quantityError, setQuantityError] = useState(false);
   const [quantityErrorMessage, setQuantityErrorMessage] = useState('');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const modalRef = useRef(null);
   const errorTimeoutRef = useRef(null);
 
@@ -175,28 +176,73 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
             <div className="flex flex-col lg:flex-row">
               {/* Product Images */}
               <div className="w-full lg:w-1/2 p-3 lg:p-6">
+                {/* Main Image Display */}
                 <div className="aspect-[4/3] bg-gray-100 rounded-lg lg:rounded-xl overflow-hidden mb-3 lg:mb-4">
-                  {product.image.startsWith('/') || product.image.startsWith('http') ? (
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl lg:text-6xl">
-                      {product.image}
-                    </div>
-                  )}
+                  {(() => {
+                    // Get images array or fallback to single image
+                    const images = product.images && Array.isArray(product.images) && product.images.length > 0 
+                      ? product.images 
+                      : product.image 
+                        ? [product.image] 
+                        : [];
+                    
+                    const currentImage = images[selectedImageIndex] || images[0];
+                    
+                    if (currentImage && (currentImage.startsWith('/') || currentImage.startsWith('http'))) {
+                      return (
+                        <img 
+                          src={currentImage} 
+                          alt={product.name}
+                          className="w-full h-full object-contain"
+                        />
+                      );
+                    } else {
+                      return (
+                        <div className="w-full h-full flex items-center justify-center text-2xl lg:text-6xl">
+                          {currentImage || '📦'}
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
                 
-                {/* Thumbnail Gallery (mock) */}
-                <div className="flex space-x-2 mb-3 lg:mb-6">
-                  {[1, 2, 3].map((index) => (
-                    <div key={index} className="w-10 h-10 lg:w-16 lg:h-16 bg-gray-200 rounded-lg flex items-center justify-center text-xs lg:text-lg cursor-pointer hover:bg-gray-300 transition-colors">
-                      {product.image}
-                    </div>
-                  ))}
-                </div>
+                {/* Thumbnail Gallery */}
+                {(() => {
+                  const images = product.images && Array.isArray(product.images) && product.images.length > 0 
+                    ? product.images 
+                    : product.image 
+                      ? [product.image] 
+                      : [];
+                  
+                  if (images.length > 1) {
+                    return (
+                      <div className="flex space-x-2 mb-3 lg:mb-6">
+                        {images.map((image, index) => (
+                          <div 
+                            key={index} 
+                            className={`w-10 h-10 lg:w-16 lg:h-16 rounded-lg flex items-center justify-center text-xs lg:text-lg cursor-pointer transition-colors ${
+                              selectedImageIndex === index 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 hover:bg-gray-300'
+                            }`}
+                            onClick={() => setSelectedImageIndex(index)}
+                          >
+                            {image && (image.startsWith('/') || image.startsWith('http')) ? (
+                              <img 
+                                src={image} 
+                                alt={`${product.name} ${index + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              image || '📦'
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Product Info */}

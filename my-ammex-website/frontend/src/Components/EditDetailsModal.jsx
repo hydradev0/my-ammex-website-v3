@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, Boxes, DollarSign, Info, User, MapPin, Shield, Mail } from 'lucide-react';
+import { X, ChevronDown, Boxes, DollarSign, Info, User, MapPin, Shield, Mail, Image as ImageIcon } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 
 import ScrollLock from './ScrollLock';
+import SimpleImageUpload from './SimpleImageUpload';
 
 function EditDetailsModal({
   isOpen = false,
@@ -18,6 +19,7 @@ function EditDetailsModal({
   // State for form fields
   const [formData, setFormData] = useState({});
   const [initialData, setInitialData] = useState({});
+  const [images, setImages] = useState([]);
 
   // State for validation errors and loading
   const [errors, setErrors] = useState({});
@@ -51,6 +53,7 @@ function EditDetailsModal({
       
       setFormData(initialFormData);
       setInitialData(initialFormData);
+      setImages(data.images || []);
       setErrors({});
       setSuccessMessage('');
     }
@@ -126,6 +129,11 @@ function EditDetailsModal({
     try {
       // Prepare data for submission - use IDs for category and unit
       const submissionData = { ...formData };
+      
+      // Add images to submission data
+      if (images.length > 0) {
+        submissionData.images = images;
+      }
       
       // Convert category and unit names back to IDs for backend
       if (submissionData.category && submissionData.categoryId) {
@@ -379,6 +387,22 @@ function EditDetailsModal({
               )}
             </div>
           ))}
+
+          {/* Image Upload Section */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <ImageIcon className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+              <h3 className="text-xl font-bold text-gray-800">Product Images</h3>
+            </div>
+            <div className="bg-white rounded-xl p-4">
+              <SimpleImageUpload
+                images={images}
+                onImagesChange={setImages}
+                maxImages={4}
+                className="w-full"
+              />
+            </div>
+          </div>
         </form>
 
         {/* Action Buttons */}

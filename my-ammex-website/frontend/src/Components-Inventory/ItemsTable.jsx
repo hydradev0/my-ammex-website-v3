@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
 import { Plus, } from 'lucide-react';
-import NewItemModal from './NewItemModal';
 import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
@@ -44,6 +44,7 @@ function mapStockDataToItemTableFormat(stockItem) {
 }
 
 function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { refreshTriggers } = useDataRefresh();
   const role = user?.role;
@@ -66,11 +67,9 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
   // State for search and filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterValue, setFilterValue] = useState('Filter by...');
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // State for delete confirmation modal
   const [deleteModal, setDeleteModal] = useState({
@@ -597,20 +596,10 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
 
   
 
-  // Handle close modal
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setIsEditMode(false);
-    setSelectedItem(null);
-    setFieldErrors({});
-  };
 
   // Handle new item button click
   const handleNewItemClick = () => {
-    setIsEditMode(false);
-    setSelectedItem(null);
-    setFieldErrors({});
-    setIsModalOpen(true); 
+    navigate('/inventory/NewItem');
   };
 
   if (loading && items.length === 0) {
@@ -684,20 +673,6 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
           onItemsPerPageChange={handleItemsPerPageChange}
         />
 
-        {/* Item Modal (disabled in read-only mode) */}
-        {!isReadOnly && (
-          <NewItemModal
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            onSubmit={isEditMode ? handleUpdateItem : handleNewItem}
-            categories={categories}
-            units={units}
-            suppliers={suppliers}
-            editMode={isEditMode}
-            initialData={selectedItem}
-            errors={fieldErrors}
-          />
-        )}
 
         {/* View Details Modal */}
         <ViewDetailsModal
