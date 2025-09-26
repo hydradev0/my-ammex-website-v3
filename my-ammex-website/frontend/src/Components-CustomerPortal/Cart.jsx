@@ -474,8 +474,8 @@ useEffect(() => {
 
       // Show success using server order number
       setOrderNumber(result?.clientView?.orderNumber || result?.data?.orderNumber || '');
-      setShowPreviewModal(false);
       setShowSuccessToast(true);
+      setShowPreviewModal(false);
     } catch (e) {
       console.error('Checkout confirm failed:', e);
     } finally {
@@ -663,7 +663,6 @@ useEffect(() => {
         </div>
 
         <div className="space-y-2 text-sm text-gray-500">
-          <p>You'll receive an email confirmation shortly.</p>
           <p>Track your order in the Orders section.</p>
         </div>
 

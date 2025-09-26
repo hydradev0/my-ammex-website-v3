@@ -101,6 +101,9 @@ const PaymentTable = ({ payments = [], onViewPayment, getPaymentMethodName }) =>
                         <div className="text-sm font-semibold text-green-600">
                           {formatCurrency(payment.amount)}
                         </div>
+                        <div className="text-sm font-semibold text-green-600">
+                          
+                        </div>
                         <div className="flex items-center text-xs text-gray-600 mt-1">
                           <CreditCard className="w-3 h-3 mr-1" />
                           <span>{getPaymentMethodName(payment.paymentMethod)}</span>
