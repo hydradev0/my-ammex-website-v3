@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, User, ShoppingCart, X, AlertCircle, CreditCard, ExternalLink, Package, AlertTriangle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { appealRejectedPayment } from '../services/paymentService';
+import { appealRejectedOrder } from '../services/orderService';
 
 function TopBar({ cartItemCount = 0 }) {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ function TopBar({ cartItemCount = 0 }) {
   // Appeal modal state
   const [isAppealOpen, setIsAppealOpen] = useState(false);
   const [appealPaymentId, setAppealPaymentId] = useState(null);
+  const [appealOrderId, setAppealOrderId] = useState(null);
+  const [appealType, setAppealType] = useState(null); // 'payment' or 'order'
   const [appealNotificationId, setAppealNotificationId] = useState(null);
   const [appealReason, setAppealReason] = useState('');
   const [appealSubmitting, setAppealSubmitting] = useState(false);
@@ -166,6 +169,8 @@ function TopBar({ cartItemCount = 0 }) {
                                   <button
                                     onClick={() => {
                                       setAppealPaymentId(notification?.data?.paymentId);
+                                      setAppealOrderId(null);
+                                      setAppealType('payment');
                                       setAppealNotificationId(notification.id);
                                       setAppealReason('');
                                       setIsAppealOpen(true);
@@ -179,6 +184,30 @@ function TopBar({ cartItemCount = 0 }) {
                                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                                   >
                                     View Payment
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                              {notification.type === 'order_rejected' && (
+                                <div className="mt-2 flex items-center gap-3">
+                                  <button
+                                    onClick={() => {
+                                      setAppealOrderId(notification?.data?.orderId || notification?.data?.orderNumber);
+                                      setAppealPaymentId(null);
+                                      setAppealType('order');
+                                      setAppealNotificationId(notification.id);
+                                      setAppealReason('');
+                                      setIsAppealOpen(true);
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                  >
+                                    Appeal
+                                  </button>
+                                  <button
+                                    onClick={() => navigate('/Products/Order')}
+                                    className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                  >
+                                    View Order
                                     <ExternalLink className="w-3 h-3" />
                                   </button>
                                 </div>
@@ -280,9 +309,11 @@ function TopBar({ cartItemCount = 0 }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-3">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Appeal Rejected Payment</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {appealType === 'order' ? 'Appeal Rejected Order' : 'Appeal Rejected Payment'}
+              </h3>
               <button
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 cursor-pointer hover:text-gray-600"
                 onClick={() => setIsAppealOpen(false)}
                 aria-label="Close"
               >
@@ -301,20 +332,25 @@ function TopBar({ cartItemCount = 0 }) {
             </div>
             <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
               <button
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800"
                 onClick={() => setIsAppealOpen(false)}
                 disabled={appealSubmitting}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
+                className="px-4 py-2 text-sm cursor-pointer bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-60"
                 disabled={appealSubmitting || !appealReason.trim()}
                 onClick={async () => {
-                  if (!appealPaymentId) return;
+                  if (appealType === 'payment' && !appealPaymentId) return;
+                  if (appealType === 'order' && !appealOrderId) return;
                   try {
                     setAppealSubmitting(true);
-                    await appealRejectedPayment(appealPaymentId, appealReason.trim());
+                    if (appealType === 'payment') {
+                      await appealRejectedPayment(appealPaymentId, appealReason.trim());
+                    } else if (appealType === 'order') {
+                      await appealRejectedOrder(appealOrderId, appealReason.trim());
+                    }
                     setIsAppealOpen(false);
                     // Mark the original notification as read and refresh list
                     if (appealNotificationId) {

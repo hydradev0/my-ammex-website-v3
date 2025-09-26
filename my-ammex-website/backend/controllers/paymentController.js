@@ -388,7 +388,7 @@ const rejectPayment = async (req, res, next) => {
       customerId: payment.customerId,
       type: 'payment_rejected',
       title: 'Payment Rejected',
-      message: `Your payment of <span class=\"font-semibold\">₱${payment.amount}</span> for invoice <span class=\"font-semibold\">${payment.invoice.invoiceNumber}</span> has been rejected. Reason: <span class=\"font-bold text-red-500\">${rejectionReason}</span>`,
+      message: `Your payment of <span class=\"font-semibold\">₱${payment.amount}</span> for invoice <span class=\"font-semibold\">${payment.invoice.invoiceNumber}</span> has been rejected. Reason: <span class=\"font-medium text-red-500\">${rejectionReason}</span>`,
       data: {
         paymentId: payment.id,
         invoiceId: payment.invoiceId,
@@ -453,7 +453,7 @@ const appealRejectedPayment = async (req, res, next) => {
       customerId: payment.customerId,
       type: 'general',
       title: 'Payment Appeal Submitted',
-      message: `Customer <span class=\"font-semibold\">${customer?.customerName || 'Unknown Customer'}</span> appealed payment <span class=\"font-semibold\">${payment.paymentNumber}</span> for invoice ${payment.invoice.invoiceNumber}. Reason: <span class=\"font-bold text-red-500\">${appealReason}</span>`,
+      message: `Customer <span class=\"font-semibold\">${customer?.customerName || 'Unknown Customer'}</span> appealed payment <span class=\"font-semibold\">${payment.paymentNumber}</span> for invoice ${payment.invoice.invoiceNumber}. Reason: <span class=\"font-medium text-red-500\">${appealReason}</span>`,
       data: {
         paymentId: payment.id,
         invoiceId: payment.invoiceId,

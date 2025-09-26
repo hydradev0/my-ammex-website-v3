@@ -104,6 +104,7 @@ export const itemViewConfig = {
 
 export const editItemConfig = {
   title: 'Edit Item',
+  includeImages: true,
   sections: [
     {
       title: 'Item Details',

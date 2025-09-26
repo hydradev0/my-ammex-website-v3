@@ -32,7 +32,7 @@ export const getRejectedOrdersForSales = async (page = 1, limit = 10) => {
   return data; // { success, data: Order[], pagination }
 };
 
-export const updateOrderStatus = async (orderId, { status, rejectionReason } = {}) => {
+export const updateOrderStatus = async (orderId, { status, rejectionReason, discountPercent, discountAmount } = {}) => {
   const token = localStorage.getItem('token');
   const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
     method: 'PATCH',
@@ -40,7 +40,12 @@ export const updateOrderStatus = async (orderId, { status, rejectionReason } = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ status, ...(rejectionReason ? { rejectionReason } : {}) })
+    body: JSON.stringify({ 
+      status, 
+      ...(rejectionReason ? { rejectionReason } : {}),
+      ...(discountPercent !== undefined ? { discountPercent } : {}),
+      ...(discountAmount !== undefined ? { discountAmount } : {})
+    })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update order status');

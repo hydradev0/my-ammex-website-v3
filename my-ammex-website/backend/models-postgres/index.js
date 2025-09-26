@@ -342,6 +342,18 @@ const initializeModels = (sequelize) => {
     },
     notes: {
       type: DataTypes.TEXT
+    },
+    discountPercent: {
+      type: DataTypes.DECIMAL(5, 2),
+      defaultValue: 0.00
+    },
+    discountAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0.00
+    },
+    finalAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false
     }
   }, {
     timestamps: true

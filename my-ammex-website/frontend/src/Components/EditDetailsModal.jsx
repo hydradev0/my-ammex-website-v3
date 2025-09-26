@@ -310,7 +310,7 @@ function EditDetailsModal({
         {/* Header */}
         <div className="flex justify-between items-center p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-800">{config.title || 'Edit Details'}: {data.name || data.itemName || ''}</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{config.title || 'Edit Details'}: {data.companyName|| data.customerName || data.modelNo || ''}</h2>
           </div>
           
           <button 
@@ -388,21 +388,23 @@ function EditDetailsModal({
             </div>
           ))}
 
-          {/* Image Upload Section */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <ImageIcon className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
-              <h3 className="text-xl font-bold text-gray-800">Product Images</h3>
+          {/* Image Upload Section - only for Edit Item modal */}
+          {config && config.includeImages && (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <ImageIcon className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                <h3 className="text-xl font-bold text-gray-800">Product Images</h3>
+              </div>
+              <div className="bg-white rounded-xl p-4">
+                <SimpleImageUpload
+                  images={images}
+                  onImagesChange={setImages}
+                  maxImages={4}
+                  className="w-full"
+                />
+              </div>
             </div>
-            <div className="bg-white rounded-xl p-4">
-              <SimpleImageUpload
-                images={images}
-                onImagesChange={setImages}
-                maxImages={4}
-                className="w-full"
-              />
-            </div>
-          </div>
+          )}
         </form>
 
         {/* Action Buttons */}

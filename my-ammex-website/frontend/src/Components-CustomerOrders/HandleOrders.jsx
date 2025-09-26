@@ -78,8 +78,11 @@ function HandleOrders() {
           status: o.status,
           total: Number(o.totalAmount) || 0,
           items: (o.items || []).map((it) => ({
-            name: it.item?.itemName,
+            modelNo: it.item?.modelNo,
+            category: it.item?.category?.name,
+            subcategory: it.item?.subcategory?.name,
             quantity: Number(it.quantity),
+            unit: it.item?.unit?.name,
             unitPrice: Number(it.unitPrice),
             total: Number(it.totalPrice)
           }))
@@ -123,8 +126,11 @@ function HandleOrders() {
           rejectedDate: o.updatedAt ? new Date(o.updatedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
           rejectionReason: o.rejectionReason || 'Order rejected',
           items: (o.items || []).map((it) => ({
-            name: it.item?.itemName,
+            modelNo: it.item?.modelNo,
+            category: it.item?.category?.name,
+            subcategory: it.item?.subcategory?.name,
             quantity: Number(it.quantity),
+            unit: it.item?.unit?.name,
             unitPrice: Number(it.unitPrice),
             total: Number(it.totalPrice)
           }))
@@ -226,7 +232,14 @@ function HandleOrders() {
   const handleProcess = async (orderId, discount) => {
     setProcessingOrderId(orderId);
     try {
-      const response = await updateOrderStatus(orderId, { status: 'approved' });
+      const discountPct = discountPercent || 0;
+      const discountAmt = discount || 0;
+      
+      const response = await updateOrderStatus(orderId, { 
+        status: 'approved',
+        discountPercent: discountPct,
+        discountAmount: discountAmt
+      });
 
       // Remove from pending lists immediately and decrement count
       setPendingOrders(prev => prev.filter(o => o.id !== orderId));

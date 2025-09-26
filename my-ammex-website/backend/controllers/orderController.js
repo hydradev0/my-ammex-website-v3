@@ -90,6 +90,8 @@ const createOrder = async (req, res, next) => {
       userId,          // the employee handling the order
       orderNumber,
       totalAmount,
+      // Ensure NOT NULL constraint on finalAmount
+      finalAmount: totalAmount,
       shippingAddress,
       billingAddress,
       notes,
@@ -167,23 +169,47 @@ const updateOrder = async (req, res, next) => {
 // Update order status
 const updateOrderStatus = async (req, res, next) => {
   try {
-    const { Order, OrderItem, Item } = getModels();
+    const { Order, OrderItem, Item, Category, Unit } = getModels();
     const { createInvoiceFromOrder } = require('./invoiceController');
     const { id } = req.params;
-    const { status, rejectionReason } = req.body;
+    const { status, rejectionReason, discountPercent, discountAmount } = req.body;
     const userId = req.user.id;
 
     // Accept either numeric DB id or orderNumber
     let order = null;
     if (/^\d+$/.test(String(id))) {
       order = await Order.findByPk(id, {
-        include: [{ model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }]
+        include: [{ 
+          model: OrderItem, 
+          as: 'items', 
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' },
+              { model: Unit, as: 'unit' }
+            ]
+          }] 
+        }]
       });
     }
     if (!order) {
       order = await Order.findOne({ 
         where: { orderNumber: String(id) },
-        include: [{ model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }]
+        include: [{ 
+          model: OrderItem, 
+          as: 'items', 
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' },
+              { model: Unit, as: 'unit' }
+            ]
+          }] 
+        }]
       });
     }
     if (!order) {
@@ -227,7 +253,7 @@ const updateOrderStatus = async (req, res, next) => {
           if (item.quantity < orderItem.quantity) {
             return res.status(400).json({
               success: false,
-              message: `Insufficient inventory for item "${item.itemName}". Available: ${item.quantity}, Required: ${orderItem.quantity}`
+              message: `Insufficient inventory for item "${item.subcategory?.name || item.category?.name || 'Unknown'} - ${item.modelNo}". Available: (${item.quantity}) Required: (${orderItem.quantity})`
             });
           }
         }
@@ -257,7 +283,7 @@ const updateOrderStatus = async (req, res, next) => {
         const item = orderItem.item;
         if (item) {
           const newQuantity = item.quantity + orderItem.quantity;
-          console.log(`Restoring inventory for ${item.itemName}: ${item.quantity} + ${orderItem.quantity} = ${newQuantity}`);
+          console.log(`Restoring inventory for ${item.subcategory?.name || item.category?.name || 'Unknown'} - ${item.modelNo}: ${item.quantity} + ${orderItem.quantity} = ${newQuantity}`);
           await item.update({ quantity: newQuantity });
         }
       }
@@ -269,6 +295,18 @@ const updateOrderStatus = async (req, res, next) => {
 
     // Persist provided status directly. If rejecting, capture reason in notes.
     const updateData = { status };
+    
+    // Handle discount when approving order
+    if (status === 'approved' && (discountPercent !== undefined || discountAmount !== undefined)) {
+      const discountPct = parseFloat(discountPercent) || 0;
+      const discountAmt = parseFloat(discountAmount) || 0;
+      const finalAmt = order.totalAmount - discountAmt;
+      
+      updateData.discountPercent = discountPct;
+      updateData.discountAmount = discountAmt;
+      updateData.finalAmount = finalAmt;
+    }
+    
     if (status === 'rejected' && typeof rejectionReason === 'string' && rejectionReason.trim() !== '') {
       // Persist rejection reason into notes (non-destructive: append or set)
       const prefix = 'REJECT:';
@@ -283,6 +321,9 @@ const updateOrderStatus = async (req, res, next) => {
     }
 
     await order.update(updateData);
+
+    // Refresh order data to get updated values (including discount information)
+    await order.reload();
 
     // Create notification when order is rejected
     if (status === 'rejected') {
@@ -357,7 +398,7 @@ const deleteOrder = async (req, res, next) => {
 // Get orders by status (includes customer and item details)
 const getOrdersByStatus = async (req, res, next) => {
   try {
-    const { Order, OrderItem, Customer, Item } = getModels();
+    const { Order, OrderItem, Customer, Item, Category, Unit } = getModels();
     const { status } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
@@ -365,7 +406,19 @@ const getOrdersByStatus = async (req, res, next) => {
       where: { status },
       include: [
         { model: Customer, as: 'customer' },
-        { model: OrderItem, as: 'items', include: [{ model: Item, as: 'item' }] }
+        { 
+          model: OrderItem, 
+          as: 'items', 
+          include: [{ 
+            model: Item, 
+            as: 'item',
+            include: [
+              { model: Category, as: 'category' },
+              { model: Category, as: 'subcategory' },
+              { model: Unit, as: 'unit' }
+            ]
+          }] 
+        }
       ],
       limit: parseInt(limit),
       offset: (page - 1) * limit,

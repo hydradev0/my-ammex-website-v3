@@ -66,9 +66,11 @@ const ProcessedInvoices = () => {
             quantity: Number(item.quantity),
             unit: item.item?.unit?.name || 'pcs',
             unitPrice: Number(item.unitPrice),
-            total: Number(item.totalPrice)
+            total: Number(item.totalPrice),
+
           })),
-          discountApplied: 0,
+          discountPercent: Number(invoice.order?.discountPercent || 0),
+          discountAmount: Number(invoice.order?.discountAmount || 0),
           createdDate: invoice.createdAt,
           lastUpdated: invoice.updatedAt,
           status: invoice.status

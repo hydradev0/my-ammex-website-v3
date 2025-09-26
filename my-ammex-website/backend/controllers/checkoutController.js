@@ -179,6 +179,8 @@ const confirmCheckout = async (req, res, next) => {
       userId,
       orderNumber,
       totalAmount,
+      // Ensure NOT NULL constraint on finalAmount
+      finalAmount: totalAmount,
       shippingAddress: JSON.stringify({
         name: customer.customerName,
         street: customer.street,

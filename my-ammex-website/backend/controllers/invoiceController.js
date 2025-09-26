@@ -52,9 +52,9 @@ const createInvoiceFromOrder = async (orderId, userId) => {
       customerId: order.customerId,
       invoiceDate: new Date(),
       dueDate,
-      totalAmount: order.totalAmount,
+      totalAmount: order.finalAmount || order.totalAmount, // Use finalAmount if available (with discount), otherwise totalAmount
       paidAmount: 0.00,
-      remainingBalance: order.totalAmount,
+      remainingBalance: order.finalAmount || order.totalAmount, // Use finalAmount if available (with discount), otherwise totalAmount
       status: 'awaiting payment',
       paymentTerms: '30 days',
       createdBy: userId

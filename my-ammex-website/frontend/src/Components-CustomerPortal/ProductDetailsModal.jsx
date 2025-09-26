@@ -248,10 +248,11 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
               {/* Product Info */}
               <div className="w-full lg:w-1/2 p-3 lg:p-6 flex-1">
                 <div className="space-y-3 lg:space-y-6 pb-3 lg:pb-6">
-                  {/* Product Title and Category */}
+                  {/* Product Model and Category */}
                   <div>
-                    <h1 className="text-lg lg:text-2xl font-bold text-gray-900 mb-1 lg:mb-2">{product.name}</h1>
-                    <p className="text-xs lg:text-sm text-gray-500">{product.category}</p>
+                    <h1 className="text-lg lg:text-2xl font-bold text-gray-900 mb-1 lg:mb-2">{product.modelNo}</h1>
+                    <p className="text-xs lg:text-sm text-gray-500 mb-2">{product.category}</p>
+                    <p className="text-xs lg:text-sm text-gray-500">{product.subcategory}</p>
                   </div>
 
                   {/* Price */}
@@ -273,10 +274,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
 
                   {/*Space*/}
 
-                  {/*subcategory*/}
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs lg:text-sm text-gray-500">{product.subcategory}</span>
-                  </div>
 
                   {/* Quantity Selector */}
                   <div className="space-y-1.5 lg:space-y-2">

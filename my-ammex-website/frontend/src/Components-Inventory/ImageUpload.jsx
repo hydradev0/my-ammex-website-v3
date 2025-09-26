@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, X, Image as ImageIcon, AlertCircle, Image} from 'lucide-react';
+import { X, Image as ImageIcon, AlertCircle, Image} from 'lucide-react';
 import PropTypes from 'prop-types';
 
 const ImageUpload = ({ 
