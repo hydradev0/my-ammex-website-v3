@@ -3,7 +3,7 @@ const { getModels } = require('../config/db');
 // Get customer's active cart
 const getCustomerCart = async (req, res) => {
   try {
-    const { Cart, CartItem, Item } = getModels();
+    const { Cart, CartItem, Item, Category, Unit } = getModels();
     const { customerId } = req.params;
 
     // Find or create active cart for customer
@@ -25,7 +25,24 @@ const getCustomerCart = async (req, res) => {
       include: [{
         model: Item,
         as: 'item',
-        attributes: ['id', 'itemName', 'itemCode', 'price', 'quantity', 'description']
+        attributes: ['id', 'itemName', 'modelNo', 'itemCode', 'price', 'quantity', 'description', 'vendor'],
+        include: [
+          {
+            model: Category,
+            as: 'category',
+            attributes: ['name']
+          },
+          {
+            model: Category,
+            as: 'subcategory',
+            attributes: ['name']
+          },
+          {
+            model: Unit,
+            as: 'unit',
+            attributes: ['name']
+          }
+        ]
       }],
       order: [['addedAt', 'DESC']]
     });
@@ -62,7 +79,7 @@ const getCustomerCart = async (req, res) => {
 // Add item to cart
 const addToCart = async (req, res) => {
   try {
-    const { Cart, CartItem, Item } = getModels();
+    const { Cart, CartItem, Item, Category, Unit } = getModels();
     const { customerId } = req.params;
     const { itemId, quantity = 1 } = req.body;
 
@@ -152,7 +169,7 @@ const addToCart = async (req, res) => {
 // Update cart item quantity
 const updateCartItem = async (req, res) => {
   try {
-    const { Cart, CartItem, Item } = getModels();
+    const { Cart, CartItem, Item, Category, Unit } = getModels();
     const { cartItemId } = req.params;
     const { quantity } = req.body;
 

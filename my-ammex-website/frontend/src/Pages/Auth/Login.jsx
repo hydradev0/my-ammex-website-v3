@@ -76,7 +76,7 @@ const Login = () => {
       
       if (result.success) {
         // Route exists in App.jsx and is protected
-        navigate('/Home/Dashboard');
+        navigate('/home/dashboard');
       }
     } catch (err) {
       setError(err.message || 'Failed to load resource. Please try again.');

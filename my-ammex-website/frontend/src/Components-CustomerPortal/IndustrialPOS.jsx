@@ -87,6 +87,7 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
       return {
         id: item.id,
         modelNo: item.modelNo,
+        name: item.itemName,
         category: item.category?.name || 'Uncategorized',
         subcategory: item.subcategory?.name || null,
         price: parseFloat(item.price) || 0,
@@ -171,10 +172,12 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
         return;
       }
 
-      // Use hybrid cart service
+      // Use main cart service - BULLETPROOF APPROACH
+      console.log('🛒 [CART SERVICE] Adding item via main service:', { itemId: product.id, quantity: product.quantity, name: product.name });
       const result = await addToCart(user.id, product.id, product.quantity, product);
       
       if (result.success) {
+        console.log('🛒 [CART SERVICE] Item added successfully:', result.cart.length, 'items');
         setCart(result.cart);
         
         // Show success toast
@@ -218,28 +221,22 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
             localStorage.setItem('customerCart', JSON.stringify(cleanedCart));
           } else {
             // Fallback to localStorage
+            console.log('🛒 [CART SERVICE] Fallback to localStorage');
             const localCart = getLocalCart();
-            const cleanedLocalCart = cleanCart(localCart);
-            setCart(cleanedLocalCart);
-            // Update localStorage with cleaned cart
-            localStorage.setItem('customerCart', JSON.stringify(cleanedLocalCart));
+            setCart(localCart);
           }
         } catch (error) {
           console.error('Error initializing cart:', error);
           // Fallback to localStorage
+          console.log('🛒 [CART SERVICE] Error fallback to localStorage');
           const localCart = getLocalCart();
-          const cleanedLocalCart = cleanCart(localCart);
-          setCart(cleanedLocalCart);
-          // Update localStorage with cleaned cart
-          localStorage.setItem('customerCart', JSON.stringify(cleanedLocalCart));
+          setCart(localCart);
         }
       } else {
-        // No user logged in, use localStorage only
+        // No user logged in, use localStorage
+        console.log('🛒 [CART SERVICE] No user, using localStorage');
         const localCart = getLocalCart();
-        const cleanedLocalCart = cleanCart(localCart);
-        setCart(cleanedLocalCart);
-        // Update localStorage with cleaned cart
-        localStorage.setItem('customerCart', JSON.stringify(cleanedLocalCart));
+        setCart(localCart);
       }
     };
 

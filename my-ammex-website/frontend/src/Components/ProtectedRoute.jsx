@@ -24,16 +24,16 @@ const ProtectedRoute = ({ children, requiredRole = null, allowedRoles = null }) 
     if (!allowedRoles.includes(user?.role)) {
       // If user is Client and trying to access non-Client routes, redirect to Products
       if (user?.role === 'Client') {
-        return <Navigate to="/Products" replace />;
+        return <Navigate to="/products" replace />;
       }
-      return <Navigate to="/Home/Dashboard" replace />;
+      return <Navigate to="/home/dashboard" replace />;
     }
   } else if (requiredRole && user?.role !== requiredRole) {
     // If user is Client and trying to access non-Client routes, redirect to Products
     if (user?.role === 'Client') {
-      return <Navigate to="/Products" replace />;
+      return <Navigate to="/products" replace />;
     }
-    return <Navigate to="/Home/Dashboard" replace />;
+    return <Navigate to="/home/dashboard" replace />;
   }
 
   return children;

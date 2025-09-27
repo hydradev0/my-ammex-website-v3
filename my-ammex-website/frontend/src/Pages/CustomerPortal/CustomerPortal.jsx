@@ -44,7 +44,7 @@ const CustomerPortal = () => {
   if (loading) {
     return (
       <>
-        <TopBarPortal cartItemCount={cartItemCount} />
+        <TopBarPortal  />
         <div className="flex items-center justify-center min-h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3182ce] mx-auto mb-4"></div>
@@ -58,7 +58,7 @@ const CustomerPortal = () => {
   if (error) {
     return (
       <>
-        <TopBarPortal cartItemCount={cartItemCount} />
+        <TopBarPortal />
         <div className="flex items-center justify-center min-h-[calc(100vh-140px)]">
           <div className="text-center">
             <div className="text-red-500 text-xl mb-4">⚠️</div>
@@ -77,7 +77,7 @@ const CustomerPortal = () => {
 
   return (
     <>
-      <TopBarPortal cartItemCount={cartItemCount} />
+      <TopBarPortal />
       <IndustrialPOS 
         items={items} 
         categories={categories}

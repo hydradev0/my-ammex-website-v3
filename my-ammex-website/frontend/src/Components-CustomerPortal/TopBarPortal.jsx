@@ -5,11 +5,13 @@ import { Bell, User, ShoppingCart, X, AlertCircle, CreditCard, ExternalLink, Pac
 import { useNotifications } from '../contexts/NotificationContext';
 import { appealRejectedPayment } from '../services/paymentService';
 import { appealRejectedOrder } from '../services/orderService';
+import { getLocalCart } from '../services/cartService';
 
-function TopBar({ cartItemCount = 0 }) {
+function TopBarPortal() {
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [realTimeCartCount, setRealTimeCartCount] = useState(0);
   const notificationsRef = useRef(null);
   
   const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, refreshNotifications } = useNotifications();
@@ -49,6 +51,52 @@ function TopBar({ cartItemCount = 0 }) {
       window.scrollTo(0, scrollY);
     };
   }, [isAppealOpen]);
+
+  // Optimized cart count update - only when needed
+  useEffect(() => {
+    const updateCartCount = () => {
+      try {
+        const cart = getLocalCart();
+        const totalItems = cart.reduce((total, item) => total + (item.quantity || 0), 0);
+        
+        // Only update state if count actually changed
+        setRealTimeCartCount(prevCount => {
+          if (prevCount !== totalItems) {
+            return totalItems;
+          }
+          return prevCount;
+        });
+      } catch (error) {
+        console.error('Error updating cart count:', error);
+      }
+    };
+
+    // Update immediately
+    updateCartCount();
+
+    // Listen for storage changes (when cart is updated in other tabs/components)
+    const handleStorageChange = (e) => {
+      if (e.key === 'customerCart') {
+        updateCartCount();
+      }
+    };
+
+    // Listen for custom cart update events (from same tab)
+    const handleCartUpdate = () => {
+      updateCartCount();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('cartUpdated', handleCartUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, []);
+
+  // Note: We no longer use the cartItemCount prop since we calculate it in real-time
+  // This ensures the cart count is always accurate and up-to-date
 
   // Handle click outside to close notifications dropdown
   useEffect(() => {
@@ -297,9 +345,9 @@ function TopBar({ cartItemCount = 0 }) {
         >
           <ShoppingCart size={20} />
           <span className="text-sm">Cart</span>
-          {cartItemCount > 0 && (
+          {realTimeCartCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-              {cartItemCount}
+              {realTimeCartCount}
             </span>
           )}
         </button>
@@ -374,4 +422,4 @@ function TopBar({ cartItemCount = 0 }) {
   );
 }
 
-export default TopBar;
+export default TopBarPortal;

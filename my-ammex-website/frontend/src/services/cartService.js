@@ -1,6 +1,9 @@
 import { API_BASE_URL, apiCall } from '../utils/apiConfig';
 
 // Hybrid cart service - localStorage for immediate UI, database for persistence
+// BULLETPROOF: Global cart state to prevent multiple mounting issues
+let globalCartState = null;
+let isCartInitialized = false;
 
 // Debounce mechanism to prevent too many database calls
 let syncTimeout = null;
@@ -49,8 +52,14 @@ export const getCustomerCart = async (customerId) => {
 // Add item to cart (hybrid approach)
 export const addToCart = async (customerId, itemId, quantity = 1, productData = null) => {
   try {
-    // 1. Immediate UI update with localStorage
-    const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+
+    // BULLETPROOF: Use global state if available, otherwise read from localStorage
+    let savedCart;
+    if (globalCartState && isCartInitialized) {
+      savedCart = globalCartState;
+    } else {
+      savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    }
     
     // Find existing item by ID
     const existingIndex = savedCart.findIndex(item => item.id === itemId);
@@ -61,6 +70,7 @@ export const addToCart = async (customerId, itemId, quantity = 1, productData = 
       const existingItem = savedCart[existingIndex];
       const newQuantity = Math.min(existingItem.quantity + quantity, productData?.stock || 999);
       
+      
       updatedCart = [...savedCart];
       updatedCart[existingIndex] = {
         ...existingItem,
@@ -70,20 +80,41 @@ export const addToCart = async (customerId, itemId, quantity = 1, productData = 
       // Create new cart item with product data
       const cartItem = {
         id: itemId,
-        name: productData?.name || 'Product',
         price: productData?.price || 0,
         stock: productData?.stock || 0,
         itemCode: productData?.itemCode || '',
+        modelNo: productData?.modelNo || '',
+        category: productData?.category || '',
         vendor: productData?.vendor || '',
         description: productData?.description || '',
         unit: productData?.unit || 'pcs',
         quantity: quantity
       };
+      
       updatedCart = [...savedCart, cartItem];
     }
     
-    // Update localStorage immediately
+    
+    // BULLETPROOF: Update both global state and localStorage
+    globalCartState = updatedCart;
+    isCartInitialized = true;
+    
     localStorage.setItem('customerCart', JSON.stringify(updatedCart));
+
+    // BULLETPROOF: Triple verification
+    const verifyCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    
+    if (verifyCart.length !== updatedCart.length) {
+      console.error('🚨 [CART ERROR] localStorage write failed! Expected:', updatedCart.length, 'Got:', verifyCart.length);
+      // Force fix
+      localStorage.setItem('customerCart', JSON.stringify(updatedCart));
+      globalCartState = updatedCart;
+    }
+
+    // BULLETPROOF: Create backup immediately after successful localStorage write
+    if (updatedCart.length > 0) {
+      localStorage.setItem('customerCart_backup', JSON.stringify(updatedCart));
+    }
     
     // 2. Sync to database in background (don't wait for response)
     if (customerId) {
@@ -91,18 +122,28 @@ export const addToCart = async (customerId, itemId, quantity = 1, productData = 
       debouncedSync(customerId, updatedCart);
     }
     
+    // Dispatch custom event for real-time updates
+    window.dispatchEvent(new CustomEvent('cartUpdated', { 
+      detail: { action: 'add', itemId, quantity, totalItems: updatedCart.length } 
+    }));
+    
     return { success: true, cart: updatedCart };
   } catch (error) {
-    console.error('Error adding item to cart:', error);
+    console.error('❌ [CART ERROR] Error adding item to cart:', error);
     throw error;
   }
 };
 
-  // Update cart item quantity (hybrid approach)
+  // Update cart item quantity (hybrid approach) - BULLETPROOF
 export const updateCartItem = async (cartItemId, quantity, customerId) => {
   try {
-    // 1. Immediate UI update with localStorage
-    const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    // BULLETPROOF: Use global state if available
+    let savedCart;
+    if (globalCartState && isCartInitialized) {
+      savedCart = globalCartState;
+    } else {
+      savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    }
     
     // Find the item by ID and update quantity
     const itemIndex = savedCart.findIndex(item => item.id === cartItemId);
@@ -124,12 +165,28 @@ export const updateCartItem = async (cartItemId, quantity, customerId) => {
       };
     }
     
+    // BULLETPROOF: Update both global state and localStorage
+    globalCartState = updatedCart;
+    isCartInitialized = true;
     localStorage.setItem('customerCart', JSON.stringify(updatedCart));
+    
+    // BULLETPROOF: Create backup after update
+    if (updatedCart.length > 0) {
+      localStorage.setItem('customerCart_backup', JSON.stringify(updatedCart));
+    } else {
+      // Clear backup if cart is empty
+      localStorage.removeItem('customerCart_backup');
+    }
     
     // 2. Sync to database in background
     if (customerId) {
       debouncedSync(customerId, updatedCart);
     }
+    
+    // Dispatch custom event for real-time updates
+    window.dispatchEvent(new CustomEvent('cartUpdated', { 
+      detail: { action: 'update', itemId: cartItemId, quantity, totalItems: updatedCart.length } 
+    }));
     
     return { success: true, cart: updatedCart };
   } catch (error) {
@@ -138,15 +195,33 @@ export const updateCartItem = async (cartItemId, quantity, customerId) => {
   }
 };
 
-// Remove item from cart (hybrid approach)
+// Remove item from cart (hybrid approach) - SIMPLIFIED
 export const removeFromCart = async (cartItemId, customerId) => {
   try {
-    // 1. Immediate UI update with localStorage
-    const savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    // BULLETPROOF: Use global state if available
+    let savedCart;
+    if (globalCartState && isCartInitialized) {
+      savedCart = globalCartState;
+    } else {
+      savedCart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    }
+    
     const updatedCart = savedCart.filter(item => item.id !== cartItemId);
+    
+    // BULLETPROOF: Update both global state and localStorage
+    globalCartState = updatedCart;
+    isCartInitialized = true;
     localStorage.setItem('customerCart', JSON.stringify(updatedCart));
 
-    // 2. Ensure DB removal happens immediately (no debounce) to avoid flash-back
+    // BULLETPROOF: Create backup after removal
+    if (updatedCart.length > 0) {
+      localStorage.setItem('customerCart_backup', JSON.stringify(updatedCart));
+    } else {
+      // Clear backup if cart is empty
+      localStorage.removeItem('customerCart_backup');
+    }
+
+    // 2. Remove from database immediately (explicit user action)
     if (customerId) {
       cancelDebouncedSync();
       const token = localStorage.getItem('token');
@@ -156,31 +231,46 @@ export const removeFromCart = async (cartItemId, customerId) => {
           const dbCart = await getCustomerCart(customerId);
           const existing = dbCart?.data?.items?.find(ci => ci?.item?.id === cartItemId);
           if (existing?.id) {
-            await fetch(`${API_BASE_URL}/cart/items/${existing.id}`, {
+            const response = await fetch(`${API_BASE_URL}/cart/items/${existing.id}`, {
               method: 'DELETE',
               headers: {
                 Authorization: `Bearer ${token}`
               }
             });
+            
+            if (!response.ok) {
+              console.error('Failed to remove from database:', response.status);
+            }
           }
         } catch (err) {
-          console.error('Immediate DB remove failed (will be reconciled on next sync):', err);
+          console.error('Database removal failed:', err);
         }
       }
     }
 
+    
+    // Dispatch custom event for real-time updates
+    window.dispatchEvent(new CustomEvent('cartUpdated', { 
+      detail: { action: 'remove', itemId: cartItemId, totalItems: updatedCart.length } 
+    }));
+    
     return { success: true, cart: updatedCart };
   } catch (error) {
-    console.error('Error removing item from cart:', error);
+    console.error('❌ [REMOVE ERROR] Error removing item from cart:', error);
     throw error;
   }
 };
 
-// Clear customer's cart (hybrid approach)
+// Clear customer's cart (hybrid approach) - BULLETPROOF
 export const clearCart = async (customerId) => {
   try {
-    // 1. Immediate UI update with localStorage
+    // BULLETPROOF: Update both global state and localStorage
+    globalCartState = [];
+    isCartInitialized = true;
     localStorage.setItem('customerCart', JSON.stringify([]));
+    
+    // BULLETPROOF: Clear backup when cart is cleared
+    localStorage.removeItem('customerCart_backup');
     
     // 2. Ensure DB is cleared immediately (no debounce) to avoid flash-back
     if (customerId) {
@@ -197,10 +287,105 @@ export const clearCart = async (customerId) => {
       }
     }
     
+    // Dispatch custom event for real-time updates
+    window.dispatchEvent(new CustomEvent('cartUpdated', { 
+      detail: { action: 'clear', totalItems: 0 } 
+    }));
+    
     return { success: true, cart: [] };
   } catch (error) {
     console.error('Error clearing cart:', error);
     throw error;
+  }
+};
+
+// Recover cart from database when localStorage and backup are empty
+export const recoverCartFromDatabase = async (customerId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return [];
+    }
+
+    // Get database cart
+    const dbCart = await getCustomerCart(customerId);
+    const dbItems = dbCart.data?.items || [];
+
+    if (dbItems.length > 0) {
+      // Transform database items to localStorage format
+      const transformedItems = dbItems.map(cartItem => ({
+        id: cartItem.item.id,
+        name: cartItem.item.itemName,
+        price: parseFloat(cartItem.unitPrice),
+        stock: cartItem.item.quantity,
+        itemCode: cartItem.item.itemCode,
+        modelNo: cartItem.item.modelNo,
+        vendor: cartItem.item.vendor,
+        description: cartItem.item.description,
+        unit: cartItem.item.unit?.name || 'pcs',
+        quantity: cartItem.quantity,
+        category: cartItem.item.category?.name || null,
+        subcategory: cartItem.item.subcategory?.name || null
+      }));
+
+      // Restore to localStorage and create backup
+      localStorage.setItem('customerCart', JSON.stringify(transformedItems));
+      localStorage.setItem('customerCart_backup', JSON.stringify(transformedItems));
+      globalCartState = transformedItems;
+      isCartInitialized = true;
+
+      return transformedItems;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error('Failed to recover cart from database:', error);
+    return [];
+  }
+};
+
+// Clean up database cart to match localStorage (remove stale items)
+export const cleanupDatabaseCart = async (customerId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+
+    // Get current localStorage cart
+    const localCart = getLocalCart();
+    const localItemIds = localCart.map(item => item.id);
+
+    // Get database cart
+    const dbCart = await getCustomerCart(customerId);
+    const dbItems = dbCart.data?.items || [];
+    const dbItemIds = dbItems.map(item => item.item.id);
+
+    // Find items in database that are not in localStorage
+    const staleItems = dbItems.filter(dbItem => !localItemIds.includes(dbItem.item.id));
+
+    if (staleItems.length > 0) {
+      // Remove stale items from database
+      for (const staleItem of staleItems) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/cart/items/${staleItem.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            console.error('Failed to remove stale item:', staleItem.item.id);
+          }
+        } catch (error) {
+          console.error('Error removing stale item:', error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Database cleanup failed:', error);
   }
 };
 
@@ -264,16 +449,51 @@ export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = 
 };
 
 
-// Get cart from localStorage (for immediate UI updates)
+// Get cart from localStorage (for immediate UI updates) with bulletproof global state
 export const getLocalCart = () => {
   try {
+    // BULLETPROOF: Use global state if available
+    if (globalCartState && isCartInitialized) {
+      return globalCartState;
+    }
+
+    // Read from localStorage
     const cart = JSON.parse(localStorage.getItem('customerCart') || '[]');
+    
+    // BACKUP PROTECTION: If cart is empty but we have a backup, restore it
+    if (cart.length === 0) {
+      const backup = localStorage.getItem('customerCart_backup');
+      if (backup) {
+        try {
+          const backupCart = JSON.parse(backup);
+          if (backupCart.length > 0) {
+            localStorage.setItem('customerCart', backup);
+            globalCartState = backupCart;
+            isCartInitialized = true;
+            return backupCart;
+          }
+        } catch (e) {
+          console.error('Failed to restore backup:', e);
+        }
+      }
+    }
+    
     // Remove any duplicate items by ID
-    return cart.filter((item, index, self) => 
+    const uniqueCart = cart.filter((item, index, self) => 
       index === self.findIndex(t => t.id === item.id)
     );
+    
+    // Update global state
+    globalCartState = uniqueCart;
+    isCartInitialized = true;
+    
+    // Create backup if we have items
+    if (uniqueCart.length > 0) {
+      localStorage.setItem('customerCart_backup', JSON.stringify(uniqueCart));
+    }
+    return uniqueCart;
   } catch (error) {
-    console.error('Error reading local cart:', error);
+    console.error('❌ [GET LOCAL ERROR] Error reading local cart:', error);
     return [];
   }
 };
@@ -297,11 +517,15 @@ export const cleanCart = (cart) => {
   );
 };
 
-// Sync cart to database (background operation)
+// Sync cart to database (background operation) - SIMPLIFIED APPROACH
 const syncCartToDatabase = async (customerId, cartItems) => {
   try {
     const token = localStorage.getItem('token');
-    if (!token) return; // Skip if not authenticated
+    if (!token) {
+      return; // Skip if not authenticated
+    }
+    
+    // SIMPLIFIED: Only add/update items, NEVER remove items
     
     // Get current database cart
     const dbCart = await getCustomerCart(customerId);
@@ -313,14 +537,14 @@ const syncCartToDatabase = async (customerId, cartItems) => {
       existingItemsMap.set(cartItem.item.id, cartItem);
     });
     
-    // Process each cart item
+    // Process each cart item - ONLY ADD OR UPDATE, NEVER REMOVE
     for (const item of cartItems) {
       const existingItem = existingItemsMap.get(item.id);
       
       if (existingItem) {
         // Update existing item if quantity changed
         if (existingItem.quantity !== item.quantity) {
-          await fetch(`${API_BASE_URL}/cart/items/${existingItem.id}`, {
+          const response = await fetch(`${API_BASE_URL}/cart/items/${existingItem.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -328,10 +552,13 @@ const syncCartToDatabase = async (customerId, cartItems) => {
             },
             body: JSON.stringify({ quantity: item.quantity }),
           });
+          
+          if (!response.ok) {
+            console.error('Failed to update item:', response.status, response.statusText);
+          }
         }
       } else {
-        // Add new item
-        await fetch(`${API_BASE_URL}/cart/${customerId}/items`, {
+        const response = await fetch(`${API_BASE_URL}/cart/${customerId}/items`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -342,23 +569,14 @@ const syncCartToDatabase = async (customerId, cartItems) => {
             quantity: item.quantity 
           }),
         });
+        
+        if (!response.ok) {
+          console.error('Failed to add item:', response.status, response.statusText);
+        }
       }
     }
     
-    // Remove items that are no longer in the cart
-    for (const existingItem of existingItems) {
-      const stillExists = cartItems.some(item => item.id === existingItem.item.id);
-      if (!stillExists) {
-        await fetch(`${API_BASE_URL}/cart/items/${existingItem.id}`, {
-          method: 'DELETE',
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-      }
-    }
-    
-    console.log('Cart synced to database successfully');
+    // SIMPLIFIED: NO REMOVAL LOGIC - Never remove items from database
   } catch (error) {
     console.error('Error syncing cart to database:', error);
     // Don't throw error - this is a background operation
@@ -405,9 +623,10 @@ const syncToDatabase = async (customerId, itemId, quantity, productData) => {
 };
 
 // Initialize cart from database (when user logs in)
-export const initializeCartFromDatabase = async (customerId) => {
+export const initializeCartFromDatabase = async (customerId, overwriteLocalStorage = false) => {
   try {
     const dbCart = await getCustomerCart(customerId);
+    
     if (dbCart.success && dbCart.data?.items) {
       // Transform database cart items to match localStorage format
       const transformedItems = dbCart.data.items.map(cartItem => ({
@@ -416,20 +635,27 @@ export const initializeCartFromDatabase = async (customerId) => {
         price: parseFloat(cartItem.unitPrice),
         stock: cartItem.item.quantity,
         itemCode: cartItem.item.itemCode,
+        modelNo: cartItem.item.modelNo,
         vendor: cartItem.item.vendor,
         description: cartItem.item.description,
         unit: cartItem.item.unit?.name || 'pcs',
-        quantity: cartItem.quantity
+        quantity: cartItem.quantity,
+        category: cartItem.item.category?.name || null,
+        subcategory: cartItem.item.subcategory?.name || null
       }));
       
-      // Update localStorage with database data
-      localStorage.setItem('customerCart', JSON.stringify(transformedItems));
+      // Only update localStorage if explicitly requested (not during sync operations)
+      if (overwriteLocalStorage) {
+        localStorage.setItem('customerCart', JSON.stringify(transformedItems));
+      }
       return transformedItems;
     }
+    
     return [];
   } catch (error) {
     console.error('Error initializing cart from database:', error);
-    return getLocalCart(); // Fallback to localStorage
+    const fallbackCart = getLocalCart();
+    return fallbackCart; // Fallback to localStorage
   }
 };
 

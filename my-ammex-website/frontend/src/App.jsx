@@ -12,6 +12,7 @@ import SalesQuotes from './Pages/Sales/SalesQuotes';
 import PurchaseQuotes from './Pages/Purchasing/PurchaseQuotes';
 import PurchaseOrder from './Pages/Purchasing/PurchaseOrder';
 import Inventory from './Pages/Inventory/Inventory';
+import ProductSpecs from './Pages/Inventory/ProductSpecs';
 
 import SalesOrder from './Pages/Sales/SalesOrder';
 import SalesInvoice from './Pages/Sales/SalesInvoice';
@@ -24,7 +25,7 @@ import Profile from './Components-CustomerPortal/Profile';
 import Orders from './Components-CustomerPortal/Orders';
 import Invoice from './Components-CustomerPortal/Invoice';
 import Payment from './Components-CustomerPortal/Payment';
-import ProductSpecs from './Pages/Inventory/ProductSpecs';
+import LandingPage from './Components-CustomerPortal/LandingPage';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import Login from './Pages/Auth/Login';
@@ -39,7 +40,7 @@ import CustomerPurchase from './Components-Analytics/CustomerPurchase';
 
 function AppContent() {
   const location = useLocation();
-  const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/Home/HistoricalSales';
+  const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/landingpage';
   const shouldShowAnalyticsGradient = location.pathname === '/home/analytics/salestrend' || location.pathname === '/home/analytics/customerpurchase';
   
   useEffect(() => {
@@ -210,6 +211,14 @@ function AppContent() {
         <Route path="admin/accountmanagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
         
         {/* Customer Portal - Client role only */}
+        <Route
+          path="landingpage"
+          element={
+            <ProtectedRoute allowedRoles={["Client"]}>
+              <LandingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="products"
           element={

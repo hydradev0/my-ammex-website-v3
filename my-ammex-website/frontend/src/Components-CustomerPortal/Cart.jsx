@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import ErrorModal from "../Components/ErrorModal";
 import TopBarPortal from './TopBarPortal';
-import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm } from '../services/cartService';
+import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm, recoverCartFromDatabase } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
 
 const Cart = () => {
@@ -140,39 +140,60 @@ const Cart = () => {
     });
   };
 
-  // Initialize cart on component mount (prefer local, then background-merge DB)
-useEffect(() => {
-  const init = async () => {
-    setIsLoading(true);
+  // Initialize cart using the consolidated cartService
+  useEffect(() => {
+    const initializeCart = async () => {
+      setIsLoading(true);
+      
+      let cart = getLocalCart();
+      
+      // If we have a user, always try to fetch fresh data from database
+      if (user?.id) {
+        try {
+          const recoveredCart = await recoverCartFromDatabase(user.id);
+          if (recoveredCart.length > 0) {
+            cart = recoveredCart;
+          }
+        } catch (error) {
+          console.error('Database recovery failed:', error);
+        }
+      }
+      
+      setCart(cart);
+      setSelectedIds(new Set(cart.map(it => it.id)));
+      setIsLoading(false);
+    };
 
-    // 1) Show local immediately
-    const local = getLocalCart();
-    const uniqueLocal = local.filter((it, i, arr) => i === arr.findIndex(t => t.id === it.id));
-    setCart(uniqueLocal);
-    setSelectedIds(new Set(uniqueLocal.map(it => it.id)));
-    setIsLoading(false);
+    initializeCart();
+  }, [user?.id]); // Re-run if user changes
 
-    // 2) Background merge with DB (only add items that aren't in local; don't reduce/overwrite local)
-    if (!user?.id) return;
-    try {
-      const dbCart = await initializeCartFromDatabase(user.id); // returns array, but don't overwrite localStorage here
-      if (!Array.isArray(dbCart) || dbCart.length === 0) return;
+  // Event-driven cart monitoring (no more polling!)
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      const currentCart = getLocalCart();
+      
+      if (currentCart.length !== cart.length) {
+        setCart(currentCart);
+        setSelectedIds(new Set(currentCart.map(it => it.id)));
+      }
+    };
 
-      const localIds = new Set(uniqueLocal.map(it => it.id));
-      const toAppend = dbCart.filter(dbIt => !localIds.has(dbIt.id));
-      if (toAppend.length === 0) return;
+    // Listen for custom cart update events
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    
+    // Listen for storage changes (cross-tab updates)
+    const handleStorageChange = (e) => {
+      if (e.key === 'customerCart') {
+        handleCartUpdate();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
-      const merged = [...uniqueLocal, ...toAppend];
-      localStorage.setItem('customerCart', JSON.stringify(merged));
-      setCart(merged);
-      setSelectedIds(new Set(merged.map(it => it.id)));
-    } catch (_) {
-      // ignore; keep local
-    }
-  };
-
-  init();
-}, [user?.id]);
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [cart.length]);
 
   // Handle click outside preview modal
   useEffect(() => {
@@ -193,7 +214,7 @@ useEffect(() => {
     const handleClickOutside = (event) => {
       if (showSuccessToast && successModalRef.current && event.target === successModalRef.current) {
         setShowSuccessToast(false);
-        navigate('/Products');
+        navigate('/products');
       }
     };
 
@@ -260,7 +281,7 @@ useEffect(() => {
     if (showSuccessToast) {
       const timer = setTimeout(() => {
         setShowSuccessToast(false);
-        navigate('/Products');
+        navigate('/products');
       }, 3000);
       return () => clearTimeout(timer);
     }
@@ -317,6 +338,8 @@ useEffect(() => {
       const result = await updateCartItem(itemId, quantity, user?.id);
       if (result.success) {
         setCart(result.cart);
+      } else {
+        console.error('Failed to update quantity');
       }
     } catch (error) {
       console.error('Error updating quantity:', error);
@@ -390,9 +413,6 @@ useEffect(() => {
     return getSelectedItems().reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const getSelectedTotalItems = () => {
-    return getSelectedItems().reduce((total, item) => total + item.quantity, 0);
-  };
 
   const toggleItemSelected = (itemId) => {
     setSelectedIds(prev => {
@@ -484,7 +504,7 @@ useEffect(() => {
   };
 
   const handleBack = () => {
-    navigate('/Products');
+    navigate('/products');
   };
 
   const handleBreadcrumbClick = (path) => {
@@ -492,7 +512,7 @@ useEffect(() => {
   };
 
   const handleContinueShopping = () => {
-    navigate('/Products');
+    navigate('/products');
   };
   
 // Preview Modal
@@ -569,7 +589,8 @@ useEffect(() => {
               {getSelectedItems().map((item, index) => (
                 <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900">{item.name}</h4>
+                    <h4 className="font-medium text-gray-900">{item.modelNo}</h4>
+                    <p className="text-sm text-gray-500">{item.subcategory || item.category}</p>
                     <p className="text-sm text-gray-500">Qty: {item.quantity} × {item.price.toLocaleString()}</p>
                   </div>
                   <div className="text-right ml-4">
@@ -604,7 +625,7 @@ useEffect(() => {
                 if (hasIssues) return;
                 if (previewWarning?.profileIncomplete) {
                   setShowPreviewModal(false);
-                  navigate('/Products/profile');
+                  navigate('/products/profile');
                 } else {
                   handleConfirmPreview();
                 }
@@ -730,7 +751,7 @@ useEffect(() => {
         {/* Breadcrumb Navigation */}
         <div className="flex items-center text-sm text-gray-500 mb-4 sm:mb-0 sm:-mt-4 sm:-mx-1 md:-mx-30 lg:-mx-40 xl:-mx-48">
           <button 
-            onClick={() => handleBreadcrumbClick('/Products')}
+            onClick={() => handleBreadcrumbClick('/products')}
             className="hover:text-blue-600 cursor-pointer transition-colors"
           >
             Products
@@ -779,7 +800,7 @@ useEffect(() => {
                 <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex flex-col items-center gap-4">
                     <h2 className="text-lg font-semibold text-gray-900">
-                      Cart Items ({getTotalItems()})
+                      Cart Quantity ({getTotalItems()})
                     </h2>
                     <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                       <input
@@ -788,7 +809,7 @@ useEffect(() => {
                         checked={allSelected}
                         onChange={handleToggleSelectAll}
                       />
-                      <span> Select all ({getSelectedTotalItems()}/{getTotalItems()})</span>
+                      <span> Select all ({selectedIds.size}/{cart.length})</span>
                     </label>
                   </div>
                   <button
@@ -820,9 +841,13 @@ useEffect(() => {
                         
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-medium text-gray-900 mb-1">
-                            {item.name}
-                          </h3>
+                        
+                          <div className="text-sm text-gray-500 mb-1">
+                            <span className="font-medium">Model:</span> {item.modelNo || 'N/A'}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-2">
+                            <span className="font-medium">Category:</span> {item.subcategory || item.category || 'N/A'}
+                          </div>
                           <div className="flex justify-between">
                             <p className="text-gray-600 mb-3">
                               ₱{item.price.toLocaleString()}
@@ -945,7 +970,7 @@ useEffect(() => {
                 
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600">
-                    <span>Selected ({getSelectedTotalItems()} items)</span>
+                    <span>Selected ({selectedIds.size} items)</span>
                     <span>₱{getSelectedTotalPrice().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
