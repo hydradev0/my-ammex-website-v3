@@ -1,7 +1,7 @@
-const BASE_URL = import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:5000';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 export async function getHistoricalSales(months = 12) {
-  const url = `${BASE_URL}/api/analytics/historical-sales?months=${months}`;
+  const url = `${API_BASE_URL}/analytics/historical-sales?months=${months}`;
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error(`Historical sales request failed: ${res.status}`);
   const json = await res.json();
@@ -10,7 +10,7 @@ export async function getHistoricalSales(months = 12) {
 }
 
 export async function postForecast({ period = 3, historicalMonths = 12 }) {
-  const url = `${BASE_URL}/api/analytics/forecast`;
+  const url = `${API_BASE_URL}/analytics/forecast`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -24,7 +24,7 @@ export async function postForecast({ period = 3, historicalMonths = 12 }) {
 }
 
 export async function getHistoricalCustomerData(months = 12) {
-  const url = `${BASE_URL}/api/analytics/historical-customer-data?months=${months}`;
+  const url = `${API_BASE_URL}/analytics/historical-customer-data?months=${months}`;
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error(`Historical customer data request failed: ${res.status}`);
   const json = await res.json();
@@ -33,7 +33,7 @@ export async function getHistoricalCustomerData(months = 12) {
 }
 
 export async function postCustomerBulkForecast({ period = 3 } = {}) {
-  const url = `${BASE_URL}/api/analytics/customer-bulk-forecast`;
+  const url = `${API_BASE_URL}/analytics/customer-bulk-forecast`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
