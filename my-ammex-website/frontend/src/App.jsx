@@ -212,7 +212,7 @@ function AppContent() {
         
         {/* Customer Portal - Client role only */}
         <Route
-          path="landingpage"
+          path="landing-page"
           element={
             <ProtectedRoute allowedRoles={["Client"]}>
               <LandingPage />
@@ -269,8 +269,8 @@ function AppContent() {
         />
 
           
-        <Route path="home/analytics/salestrend" element={<SalesTrend />} />
-        <Route path="home/analytics/customerpurchase" element={<CustomerPurchase />} />
+        <Route path="home/analytics/sales-trend" element={<SalesTrend />} />
+        <Route path="home/analytics/customer-purchase" element={<CustomerPurchase />} />
         
         {/* Default Page */}
         <Route path="/" element={<Login />} />

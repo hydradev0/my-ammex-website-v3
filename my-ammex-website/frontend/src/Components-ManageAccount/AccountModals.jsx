@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import ScrollLock from '../Components/ScrollLock';
 
 // Account Creation/Editing Modal
@@ -18,6 +18,10 @@ export const AccountModal = ({
 }) => {
 
   if (!open) return null;
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const modalContent = (
     <>
@@ -100,8 +104,9 @@ export const AccountModal = ({
             {!editMode && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Password</label>
+                <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   autoComplete="new-password"
                   value={formData.password}
@@ -113,6 +118,18 @@ export const AccountModal = ({
                   }`}
                   placeholder="Enter password (min. 6 characters)"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center rounded-r-xl"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+                </div>
                 {fieldErrors?.password && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
                 )}
@@ -121,8 +138,9 @@ export const AccountModal = ({
             {!editMode && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <div className="relative">
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   autoComplete="new-password"
                   value={formData.confirmPassword || ''}
@@ -134,6 +152,18 @@ export const AccountModal = ({
                   }`}
                   placeholder="Confirm your password"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center rounded-r-xl"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+                </div>
                 {fieldErrors?.confirmPassword && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
                 )}
@@ -214,6 +244,9 @@ export const PasswordChangeModal = ({
 }) => {
   if (!open) return null;
 
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const modalContent = (
     <>
       <ScrollLock active={open} />
@@ -252,20 +285,33 @@ export const PasswordChangeModal = ({
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">New Password</label>
-              <input
-                type="password"
-                name="newPassword"
-                autoComplete="new-password"
-                value={formData.newPassword}
-                onChange={onChange}
-                minLength={6}
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  fieldErrors?.newPassword 
-                    ? 'border-red-300 focus:ring-red-500 focus:border-white' 
-                    : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
-                }`}
-                placeholder="Enter new password (min. 6 characters)"
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  name="newPassword"
+                  autoComplete="new-password"
+                  value={formData.newPassword}
+                  onChange={onChange}
+                  minLength={6}
+                  className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    fieldErrors?.newPassword 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                      : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                  }`}
+                  placeholder="Enter new password (min. 6 characters)"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center rounded-r-xl"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
               {fieldErrors?.newPassword && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.newPassword}</p>
               )}
@@ -273,20 +319,33 @@ export const PasswordChangeModal = ({
             
             <div>
               <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                autoComplete="new-password"
-                value={formData.confirmPassword}
-                onChange={onChange}
-                minLength={6}
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  fieldErrors?.confirmPassword 
-                    ? 'border-red-300 focus:ring-red-500 focus:border-white' 
-                    : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
-                }`}
-                placeholder="Confirm new password"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  autoComplete="new-password"
+                  value={formData.confirmPassword}
+                  onChange={onChange}
+                  minLength={6}
+                  className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    fieldErrors?.confirmPassword 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-white' 
+                      : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
+                  }`}
+                  placeholder="Confirm new password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center rounded-r-xl"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
               {fieldErrors?.confirmPassword && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
               )}

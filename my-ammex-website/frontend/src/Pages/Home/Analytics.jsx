@@ -8,7 +8,7 @@ import SalesPerformance from '../../Components-Analytics/SalesPerformance';
 import SmartReorder from '../../Components-Analytics/SmartReorder';
 import StockMovement from '../../Components-Analytics/StockMovement';
 import MetricsCard from '../../Components-Analytics/MetricsCard';
-import TopProducts from '../../Components-Analytics/TopProducts';
+import CustomerPerformance from '../../Components-Analytics/CustomerPerformance';
 import { getSalesData, getCartInsights } from '../../services/analyticsService';
 import { getFormattedMetrics } from '../../data/analyticsData';
 import CartInsights from '../../Components-Analytics/CartInsights';
@@ -170,56 +170,45 @@ const Analytics = () => {
           {/* Role-aware content area */}
           {(isAdmin || isSalesMarketing || isWarehouseSupervisor) && (
             <>
-              {/* Admin: combined 2:1 layout */}
+              {/* Admin: dynamic layout - 2 components share space, 1 component takes full width */}
               {isAdmin && (
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="col-span-2 flex flex-col gap-6">
-                    <div className="w-full mt-1">
-                      <SalesPerformance data={salesData} />
+                <div className="flex flex-col gap-6">
+                  {/* Row 1 */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="w-full">
+                      <SalesPerformance/>
                     </div>
-                    <div className="w-full mt-1">
-                      <TopProducts 
-                        title="Top Products"
-                        data={salesData?.topProducts.map(product => ({
-                          name: product.name,
-                          revenue: `₱${product.revenue.toLocaleString()}`,
-                          sales: `${product.sales} units`,
-                          growth: product.growth
-                        })) || []}
-                      />
-                    </div>
-                    <div className="w-full mt-1">
-                      <CartInsights data={cartInsightsData} />
+                    <div className="w-full">
+                      <CustomerPerformance />
                     </div>
                   </div>
-                  <div className="flex flex-col gap-6">
-                    <StockMovement />
-                    <SmartReorder />
-                  </div>
+
+                  {/* Row 2 */}
+                  {/* <div className="grid grid-cols-2 gap-6"> */}
+                    <div className="w-full">
+                    <CartInsights data={cartInsightsData} />
+                    </div>
+                    {/* <div className="w-full">
+
+                        </div> 
+                  </div>  */}
+
                 </div>
               )}
 
-              {/* Sales Marketing only: Option B */}
+              {/* Sales Marketing only: dynamic layout - 2 components share space, 1 component takes full width */}
               {(!isAdmin && isSalesMarketing) && (
                 <div className="flex flex-col gap-6">
-                  <div className="w-full mt-1">
-                    <SalesPerformance data={salesData} />
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="w-full">
+                      <SalesPerformance />
+                    </div>
+                    <div className="w-full">
+                      <CustomerPerformance />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start content-start">
-                    <div className="self-start">
-                      <TopProducts 
-                      title="Top Products"
-                      data={salesData?.topProducts.map(product => ({
-                        name: product.name,
-                        revenue: `₱${product.revenue.toLocaleString()}`,
-                        sales: `${product.sales} units`,
-                        growth: product.growth
-                      })) || []}
-                      />
-                    </div>
-                    <div className="self-start">
-                      <CartInsights data={cartInsightsData} />
-                    </div>
+                  <div className="w-full">
+                    <CartInsights data={cartInsightsData} />
                   </div>
                 </div>
               )}

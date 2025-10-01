@@ -7,11 +7,14 @@ function Layout({ children }) {
   useEffect(() => {
     const segments = location.pathname.split("/").filter(Boolean);
 
-    // If no path ("/"), default to "Home"
+    // If no path ("/"), default to "Login"
     let lastSegment = segments.length === 0 ? "Login" : segments[segments.length - 1];
 
-    // Capitalize first letter
-    lastSegment = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+    // Capitalize each word separated by dash
+    lastSegment = lastSegment
+      .split("-")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
     document.title = `Ammex | ${lastSegment}`;
   }, [location]);

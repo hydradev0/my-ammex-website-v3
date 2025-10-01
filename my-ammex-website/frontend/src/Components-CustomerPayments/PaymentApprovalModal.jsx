@@ -90,9 +90,17 @@ const PaymentApprovalModal = ({
   const handleReject = () => {
     if (!rejectionReason || !rejectionReason.trim()) return;
     onReject(payment, rejectionReason.trim());
+    setRejectionReason('');
   };
+  
   const handleApprove = () => {
     onApprove(paymentAmount);
+    setRejectionReason('');
+  };
+
+  const handleClose = () => {
+    setRejectionReason(''); // Clear rejection reason when closing
+    onClose();
   };
 
   const modalContent = (
@@ -105,7 +113,7 @@ const PaymentApprovalModal = ({
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Payment Approval</h2>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="text-gray-400 cursor-pointer hover:text-gray-600 p-1 transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -219,7 +227,7 @@ const PaymentApprovalModal = ({
 
             <div className="flex gap-3">
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="flex-1 cursor-pointer px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel

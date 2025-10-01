@@ -57,12 +57,12 @@ function TopBarPortal() {
     const updateCartCount = () => {
       try {
         const cart = getLocalCart();
-        const totalItems = cart.reduce((total, item) => total + (item.quantity || 0), 0);
+        const itemCount = cart.length; // Count of unique items, not total quantity
         
         // Only update state if count actually changed
         setRealTimeCartCount(prevCount => {
-          if (prevCount !== totalItems) {
-            return totalItems;
+          if (prevCount !== itemCount) {
+            return itemCount;
           }
           return prevCount;
         });

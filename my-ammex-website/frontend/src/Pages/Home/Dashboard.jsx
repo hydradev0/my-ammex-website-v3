@@ -3,7 +3,6 @@ import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import { Loader } from 'lucide-react';
 import { getDashboardMetrics } from '../../services/dashboardService';
 import MetricsCard from '../../Components-Dashboard/MetricsCard';
-import QuickActions from '../../Components-Dashboard/QuickActions';
 import InventoryAlerts from '../../Components-Dashboard/InventoryAlerts';
 import { getMetricsCardsForRole } from '../../utils/roleManager';
 import { useAuth } from '../../contexts/AuthContext';
@@ -188,7 +187,6 @@ const Dashboard = () => {
           </div>
 
           <div className="flex gap-6">
-            <QuickActions actions={quickActions} />
 
             {/* Inventory Alert Container - Only show for Admin and Warehouse Supervisor roles */}
             <InventoryAlerts />

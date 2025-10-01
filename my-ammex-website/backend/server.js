@@ -98,10 +98,10 @@ const initializeServer = async () => {
       
       app.use('/api/orders', require('./routes/orders'));
       app.use('/api/invoices', require('./routes/invoices'));
-      app.use('/api/analytics', require('./routes/analytics'));
       app.use('/api/payment-methods', require('./routes/paymentMethods'));
       app.use('/api/payments', require('./routes/payments'));
       app.use('/api/banks', require('./routes/banks'));
+      app.use('/api/analytics', require('./routes/analytics'));
     } else {
       // Development without database - mock routes
       app.get('/api/auth/me', (req, res) => {

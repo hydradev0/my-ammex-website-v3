@@ -6,8 +6,11 @@ const PaymentTable = ({ payments = [], onViewPayment, getPaymentMethodName }) =>
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  // Add safety check for payments
-  const safePayments = payments || [];
+  // Add safety check for payments and sort by newest first
+  const safePayments = (payments || []).sort((a, b) => {
+    // Sort by submittedDate in descending order (newest first)
+    return new Date(b.submittedDate) - new Date(a.submittedDate);
+  });
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

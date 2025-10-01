@@ -1,39 +1,139 @@
-react-dom_client.js?v=77fe9d9b:18244 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
-content.js:1 Simple Autoscroll Loaded
-cartService.js?t=1758961625191:771 🔄 [INIT DEBUG] Initializing cart from database for customer: 26 overwriteLocalStorage: false
-cartService.js?t=1758961625191:771 🔄 [INIT DEBUG] Initializing cart from database for customer: 26 overwriteLocalStorage: false
-cartService.js?t=1758961625191:774 🔄 [INIT DEBUG] Database cart response: {success: true, itemsCount: 7}
-cartService.js?t=1758961625191:793 🔄 [INIT DEBUG] Transformed items: 7 items
-cartService.js?t=1758961625191:800 🔄 [INIT DEBUG] Skipping localStorage update (sync operation)
-cartService.js?t=1758961625191:543 🛒 [GET LOCAL DEBUG] Reading from localStorage: 0 items
-cartService.js?t=1758961625191:544 🛒 [GET LOCAL DEBUG] Items: []
-cartService.js?t=1758961625191:548 🛒 [GET LOCAL DEBUG] Total quantity calculated: 0
-cartService.js?t=1758961625191:552 🛒 [BACKUP DEBUG] Cart is empty, checking for backup...
-cartService.js?t=1758961625191:554 🛒 [BACKUP DEBUG] Backup raw value: exists
-cartService.js?t=1758961625191:557 🛒 [BACKUP DEBUG] Restoring from backup...
-cartService.js?t=1758961625191:560 🛒 [BACKUP DEBUG] Backup contains: 7 items
-cartService.js?t=1758961625191:561 🛒 [BACKUP DEBUG] Backup items: (7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
-cartService.js?t=1758961625191:568 🛒 [BACKUP DEBUG] Restored 7 items from backup
-TopBarPortal.jsx:60 🛒 [CART COUNT DEBUG] Cart items: (7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
-TopBarPortal.jsx:62 🛒 [CART COUNT DEBUG] Total items calculated: 7
-TopBarPortal.jsx:67 🛒 [CART COUNT] Updated: 0 -> 7
-Cart.jsx:147 🛒 [CART COMPONENT] Initializing with consolidated cart service
-cartService.js?t=1758961625191:537 🛒 [GET LOCAL DEBUG] Using global state: 7 items
-Cart.jsx:151 🛒 [CART COMPONENT] Loaded cart: 7 items
-Cart.jsx:152 🛒 [CART COMPONENT] Items: (7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
-Cart.jsx:174 🛒 [CART COMPONENT] Cart initialized successfully
-cartService.js?t=1758961625191:537 🛒 [GET LOCAL DEBUG] Using global state: 7 items
-TopBarPortal.jsx:60 🛒 [CART COUNT DEBUG] Cart items: (7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
-TopBarPortal.jsx:62 🛒 [CART COUNT DEBUG] Total items calculated: 7
-Cart.jsx:147 🛒 [CART COMPONENT] Initializing with consolidated cart service
-cartService.js?t=1758961625191:537 🛒 [GET LOCAL DEBUG] Using global state: 7 items
-Cart.jsx:151 🛒 [CART COMPONENT] Loaded cart: 7 items
-Cart.jsx:152 🛒 [CART COMPONENT] Items: (7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
-Cart.jsx:174 🛒 [CART COMPONENT] Cart initialized successfully
-TopBarPortal.jsx:67 🛒 [CART COUNT] Updated: 0 -> 7
-cartService.js?t=1758961625191:774 🔄 [INIT DEBUG] Database cart response: {success: true, itemsCount: 7}
-cartService.js?t=1758961625191:793 🔄 [INIT DEBUG] Transformed items: 7 items
-cartService.js?t=1758961625191:800 🔄 [INIT DEBUG] Skipping localStorage update (sync operation)
-reload.js:22 WebSocket connection to 'ws://127.0.0.1:8080//ws' failed: 
-init @ reload.js:22
-(anonymous) @ reload.js:65
+paymentService.js?t=1759308479649:146  GET http://localhost:5000/api/payments/23/attachments/Invoice-RESKIG-00001.pdf 501 (Not Implemented)
+getPaymentAttachment @ paymentService.js?t=1759308479649:146
+handleViewAttachment @ PaymentApprovalModal.jsx:124
+onClick @ PaymentApprovalModal.jsx:239
+executeDispatch @ react-dom_client.js?v=77fe9d9b:11940
+runWithFiberInDEV @ react-dom_client.js?v=77fe9d9b:1540
+processDispatchQueue @ react-dom_client.js?v=77fe9d9b:11976
+(anonymous) @ react-dom_client.js?v=77fe9d9b:12396
+batchedUpdates$1 @ react-dom_client.js?v=77fe9d9b:2701
+dispatchEventForPluginEventSystem @ react-dom_client.js?v=77fe9d9b:12085
+dispatchEvent @ react-dom_client.js?v=77fe9d9b:15036
+dispatchDiscreteEvent @ react-dom_client.js?v=77fe9d9b:15017
+<button>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=77fe9d9b:256
+(anonymous) @ PaymentApprovalModal.jsx:238
+PaymentApprovalModal @ PaymentApprovalModal.jsx:227
+react-stack-bottom-frame @ react-dom_client.js?v=77fe9d9b:17678
+renderWithHooksAgain @ react-dom_client.js?v=77fe9d9b:4396
+renderWithHooks @ react-dom_client.js?v=77fe9d9b:4332
+updateFunctionComponent @ react-dom_client.js?v=77fe9d9b:6759
+beginWork @ react-dom_client.js?v=77fe9d9b:7805
+runWithFiberInDEV @ react-dom_client.js?v=77fe9d9b:1540
+performUnitOfWork @ react-dom_client.js?v=77fe9d9b:11059
+workLoopSync @ react-dom_client.js?v=77fe9d9b:10916
+renderRootSync @ react-dom_client.js?v=77fe9d9b:10898
+performWorkOnRoot @ react-dom_client.js?v=77fe9d9b:10510
+performSyncWorkOnRoot @ react-dom_client.js?v=77fe9d9b:11838
+flushSyncWorkAcrossRoots_impl @ react-dom_client.js?v=77fe9d9b:11735
+processRootScheduleInMicrotask @ react-dom_client.js?v=77fe9d9b:11757
+(anonymous) @ react-dom_client.js?v=77fe9d9b:11852
+PaymentApprovalModal.jsx:133 Error loading attachment: Error: File storage not implemented yet
+    at getPaymentAttachment (paymentService.js?t=1759308479649:154:11)
+    at async handleViewAttachment (PaymentApprovalModal.jsx:124:24)
+handleViewAttachment @ PaymentApprovalModal.jsx:133
+await in handleViewAttachment
+onClick @ PaymentApprovalModal.jsx:239
+executeDispatch @ react-dom_client.js?v=77fe9d9b:11940
+runWithFiberInDEV @ react-dom_client.js?v=77fe9d9b:1540
+processDispatchQueue @ react-dom_client.js?v=77fe9d9b:11976
+(anonymous) @ react-dom_client.js?v=77fe9d9b:12396
+batchedUpdates$1 @ react-dom_client.js?v=77fe9d9b:2701
+dispatchEventForPluginEventSystem @ react-dom_client.js?v=77fe9d9b:12085
+dispatchEvent @ react-dom_client.js?v=77fe9d9b:15036
+dispatchDiscreteEvent @ react-dom_client.js?v=77fe9d9b:15017
+<button>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=77fe9d9b:256
+(anonymous) @ PaymentApprovalModal.jsx:238
+PaymentApprovalModal @ PaymentApprovalModal.jsx:227
+react-stack-bottom-frame @ react-dom_client.js?v=77fe9d9b:17678
+renderWithHooksAgain @ react-dom_client.js?v=77fe9d9b:4396
+renderWithHooks @ react-dom_client.js?v=77fe9d9b:4332
+updateFunctionComponent @ react-dom_client.js?v=77fe9d9b:6759
+beginWork @ react-dom_client.js?v=77fe9d9b:7805
+runWithFiberInDEV @ react-dom_client.js?v=77fe9d9b:1540
+performUnitOfWork @ react-dom_client.js?v=77fe9d9b:11059
+workLoopSync @ react-dom_client.js?v=77fe9d9b:10916
+renderRootSync @ react-dom_client.js?v=77fe9d9b:10898
+performWorkOnRoot @ react-dom_client.js?v=77fe9d9b:10510
+performSyncWorkOnRoot @ react-dom_client.js?v=77fe9d9b:11838
+flushSyncWorkAcrossRoots_impl @ react-dom_client.js?v=77fe9d9b:11735
+processRootScheduleInMicrotask @ react-dom_client.js?v=77fe9d9b:11757
+(anonymous) @ react-dom_client.js?v=77fe9d9b:11852
+PaymentApprovalModal.jsx:323  GET http://localhost:5000/api/payments/23/attachments/Invoice-RESKIG-00001.pdf 401 (Unauthorized)
+insertOrAppendPlacementNodeIntoContainer @ react-dom_client.js?v=77fe9d9b:8932
+commitPlacement @ react-dom_client.js?v=77fe9d9b:8981
+runWithFiberInDEV @ react-dom_client.js?v=77fe9d9b:1540
+commitReconciliationEffects @ react-dom_client.js?v=77fe9d9b:9840
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9679
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9748
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9678
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9678
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9549
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9833
+recursivelyTraverseMutationEffects @ react-dom_client.js?v=77fe9d9b:9540
+commitMutationEffectsOnFiber @ react-dom_client.js?v=77fe9d9b:9727
+flushMutationEffects @ react-dom_client.js?v=77fe9d9b:11293
+commitRoot @ react-dom_client.js?v=77fe9d9b:11274
+commitRootWhenReady @ react-dom_client.js?v=77fe9d9b:10695
+performWorkOnRoot @ react-dom_client.js?v=77fe9d9b:10640
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=77fe9d9b:11825
+performWorkUntilDeadline @ react-dom_client.js?v=77fe9d9b:36
+<div>
+exports.jsxDEV @ react_jsx-dev-runtime.js?v=77fe9d9b:256
+PaymentApprovalModal @ PaymentApprovalModal.jsx:323
+react-stack-bottom-frame @ react-dom_client.js?v=77fe9d9b:17678
+renderWithHooksAgain @ react-dom_client.js?v=77fe9d9b:4396
+renderWithHooks @ react-dom_client.js?v=77fe9d9b:4332
+updateFunctionComponent @ react-dom_client.js?v=77fe9d9b:6759
+beginWork @ react-dom_client.js?v=77fe9d9b:7805
+runWithFiberInDEV @ react-dom_client.js?v=77fe9d9b:1540
+performUnitOfWork @ react-dom_client.js?v=77fe9d9b:11059
+workLoopSync @ react-dom_client.js?v=77fe9d9b:10916
+renderRootSync @ react-dom_client.js?v=77fe9d9b:10898
+performWorkOnRoot @ react-dom_client.js?v=77fe9d9b:10510
+performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=77fe9d9b:11825
+performWorkUntilDeadline @ react-dom_client.js?v=77fe9d9b:36

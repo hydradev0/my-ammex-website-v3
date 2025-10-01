@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getHistoricalSales, postForecast } from '../services/analytics';
 import {
   LineChart,
   Line,
@@ -23,33 +25,82 @@ import {
   Sparkles,
   FilePlus2,
   FileChartColumn,
-  AlignEndHorizontal
+  AlignEndHorizontal,
+  ChevronDown,
+  ArrowLeft
 } from 'lucide-react';
 import Modal from './Modal';
 import LoadingModal from './LoadingModal';
+import RoleBasedLayout from '../Components/RoleBasedLayout';
+
+// Custom Dropdown Component
+const CustomDropdown = ({ options, value, onChange, placeholder, icon: Icon, className = "" }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const selectedOption = options.find(option => option.value === value);
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center cursor-pointer justify-between px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          {Icon && <Icon className="w-5 h-5 text-gray-600" />}
+          <span className="text-sm font-medium">{selectedOption?.label || placeholder}</span>
+        </div>
+        <ChevronDown className={`w-5 h-5 ml-2 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left cursor-pointer px-4 py-2 text-sm hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                option.value === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SalesTrend = () => {
+  const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState('3');
-  const [historicalPeriod, setHistoricalPeriod] = useState('6');
+  const [historicalPeriod, setHistoricalPeriod] = useState('3');
   const [showModal, setShowModal] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [predictions, setPredictions] = useState(null);
 
-  // Historical sales data (last 12 months)
-  const allHistoricalData = [
-    { month: 'Oct 2023', sales: 420000, trend: 'stable' },
-    { month: 'Nov 2023', sales: 480000, trend: 'up' },
-    { month: 'Dec 2023', sales: 620000, trend: 'up' },
-    { month: 'Jan 2024', sales: 380000, trend: 'down' },
-    { month: 'Feb 2024', sales: 450000, trend: 'up' },
-    { month: 'Mar 2024', sales: 520000, trend: 'up' },
-    { month: 'Apr 2024', sales: 490000, trend: 'down' },
-    { month: 'May 2024', sales: 580000, trend: 'up' },
-    { month: 'Jun 2024', sales: 640000, trend: 'up' },
-    { month: 'Jul 2024', sales: 695000, trend: 'up' },
-    { month: 'Aug 2024', sales: 720000, trend: 'up' },
-    { month: 'Sep 2024', sales: 750000, trend: 'up' }
-  ];
+  // Historical sales state (fetched from backend)
+  const [allHistoricalData, setAllHistoricalData] = useState([]);
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState(true);
 
   // Filter historical data based on selected period
   const getHistoricalData = () => {
@@ -59,69 +110,106 @@ const SalesTrend = () => {
 
   const historicalSalesData = getHistoricalData();
 
-  // Mock prediction generator (replace with actual API call)
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setIsLoadingHistorical(true);
+      try {
+        const months = Math.max(parseInt(historicalPeriod), 1);
+        const res = await getHistoricalSales(months);
+        if (!isMounted) return;
+        // Backend returns items like { month: '2025-09-01', sales: 750000 }
+        // Map to UI-friendly labels like 'Sep 2025'
+        const mapped = (res?.data || []).map((d) => {
+          const dt = new Date(d.month);
+          const label = dt.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          return { month: label, sales: d.sales, trend: 'stable' };
+        });
+        setAllHistoricalData(mapped);
+      } catch (e) {
+        console.error('Failed to fetch historical sales data:', e);
+        // No fallback data - let the UI show "No historical data available"
+        setAllHistoricalData([]);
+      } finally {
+        if (isMounted) {
+          setIsLoadingHistorical(false);
+        }
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [historicalPeriod]);
+
+  // Dropdown options
+  const historicalPeriodOptions = [
+    { value: '1', label: '1 Month' },
+    { value: '3', label: '3 Months' },
+    { value: '6', label: '6 Months' },
+    { value: '12', label: '12 Months' }
+  ];
+
+  const forecastPeriodOptions = [
+    { value: '1', label: '1 Month' },
+    { value: '3', label: '3 Months' },
+    { value: '6', label: '6 Months' }
+  ];
+
+
+  // Prediction generator (backend + fallback)
   const generatePredictions = async () => {
     setIsAnalyzing(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
     const periodInt = parseInt(selectedPeriod);
-    const baseValue = historicalSalesData[historicalSalesData.length - 1].sales; // Last month's sales
-    const months1 = ['Oct 2024'];
-    const months3 = ['Oct 2024', 'Nov 2024', 'Dec 2024'];
-    const months6 = ['Oct 2024', 'Nov 2024', 'Dec 2024', 'Jan 2025', 'Feb 2025', 'Mar 2025'];
-    
-    const selectedMonths = periodInt === 1 ? months1 : periodInt === 3 ? months3 : months6;
-    
-    const mockPredictions = {
-      period: `${periodInt} months`,
-      totalPredicted: periodInt === 1 ? 2850000 : periodInt === 3 ? 2850000 : 5200000,
-      avgMonthly: periodInt === 1 ? 950000 : periodInt === 3 ? 950000 : 867000,
-      confidence: periodInt === 1 ? 92 : periodInt === 3 ? 92 : 85,
-      growthRate: periodInt === 1 ? 15.2 : periodInt === 3 ? 15.2 : 12.8,
-      monthlyBreakdown: selectedMonths.map((month, index) => {
-        const seasonalMultiplier = month.includes('Dec') ? 1.4 : 
-                                 month.includes('Jan') ? 0.7 : 
-                                 month.includes('Feb') ? 0.85 : 1.1;
-        const trendGrowth = 1 + (index * 0.05);
-        const predictedValue = Math.round(baseValue * seasonalMultiplier * trendGrowth);
-        
-        return {
-          month,
-          predicted: predictedValue,
-          confidence: Math.max(85 - index * 2, 75),
-          trend: predictedValue > (index === 0 ? baseValue : 0) ? 'up' : 'down'
+    try {
+      // Use 3 years of historical data for optimal accuracy vs cost balance
+      const res = await postForecast({ period: periodInt, historicalMonths: 36 }); // 36 months = 3 years
+      // Backend forecast shape → adapt to UI
+      const f = res?.forecast;
+      if (f?.monthlyBreakdown?.length) {
+        // Generate dynamic month names based on current date (starting from NEXT month)
+        const currentDate = new Date();
+        const monthly = f.monthlyBreakdown.map((p, index) => {
+          const forecastDate = new Date(currentDate);
+          forecastDate.setMonth(currentDate.getMonth() + index + 1); // +1 to start from next month
+          const monthLabel = forecastDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          
+          return {
+            month: monthLabel,
+            predicted: Math.round(p.predicted || 0),
+            trend: p.trend || 'up'
+          };
+        });
+        const totalPredicted = monthly.reduce((s, m) => s + (m.predicted || 0), 0);
+        const avgMonthly = monthly.length ? Math.round(totalPredicted / monthly.length) : 0;
+        const payload = {
+          period: `${periodInt} months`,
+          totalPredicted,
+          avgMonthly,
+          growthRate: 0,
+          monthlyBreakdown: monthly,
+          insights: f.insights || [],
+          recommendations: f.recommendations || []
         };
-      }),
-      insights: [
-        periodInt === 3 
-          ? "Strong holiday season expected with 40% December boost"
-          : periodInt === 2
-          ? "Strong holiday season expected with 40% December boost"
-          : periodInt === 3
-          ? "Strong holiday season expected with 40% December boost"
-          : "Steady growth anticipated with seasonal variations",
-        `Average monthly growth rate of ${periodInt === 1 ? '5.2%' : periodInt === 3 ? '5.2%' : '4.1%'} projected`,
-        "Q4 performance likely to exceed historical averages",
-        
-      ],
-      recommendations: [
-        periodInt === 1
-          ? "Increase inventory levels for holiday season"
-          : periodInt === 2
-          ? "Strong holiday season expected with 40% December boost"
-          : "Increase inventory levels for holiday season",
-        "Focus marketing spend on high-converting channels",
-        "Prepare for post-holiday dip in January if 6-month period selected",
-        "Increase inventory levels for holiday season",
-        "Prepare for post-holiday dip in January if 6-month period selected"
-      ]
-    };
-    
-    setPredictions(mockPredictions);
-    setIsAnalyzing(false);
-    setShowModal(true);
+        setPredictions(payload);
+      } else {
+        throw new Error('Empty forecast');
+      }
+    } catch (err) {
+      console.error('Forecast generation failed:', err);
+      // Show error instead of fallback
+      setPredictions({
+        error: 'Failed to generate AI forecast. Please check your OpenRouter API configuration and try again.',
+        details: err.message || 'Unknown error occurred',
+        period: `${periodInt} months`,
+        totalPredicted: 0,
+        avgMonthly: 0,
+        growthRate: 0,
+        monthlyBreakdown: [],
+        insights: ['AI forecasting service unavailable'],
+        recommendations: ['Check OpenRouter API key configuration', 'Verify backend connectivity', 'Ensure historical data is available']
+      });
+    } finally {
+      setIsAnalyzing(false);
+      setShowModal(true);
+    }
   };
 
   const exportHistoricalData = () => {
@@ -139,12 +227,12 @@ const SalesTrend = () => {
   };
 
   const exportPredictionData = () => {
-    if (!predictions) return;
+    if (!predictions || predictions.error || !predictions.monthlyBreakdown) return;
     
     const csvContent = "data:text/csv;charset=utf-8," 
-      + "Month,Predicted Sales,Confidence %,Trend\n"
+      + "Month,Predicted Sales,Trend\n"
       + predictions.monthlyBreakdown.map(row => 
-          `${row.month},${row.predicted},${row.confidence},${row.trend}`
+          `${row.month},${row.predicted},${row.trend}`
         ).join("\n");
     
     const encodedUri = encodeURI(csvContent);
@@ -181,7 +269,7 @@ const SalesTrend = () => {
   };
 
   const TrendIndicator = ({ trend, value }) => (
-    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+    <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
       trend === 'up' 
         ? 'bg-green-100 text-green-700' 
         : trend === 'down' 
@@ -191,160 +279,205 @@ const SalesTrend = () => {
       {trend === 'up' && <ArrowUp className="w-3 h-3" />}
       {trend === 'down' && <ArrowDown className="w-3 h-3" />}
       {formatCurrency(value)}
-    </div>
+    </span>
   );
 
   return (
+    <>
+    <RoleBasedLayout />
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={() => navigate('/home/analytics')}
+              className="group flex items-center cursor-pointer gap-2 px-4 py-2.5 bg-white hover:bg-blue-50 text-gray-600 hover:text-blue-600 rounded-xl border border-gray-200 hover:border-blue-200 transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="font-medium">Back to Analytics</span>
+            </button>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-2">
             <BarChart3 className="w-8 h-8 text-blue-600" />
-            Sales Forecast & Trends
+            Sales Forecast
           </h1>
           <p className="text-gray-600">Analyze historical sales data and generate AI-powered forecasts</p>
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-          <div className="flex items-center gap-6 flex-wrap">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="w-5 h-5 text-gray-600" />
-              <label className="text-sm font-medium text-gray-700">
-                Historical Data:
-              </label>
-              <select
-                value={historicalPeriod}
-                onChange={(e) => setHistoricalPeriod(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-2xl blur-xl"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 shadow-lg">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">
+                  Historical Data
+                </label>
+                <CustomDropdown
+                  options={historicalPeriodOptions}
+                  value={historicalPeriod}
+                  onChange={setHistoricalPeriod}
+                  icon={BarChart3}
+                  className="min-w-[160px]"
+                />
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">
+                  Forecast Period
+                </label>
+                <CustomDropdown
+                  options={forecastPeriodOptions}
+                  value={selectedPeriod}
+                  onChange={setSelectedPeriod}
+                  icon={Calendar}
+                  className="min-w-[160px]"
+                />
+              </div>
+              
+              <button
+                onClick={generatePredictions}
+                disabled={isAnalyzing}
+                className="group px-6 py-3 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
-                <option value="3">3 Months</option>
-                <option value="6">6 Months</option>
-                <option value="12">12 Months</option>
-              </select>
+                <Brain className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Generate AI Forecast</span>
+              </button>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-gray-600" />
-              <label className="text-sm font-medium text-gray-700">
-                Forecast Period:
-              </label>
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="1">1 Month</option>
-                <option value="3">3 Months</option>
-                <option value="6">6 Months</option>
-              </select>
-            </div>
-            
-            <button
-              onClick={generatePredictions}
-              disabled={isAnalyzing}
-              className="px-5 py-2 cursor-pointer text-lg bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center
-               gap-2 font-medium transition-all duration-200"
-            >
-              <Brain className="w-5 h-5" />
-              Analyze
-            </button>
           </div>
         </div>
 
         {/* Sales Trends Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Historical Sales Performance</h2>
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-600">Last {historicalPeriod} months</div>
-              <button
-                onClick={exportHistoricalData}
-                className="px-4 py-2 cursor-pointer bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-              >
-                <FilePlus2 className="w-4 h-4" />
-                Export
-              </button>
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-2xl blur-xl"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
+                  <BarChart3 className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Historical Sales Performance</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg">
+                  {historicalPeriod === '1' ? 'Current month' : `Last ${historicalPeriod} months`}
+                </div>
+                <button
+                  onClick={exportHistoricalData}
+                  className="group px-4 py-2 cursor-pointer bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+                >
+                  <FilePlus2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span>Export</span>
+                </button>
+              </div>
             </div>
-          </div>
           
-          <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={historicalSalesData}>
-              <defs>
-                <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="month" 
-                tick={{ fontSize: 12 }} 
-                stroke="#64748b"
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis 
-                tick={{ fontSize: 12 }} 
-                stroke="#64748b"
-                tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="sales"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                fill="url(#salesGradient)"
-                dot={{ r: 4, fill: '#3b82f6' }}
-                activeDot={{ r: 6, fill: '#1d4ed8' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isLoadingHistorical ? (
+            <div className="flex items-center justify-center h-96 text-gray-500">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p>Loading historical data...</p>
+              </div>
+            </div>
+          ) : historicalSalesData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+              <AreaChart data={historicalSalesData}>
+                <defs>
+                  <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 12 }} 
+                  stroke="#64748b"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }} 
+                  stroke="#64748b"
+                  tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  fill="url(#salesGradient)"
+                  dot={{ r: 4, fill: '#3b82f6' }}
+                  activeDot={{ r: 6, fill: '#1d4ed8' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-96 text-gray-500">
+              <div className="text-center">
+                <div className="p-4 bg-gray-100 rounded-2xl mb-4 inline-block">
+                  <BarChart3 className="w-16 h-16 text-gray-300" />
+                </div>
+                <p className="text-lg font-semibold text-gray-700">No historical data available</p>
+                <p className="text-sm text-gray-500 mt-1">Start collecting sales data to see insights here</p>
+              </div>
+            </div>
+          )}
+          </div>
         </div>
 
-        <div className="mb-4 p-2 flex items-center gap-2">
-          <AlignEndHorizontal className="w-6 h-6 text-orange-500" />
-          <h2 className="text-xl font-semibold text-gray-900">This Month's Performance</h2>
-        </div>
+        {/* Sales Performance Section */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-600/5 to-blue-600/5 rounded-2xl blur-xl"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 shadow-lg">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg">
+                <AlignEndHorizontal className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Sales Performance</h2>
+            </div>
 
         {/* Sales Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-4">
-              <DollarSign className="w-6 h-6 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Sales</h3>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-2">
-              {formatCurrency(historicalSalesData[historicalSalesData.length - 1].sales)}
-            </p>
-            <TrendIndicator 
-              trend="up" 
-              value={historicalSalesData[historicalSalesData.length - 1].sales - historicalSalesData[historicalSalesData.length - 2]?.sales || 0}
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                  <h3 className="font-semibold text-gray-900">{historicalPeriod === '1' ? 'This Month\'s Sales' : 'Total Sales'}</h3>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-2">
+                  {isLoadingHistorical ? 'Loading...' : historicalSalesData.length > 0 ? (
+                    historicalPeriod === '1' 
+                      ? formatCurrency(historicalSalesData[historicalSalesData.length - 1].sales)
+                      : formatCurrency(historicalSalesData.reduce((sum, item) => sum + item.sales, 0))
+                  ) : 'No data'}
+                </p>
+                <div className="text-sm font-extralight text-gray-900">{historicalPeriod === '1' ? 'Current month' : `Total across the last ${historicalPeriod} months`}</div>
+              </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Average Monthly</h3>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-2">
-              {formatCurrency(historicalSalesData.reduce((sum, item) => sum + item.sales, 0) / historicalSalesData.length)}
-            </p>
-            <div className="text-xs text-gray-600">Last {historicalPeriod} months</div>
-          </div>
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <TrendingUp className="w-6 h-6 text-blue-600" />
+                  <h3 className="font-semibold text-gray-900">Average Monthly Sales</h3>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-2">
+                  {isLoadingHistorical ? 'Loading...' : historicalSalesData.length > 0 ? formatCurrency(historicalSalesData.reduce((sum, item) => sum + item.sales, 0) / historicalSalesData.length) : 'No data'}
+                </p>
+                <div className="text-sm font-extralight text-gray-900"> {historicalPeriod === '1' ? 'Current month' : `Average across the last ${historicalPeriod} months`}</div>
+              </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-4">
-              <BarChart3 className="w-6 h-6 text-purple-600" />
-              <h3 className="font-semibold text-gray-900">YTD Growth</h3>
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <BarChart3 className="w-6 h-6 text-purple-600" />
+                  <h3 className="font-semibold text-gray-900">YTD Sales Growth</h3>
+                </div>
+                <p className="text-2xl font-bold text-green-600 mb-2">+18.5%</p>
+                <div className="text-xs text-gray-600">Compared to last year</div>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-green-600 mb-2">+18.5%</p>
-            <div className="text-xs text-gray-600">Compared to last year</div>
           </div>
         </div>
 
@@ -438,7 +571,8 @@ const SalesTrend = () => {
               <div className="flex gap-3">
                 <button
                   onClick={exportPredictionData}
-                  className="px-4 py-2 bg-green-600 cursor-pointer text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  disabled={predictions?.error || !predictions?.monthlyBreakdown}
+                  className="px-4 py-2 bg-green-600 cursor-pointer text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
                   <FileChartColumn className="w-4 h-4" />
                   Export Forecast
@@ -455,82 +589,141 @@ const SalesTrend = () => {
         >
           {predictions && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-                  <h3 className="text-sm font-medium opacity-90">Total Predicted</h3>
-                  <p className="text-2xl font-bold">{formatCurrency(predictions.totalPredicted)}</p>
+              {/* Summary Cards */}
+              {predictions.error ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+                  <div className="flex items-center mb-4">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">AI Forecast Error</h3>
+                    </div>
+                  </div>
+                  <div className="text-sm text-red-700">
+                    <p className="mb-2">{predictions.error}</p>
+                    {predictions.details && (
+                      <p className="text-xs text-red-600 font-mono bg-red-100 p-2 rounded">
+                        {predictions.details}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
-                  <h3 className="text-sm font-medium opacity-90">Monthly Average</h3>
-                  <p className="text-2xl font-bold">{formatCurrency(predictions.avgMonthly)}</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                    <h3 className="text-sm font-medium opacity-90">Total Predicted</h3>
+                    <p className="text-2xl font-bold">{formatCurrency(predictions.totalPredicted)}</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                    <h3 className="text-sm font-medium opacity-90">Monthly Average</h3>
+                    <p className="text-2xl font-bold">{formatCurrency(predictions.avgMonthly)}</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                    <h3 className="text-sm font-medium opacity-90">Total Growth</h3>
+                    <p className="text-2xl font-bold">
+                      {(() => {
+                        const lastHistoricalMonth = historicalSalesData.length > 0 ? historicalSalesData[historicalSalesData.length - 1].sales : predictions.monthlyBreakdown[0].predicted;
+                        const lastPredictedMonth = predictions.monthlyBreakdown[predictions.monthlyBreakdown.length - 1].predicted;
+                        const totalGrowth = lastHistoricalMonth !== 0 
+                          ? Math.round(((lastPredictedMonth - lastHistoricalMonth) / lastHistoricalMonth) * 100)
+                          : 0;
+                        return totalGrowth > 0 ? `+${totalGrowth}%` : `${totalGrowth}%`;
+                      })()}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
-                  <h3 className="text-sm font-medium opacity-90">Confidence</h3>
-                  <p className="text-2xl font-bold">{predictions.confidence}%</p>
-                </div>
-              </div>
+              )}
 
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={predictions.monthlyBreakdown}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
-                    <YAxis 
-                      tick={{ fontSize: 12 }} 
-                      stroke="#64748b"
-                      tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
-                    />
-                    <Tooltip 
-                      formatter={(value) => [formatCurrency(value), 'Predicted Sales']}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="predicted"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      dot={{ r: 5, fill: '#3b82f6' }}
-                      activeDot={{ r: 7, fill: '#1d4ed8' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              {/* Monthly Breakdown Chart */}
+              {!predictions.error && (
+                <>
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={predictions.monthlyBreakdown}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#64748b" />
+                      <YAxis 
+                        tick={{ fontSize: 12 }} 
+                        stroke="#64748b"
+                        tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
+                      />
+                      <Tooltip 
+                        formatter={(value) => [formatCurrency(value), 'Predicted Sales']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="predicted"
+                        stroke="#3b82f6"
+                        strokeWidth={3}
+                        dot={{ r: 5, fill: '#3b82f6' }}
+                        activeDot={{ r: 7, fill: '#1d4ed8' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
 
-              <div className="mb-8">
+                <div className="mb-8">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Predictions</h3>
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> Month-over-Month (MoM) calculations are based on <strong>Predicted Sales</strong> to show sales volume growth trends.
+                  </p>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border border-gray-200 rounded-lg">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Month</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Monthly Average</th>
                         <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Predicted Sales</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Confidence</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Trend</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Month over Month (MoM)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {predictions.monthlyBreakdown.map((item, index) => (
-                        <tr key={index} className="border-t border-gray-200">
-                          <td className="px-4 py-3 font-medium text-gray-900">{item.month}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                            {formatCurrency(item.predicted)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                              {item.confidence}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <TrendIndicator trend={item.trend} value={item.predicted} />
-                          </td>
-                        </tr>
-                      ))}
+                      {predictions.monthlyBreakdown.map((item, index) => {
+                        const prevMonthValue = index === 0 
+                          ? (historicalSalesData.length > 0 ? historicalSalesData[historicalSalesData.length - 1].sales : item.predicted)
+                          : predictions.monthlyBreakdown[index - 1].predicted;
+                        const momChange = prevMonthValue !== 0 
+                          ? Math.round(((item.predicted - prevMonthValue) / prevMonthValue) * 100)
+                          : 0;
+                        const momTrend = momChange > 0 ? 'up' : momChange < 0 ? 'down' : 'stable';
+                        
+                        return (
+                          <tr key={index} className="border-t border-gray-200">
+                            <td className="px-4 py-3 font-medium text-gray-900">{item.month}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                              {formatCurrency(predictions.avgMonthly)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                              {formatCurrency(item.predicted)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                momChange > 0 ? 'bg-green-100 text-green-800' : 
+                                momChange < 0 ? 'bg-red-100 text-red-800' : 
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {momChange > 0 ? '+' : ''}{momChange}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
+                </>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* AI Insights and Recommendations */}
+              {!predictions.error && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Insights</h3>
                   <div className="space-y-3">
@@ -552,11 +745,13 @@ const SalesTrend = () => {
                   </div>
                 </div>
               </div>
+              )}
             </>
           )}
         </Modal>
       </div>
     </div>
+    </>
   );
 };
 

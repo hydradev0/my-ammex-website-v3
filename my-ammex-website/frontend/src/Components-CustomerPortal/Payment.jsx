@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, X, DollarSign } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
 import QRCodeModal from './QRCodeModal';
+import SuccessModal from '../Components/SuccessModal';
 import { getMyInvoices } from '../services/invoiceService';
 import { fetchPaymentMethods } from '../services/paymentMethodsService';
 import { fetchBanks } from '../services/banksService';
-import { submitPayment } from '../services/paymentService';
+import { submitPayment, getMyPayments } from '../services/paymentService';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -27,6 +28,9 @@ const Payment = () => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [existingPendingPayment, setExistingPendingPayment] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastSubmittedAmount, setLastSubmittedAmount] = useState(0);
   const methodMenuRef = useRef(null);
   const bankMenuRef = useRef(null);
 
@@ -130,6 +134,45 @@ const Payment = () => {
     loadConfig();
   }, []);
 
+  // Check for existing pending payments for this invoice
+  useEffect(() => {
+    const checkExistingPayments = async () => {
+      if (!invoice?.id) return;
+
+      try {
+        const response = await getMyPayments();
+        const myPayments = response.data || [];
+        
+        // Find pending payments for this specific invoice
+        // Check for various possible pending status values
+        const pendingPaymentsForInvoice = myPayments.filter(payment => 
+          payment.invoiceId === invoice.id && 
+          (payment.status === 'pending' || 
+           payment.status === 'Pending' || 
+           payment.status === 'PENDING' ||
+           payment.status === 'Pending Approval' ||
+           payment.status === 'pending_approval' ||
+           payment.status === 'submitted')
+        );
+
+        // Check if there's a pending payment for the full amount
+        const fullAmountPendingPayment = pendingPaymentsForInvoice.find(payment => 
+          payment.amount >= invoice.remainingAmount
+        );
+
+        if (fullAmountPendingPayment) {
+          setExistingPendingPayment(fullAmountPendingPayment);
+        } else {
+          setExistingPendingPayment(null);
+        }
+      } catch (error) {
+        console.error('Failed to check existing payments:', error);
+      }
+    };
+
+    checkExistingPayments();
+  }, [invoice]);
+
   // Handle click outside method menu and bank menu
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -164,11 +207,16 @@ const Payment = () => {
     navigate(path);
   };
 
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigate('/Products/Invoices');
+  };
+
   // Validation functions
   const validatePaymentData = () => {
     const errors = {};
     
-    // Amount validation
+    // Amount validation first
     if (!paymentData.amount || paymentData.amount.toString().trim() === '') {
       errors.amount = 'Payment amount is required';
     } else {
@@ -180,11 +228,18 @@ const Payment = () => {
       }
     }
 
+    // Check if there's already a pending payment for full amount AFTER basic amount validation
+    if (existingPendingPayment && paymentData.amount) {
+      const amount = parseFloat(paymentData.amount);
+      if (amount >= invoice.remainingAmount) {
+        errors.amount = `You already have a pending payment for the full amount (${formatCurrency(existingPendingPayment.amount)}) submitted. Please wait for admin approval before submitting another payment if needed.`;
+      }
+    }
+
     // Payment method validation
     if (!paymentData.paymentMethod) {
       errors.paymentMethod = 'Payment method is required';
     }
-
 
     // Reference number is required for all payment submissions
     if (!paymentData.reference || paymentData.reference.trim() === '') {
@@ -209,6 +264,7 @@ const Payment = () => {
 
   const handleInputChange = (field, value) => {
     setPaymentData(prev => ({ ...prev, [field]: value }));
+    
     // Clear validation error for this field when user starts typing
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: undefined }));
@@ -217,6 +273,17 @@ const Payment = () => {
     // Reset selected bank when payment method changes
     if (field === 'paymentMethod') {
       setSelectedBank('');
+    }
+
+    // Real-time validation for amount field when there's an existing pending payment
+    if (field === 'amount' && existingPendingPayment && value) {
+      const amount = parseFloat(value);
+      if (!isNaN(amount) && amount >= invoice.remainingAmount) {
+        setValidationErrors(prev => ({
+          ...prev,
+          amount: `You already have a pending payment for the full amount (${formatCurrency(existingPendingPayment.amount)}) submitted. Please wait for admin approval before submitting another payment if needed.`
+        }));
+      }
     }
   };
 
@@ -299,7 +366,30 @@ const Payment = () => {
 
       await submitPayment(payload);
 
-      navigate('/Products/Invoices');
+      // Store the submitted amount for the success message
+      setLastSubmittedAmount(paymentAmount);
+      
+      // Show success modal instead of immediately navigating
+      setShowSuccessModal(true);
+      
+      // Clear form data
+      setPaymentData({
+        amount: '',
+        paymentMethod: '',
+        reference: ''
+      });
+      setSelectedBank('');
+      
+      // Clear any uploaded receipt
+      if (invoiceReceipts[invoice.id]) {
+        URL.revokeObjectURL(invoiceReceipts[invoice.id].url);
+        setInvoiceReceipts(prev => {
+          const newReceipts = { ...prev };
+          delete newReceipts[invoice.id];
+          return newReceipts;
+        });
+      }
+      
     } catch (error) {
       console.error('Payment submission failed:', error);
       setValidationErrors({ submit: typeof error === 'string' ? error : 'Payment submission failed. Please try again.' });
@@ -436,6 +526,34 @@ const Payment = () => {
           </div>
         </div>
 
+        {/* Existing Pending Payment Warning */}
+        {existingPendingPayment && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Pending Payment Already Submitted
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    You already have a pending payment for <strong>{formatCurrency(existingPendingPayment.amount)}</strong> submitted on{' '}
+                    <strong>{new Date(existingPendingPayment.submittedDate).toLocaleDateString()}</strong> for this invoice.
+                  </p>
+                  <p className="mt-1">
+                    Please wait for admin approval before submitting another payment for the full amount.
+                    You can still submit partial payments if needed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Payment Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
@@ -453,7 +571,13 @@ const Payment = () => {
                     <button
                       type="button"
                       onClick={() => handleInputChange('amount', invoice.remainingAmount.toString())}
-                      className="text-xs text-[#3182ce] hover:text-[#2c5282] underline"
+                      disabled={!!existingPendingPayment}
+                      className={`text-xs underline ${
+                        existingPendingPayment 
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-[#3182ce] hover:text-[#2c5282]'
+                      }`}
+                      title={existingPendingPayment ? 'You already have a pending payment for the full amount' : ''}
                     >
                       Pay Full Amount ({formatCurrency(invoice.remainingAmount)})
                     </button>
@@ -807,8 +931,9 @@ const Payment = () => {
               </button>
               <button
                 onClick={handlePaymentSubmit}
-                disabled={isSubmitting || isSavingDraft}
+                disabled={isSubmitting || isSavingDraft || (existingPendingPayment && paymentData.amount && parseFloat(paymentData.amount) >= invoice.remainingAmount)}
                 className="flex px-8 cursor-pointer py-3 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                title={existingPendingPayment && paymentData.amount && parseFloat(paymentData.amount) >= invoice.remainingAmount ? 'You already have a pending payment for the full amount' : ''}
               >
                 {isSubmitting ? (
                   <>
@@ -835,6 +960,16 @@ const Payment = () => {
         bankQr={selectedBank ? bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64 || null : null}
         paymentAmount={paymentData.amount}
         balance={invoice?.remainingAmount}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        title="Payment Submitted Successfully!"
+        message={`Your payment of ${formatCurrency(lastSubmittedAmount)} has been submitted for review. You will receive a notification once it's processed by our admin team.`}
+        autoClose={false}
+        showCloseButton={true}
       />
     </>
   );
