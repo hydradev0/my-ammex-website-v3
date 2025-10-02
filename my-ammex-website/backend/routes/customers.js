@@ -11,7 +11,8 @@ const {
   updateCustomer,
   deleteCustomer,
   getCustomerStats,
-  getMyCustomer
+  getMyCustomer,
+  fixMyProfileCompletion
 } = require('../controllers/customerController');
 
 // Validation middleware
@@ -54,6 +55,11 @@ router.get('/stats', protect, authorize('Admin', 'Sales Marketing', 'Client'), g
 // @desc    Get current user's customer
 // @access  Private (Any authenticated user)
 router.get('/me', protect, getMyCustomer);
+
+// @route   POST /api/customers/fix-profile-completion
+// @desc    Fix profile completion status for current user
+// @access  Private (Any authenticated user)
+router.post('/fix-profile-completion', protect, fixMyProfileCompletion);
 
 // Ownership guard for client updating their own customer only
 const ensureOwnCustomerByParam = async (req, res, next) => {

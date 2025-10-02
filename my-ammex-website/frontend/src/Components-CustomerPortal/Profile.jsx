@@ -194,6 +194,21 @@ const Profile = () => {
         return;
       }
       
+      // Check if all required fields are filled to determine profile completion
+      const requiredFields = [
+        editData.companyName,
+        editUserEmail,
+        editData.telephone1,
+        editData.street,
+        editData.city,
+        editData.postalCode,
+        editData.country
+      ];
+      
+      const allRequiredFieldsFilled = requiredFields.every(field => 
+        field && field.toString().trim() !== ''
+      );
+
       // Transform form data to match backend model
       const updatePayload = {
         customerName: editData.companyName, // Map companyName to customerName for backend
@@ -207,6 +222,7 @@ const Profile = () => {
         email1: editUserEmail, // Use account email as email1
         email2: editData.email2, // Keep original email2 as email2
         notes: editData.notes
+        // profileCompleted will be auto-determined by backend based on required fields
       };
       
       // Update customer record
@@ -389,6 +405,27 @@ const Profile = () => {
         </div>
       </div>
 
+      {/* Required Fields Notice */}
+      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-medium text-blue-900">
+              Required Fields for Ordering
+            </h4>
+            <p className="text-sm text-blue-700 mt-1">
+              The following fields are required to place orders:
+            </p>
+            <ul className="text-sm text-blue-700 mt-2 space-y-1">
+              <li>• Company Name</li>
+              <li>• Mobile No. 1</li>
+              <li>• Email Address</li>
+              <li>• Complete Address (Street, City, Postal Code, Country)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Error Display */}
       {(error || formError) && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -484,7 +521,7 @@ const Profile = () => {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Telephone 1</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Mobile No. 1 </label>
               {isEditing ? (
                 <>
                   <input
@@ -503,7 +540,7 @@ const Profile = () => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Telephone 2</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Mobile No. 2</label>
               {isEditing ? (
                 <>
                   <input

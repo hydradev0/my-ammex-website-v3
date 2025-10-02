@@ -6,6 +6,9 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { appealRejectedPayment } from '../services/paymentService';
 import { appealRejectedOrder } from '../services/orderService';
 import { getLocalCart } from '../services/cartService';
+import LogoutMenu from './LogoutMenu';
+import ProfileCompletionModal from './ProfileCompletionModal';
+import useProfileCompletion from '../hooks/useProfileCompletion';
 
 function TopBarPortal() {
   const navigate = useNavigate();
@@ -15,6 +18,13 @@ function TopBarPortal() {
   const notificationsRef = useRef(null);
   
   const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, refreshNotifications } = useNotifications();
+  
+  // Profile completion check
+  const {
+    showModal: showProfileModal,
+    closeModal: closeProfileModal,
+    onProfileComplete: handleProfileComplete
+  } = useProfileCompletion();
 
   // Appeal modal state
   const [isAppealOpen, setIsAppealOpen] = useState(false);
@@ -341,16 +351,17 @@ function TopBarPortal() {
         {/* Cart Button */}
         <button
           onClick={() => navigate('/Products/Cart')}
-          className="relative bg-[#3182ce] text-white px-3 py-2 rounded-full flex items-center gap-2 hover:bg-[#4992d6] transition-colors"
+          className="relative text-white cursor-pointer py-2 rounded-full flex items-center gap-2 transition-colors"
         >
-          <ShoppingCart size={20} />
-          <span className="text-sm">Cart</span>
+          <ShoppingCart size={22} />
+          <span className="text-sm"></span>
           {realTimeCartCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
               {realTimeCartCount}
             </span>
           )}
         </button>
+        <LogoutMenu />
       </div>
       {/* Appeal Modal (Portal + Scroll Lock) */}
       {isAppealOpen && createPortal(
@@ -418,6 +429,13 @@ function TopBarPortal() {
         </div>,
         document.body
       )}
+      
+      {/* Profile Completion Modal */}
+      <ProfileCompletionModal
+        isOpen={showProfileModal}
+        onClose={closeProfileModal}
+        onComplete={handleProfileComplete}
+      />
     </div>
   );
 }

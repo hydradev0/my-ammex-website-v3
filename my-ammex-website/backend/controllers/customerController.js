@@ -174,15 +174,50 @@ const updateCustomer = async (req, res, next) => {
     // Sanitize: convert empty strings to null to satisfy allowNull validators
     const fields = [
       'customerName','street','city','postalCode','country','contactName',
-      'telephone1','telephone2','email1','email2','notes'
+      'telephone1','telephone2','email1','email2','notes','profileCompleted'
     ];
     const sanitized = {};
     for (const key of fields) {
       if (Object.prototype.hasOwnProperty.call(updateData, key)) {
         const value = updateData[key];
-        sanitized[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
+        // Handle boolean values (like profileCompleted) differently
+        if (key === 'profileCompleted') {
+          sanitized[key] = Boolean(value);
+        } else {
+          sanitized[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
+        }
       }
     }
+
+    // Always auto-determine profile completion based on required fields
+    // This ensures profile_completed is always up-to-date
+    const requiredFields = [
+      sanitized.customerName || customer.customerName,
+      sanitized.telephone1 || customer.telephone1,
+      sanitized.email1 || customer.email1,
+      sanitized.street || customer.street,
+      sanitized.city || customer.city,
+      sanitized.postalCode || customer.postalCode,
+      sanitized.country || customer.country
+    ];
+    
+    const allRequiredFieldsFilled = requiredFields.every(field => 
+      field && field.toString().trim() !== ''
+    );
+    
+    // Always set profileCompleted based on required fields completion
+    sanitized.profileCompleted = allRequiredFieldsFilled;
+    
+    console.log('Auto-determining profile completion:', {
+      customerId: customer.customerId,
+      requiredFields: requiredFields.map((field, index) => ({
+        field: ['customerName', 'telephone1', 'email1', 'street', 'city', 'postalCode', 'country'][index],
+        value: field,
+        isEmpty: !field || field.toString().trim() === ''
+      })),
+      allRequiredFieldsFilled,
+      profileCompleted: sanitized.profileCompleted
+    });
 
     // Update customer record
     await customer.update(sanitized);
@@ -311,6 +346,57 @@ const getCustomerStats = async (req, res, next) => {
   
 };
 
+// Fix profile completion status for current user
+const fixMyProfileCompletion = async (req, res, next) => {
+  try {
+    const { Customer } = getModels();
+    const customer = await Customer.findOne({ 
+      where: { userId: req.user.id }
+    });
+    
+    if (!customer) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Customer not found' 
+      });
+    }
+
+    // Check required fields
+    const requiredFields = [
+      customer.customerName,
+      customer.telephone1,
+      customer.email1,
+      customer.street,
+      customer.city,
+      customer.postalCode,
+      customer.country
+    ];
+
+    const allRequiredFieldsFilled = requiredFields.every(field => 
+      field && field.toString().trim() !== ''
+    );
+
+    // Update profile completion status
+    await customer.update({ profileCompleted: allRequiredFieldsFilled });
+
+    res.json({
+      success: true,
+      data: {
+        customerId: customer.customerId,
+        profileCompleted: allRequiredFieldsFilled,
+        requiredFields: requiredFields.map((field, index) => ({
+          field: ['customerName', 'telephone1', 'email1', 'street', 'city', 'postalCode', 'country'][index],
+          value: field,
+          isEmpty: !field || field.toString().trim() === ''
+        }))
+      },
+      message: `Profile completion status updated to: ${allRequiredFieldsFilled}`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
 module.exports = {
@@ -321,5 +407,5 @@ module.exports = {
   deleteCustomer,
   getCustomerStats,
   getMyCustomer,
-
+  fixMyProfileCompletion
 }; 

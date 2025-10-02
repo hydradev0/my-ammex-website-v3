@@ -522,7 +522,7 @@ const Cart = () => {
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full h-[100vh] flex flex-col"
         style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
       >
         {/* Fixed Header */}
