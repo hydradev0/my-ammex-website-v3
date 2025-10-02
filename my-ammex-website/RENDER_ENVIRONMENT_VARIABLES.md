@@ -11,7 +11,9 @@ HOST=0.0.0.0
 DATABASE_URL=postgresql://username:password@host:port/database
 JWT_SECRET=f8b3a3fcef2ee384eaf1ec994b3145cd2e13e29cb5f86289cf2eaa474936dcdef0146a6460486d713e6116da98b3f7e14df24845d361b81cf7be782c6a0e5650
 JWT_EXPIRE=30d
-FRONTEND_URL=https://your-frontend-app.onrender.com
+FRONTEND_URL=https://app-ammex.onrender.com
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_REFERER=https://app-ammex.onrender.com
 ```
 
 ⚠️ **CRITICAL**: The server will NOT start without `JWT_SECRET` being properly configured!
@@ -21,7 +23,7 @@ FRONTEND_URL=https://your-frontend-app.onrender.com
 Copy these exact values to your Render frontend service:
 
 ```
-VITE_API_URL=https://your-backend-app.onrender.com/api
+VITE_API_URL=https://ammex.onrender.com/api
 NODE_ENV=production
 ```
 
@@ -37,7 +39,7 @@ NODE_ENV=production
    - **Key**: `DATABASE_URL` **Value**: `your-postgresql-connection-string`
    - **Key**: `JWT_SECRET` **Value**: `f8b3a3fcef2ee384eaf1ec994b3145cd2e13e29cb5f86289cf2eaa474936dcdef0146a6460486d713e6116da98b3f7e14df24845d361b81cf7be782c6a0e5650`
    - **Key**: `JWT_EXPIRE` **Value**: `30d`
-   - **Key**: `FRONTEND_URL` **Value**: `https://your-frontend-app.onrender.com`
+   - **Key**: `FRONTEND_URL` **Value**: `https://app-ammex.onrender.com`
 
 ### **Frontend Service:**
 1. Go to your frontend service dashboard

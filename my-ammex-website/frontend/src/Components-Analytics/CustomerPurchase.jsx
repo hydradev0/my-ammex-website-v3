@@ -284,20 +284,20 @@ const CustomerPurchaseForecast = () => {
         
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center -mx-36 gap-4 mb-5">
             <button
               onClick={() => navigate('/home/analytics')}
               className="group flex items-center cursor-pointer gap-2 px-4 py-2.5 bg-white hover:bg-purple-50 text-gray-600 hover:text-purple-600 rounded-xl border border-gray-200 hover:border-purple-200 transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              <span className="font-medium">Back to Analytics</span>
+              <span className="font-medium">Back</span>
             </button>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-2 -mt-17">
             <Users className="w-8 h-8 text-purple-600" />
             Customer Purchase Forecast
           </h1>
-          <p className="text-gray-600">Analyze customer acquisition trends and predict future purchase behavior</p>
+          <p className="text-gray-600 -mt-2">Analyze customer acquisition trends and predict future purchase behavior</p>
         </div>
 
         {/* Controls */}

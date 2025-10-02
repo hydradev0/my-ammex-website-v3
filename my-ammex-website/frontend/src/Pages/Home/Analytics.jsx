@@ -156,56 +156,28 @@ const Analytics = () => {
     <>
       <RoleBasedLayout />
       
-      <div className="w-full min-h-[calc(100vh-140px)]">
+      <div className="max-w-7xl mx-auto min-h-[calc(100vh-140px)]">
         <div className="w-full mt-8 px-20 pb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Analytics</h1>
 
           {/* Card Container - role-based analytics metrics */}
-          {analyticsCards?.length > 0 && (
+          {/* {analyticsCards?.length > 0 && (
             <div className="grid grid-cols-4 gap-6 mb-10 lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1">
               {analyticsCards.map((title) => renderAnalyticsCard(title))}
             </div>
-          )}
+          )} */}
 
           {/* Role-aware content area */}
           {(isAdmin || isSalesMarketing || isWarehouseSupervisor) && (
             <>
-              {/* Admin: dynamic layout - 2 components share space, 1 component takes full width */}
+              {/* Admin: single column layout */}
               {isAdmin && (
                 <div className="flex flex-col gap-6">
-                  {/* Row 1 */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="w-full">
-                      <SalesPerformance/>
-                    </div>
-                    <div className="w-full">
-                      <CustomerPerformance />
-                    </div>
+                  <div className="w-full">
+                    <SalesPerformance/>
                   </div>
-
-                  {/* Row 2 */}
-                  {/* <div className="grid grid-cols-2 gap-6"> */}
-                    <div className="w-full">
-                    <CartInsights data={cartInsightsData} />
-                    </div>
-                    {/* <div className="w-full">
-
-                        </div> 
-                  </div>  */}
-
-                </div>
-              )}
-
-              {/* Sales Marketing only: dynamic layout - 2 components share space, 1 component takes full width */}
-              {(!isAdmin && isSalesMarketing) && (
-                <div className="flex flex-col gap-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="w-full">
-                      <SalesPerformance />
-                    </div>
-                    <div className="w-full">
-                      <CustomerPerformance />
-                    </div>
+                  <div className="w-full">
+                    <CustomerPerformance />
                   </div>
                   <div className="w-full">
                     <CartInsights data={cartInsightsData} />
@@ -213,19 +185,38 @@ const Analytics = () => {
                 </div>
               )}
 
-              {/* Warehouse Supervisor only: Option B */}
-              {(!isAdmin && isWarehouseSupervisor) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start content-start">
-                  <div className="self-start"><StockMovement /></div>
-                  <div className="self-start"><SmartReorder /></div>
+              {/* Sales Marketing only: single column layout */}
+              {(!isAdmin && isSalesMarketing) && (
+                <div className="flex flex-col gap-6">
+                  <div className="w-full">
+                    <SalesPerformance />
+                  </div>
+                  <div className="w-full">
+                    <CustomerPerformance />
+                  </div>
+                  <div className="w-full">
+                    <CartInsights data={cartInsightsData} />
+                  </div>
                 </div>
               )}
+
+              {/* Warehouse Supervisor only: single column layout */}
+              {/* {(!isAdmin && isWarehouseSupervisor) && (
+                <div className="flex flex-col gap-6">
+                  <div className="w-full">
+                    <StockMovement />
+                  </div>
+                  <div className="w-full">
+                    <SmartReorder />
+                  </div>
+                </div>
+              )} */}
             </>
           )}
 
           {/* Fallback: no analytics for this role */}
-          {!isAdmin && !isSalesMarketing && !isWarehouseSupervisor && (
-            <div className="mt-6 text-gray-600">No analytics available for your role.</div>
+          {!isAdmin && !isSalesMarketing  && (
+            <div className="flex min-h-[calc(90vh-200px)] justify-center items-center mt-6 text-gray-600">No analytics available for your role.</div>
           )}
         </div>
       </div>
