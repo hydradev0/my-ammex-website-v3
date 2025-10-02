@@ -157,7 +157,7 @@ const Analytics = () => {
       <RoleBasedLayout />
       
       <div className="max-w-7xl mx-auto min-h-[calc(100vh-140px)]">
-        <div className="w-full mt-8 px-20 pb-8">
+        <div className="mt-8 px-20 pb-8 ">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Analytics</h1>
 
           {/* Card Container - role-based analytics metrics */}

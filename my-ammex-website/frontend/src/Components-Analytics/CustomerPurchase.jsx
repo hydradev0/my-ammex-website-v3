@@ -301,7 +301,7 @@ const CustomerPurchaseForecast = () => {
         </div>
 
         {/* Controls */}
-        <div className="relative mb-8">
+        <div className="relative mb-8 z-50">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-600/5 to-pink-600/5 rounded-2xl blur-xl"></div>
           <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 shadow-lg">
             <div className="flex items-center gap-6 flex-wrap">
