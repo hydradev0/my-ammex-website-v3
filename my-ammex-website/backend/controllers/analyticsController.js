@@ -161,8 +161,15 @@ class AnalyticsController {
     try {
       const { period = 3, historicalMonths = 36 } = req.body; // Default to 3 years
       
+      // Check database connection first
+      const sequelize = getSequelize();
+      if (!sequelize) {
+        throw new Error('Database connection not available');
+      }
+      
       // Get historical sales data
-      const salesData = await getSequelize().query(`
+      console.log('Fetching historical sales data...');
+      const salesData = await sequelize.query(`
         SELECT 
           month_start,
           total_revenue,
@@ -173,19 +180,92 @@ class AnalyticsController {
         FROM sales_fact_monthly 
         ORDER BY month_start
       `, { type: QueryTypes.SELECT });
+      
+      console.log(`Retrieved ${salesData.length} historical records`);
 
-      // Get top products data for the same period
-      const topProductsData = await getSequelize().query(`
+      // Calculate forecast months dynamically (using previous year's same months)
+      const currentDate = new Date();
+      const forecastMonths = [];
+      
+      // Generate the months that will be forecasted (same months from previous year)
+      for (let i = 0; i < period; i++) {
+        const forecastDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth() + i + 1, 1);
+        forecastMonths.push(forecastDate.toISOString().split('T')[0]); // Format as YYYY-MM-DD
+      }
+      
+      console.log(`Calculated forecast months: ${forecastMonths.join(', ')}`);
+
+      // Get top products data dynamically - try previous year same months first, then fallback to recent months
+      console.log('Fetching top products data dynamically...');
+      
+      // Step 1: Try to get data from corresponding previous year months
+      const previousYearMonths = [];
+      for (let i = 0; i < period; i++) {
+        const forecastDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth() + i + 1, 1);
+        previousYearMonths.push(forecastDate.toISOString().split('T')[0]);
+      }
+      
+      console.log(`🎯 Primary lookup: Previous year months ${previousYearMonths.join(', ')}`);
+      
+      // Build dynamic WHERE clause for previous year months
+      const monthConditions = previousYearMonths.map((month, index) => 
+        `(EXTRACT(YEAR FROM month_start) = EXTRACT(YEAR FROM '${month}'::date) AND EXTRACT(MONTH FROM month_start) = EXTRACT(MONTH FROM '${month}'::date))`
+      ).join(' OR ');
+      
+      let topProductsData = await sequelize.query(`
         SELECT 
           month_start,
           model_no,
           category_name,
           ranking
         FROM sales_fact_monthly_by_product 
-        WHERE ranking <= 5  -- Get top 5 products per month
+        WHERE (${monthConditions})
+        AND ranking <= 5
         ORDER BY month_start DESC, ranking ASC
-        LIMIT 60  -- Limit to recent months for AI context
-      `, { type: QueryTypes.SELECT });
+      `, { 
+        type: QueryTypes.SELECT
+      });
+      
+      console.log(`📊 Found ${topProductsData.length} records from previous year months`);
+      
+      // Step 2: If we don't have enough data, get additional data from recent months
+      const monthsFound = new Set(topProductsData.map(item => item.month_start));
+      const missingMonths = previousYearMonths.filter(month => 
+        !monthsFound.has(month.replace(/-31$/, '-01').replace(/-30$/, '-01'))
+      );
+      
+      if (missingMonths.length > 0) {
+        console.log(`🔄 Missing data for ${missingMonths.length} months, fetching from recent data...`);
+        
+        const fallbackData = await sequelize.query(`
+          SELECT 
+            month_start,
+            model_no,
+            category_name,
+            ranking
+          FROM sales_fact_monthly_by_product 
+          WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
+          AND ranking <= 5
+          ORDER BY month_start DESC, ranking ASC
+          LIMIT 30
+        `, { 
+          type: QueryTypes.SELECT
+        });
+        
+        // Add fallback data that we don't already have
+        const existingMonths = new Set(topProductsData.map(item => item.month_start));
+        const additionalData = fallbackData.filter(item => 
+          !existingMonths.has(item.month_start) && 
+          !previousYearMonths.some(pm => 
+            item.month_start === pm.replace(/-31$/, '-01').replace(/-30$/, '-01')
+          )
+        );
+        
+        topProductsData = [...topProductsData, ...additionalData];
+        console.log(`📈 Added ${additionalData.length} additional records from recent months`);
+      }
+      
+      console.log(`✅ Total top products data: ${topProductsData.length} records`);
 
       // Format sales data for OpenRouter API consumption
       const formattedSalesData = salesData.map(item => ({
@@ -210,6 +290,7 @@ class AnalyticsController {
       }, {});
 
       if (formattedSalesData.length === 0) {
+        console.log('No historical data available for forecasting');
         return res.status(400).json({ 
           success: false, 
           error: 'No historical data available for forecasting' 
@@ -231,10 +312,44 @@ class AnalyticsController {
       });
     } catch (error) {
       console.error('Error generating sales forecast:', error);
+      console.error('Error stack:', error.stack);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        cause: error.cause
+      });
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = 'Failed to generate sales forecast';
+      let details = error.message;
+      
+      if (error.message.includes('rate limited') || error.message.includes('429')) {
+        errorMessage = 'AI service is temporarily busy. Please wait a moment and try again.';
+        details = 'The forecasting service is experiencing high demand. Please try again in a few seconds.';
+      } else if (error.message.includes('OpenRouter API error')) {
+        errorMessage = 'AI forecasting service is temporarily unavailable.';
+        details = 'The external AI service is experiencing issues. Please try again later.';
+      } else if (error.message.includes('AI response is not valid JSON')) {
+        errorMessage = 'AI service returned an unexpected response format.';
+        details = 'The AI service provided a response that could not be processed. Please try again.';
+      } else if (error.message.includes('quota exceeded') || error.message.includes('model unavailable')) {
+        errorMessage = 'AI service quota exceeded.';
+        details = 'The AI service has reached its usage limit. Please try again later or upgrade your plan.';
+      } else if (error.message.includes('Database connection not available')) {
+        errorMessage = 'Database service is currently unavailable.';
+        details = 'The database connection is not available. Please check the database configuration.';
+      } else if (error.message.includes('relation') && error.message.includes('does not exist')) {
+        errorMessage = 'Database tables are not properly configured.';
+        details = 'Required database tables are missing. Please run the database setup scripts.';
+      }
+      
+      console.log('Sending error response:', { errorMessage, details });
+      
       res.status(500).json({ 
         success: false, 
-        error: 'Failed to generate sales forecast',
-        details: error.message
+        error: errorMessage,
+        details: details,
+        retryable: error.message.includes('rate limited') || error.message.includes('429') || error.message.includes('temporarily')
       });
     }
   }
@@ -263,8 +378,10 @@ FORECAST PERIOD: Generate predictions for the NEXT ${forecastPeriod} months (do 
 Historical Sales Data (${processedData.length} months):
 ${JSON.stringify(processedData, null, 2)}
 
-Top Performing Products by Month:
+Historical Top Performing Products by Month (Previous Year Same Months + Recent Fallback):
 ${JSON.stringify(processedTopProducts, null, 2)}
+
+Based on the historical top products from the same months in the previous year (and recent months as fallback), predict which products will likely be top performers in the forecasted months.
 
 IMPORTANT: You must respond with ONLY valid JSON. Do not include any markdown formatting, explanations, or text outside the JSON. Start your response with { and end with }.
 
@@ -308,6 +425,7 @@ Based on the top products data provided, predict which products will likely cont
     `;
 
     try {
+      // Single attempt only - no retries
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -317,7 +435,7 @@ Based on the top products data provided, predict which products will likely cont
           'X-Title': 'Ammex Sales Forecasting'
         },
         body: JSON.stringify({
-          model: 'mistralai/mistral-7b-instruct:free',
+          model: 'deepseek/deepseek-v3.1:free',
           messages: [
             { 
               role: 'system', 
@@ -337,6 +455,7 @@ Based on the top products data provided, predict which products will likely cont
       const result = await response.json();
       
       if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+        console.error('Invalid response format from OpenRouter API:', result);
         throw new Error('Invalid response format from OpenRouter API');
       }
 
@@ -362,6 +481,10 @@ Based on the top products data provided, predict which products will likely cont
       
       // Parse and validate JSON response
       try {
+        if (!aiResponse || aiResponse.length === 0) {
+          throw new Error('AI returned empty response - likely quota exceeded or model unavailable');
+        }
+        
         const forecast = JSON.parse(aiResponse);
         return this.validateForecastResponse(forecast, forecastPeriod, historicalData);
       } catch (parseError) {
@@ -369,6 +492,11 @@ Based on the top products data provided, predict which products will likely cont
         console.error('Raw AI response:', aiResponse);
         console.error('Response length:', aiResponse?.length);
         console.error('First 200 chars:', aiResponse?.substring(0, 200));
+        
+        if (!aiResponse || aiResponse.length === 0) {
+          throw new Error('AI service quota exceeded or model temporarily unavailable. Please try again later.');
+        }
+        
         throw new Error(`AI response is not valid JSON. Raw response: ${aiResponse?.substring(0, 500)}`);
       }
     } catch (error) {
@@ -514,10 +642,27 @@ Based on the top products data provided, predict which products will likely cont
       });
     } catch (error) {
       console.error('Error generating customer bulk forecast:', error);
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = 'Failed to generate customer bulk forecast';
+      let details = error.message;
+      
+      if (error.message.includes('rate limited') || error.message.includes('429')) {
+        errorMessage = 'AI service is temporarily busy. Please wait a moment and try again.';
+        details = 'The forecasting service is experiencing high demand. Please try again in a few seconds.';
+      } else if (error.message.includes('OpenRouter API error')) {
+        errorMessage = 'AI forecasting service is temporarily unavailable.';
+        details = 'The external AI service is experiencing issues. Please try again later.';
+      } else if (error.message.includes('AI response is not valid JSON')) {
+        errorMessage = 'AI service returned an unexpected response format.';
+        details = 'The AI service provided a response that could not be processed. Please try again.';
+      }
+      
       res.status(500).json({ 
         success: false, 
-        error: 'Failed to generate customer bulk forecast',
-        details: error.message 
+        error: errorMessage,
+        details: details,
+        retryable: error.message.includes('rate limited') || error.message.includes('429') || error.message.includes('temporarily')
       });
     }
   }
@@ -564,6 +709,7 @@ Return this exact structure:
 }`;
 
     try {
+      // Single attempt only - no retries
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -573,7 +719,7 @@ Return this exact structure:
           'X-Title': 'Ammex Customer Bulk Forecast'
         },
         body: JSON.stringify({
-          model: 'mistralai/mistral-7b-instruct:free',
+          model: 'deepseek/deepseek-v3.1:free',
           messages: [
             { role: 'system', content: `You are a professional business analyst specializing in forecasting. Always return valid JSON. TODAY'S DATE IS ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01. Generate forecasts for NEXT months only.` },
             { role: 'user', content: prompt }
@@ -588,7 +734,13 @@ Return this exact structure:
       }
 
       const result = await response.json();
-      let aiResponse = result?.choices?.[0]?.message?.content || '';
+      
+      if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+        console.error('Invalid response format from OpenRouter API (bulk):', result);
+        throw new Error('Invalid response format from OpenRouter API');
+      }
+
+      let aiResponse = result.choices[0].message.content;
       aiResponse = aiResponse.trim();
       if (aiResponse.startsWith('```json')) {
         aiResponse = aiResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -601,8 +753,26 @@ Return this exact structure:
         aiResponse = aiResponse.substring(jsonStart, jsonEnd + 1);
       }
 
-      const forecast = JSON.parse(aiResponse);
-      return this.validateBulkForecastResponse(forecast, forecastPeriod, historicalBulkData);
+      // Parse and validate JSON response
+      try {
+        if (!aiResponse || aiResponse.length === 0) {
+          throw new Error('AI returned empty response - likely quota exceeded or model unavailable');
+        }
+        
+        const forecast = JSON.parse(aiResponse);
+        return this.validateBulkForecastResponse(forecast, forecastPeriod, historicalBulkData);
+      } catch (parseError) {
+        console.error('Failed to parse AI response (bulk):', parseError);
+        console.error('Raw AI response (bulk):', aiResponse);
+        console.error('Response length (bulk):', aiResponse?.length);
+        console.error('First 200 chars (bulk):', aiResponse?.substring(0, 200));
+        
+        if (!aiResponse || aiResponse.length === 0) {
+          throw new Error('AI service quota exceeded or model temporarily unavailable. Please try again later.');
+        }
+        
+        throw new Error(`AI response is not valid JSON. Raw response: ${aiResponse?.substring(0, 500)}`);
+      }
     } catch (error) {
       console.error('OpenRouter API call (bulk) failed:', error);
       throw error;
@@ -671,7 +841,7 @@ Return this exact structure:
   // Get dashboard metrics (cached)
   async getDashboardMetrics(req, res) {
     try {
-      const data = await sequelize.query(`
+      const data = await getSequelize().query(`
         SELECT 
           month_start,
           total_revenue,
@@ -727,7 +897,7 @@ Return this exact structure:
   // Refresh sales fact table (for maintenance)
   async refreshSalesFactTable(req, res) {
     try {
-      await sequelize.query('SELECT refresh_sales_fact_monthly()', { type: QueryTypes.SELECT });
+      await getSequelize().query('SELECT refresh_sales_fact_monthly()', { type: QueryTypes.SELECT });
       
       res.json({ 
         success: true, 
