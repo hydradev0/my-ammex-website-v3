@@ -169,10 +169,11 @@ const CustomerPurchaseForecast = () => {
           month: p.month, // backend labels months
           bulkOrdersCount: Math.round(p.bulkOrdersCount || 0),
           bulkOrdersAmount: Math.round(p.bulkOrdersAmount || 0),
-          trend: p.trend || 'stable'
+          momChange: p.momChange || 0
         }));
         const payload = {
           period: `${periodInt} months`,
+          totalGrowth: f.totalGrowth || 0,
           monthlyBreakdown: monthly,
           insights: f.insights || [],
           recommendations: f.recommendations || []
@@ -217,11 +218,11 @@ const CustomerPurchaseForecast = () => {
     if (!predictions) return;
     
     const csvContent = "data:text/csv;charset=utf-8," 
-      + "Month,Predicted Bulk Orders Count,Predicted Bulk Orders Amount,Avg Bulk Order Size,Trend\n"
+      + "Month,Predicted Bulk Orders Count,Predicted Bulk Orders Amount,Avg Bulk Order Size\n"
       + predictions.monthlyBreakdown.map(row => 
           (() => {
             const avgSize = row.bulkOrdersCount ? Math.round(row.bulkOrdersAmount / row.bulkOrdersCount) : 0;
-            return `${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize},${row.trend}`;
+            return `${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize}`;
           })()
         ).join("\n");
     
@@ -262,19 +263,19 @@ const CustomerPurchaseForecast = () => {
     return null;
   };
 
-  const TrendIndicator = ({ trend, value, isCurrency = false , name}) => (
-    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-      trend === 'up' 
-        ? 'bg-green-100 text-green-700' 
-        : trend === 'down' 
-        ? 'bg-red-100 text-red-700'
-        : 'bg-gray-100 text-gray-700'
-    }`}>
-      {trend === 'up' && <ArrowUp className="w-3 h-3" />}
-      {trend === 'down' && <ArrowDown className="w-3 h-3" />}
-      {isCurrency ? formatCurrency(value) : formatNumber(value)} {name}
-    </div>
-  );
+  // const TrendIndicator = ({ trend, value, isCurrency = false , name}) => (
+  //   <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+  //     trend === 'up' 
+  //       ? 'bg-green-100 text-green-700' 
+  //       : trend === 'down' 
+  //       ? 'bg-red-100 text-red-700'
+  //       : 'bg-gray-100 text-gray-700'
+  //   }`}>
+  //     {trend === 'up' && <ArrowUp className="w-3 h-3" />}
+  //     {trend === 'down' && <ArrowDown className="w-3 h-3" />}
+  //     {isCurrency ? formatCurrency(value) : formatNumber(value)} {name}
+  //   </div>
+  // );
 
   return (
     <>
@@ -613,14 +614,7 @@ const CustomerPurchaseForecast = () => {
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
                   <h3 className="text-sm font-medium opacity-90">Total Growth</h3>
                   <p className="text-2xl font-bold">
-                    {(() => {
-                      const lastHistoricalMonth = historicalCustomerData.length > 0 ? historicalCustomerData[historicalCustomerData.length - 1].bulkOrdersAmount : (predictions.monthlyBreakdown[0].bulkOrdersAmount || 0);
-                      const lastPredictedMonth = predictions.monthlyBreakdown[predictions.monthlyBreakdown.length - 1].bulkOrdersAmount || 0;
-                      const totalGrowth = lastHistoricalMonth !== 0 
-                        ? Math.round(((lastPredictedMonth - lastHistoricalMonth) / lastHistoricalMonth) * 100)
-                        : 0;
-                      return totalGrowth > 0 ? `+${totalGrowth}%` : `${totalGrowth}%`;
-                    })()}
+                    {predictions.totalGrowth > 0 ? `+${predictions.totalGrowth}%` : `${predictions.totalGrowth}%`}
                   </p>
                 </div>
               </div>
@@ -686,16 +680,7 @@ const CustomerPurchaseForecast = () => {
                     </thead>
                     <tbody>
                       {predictions.monthlyBreakdown.map((item, index) => {
-                        const currentAmount = Number(item.bulkOrdersAmount) || 0;
-                        const prevMonthRaw = index === 0
-                          ? (historicalCustomerData.length > 0 
-                                ? Number(historicalCustomerData[historicalCustomerData.length - 1].bulkOrdersAmount)
-                                : Number(item.bulkOrdersAmount))
-                          : Number(predictions.monthlyBreakdown[index - 1].bulkOrdersAmount);
-                        const prevMonthValue = Number.isFinite(prevMonthRaw) ? prevMonthRaw : 0;
-                        const momChange = prevMonthValue > 0 
-                          ? Math.round(((currentAmount - prevMonthValue) / prevMonthValue) * 100)
-                          : 0;
+                        const momChange = item.momChange || 0;
                         const momTrend = momChange > 0 ? 'up' : momChange < 0 ? 'down' : 'stable';
                         
                         return (

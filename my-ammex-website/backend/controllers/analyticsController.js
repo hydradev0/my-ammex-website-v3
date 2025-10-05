@@ -92,27 +92,103 @@ class AnalyticsController {
     }
   }
 
+  // Get top performing products data
+  getTopProducts = async (req, res) => {
+    try {
+      const { months = 12, limit = 10 } = req.query || {}; // Default to 12 months, top 10 products
+      
+      // Get top products for the specified period
+      const data = await getSequelize().query(`
+        SELECT 
+          month_start,
+          model_no,
+          category_name,
+          category_id,
+          subcategory_id,
+          ranking
+        FROM sales_fact_monthly_by_product 
+        WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+          AND ranking <= ${parseInt(limit)}
+        ORDER BY month_start DESC, ranking ASC
+      `, { type: QueryTypes.SELECT });
+
+      // Format for frontend consumption
+      const formattedData = data.map(item => ({
+        month: item.month_start,
+        modelNo: item.model_no,
+        categoryName: item.category_name,
+        categoryId: parseInt(item.category_id),
+        subcategoryId: item.subcategory_id ? parseInt(item.subcategory_id) : null,
+        ranking: parseInt(item.ranking)
+      }));
+
+      // Group by month for easier consumption
+      const groupedData = formattedData.reduce((acc, item) => {
+        if (!acc[item.month]) {
+          acc[item.month] = [];
+        }
+        acc[item.month].push({
+          modelNo: item.modelNo,
+          categoryName: item.categoryName,
+          categoryId: item.categoryId,
+          subcategoryId: item.subcategoryId,
+          ranking: item.ranking
+        });
+        return acc;
+      }, {});
+
+      res.json({ 
+        success: true, 
+        data: groupedData,
+        totalRecords: formattedData.length,
+        dateRange: {
+          from: Object.keys(groupedData)[Object.keys(groupedData).length - 1],
+          to: Object.keys(groupedData)[0]
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching top products data:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch top products data',
+        details: error.message 
+      });
+    }
+  }
+
   // Generate AI sales forecast using OpenRouter
   generateSalesForecast = async (req, res) => {
     try {
       const { period = 3, historicalMonths = 36 } = req.body; // Default to 3 years
       
-      // Get historical data directly
-            // Get all available data (since the sample data is from 2023-2025)
-            const data = await getSequelize().query(`
-              SELECT 
-                month_start,
-                total_revenue,
-                total_orders,
-                total_units,
-                avg_order_value,
-                new_customers
-              FROM sales_fact_monthly 
-              ORDER BY month_start
-            `, { type: QueryTypes.SELECT });
+      // Get historical sales data
+      const salesData = await getSequelize().query(`
+        SELECT 
+          month_start,
+          total_revenue,
+          total_orders,
+          total_units,
+          avg_order_value,
+          new_customers
+        FROM sales_fact_monthly 
+        ORDER BY month_start
+      `, { type: QueryTypes.SELECT });
 
-      // Format for OpenRouter API consumption
-      const formattedData = data.map(item => ({
+      // Get top products data for the same period
+      const topProductsData = await getSequelize().query(`
+        SELECT 
+          month_start,
+          model_no,
+          category_name,
+          ranking
+        FROM sales_fact_monthly_by_product 
+        WHERE ranking <= 5  -- Get top 5 products per month
+        ORDER BY month_start DESC, ranking ASC
+        LIMIT 60  -- Limit to recent months for AI context
+      `, { type: QueryTypes.SELECT });
+
+      // Format sales data for OpenRouter API consumption
+      const formattedSalesData = salesData.map(item => ({
         month: item.month_start,
         sales: parseFloat(item.total_revenue),
         orders: parseInt(item.total_orders),
@@ -120,39 +196,51 @@ class AnalyticsController {
         avgOrderValue: parseFloat(item.avg_order_value)
       }));
 
-      if (formattedData.length === 0) {
+      // Format top products data for AI context
+      const formattedTopProducts = topProductsData.reduce((acc, item) => {
+        if (!acc[item.month_start]) {
+          acc[item.month_start] = [];
+        }
+        acc[item.month_start].push({
+          modelNo: item.model_no,
+          category: item.category_name,
+          ranking: parseInt(item.ranking)
+        });
+        return acc;
+      }, {});
+
+      if (formattedSalesData.length === 0) {
         return res.status(400).json({ 
           success: false, 
           error: 'No historical data available for forecasting' 
         });
       }
 
-
-            // Call OpenRouter API for AI forecasting
-            const forecast = await this.callOpenRouterAPI(formattedData, period);
+      // Call OpenRouter API for AI forecasting with top products data
+      const forecast = await this.callOpenRouterAPI(formattedSalesData, period, formattedTopProducts);
   
-            res.json({ 
-              success: true, 
-              forecast,
-              metadata: {
-                period: `${period} months`,
-                historicalMonths: formattedData.length,
-                generatedAt: new Date().toISOString(),
-                source: 'openrouter'
-              }
-            });
+      res.json({ 
+        success: true, 
+        forecast,
+        metadata: {
+          period: `${period} months`,
+          historicalMonths: formattedSalesData.length,
+          generatedAt: new Date().toISOString(),
+          source: 'openrouter'
+        }
+      });
     } catch (error) {
       console.error('Error generating sales forecast:', error);
       res.status(500).json({ 
         success: false, 
         error: 'Failed to generate sales forecast',
-        details: error.message 
+        details: error.message
       });
     }
   }
 
   // OpenRouter API integration
-  callOpenRouterAPI = async (historicalData, forecastPeriod) => {
+  callOpenRouterAPI = async (historicalData, forecastPeriod, topProductsData = {}) => {
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
     
     if (!openRouterApiKey) {
@@ -161,18 +249,22 @@ class AnalyticsController {
 
     // Preprocess data for LLM
     const processedData = this.preprocessDataForLLM(historicalData);
+    const processedTopProducts = this.preprocessTopProductsForLLM(topProductsData);
     
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1; // 0-based to 1-based
     
-    const prompt = `You are a business analyst AI specializing in sales forecasting. Analyze this historical sales data for Ammex company and provide a detailed ${forecastPeriod}-month forecast.
+    const prompt = `You are a business analyst AI specializing in sales forecasting. Analyze this historical sales data and top performing products for Ammex company and provide a detailed ${forecastPeriod}-month forecast.
 
 CURRENT DATE: ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01
 FORECAST PERIOD: Generate predictions for the NEXT ${forecastPeriod} months (do NOT include current month)
 
 Historical Sales Data (${processedData.length} months):
 ${JSON.stringify(processedData, null, 2)}
+
+Top Performing Products by Month:
+${JSON.stringify(processedTopProducts, null, 2)}
 
 IMPORTANT: You must respond with ONLY valid JSON. Do not include any markdown formatting, explanations, or text outside the JSON. Start your response with { and end with }.
 
@@ -181,33 +273,38 @@ Return this exact JSON structure (month field will be generated automatically):
   "period": "${forecastPeriod} months",
   "totalPredicted": number,
   "avgMonthly": number,
-  "confidence": number,
-  "growthRate": number,
+  "totalGrowth": number (percentage from 0-100, e.g., 15.5 for 15.5% growth),
+  "growthRate": number (decimal rate, e.g., 0.155 for 15.5%),
   "monthlyBreakdown": [
     {
       "predicted": number,
-      "confidence": number,
-      "trend": "up|down|stable",
       "seasonalFactor": number
     }
+  ],
+  "Top Products": [
+    "string top product 1 (model no, category)",
+    "string top product 2",
+    "string top product 3",
+    "string top product 4",
+    "string top product 5",
   ],
   "insights": [
     "string insight 1",
     "string insight 2",
-    "string insight 3"
+    "string insight 3",
+    "string insight 4",
+    "string insight 5"
   ],
   "recommendations": [
     "string recommendation 1",
     "string recommendation 2",
-    "string recommendation 3"
+    "string recommendation 3",
+    "string recommendation 4",
+    "string recommendation 5"
   ],
-  "riskFactors": [
-    "string risk 1",
-    "string risk 2"
-  ]
 }
 
-Ensure all monetary values are in the same currency as the historical data (PHP). Be realistic and conservative in your predictions.
+Based on the top products data provided, predict which products will likely continue to perform well in the forecast period. Consider seasonal trends and product category performance. Ensure all monetary values are in the same currency as the historical data (PHP). Be realistic and conservative in your predictions.
     `;
 
     try {
@@ -266,7 +363,7 @@ Ensure all monetary values are in the same currency as the historical data (PHP)
       // Parse and validate JSON response
       try {
         const forecast = JSON.parse(aiResponse);
-        return this.validateForecastResponse(forecast, forecastPeriod);
+        return this.validateForecastResponse(forecast, forecastPeriod, historicalData);
       } catch (parseError) {
         console.error('Failed to parse AI response:', parseError);
         console.error('Raw AI response:', aiResponse);
@@ -291,9 +388,21 @@ Ensure all monetary values are in the same currency as the historical data (PHP)
     }));
   }
 
+  // Preprocess top products data for LLM consumption
+  preprocessTopProductsForLLM(topProductsData) {
+    // Convert to array format with recent months first
+    const months = Object.keys(topProductsData).sort((a, b) => new Date(b) - new Date(a));
+    const recentMonths = months.slice(0, 12); // Get last 12 months for AI context
+    
+    return recentMonths.map(month => ({
+      month,
+      topProducts: topProductsData[month].slice(0, 5) // Top 5 products per month
+    }));
+  }
+
   // Validate and clean AI response
-  validateForecastResponse(forecast, expectedPeriod) {
-    const requiredFields = ['period', 'totalPredicted', 'avgMonthly', 'confidence', 'monthlyBreakdown'];
+  validateForecastResponse(forecast, expectedPeriod, historicalData = []) {
+    const requiredFields = ['period', 'totalPredicted', 'avgMonthly', 'totalGrowth', 'monthlyBreakdown'];
     
     for (const field of requiredFields) {
       if (!forecast[field]) {
@@ -311,7 +420,28 @@ Ensure all monetary values are in the same currency as the historical data (PHP)
     forecast.recommendations = forecast.recommendations || ['Continue monitoring sales trends'];
     forecast.riskFactors = forecast.riskFactors || ['Market volatility'];
 
-    // Generate dynamic month names for each prediction (starting from NEXT month)
+    // Validate and normalize totalGrowth to percentage
+    if (typeof forecast.totalGrowth === 'number') {
+      // If totalGrowth is > 100, assume it's an absolute value and convert to percentage
+      if (forecast.totalGrowth > 100 && historicalData.length > 0) {
+        const lastHistoricalValue = historicalData[historicalData.length - 1].sales;
+        const totalHistoricalValue = historicalData.reduce((sum, item) => sum + item.sales, 0);
+        const avgHistoricalValue = totalHistoricalValue / historicalData.length;
+        
+        // Calculate proper percentage growth
+        const baselineValue = lastHistoricalValue || avgHistoricalValue;
+        if (baselineValue > 0) {
+          forecast.totalGrowth = Math.round(((forecast.totalPredicted - (baselineValue * forecastPeriod)) / (baselineValue * forecastPeriod)) * 100);
+        }
+      }
+      
+      // Ensure totalGrowth is within reasonable bounds (-100% to 1000%)
+      forecast.totalGrowth = Math.max(-100, Math.min(1000, forecast.totalGrowth));
+    } else {
+      forecast.totalGrowth = 0;
+    }
+
+    // First pass: generate dynamic month names
     const currentDate = new Date();
     forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {
       const forecastDate = new Date(currentDate);
@@ -321,6 +451,21 @@ Ensure all monetary values are in the same currency as the historical data (PHP)
       return {
         ...item,
         month: monthLabel
+      };
+    });
+
+    // Second pass: calculate MoM (Month-over-Month) changes
+    forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {
+      const prevMonthValue = index === 0 
+        ? (historicalData.length > 0 ? historicalData[historicalData.length - 1].sales : item.predicted)
+        : forecast.monthlyBreakdown[index - 1].predicted;
+      const momChange = prevMonthValue !== 0 
+        ? Math.round(((item.predicted - prevMonthValue) / prevMonthValue) * 100)
+        : 0;
+      
+      return {
+        ...item,
+        momChange
       };
     });
 
@@ -399,15 +544,23 @@ IMPORTANT: Respond with ONLY valid JSON. No markdown.
 Return this exact structure:
 {
   "period": "${forecastPeriod} months",
+  "totalGrowth": number (percentage from 0-100, e.g., 15.5 for 15.5% growth),
   "monthlyBreakdown": [
     {
       "bulkOrdersCount": number,
-      "bulkOrdersAmount": number,
-      "trend": "up|down|stable"
+      "bulkOrdersAmount": number
     }
   ],
-  "insights": ["string"],
-  "recommendations": ["string"]
+  "insights": [
+    "string insight 1",
+    "string insight 2",
+    "string insight 3"
+  ],
+  "recommendations": [
+    "string recommendation 1",
+    "string recommendation 2",
+    "string recommendation 3"
+  ]
 }`;
 
     try {
@@ -449,27 +602,65 @@ Return this exact structure:
       }
 
       const forecast = JSON.parse(aiResponse);
-      return this.validateBulkForecastResponse(forecast, forecastPeriod);
+      return this.validateBulkForecastResponse(forecast, forecastPeriod, historicalBulkData);
     } catch (error) {
       console.error('OpenRouter API call (bulk) failed:', error);
       throw error;
     }
   }
 
-  validateBulkForecastResponse = (forecast, expectedPeriod) => {
+  validateBulkForecastResponse = (forecast, expectedPeriod, historicalData = []) => {
     if (!forecast || !Array.isArray(forecast.monthlyBreakdown)) {
       throw new Error('Invalid bulk forecast response');
     }
+
+    // Validate and normalize totalGrowth to percentage
+    if (typeof forecast.totalGrowth === 'number') {
+      // If totalGrowth is > 100, assume it's an absolute value and convert to percentage
+      if (forecast.totalGrowth > 100 && historicalData.length > 0) {
+        const lastHistoricalValue = historicalData[historicalData.length - 1].bulkOrdersAmount;
+        const totalHistoricalValue = historicalData.reduce((sum, item) => sum + item.bulkOrdersAmount, 0);
+        const avgHistoricalValue = totalHistoricalValue / historicalData.length;
+        
+        // Calculate proper percentage growth
+        const baselineValue = lastHistoricalValue || avgHistoricalValue;
+        if (baselineValue > 0) {
+          const totalPredicted = forecast.monthlyBreakdown.reduce((sum, item) => sum + item.bulkOrdersAmount, 0);
+          forecast.totalGrowth = Math.round(((totalPredicted - (baselineValue * forecastPeriod)) / (baselineValue * forecastPeriod)) * 100);
+        }
+      }
+      
+      // Ensure totalGrowth is within reasonable bounds (-100% to 1000%)
+      forecast.totalGrowth = Math.max(-100, Math.min(1000, forecast.totalGrowth));
+    } else {
+      forecast.totalGrowth = 0;
+    }
+    // First pass: generate dynamic month names
     const currentDate = new Date();
     forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {
       const forecastDate = new Date(currentDate);
       forecastDate.setMonth(currentDate.getMonth() + index + 1);
       const monthLabel = forecastDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      
       return {
         month: monthLabel,
         bulkOrdersCount: Math.max(0, Math.round(item.bulkOrdersCount || 0)),
-        bulkOrdersAmount: Math.max(0, Math.round(item.bulkOrdersAmount || 0)),
-        trend: item.trend || 'stable'
+        bulkOrdersAmount: Math.max(0, Math.round(item.bulkOrdersAmount || 0))
+      };
+    });
+
+    // Second pass: calculate MoM (Month-over-Month) changes
+    forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {
+      const prevMonthValue = index === 0 
+        ? (historicalData.length > 0 ? historicalData[historicalData.length - 1].bulkOrdersAmount : item.bulkOrdersAmount)
+        : forecast.monthlyBreakdown[index - 1].bulkOrdersAmount;
+      const momChange = prevMonthValue !== 0 
+        ? Math.round(((item.bulkOrdersAmount - prevMonthValue) / prevMonthValue) * 100)
+        : 0;
+      
+      return {
+        ...item,
+        momChange
       };
     });
     forecast.insights = forecast.insights || [];

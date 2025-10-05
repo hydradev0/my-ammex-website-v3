@@ -14,6 +14,11 @@ router.get('/historical-sales', /* protect, */ analyticsController.getHistorical
 // @access  Private
 router.get('/historical-customer-data', /* protect, */ analyticsController.getHistoricalCustomerData);
 
+// @route   GET /api/analytics/top-products
+// @desc    Get top performing products data
+// @access  Private
+router.get('/top-products', /* protect, */ analyticsController.getTopProducts);
+
 // @route   POST /api/analytics/forecast
 // @desc    Generate AI sales forecast using OpenRouter
 // @access  Private

@@ -46,5 +46,14 @@ export async function postCustomerBulkForecast({ period = 3 } = {}) {
   return json;
 }
 
+export async function getTopProducts({ months = 12, limit = 10 } = {}) {
+  const url = `${API_BASE_URL}/analytics/top-products?months=${months}&limit=${limit}`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Top products request failed: ${res.status}`);
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Top products error');
+  return json;
+}
+
 
 
