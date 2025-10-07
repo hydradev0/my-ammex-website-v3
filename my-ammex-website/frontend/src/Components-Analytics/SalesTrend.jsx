@@ -97,6 +97,7 @@ const SalesTrend = () => {
   const [showModal, setShowModal] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [predictions, setPredictions] = useState(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(null);
 
   // Historical sales state (fetched from backend)
   const [allHistoricalData, setAllHistoricalData] = useState([]);
@@ -121,6 +122,29 @@ const SalesTrend = () => {
   };
 
   const latestTopProducts = getLatestTopProducts();
+
+  // Check cooldown status on component mount and periodically
+  useEffect(() => {
+    const checkCooldown = () => {
+      const lastSuccessTime = localStorage.getItem('lastSalesForecastSuccess');
+      if (lastSuccessTime) {
+        const now = Date.now();
+        const cooldownPeriod = 10000; // 10 seconds
+        const remaining = cooldownPeriod - (now - parseInt(lastSuccessTime));
+        
+        if (remaining > 0) {
+          setCooldownRemaining(Math.ceil(remaining / 1000));
+        } else {
+          setCooldownRemaining(null);
+        }
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000); // Check every second
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,6 +214,17 @@ const SalesTrend = () => {
 
   // Prediction generator (backend + fallback)
   const generatePredictions = async () => {
+    // Check cooldown period (10 seconds = 10000ms)
+    const lastSuccessTime = localStorage.getItem('lastSalesForecastSuccess');
+    const now = Date.now();
+    const cooldownPeriod = 10000; // 10 seconds in milliseconds
+    
+    if (lastSuccessTime && (now - parseInt(lastSuccessTime)) < cooldownPeriod) {
+      const remainingTime = Math.ceil((cooldownPeriod - (now - parseInt(lastSuccessTime))) / 1000);
+      alert(`Please wait ${remainingTime} more seconds before making another forecast request.`);
+      return;
+    }
+    
     setIsAnalyzing(true);
     const periodInt = parseInt(selectedPeriod);
     try {
@@ -218,22 +253,66 @@ const SalesTrend = () => {
           recommendations: f.recommendations || []
         };
         setPredictions(payload);
+        
+        // Only set cooldown on successful prediction
+        localStorage.setItem('lastSalesForecastSuccess', Date.now().toString());
       } else {
         throw new Error('Empty forecast');
       }
     } catch (err) {
       console.error('Forecast generation failed:', err);
-      // Show error instead of fallback
+      
+      // Parse error response for better user feedback
+      let errorMessage = 'Failed to generate AI forecast.';
+      let errorDetails = err.message || 'Unknown error occurred';
+      let suggestions = [
+        'Check OpenRouter API key configuration',
+        'Verify backend connectivity', 
+        'Ensure historical data is available'
+      ];
+      
+      // Check if it's a structured error response
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        if (errorData.details) {
+          errorDetails = errorData.details;
+        }
+        
+        // Provide specific suggestions based on error type
+        if (errorMessage.includes('model') && errorMessage.includes('not available')) {
+          suggestions = [
+            'The AI model is currently unavailable',
+            'Contact support to update model configuration',
+            'Try again later when the model is available'
+          ];
+        } else if (errorMessage.includes('rate limited') || errorMessage.includes('temporarily busy')) {
+          suggestions = [
+            'The AI service is experiencing high demand',
+            'Wait a few moments and try again',
+            'Consider using a different time'
+          ];
+        } else if (errorMessage.includes('quota exceeded')) {
+          suggestions = [
+            'AI service quota has been exceeded',
+            'Wait for quota to reset',
+            'Contact support for quota increase'
+          ];
+        }
+      }
+      
       setPredictions({
-        error: 'Failed to generate AI forecast. Please check your OpenRouter API configuration and try again.',
-        details: err.message || 'Unknown error occurred',
+        error: errorMessage,
+        details: errorDetails,
         period: `${periodInt} months`,
         totalPredicted: 0,
         avgMonthly: 0,
         growthRate: 0,
         monthlyBreakdown: [],
         insights: ['AI forecasting service unavailable'],
-        recommendations: ['Check OpenRouter API key configuration', 'Verify backend connectivity', 'Ensure historical data is available']
+        recommendations: suggestions
       });
     } finally {
       setIsAnalyzing(false);
@@ -368,11 +447,13 @@ const SalesTrend = () => {
               
               <button
                 onClick={generatePredictions}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || cooldownRemaining > 0}
                 className="group px-6 py-3 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
                 <Brain className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span>Generate AI Forecast</span>
+                <span>
+                  {cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Generate AI Forecast'}
+                </span>
               </button>
             </div>
           </div>

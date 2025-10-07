@@ -17,9 +17,25 @@ export async function postForecast({ period = 3, historicalMonths = 12 }) {
     credentials: 'include',
     body: JSON.stringify({ period, historicalMonths })
   });
-  if (!res.ok) throw new Error(`Forecast request failed: ${res.status}`);
+  
   const json = await res.json();
-  if (!json?.success) throw new Error(json?.error || 'Forecast error');
+  if (json?.metadata?.usage) {
+    // Frontend visibility of OpenRouter token usage
+    console.log('[Forecast Usage]', json.metadata.usage);
+  }
+  
+  if (!res.ok) {
+    const error = new Error(json?.error || `Forecast request failed: ${res.status}`);
+    error.response = { data: json };
+    throw error;
+  }
+  
+  if (!json?.success) {
+    const error = new Error(json?.error || 'Forecast error');
+    error.response = { data: json };
+    throw error;
+  }
+  
   return json;
 }
 
@@ -40,9 +56,25 @@ export async function postCustomerBulkForecast({ period = 3 } = {}) {
     credentials: 'include',
     body: JSON.stringify({ period })
   });
-  if (!res.ok) throw new Error(`Customer bulk forecast request failed: ${res.status}`);
+  
   const json = await res.json();
-  if (!json?.success) throw new Error(json?.error || 'Customer bulk forecast error');
+  if (json?.metadata?.usage) {
+    // Frontend visibility of OpenRouter token usage (bulk)
+    console.log('[Customer Bulk Forecast Usage]', json.metadata.usage);
+  }
+  
+  if (!res.ok) {
+    const error = new Error(json?.error || `Customer bulk forecast request failed: ${res.status}`);
+    error.response = { data: json };
+    throw error;
+  }
+  
+  if (!json?.success) {
+    const error = new Error(json?.error || 'Customer bulk forecast error');
+    error.response = { data: json };
+    throw error;
+  }
+  
   return json;
 }
 
@@ -52,6 +84,15 @@ export async function getTopProducts({ months = 12, limit = 10 } = {}) {
   if (!res.ok) throw new Error(`Top products request failed: ${res.status}`);
   const json = await res.json();
   if (!json?.success) throw new Error(json?.error || 'Top products error');
+  return json;
+}
+
+export async function getTopBulkCustomers({ months = 12, limit = 10 } = {}) {
+  const url = `${API_BASE_URL}/analytics/top-bulk-customers?months=${months}&limit=${limit}`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`Top bulk customers request failed: ${res.status}`);
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Top bulk customers error');
   return json;
 }
 

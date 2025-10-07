@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getHistoricalCustomerData, postCustomerBulkForecast } from '../services/analytics';
+import { getHistoricalCustomerData, postCustomerBulkForecast, getTopBulkCustomers } from '../services/analytics';
 import {
   LineChart,
   Line,
@@ -97,10 +97,15 @@ const CustomerPurchaseForecast = () => {
   const [showModal, setShowModal] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [predictions, setPredictions] = useState(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(null);
 
   // Historical customer data (fetched from backend)
   const [allHistoricalData, setAllHistoricalData] = useState([]);
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(true);
+
+  // Top bulk customers data
+  const [topBulkCustomersData, setTopBulkCustomersData] = useState({});
+  const [isLoadingTopBulkCustomers, setIsLoadingTopBulkCustomers] = useState(false);
 
   // Filter historical data based on selected period
   const getHistoricalData = () => {
@@ -109,6 +114,37 @@ const CustomerPurchaseForecast = () => {
   };
 
   const historicalCustomerData = getHistoricalData();
+
+  // Get latest top bulk customers for display
+  const getLatestTopBulkCustomers = () => {
+    const months = Object.keys(topBulkCustomersData).sort((a, b) => new Date(b) - new Date(a));
+    return months.length > 0 ? topBulkCustomersData[months[0]] : [];
+  };
+
+  const latestTopBulkCustomers = getLatestTopBulkCustomers();
+
+  // Check cooldown status on component mount and periodically
+  useEffect(() => {
+    const checkCooldown = () => {
+      const lastSuccessTime = localStorage.getItem('lastCustomerForecastSuccess');
+      if (lastSuccessTime) {
+        const now = Date.now();
+        const cooldownPeriod = 10000; // 10 seconds
+        const remaining = cooldownPeriod - (now - parseInt(lastSuccessTime));
+        
+        if (remaining > 0) {
+          setCooldownRemaining(Math.ceil(remaining / 1000));
+        } else {
+          setCooldownRemaining(null);
+        }
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000); // Check every second
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -144,6 +180,28 @@ const CustomerPurchaseForecast = () => {
     return () => { isMounted = false; };
   }, [historicalPeriod]);
 
+  // Fetch top bulk customers data
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setIsLoadingTopBulkCustomers(true);
+      try {
+        const months = Math.max(parseInt(historicalPeriod), 1);
+        const res = await getTopBulkCustomers({ months, limit: 10 });
+        if (!isMounted) return;
+        setTopBulkCustomersData(res?.data || {});
+      } catch (e) {
+        console.error('Failed to fetch top bulk customers data:', e);
+        setTopBulkCustomersData({});
+      } finally {
+        if (isMounted) {
+          setIsLoadingTopBulkCustomers(false);
+        }
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [historicalPeriod]);
+
   // Dropdown options
   const historicalPeriodOptions = [
     { value: '1', label: '1 Month' },
@@ -159,6 +217,17 @@ const CustomerPurchaseForecast = () => {
 
   // Real prediction generator
   const generatePredictions = async () => {
+    // Check cooldown period (10 seconds = 10000ms)
+    const lastSuccessTime = localStorage.getItem('lastCustomerForecastSuccess');
+    const now = Date.now();
+    const cooldownPeriod = 10000; // 10 seconds in milliseconds
+    
+    if (lastSuccessTime && (now - parseInt(lastSuccessTime)) < cooldownPeriod) {
+      const remainingTime = Math.ceil((cooldownPeriod - (now - parseInt(lastSuccessTime))) / 1000);
+      alert(`Please wait ${remainingTime} more seconds before making another forecast request.`);
+      return;
+    }
+    
     setIsAnalyzing(true);
     const periodInt = parseInt(selectedPeriod);
     try {
@@ -175,22 +244,70 @@ const CustomerPurchaseForecast = () => {
           period: `${periodInt} months`,
           totalGrowth: f.totalGrowth || 0,
           monthlyBreakdown: monthly,
+          topBulkCustomers: f.topBulkCustomers || f['Top Bulk Customers'] || [],
           insights: f.insights || [],
           recommendations: f.recommendations || []
         };
         setPredictions(payload);
+        
+        // Only set cooldown on successful prediction
+        localStorage.setItem('lastCustomerForecastSuccess', Date.now().toString());
       } else {
         throw new Error('Empty forecast');
       }
     } catch (err) {
       console.error('Customer bulk forecast failed:', err);
+      
+      // Parse error response for better user feedback
+      let errorMessage = 'Failed to generate customer bulk forecast.';
+      let errorDetails = err.message || 'Unknown error occurred';
+      let suggestions = [
+        'Check OpenRouter API configuration',
+        'Verify backend connectivity',
+        'Ensure customer data is available'
+      ];
+      
+      // Check if it's a structured error response
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        if (errorData.details) {
+          errorDetails = errorData.details;
+        }
+        
+        // Provide specific suggestions based on error type
+        if (errorMessage.includes('model') && errorMessage.includes('not available')) {
+          suggestions = [
+            'The AI model is currently unavailable',
+            'Contact support to update model configuration',
+            'Try again later when the model is available'
+          ];
+        } else if (errorMessage.includes('rate limited') || errorMessage.includes('temporarily busy')) {
+          suggestions = [
+            'The AI service is experiencing high demand',
+            'Wait a few moments and try again',
+            'Consider using a different time'
+          ];
+        } else if (errorMessage.includes('quota exceeded')) {
+          suggestions = [
+            'AI service quota has been exceeded',
+            'Wait for quota to reset',
+            'Contact support for quota increase'
+          ];
+        }
+      }
+      
       setPredictions({
-        error: 'Failed to generate customer bulk forecast. Please check your OpenRouter configuration or try again later.',
-        details: err.message || 'Unknown error',
+        error: errorMessage,
+        details: errorDetails,
         period: `${periodInt} months`,
+        totalGrowth: 0,
         monthlyBreakdown: [],
-        insights: [],
-        recommendations: []
+        topBulkCustomers: [],
+        insights: ['AI customer forecasting service unavailable'],
+        recommendations: suggestions
       });
     } finally {
       setIsAnalyzing(false);
@@ -334,11 +451,13 @@ const CustomerPurchaseForecast = () => {
               
               <button
                 onClick={generatePredictions}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || cooldownRemaining > 0}
                 className="group px-6 py-3 cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
                 <Brain className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span>Generate AI Forecast</span>
+                <span>
+                  {cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Generate AI Forecast'}
+                </span>
               </button>
             </div>
           </div>
@@ -590,8 +709,30 @@ const CustomerPurchaseForecast = () => {
         >
           {predictions && (
             <>
-            {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {/* Summary Cards */}
+              {predictions.error ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+                  <div className="flex items-center mb-4">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">AI Forecast Error</h3>
+                    </div>
+                  </div>
+                  <div className="text-sm text-red-700">
+                    <p className="mb-2">{predictions.error}</p>
+                    {predictions.details && (
+                      <p className="text-xs text-red-600 font-mono bg-red-100 p-2 rounded">
+                        {predictions.details}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
                   <h3 className="text-sm font-medium opacity-90">Predicted Bulk Amount</h3>
                   <p className="text-2xl font-bold">{
@@ -618,10 +759,13 @@ const CustomerPurchaseForecast = () => {
                   </p>
                 </div>
               </div>
+              )}
 
               {/* Monthly Breakdown Chart */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
+              {!predictions.error && (
+                <>
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Breakdown</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={predictions.monthlyBreakdown}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -711,6 +855,35 @@ const CustomerPurchaseForecast = () => {
                 </div>
               </div>
 
+              {/* AI Predicted Top Bulk Customers */}
+              {!predictions.error && predictions.topBulkCustomers && predictions.topBulkCustomers.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Bulk Customers</h3>
+                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-800">
+                      <strong>Note:</strong> These are AI-predicted top bulk customers based on last year's top bulk customers.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {predictions.topBulkCustomers.slice(0, 5).map((customer, index) => (
+                      <div key={index} className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-600 flex items-center justify-center text-white font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 text-sm">{customer}</h4>
+                          </div>
+                          <div className="text-right">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* AI Insights and Recommendations */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -734,6 +907,8 @@ const CustomerPurchaseForecast = () => {
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </>
           )}
         </Modal>

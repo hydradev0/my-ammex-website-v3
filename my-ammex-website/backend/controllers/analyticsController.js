@@ -156,6 +156,70 @@ class AnalyticsController {
     }
   }
 
+  // Get top bulk customers data
+  getTopBulkCustomers = async (req, res) => {
+    try {
+      const { months = 12, limit = 10 } = req.query || {}; // Default to 12 months, top 10 customers
+      
+      // Get top bulk customers for the specified period
+      const data = await getSequelize().query(`
+        SELECT 
+          month_start,
+          customer_name,
+          bulk_orders_count,
+          bulk_orders_amount,
+          average_bulk_order_value,
+          ranking
+        FROM customer_bulk_monthly_by_name 
+        WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+          AND ranking <= ${parseInt(limit)}
+        ORDER BY month_start DESC, ranking ASC
+      `, { type: QueryTypes.SELECT });
+
+      // Format for frontend consumption
+      const formattedData = data.map(item => ({
+        month: item.month_start,
+        customerName: item.customer_name,
+        bulkOrdersCount: parseInt(item.bulk_orders_count),
+        bulkOrdersAmount: parseFloat(item.bulk_orders_amount),
+        averageBulkOrderValue: parseFloat(item.average_bulk_order_value),
+        ranking: parseInt(item.ranking)
+      }));
+
+      // Group by month for easier consumption
+      const groupedData = formattedData.reduce((acc, item) => {
+        if (!acc[item.month]) {
+          acc[item.month] = [];
+        }
+        acc[item.month].push({
+          customerName: item.customerName,
+          bulkOrdersCount: item.bulkOrdersCount,
+          bulkOrdersAmount: item.bulkOrdersAmount,
+          averageBulkOrderValue: item.averageBulkOrderValue,
+          ranking: item.ranking
+        });
+        return acc;
+      }, {});
+
+      res.json({ 
+        success: true, 
+        data: groupedData,
+        totalRecords: formattedData.length,
+        dateRange: {
+          from: Object.keys(groupedData)[Object.keys(groupedData).length - 1],
+          to: Object.keys(groupedData)[0]
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching top bulk customers data:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch top bulk customers data',
+        details: error.message 
+      });
+    }
+  }
+
   // Generate AI sales forecast using OpenRouter
   generateSalesForecast = async (req, res) => {
     try {
@@ -298,7 +362,11 @@ class AnalyticsController {
       }
 
       // Call OpenRouter API for AI forecasting with top products data
-      const forecast = await this.callOpenRouterAPI(formattedSalesData, period, formattedTopProducts);
+      const { forecast, usage } = await this.callOpenRouterAPI(
+        formattedSalesData,
+        period,
+        formattedTopProducts
+      );
   
       res.json({ 
         success: true, 
@@ -307,17 +375,12 @@ class AnalyticsController {
           period: `${period} months`,
           historicalMonths: formattedSalesData.length,
           generatedAt: new Date().toISOString(),
-          source: 'openrouter'
+          source: 'openrouter',
+          usage: usage || null
         }
       });
     } catch (error) {
       console.error('Error generating sales forecast:', error);
-      console.error('Error stack:', error.stack);
-      console.error('Error details:', {
-        message: error.message,
-        name: error.name,
-        cause: error.cause
-      });
       
       // Provide more specific error messages based on error type
       let errorMessage = 'Failed to generate sales forecast';
@@ -326,6 +389,9 @@ class AnalyticsController {
       if (error.message.includes('rate limited') || error.message.includes('429')) {
         errorMessage = 'AI service is temporarily busy. Please wait a moment and try again.';
         details = 'The forecasting service is experiencing high demand. Please try again in a few seconds.';
+      } else if (error.message.includes("Model '") && error.message.includes("' not available")) {
+        errorMessage = 'AI model is not available.';
+        details = 'The selected AI model is not available on the service. Please contact support to update the model configuration.';
       } else if (error.message.includes('OpenRouter API error')) {
         errorMessage = 'AI forecasting service is temporarily unavailable.';
         details = 'The external AI service is experiencing issues. Please try again later.';
@@ -354,7 +420,7 @@ class AnalyticsController {
     }
   }
 
-  // OpenRouter API integration
+  // OpenRouter API integration in sales forecasting
   callOpenRouterAPI = async (historicalData, forecastPeriod, topProductsData = {}) => {
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
     
@@ -435,7 +501,7 @@ Based on the top products data provided, predict which products will likely cont
           'X-Title': 'Ammex Sales Forecasting'
         },
         body: JSON.stringify({
-          model: 'deepseek/deepseek-v3.1:free',
+            model: 'mistralai/mistral-7b-instruct:free',
           messages: [
             { 
               role: 'system', 
@@ -449,6 +515,9 @@ Based on the top products data provided, predict which products will likely cont
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Model not available on OpenRouter. Please try a different model.`);
+        }
         throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
       }
 
@@ -486,7 +555,13 @@ Based on the top products data provided, predict which products will likely cont
         }
         
         const forecast = JSON.parse(aiResponse);
-        return this.validateForecastResponse(forecast, forecastPeriod, historicalData);
+        const validated = this.validateForecastResponse(forecast, forecastPeriod, historicalData);
+        const usage = result.usage ? {
+          prompt_tokens: result.usage.prompt_tokens,
+          completion_tokens: result.usage.completion_tokens,
+          total_tokens: result.usage.total_tokens
+        } : null;
+        return { forecast: validated, usage };
       } catch (parseError) {
         console.error('Failed to parse AI response:', parseError);
         console.error('Raw AI response:', aiResponse);
@@ -525,6 +600,16 @@ Based on the top products data provided, predict which products will likely cont
     return recentMonths.map(month => ({
       month,
       topProducts: topProductsData[month].slice(0, 5) // Top 5 products per month
+    }));
+  }
+
+  // Preprocess top bulk customers data for LLM consumption
+  preprocessTopBulkCustomersForLLM(topBulkCustomersData) {
+    const months = Object.keys(topBulkCustomersData).sort((a, b) => new Date(b) - new Date(a));
+    const recentMonths = months.slice(0, 12);
+    return recentMonths.map(month => ({
+      month,
+      topBulkCustomers: (topBulkCustomersData[month] || []).slice(0, 5)
     }));
   }
 
@@ -628,7 +713,69 @@ Based on the top products data provided, predict which products will likely cont
         });
       }
 
-      const forecast = await this.callOpenRouterAPIBulk(formattedData, period);
+      // Fetch top bulk customers data for AI context
+      const currentDate = new Date();
+      const previousYearMonths = [];
+      for (let i = 0; i < period; i++) {
+        const forecastDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth() + i + 1, 1);
+        previousYearMonths.push(forecastDate.toISOString().split('T')[0]);
+      }
+      
+      const monthConditions = previousYearMonths.map(month => 
+        `(EXTRACT(YEAR FROM month_start) = EXTRACT(YEAR FROM '${month}'::date) AND EXTRACT(MONTH FROM month_start) = EXTRACT(MONTH FROM '${month}'::date))`
+      ).join(' OR ');
+      
+      let topBulkCustomersData = await getSequelize().query(`
+        SELECT month_start, customer_name, bulk_orders_amount, ranking
+        FROM customer_bulk_monthly_by_name 
+        WHERE (${monthConditions}) AND ranking <= 5
+        ORDER BY month_start DESC, ranking ASC
+      `, { type: QueryTypes.SELECT });
+      
+      // Fallback logic for missing months
+      const monthsFound = new Set(topBulkCustomersData.map(item => item.month_start));
+      const missingMonths = previousYearMonths.filter(month => 
+        !monthsFound.has(month.replace(/-31$/, '-01').replace(/-30$/, '-01'))
+      );
+      
+      if (missingMonths.length > 0) {
+        const fallbackData = await getSequelize().query(`
+          SELECT month_start, customer_name, bulk_orders_amount, ranking
+          FROM customer_bulk_monthly_by_name 
+          WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
+          AND ranking <= 5 ORDER BY month_start DESC, ranking ASC LIMIT 15
+        `, { type: QueryTypes.SELECT });
+        
+        const existingMonths = new Set(topBulkCustomersData.map(item => item.month_start));
+        const additionalData = fallbackData.filter(item => 
+          !existingMonths.has(item.month_start) && 
+          !previousYearMonths.some(pm => item.month_start === pm.replace(/-31$/, '-01').replace(/-30$/, '-01'))
+        );
+        topBulkCustomersData = [...topBulkCustomersData, ...additionalData];
+      }
+
+      // Group top bulk customers data by month for AI processing
+      const groupedTopBulkCustomers = topBulkCustomersData.reduce((acc, item) => {
+        const monthKey = item.month_start; // month_start is already a string from database
+        if (!acc[monthKey]) {
+          acc[monthKey] = [];
+        }
+        acc[monthKey].push({
+          customerName: item.customer_name,
+          bulkOrdersAmount: parseFloat(item.bulk_orders_amount),
+          ranking: parseInt(item.ranking)
+        });
+        return acc;
+      }, {});
+
+      // Format top bulk customers data for AI
+      const formattedTopBulkCustomers = this.preprocessTopBulkCustomersForLLM(groupedTopBulkCustomers);
+
+      const { forecast, usage } = await this.callOpenRouterAPIBulk(
+        formattedData,
+        period,
+        groupedTopBulkCustomers
+      );
 
       res.json({ 
         success: true, 
@@ -637,7 +784,8 @@ Based on the top products data provided, predict which products will likely cont
           period: `${period} months`,
           historicalMonths: formattedData.length,
           generatedAt: new Date().toISOString(),
-          source: 'openrouter'
+          source: 'openrouter',
+          usage: usage || null
         }
       });
     } catch (error) {
@@ -650,6 +798,9 @@ Based on the top products data provided, predict which products will likely cont
       if (error.message.includes('rate limited') || error.message.includes('429')) {
         errorMessage = 'AI service is temporarily busy. Please wait a moment and try again.';
         details = 'The forecasting service is experiencing high demand. Please try again in a few seconds.';
+      } else if (error.message.includes("Model '") && error.message.includes("' not available")) {
+        errorMessage = 'AI model is not available.';
+        details = 'The selected AI model is not available on the service. Please contact support to update the model configuration.';
       } else if (error.message.includes('OpenRouter API error')) {
         errorMessage = 'AI forecasting service is temporarily unavailable.';
         details = 'The external AI service is experiencing issues. Please try again later.';
@@ -666,8 +817,8 @@ Based on the top products data provided, predict which products will likely cont
       });
     }
   }
-
-  callOpenRouterAPIBulk = async (historicalBulkData, forecastPeriod) => {
+  // OpenRouter API integration in customer bulk forecast
+  callOpenRouterAPIBulk = async (historicalBulkData, forecastPeriod, topBulkCustomersData = {}) => {
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
     if (!openRouterApiKey) {
       throw new Error('OpenRouter API key not configured');
@@ -677,6 +828,8 @@ Based on the top products data provided, predict which products will likely cont
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
 
+    const processedTopBulkCustomers = topBulkCustomersData;
+    
     const prompt = `You are a business analyst AI. Forecast BULK ORDERS for Ammex.
 
 CURRENT DATE: ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01
@@ -684,6 +837,11 @@ FORECAST PERIOD: Generate predictions for the NEXT ${forecastPeriod} months (do 
 
 Historical Bulk Data (${historicalBulkData.length} months):
 ${JSON.stringify(historicalBulkData, null, 2)}
+
+Historical Top Bulk Customers by Month (Previous Year Same Months + Recent Fallback):
+${JSON.stringify(processedTopBulkCustomers, null, 2)}
+
+Based on the historical top bulk customers from the same months in the previous year (and recent months as fallback), predict which customers will likely be top bulk customers in the forecasted months.
 
 IMPORTANT: Respond with ONLY valid JSON. No markdown.
 Return this exact structure:
@@ -695,6 +853,13 @@ Return this exact structure:
       "bulkOrdersCount": number,
       "bulkOrdersAmount": number
     }
+  ],
+  "topBulkCustomers": [
+    "string customer name 1",
+    "string customer name 2",
+    "string customer name 3",
+    "string customer name 4",
+    "string customer name 5"
   ],
   "insights": [
     "string insight 1",
@@ -719,7 +884,7 @@ Return this exact structure:
           'X-Title': 'Ammex Customer Bulk Forecast'
         },
         body: JSON.stringify({
-          model: 'deepseek/deepseek-v3.1:free',
+            model: 'mistralai/mistral-7b-instruct:free',
           messages: [
             { role: 'system', content: `You are a professional business analyst specializing in forecasting. Always return valid JSON. TODAY'S DATE IS ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01. Generate forecasts for NEXT months only.` },
             { role: 'user', content: prompt }
@@ -730,6 +895,9 @@ Return this exact structure:
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Model not available on OpenRouter. Please try a different model.`);
+        }
         throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
       }
 
@@ -760,7 +928,13 @@ Return this exact structure:
         }
         
         const forecast = JSON.parse(aiResponse);
-        return this.validateBulkForecastResponse(forecast, forecastPeriod, historicalBulkData);
+        const validated = this.validateBulkForecastResponse(forecast, forecastPeriod, historicalBulkData);
+        const usage = result.usage ? {
+          prompt_tokens: result.usage.prompt_tokens,
+          completion_tokens: result.usage.completion_tokens,
+          total_tokens: result.usage.total_tokens
+        } : null;
+        return { forecast: validated, usage };
       } catch (parseError) {
         console.error('Failed to parse AI response (bulk):', parseError);
         console.error('Raw AI response (bulk):', aiResponse);
