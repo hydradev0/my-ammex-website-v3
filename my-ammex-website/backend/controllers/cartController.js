@@ -316,7 +316,7 @@ const convertCartToOrder = async (req, res) => {
       city: 'City',
       postalCode: 'Postal code',
       country: 'Country',
-      telephone1: 'Telephone 1',
+      telephone1: 'Mobile No. 1',
       email1: 'Email 1'
     };
     const missing = Object.keys(requiredFields).filter(

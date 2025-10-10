@@ -17,7 +17,7 @@ async function validateCustomerProfileOrThrow(customerId) {
     city: 'City',
     postalCode: 'Postal code',
     country: 'Country',
-    mobileNumber: 'Mobile No. 1',
+    telephone1: 'Mobile No. 1',
     email1: 'Email 1'
   };
   const missing = Object.keys(requiredFields).filter(
@@ -187,7 +187,7 @@ const confirmCheckout = async (req, res, next) => {
         city: customer.city,
         postalCode: customer.postalCode,
         country: customer.country,
-        phone: customer.mobileNumber,
+        phone: customer.telephone1,
         email: customer.email1
       }),
       billingAddress: JSON.stringify({
@@ -196,7 +196,7 @@ const confirmCheckout = async (req, res, next) => {
         city: customer.city,
         postalCode: customer.postalCode,
         country: customer.country,
-        phone: customer.mobileNumber,
+        phone: customer.telephone1,
         email: customer.email1
       }),
       notes: req.body?.notes || null,

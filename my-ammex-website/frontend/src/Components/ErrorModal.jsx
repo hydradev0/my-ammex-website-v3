@@ -91,7 +91,7 @@ function ErrorModal({
     </>
   );
 
-  return (modalContent, document.body);
+  return createPortal(modalContent, document.body);
 }
 
 export default ErrorModal;
