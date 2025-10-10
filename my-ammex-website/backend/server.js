@@ -39,7 +39,9 @@ const corsOptions = {
     
     const allowedOrigins = [
       process.env.FRONTEND_URL,
-      'https://app-ammex.onrender.com'
+      'https://app-ammex.onrender.com',
+      "https://www.ammexmachinetools.com",
+      "https://ammexmachinetools.com",
     ].filter(Boolean);
     
     // Allow localhost only in development
