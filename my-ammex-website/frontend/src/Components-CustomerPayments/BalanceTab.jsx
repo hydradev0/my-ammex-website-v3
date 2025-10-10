@@ -5,15 +5,16 @@ import PaginationTable from '../Components/PaginationTable';
 import AdvanceActionsDropdown from '../Components/AdvanceActionsDropdown';
 import PaymentActionsModal from './PaymentActionsModal';
 
-const BalanceTab = ({ 
-  historyData = [], 
+const BalanceTab = ({
+  historyData = [],
   searchPlaceholder = "Search balance history...",
   itemLabel = "balance records",
   formatCurrency,
   formatDateTime,
   onSendReminder,
   onMarkAsPaid,
-  onCustomAction
+  onCustomAction,
+  isLoading = false
 }) => {
   // State management
   const [filteredHistory, setFilteredHistory] = useState([]);
@@ -31,6 +32,18 @@ const BalanceTab = ({
     actionType: null,
     selectedItem: null
   });
+
+  // Loading states for actions
+  const [loadingActions, setLoadingActions] = useState([]);
+
+  // Helper functions for loading states
+  const addLoadingAction = (actionKey) => {
+    setLoadingActions(prev => [...prev, actionKey]);
+  };
+
+  const removeLoadingAction = (actionKey) => {
+    setLoadingActions(prev => prev.filter(key => key !== actionKey));
+  };
 
   // Default formatters if not provided
   const defaultFormatCurrency = (amount) => `₱${amount.toFixed(2)}`;
@@ -185,19 +198,25 @@ const BalanceTab = ({
     try {
       switch (actionType) {
         case 'send_reminder':
+          addLoadingAction('send_reminder');
           if (onSendReminder) {
             await onSendReminder(data);
           }
+          removeLoadingAction('send_reminder');
           break;
         case 'mark_as_paid':
+          addLoadingAction('mark_as_paid');
           if (onMarkAsPaid) {
             await onMarkAsPaid(data);
           }
+          removeLoadingAction('mark_as_paid');
           break;
         default:
           console.log('Unknown action type:', actionType);
       }
     } catch (error) {
+      // Remove loading state on error
+      removeLoadingAction(actionType === 'send_reminder' ? 'send_reminder' : 'mark_as_paid');
       console.error('Action failed:', error);
       throw error; // Re-throw to let the modal handle the error
     }
@@ -228,6 +247,17 @@ const BalanceTab = ({
       }
     }
   ];
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Balance History...</h3>
+        <p className="text-gray-500">Please wait while we fetch the balance data.</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -365,6 +395,7 @@ const BalanceTab = ({
                         item={item}
                         quickActions={getQuickActions()}
                         onAction={handleAction}
+                        loadingActions={loadingActions}
                       />
                     </td>
                   </tr>

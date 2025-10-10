@@ -59,7 +59,7 @@ class AnalyticsController {
           COALESCE(sf.new_customers, 0) AS new_customers,
           cf.bulk_orders_count,
           cf.bulk_orders_amount
-        FROM customer_fact_monthly cf
+        FROM customer_bulk_monthly cf
         LEFT JOIN sales_fact_monthly sf ON sf.month_start = cf.month_start
         WHERE cf.month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
         ORDER BY cf.month_start
@@ -362,7 +362,7 @@ class AnalyticsController {
       }
 
       // Call OpenRouter API for AI forecasting with top products data
-      const { forecast, usage } = await this.callOpenRouterAPI(
+      const { forecast, usage } = await this.callOpenRouterAPISales(
         formattedSalesData,
         period,
         formattedTopProducts
@@ -421,7 +421,7 @@ class AnalyticsController {
   }
 
   // OpenRouter API integration in sales forecasting
-  callOpenRouterAPI = async (historicalData, forecastPeriod, topProductsData = {}) => {
+  callOpenRouterAPISales = async (historicalData, forecastPeriod, topProductsData = {}) => {
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
     
     if (!openRouterApiKey) {
@@ -695,7 +695,7 @@ Based on the top products data provided, predict which products will likely cont
           month_start,
           bulk_orders_count,
           bulk_orders_amount
-        FROM customer_fact_monthly 
+        FROM customer_bulk_monthly 
         ORDER BY month_start
       `, { type: QueryTypes.SELECT });
 
@@ -1011,6 +1011,7 @@ Return this exact structure:
     forecast.recommendations = forecast.recommendations || [];
     return forecast;
   }
+
 
   // Get dashboard metrics (cached)
   async getDashboardMetrics(req, res) {

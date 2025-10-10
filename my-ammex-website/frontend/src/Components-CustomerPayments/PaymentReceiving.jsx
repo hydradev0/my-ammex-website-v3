@@ -37,6 +37,12 @@ const PaymentReceiving = () => {
   // State for balance tracking and payment history
   const [balanceHistory, setBalanceHistory] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
+
+  // Loading states
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
+  const [isLoadingRejected, setIsLoadingRejected] = useState(false);
   
   // Search and filter states for pending payments
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +65,12 @@ const PaymentReceiving = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Set loading states
+        setIsLoadingPending(true);
+        setIsLoadingRejected(true);
+        setIsLoadingBalance(true);
+        setIsLoadingHistory(true);
+
         // Load pending payments
         const pendingResponse = await getPendingPayments();
         const pendingData = (pendingResponse.data || []).map(p => ({
@@ -178,8 +190,19 @@ const PaymentReceiving = () => {
           // Fallback to empty array if API fails
           setPaymentHistory([]);
         }
+
+        // Clear loading states after all data is loaded
+        setIsLoadingPending(false);
+        setIsLoadingRejected(false);
+        setIsLoadingBalance(false);
+        setIsLoadingHistory(false);
       } catch (error) {
         console.error('Failed to load payment data:', error);
+        // Clear loading states on error as well
+        setIsLoadingPending(false);
+        setIsLoadingRejected(false);
+        setIsLoadingBalance(false);
+        setIsLoadingHistory(false);
       }
     };
 
@@ -671,6 +694,7 @@ const PaymentReceiving = () => {
               payments={filteredPayments}
               onViewPayment={handleViewPayment}
               getPaymentMethodName={getPaymentMethodName}
+              isLoading={isLoadingPending}
             />
           </>
         )}
@@ -683,6 +707,7 @@ const PaymentReceiving = () => {
               itemLabel="balance records"
               formatCurrency={formatCurrency}
               formatDateTime={formatDateTime}
+              isLoading={isLoadingBalance}
               onSendReminder={handleSendReminder}
               onMarkAsPaid={handleMarkAsPaid}
             />
@@ -714,6 +739,7 @@ const PaymentReceiving = () => {
                 getPaymentMethodName={getPaymentMethodName}
                 formatCurrency={formatCurrency}
                 formatDateTime={formatDateTime}
+                isLoading={isLoadingRejected}
               />
             </>
           )}

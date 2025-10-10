@@ -109,6 +109,10 @@ const CustomerPurchaseForecast = () => {
 
   // Filter historical data based on selected period
   const getHistoricalData = () => {
+    if (historicalPeriod === 'current') {
+      // For current month, show only the most recent month
+      return allHistoricalData.slice(-1);
+    }
     const periods = parseInt(historicalPeriod);
     return allHistoricalData.slice(-periods);
   };
@@ -151,7 +155,7 @@ const CustomerPurchaseForecast = () => {
     (async () => {
       setIsLoadingHistorical(true);
       try {
-        const months = Math.max(parseInt(historicalPeriod), 1);
+        const months = historicalPeriod === 'current' ? 1 : Math.max(parseInt(historicalPeriod), 1);
         const res = await getHistoricalCustomerData(months);
         if (!isMounted) return;
         // Backend returns items like { month: '2024-09-01', newCustomers: 1950, bulkOrdersCount: 120, bulkOrdersAmount: 250000 }
@@ -186,7 +190,7 @@ const CustomerPurchaseForecast = () => {
     (async () => {
       setIsLoadingTopBulkCustomers(true);
       try {
-        const months = Math.max(parseInt(historicalPeriod), 1);
+        const months = historicalPeriod === 'current' ? 1 : Math.max(parseInt(historicalPeriod), 1);
         const res = await getTopBulkCustomers({ months, limit: 10 });
         if (!isMounted) return;
         setTopBulkCustomersData(res?.data || {});
@@ -204,10 +208,11 @@ const CustomerPurchaseForecast = () => {
 
   // Dropdown options
   const historicalPeriodOptions = [
-    { value: '1', label: '1 Month' },
-    { value: '3', label: '3 Months' },
-    { value: '6', label: '6 Months' },
-    { value: '12', label: '12 Months' }
+    { value: 'current', label: 'Current Month' },
+    { value: '1', label: 'Last Month' },
+    { value: '3', label: 'Last 3 Months' },
+    { value: '6', label: 'Last 6 Months' },
+    { value: '12', label: 'Last 12 Months' }
   ];
 
   const forecastPeriodOptions = [
@@ -459,83 +464,103 @@ const CustomerPurchaseForecast = () => {
                   {cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Generate AI Forecast'}
                 </span>
               </button>
+
+              {/* Testing Button for Loading Modal */}
+              {/* <button
+                onClick={() => {
+                  setIsAnalyzing(true);
+                  setTimeout(() => {
+                    setIsAnalyzing(true);
+                  }, 3000); // Show loading for 3 seconds
+                }}
+                className="group px-4 py-2 cursor-pointer bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 flex items-center gap-2 font-medium transition-all duration-200 shadow-md hover:shadow-lg text-sm"
+              >
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Test Loading Modal</span>
+              </button> */}
             </div>
           </div>
         </div>
 
         {/* Full Screen Loading Modal */}
         <LoadingModal isOpen={isAnalyzing}>
-          <div className="text-center">
-                {/* Enhanced Loading Animation */}
-                <div className="mb-8 relative">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 opacity-20 animate-ping"></div>
-                  <div className="absolute inset-2 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 opacity-30 animate-ping animation-delay-200"></div>
-                  <div className="relative bg-gradient-to-r from-sky-600 to-indigo-600 rounded-full p-4">
-                    <Sparkles className="w-12 h-12 text-white animate-pulse" />
-                  </div>
-                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-lg font-semibold animate-pulse">Analyzing Customer Data</span>
+          <div className="text-center max-w-md mx-auto">
+            {/* Clean Customer Analysis Icon */}
+            <div className="mb-8">
+              <div className="relative inline-block">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-10 h-10 text-white animate-pulse" />
                 </div>
+              </div>
+            </div>
 
-                <p className="text-gray-600 mb-6 text-base leading-relaxed">
-                  Our AI is processing your customer acquisition patterns to generate accurate forecasts and insights.
-                </p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Analyzing Customer Data
+            </h2>
+            <p className="text-gray-600 mb-8 text-base leading-relaxed">
+              Our AI is processing your customer acquisition patterns to generate accurate forecasts and insights.
+            </p>
 
-                {/* Enhanced Progress Steps */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/40 backdrop-blur-sm border border-white/20">
-                    <div className="relative">
-                      <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full animate-pulse"></div>
-                      <div className="absolute inset-0 w-3 h-3 bg-purple-400 rounded-full animate-ping opacity-30"></div>
-                    </div>
-                    <span className="font-medium text-gray-700">Processing customer acquisition trends</span>
-                    <div className="ml-auto">
-                      <div className="w-6 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/30 backdrop-blur-sm border border-white/10 animation-delay-300">
-                    <div className="relative">
-                      <div className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-pink-600 rounded-full animate-pulse animation-delay-500"></div>
-                      <div className="absolute inset-0 w-3 h-3 bg-indigo-400 rounded-full animate-ping opacity-30 animation-delay-500"></div>
-                    </div>
-                    <span className="font-medium text-gray-700">Analyzing purchase behavior patterns</span>
-                    <div className="ml-auto">
-                      <div className="w-6 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-indigo-500 to-pink-600 rounded-full animate-pulse animation-delay-500"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/5 animation-delay-700">
-                    <div className="relative">
-                      <div className="w-3 h-3 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full animate-pulse animation-delay-1000"></div>
-                      <div className="absolute inset-0 w-3 h-3 bg-pink-400 rounded-full animate-ping opacity-30 animation-delay-1000"></div>
-                    </div>
-                    <span className="font-medium text-gray-700">Generating customer insights</span>
-                    <div className="ml-auto">
-                      <div className="w-6 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full animate-pulse animation-delay-1000"></div>
-                      </div>
-                    </div>
+            {/* Clean Progress Steps */}
+            <div className="space-y-4 mb-8">
+              <div className="flex items-center gap-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <Users className="w-4 h-4 text-white" />
                   </div>
                 </div>
-
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="w-full bg-gray-200/50 rounded-full h-2 backdrop-blur-sm">
-                    <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-600 h-2 rounded-full animate-pulse shadow-lg shadow-purple-500/25" style={{width: '60%'}}></div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-gray-900">Processing customer acquisition trends</p>
+                  <p className="text-sm text-gray-600">Analyzing customer growth patterns</p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="w-4 h-4 text-white" />
                   </div>
                 </div>
-
-                {/* Footer */}
-                <div className="text-sm text-gray-500 flex items-center justify-center gap-2">
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce animation-delay-200"></div>
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce animation-delay-500"></div>
-                  <span className="ml-2">This usually takes 2-3 seconds</span>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-gray-900">Analyzing purchase behavior patterns</p>
+                  <p className="text-sm text-gray-600">Understanding buying trends</p>
                 </div>
+                <div className="flex-shrink-0">
+                  <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" style={{animationDelay: '0.5s'}}></div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 bg-pink-50 rounded-xl border border-pink-100">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-fuchsia-500 rounded-lg flex items-center justify-center">
+                    <Brain className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-gray-900">Generating customer insights</p>
+                  <p className="text-sm text-gray-600">Creating actionable recommendations</p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="w-6 h-6 border-2 border-fuchsia-500 border-t-transparent rounded-full animate-spin" style={{animationDelay: '1s'}}></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Minimal Progress Bar */}
+            <div className="mb-6">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full transition-all duration-1000 ease-out" style={{width: '75%'}}></div>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">Processing data... 75%</p>
+            </div>
+
+            {/* Simple Footer */}
+            <div className="text-sm text-gray-500">
+              This usually takes 5-10 seconds
+            </div>
           </div>
         </LoadingModal>
 
@@ -552,7 +577,9 @@ const CustomerPurchaseForecast = () => {
               </div>
               <div className="flex items-center gap-3">
                 <div className="px-3 py-1 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg">
-                  {historicalPeriod === '1' ? 'Current month' : `Last ${historicalPeriod} months`}
+                  {historicalPeriod === 'current' ? 'Current month' : 
+                   historicalPeriod === '1' ? 'Last month' : 
+                   `Last ${historicalPeriod} months`}
                 </div>
                 <button
                   onClick={exportHistoricalData}
@@ -638,7 +665,11 @@ const CustomerPurchaseForecast = () => {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
                   <UserPlus className="w-6 h-6 text-purple-600" />
-                  <h3 className="font-semibold text-gray-900">{historicalPeriod === '1' ? 'This Month\'s Avg Order Size' : 'Avg Bulk Order Size'}</h3>
+                  <h3 className="font-semibold text-gray-900">
+                    {historicalPeriod === 'current' ? 'Current Month\'s Avg Order Size' : 
+                     historicalPeriod === '1' ? 'Last Month\'s Avg Order Size' : 
+                     'Avg Bulk Order Size'}
+                  </h3>
                 </div>
                 <p className="text-2xl font-bold text-gray-900 mb-2">
                   {isLoadingHistorical ? 'Loading...' : historicalCustomerData.length > 0 ? (
@@ -650,29 +681,49 @@ const CustomerPurchaseForecast = () => {
                     })()
                   ) : 'No data'}
                 </p>
-                <div className="text-sm font-extralight text-gray-900">{historicalPeriod === '1' ? 'Current month' : `Average across the last ${historicalPeriod} months`}</div>
+                <div className="text-sm font-extralight text-gray-900">
+                  {historicalPeriod === 'current' ? 'Current month' : 
+                   historicalPeriod === '1' ? 'Last month' : 
+                   `Average across the last ${historicalPeriod} months`}
+                </div>
               </div>
 
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
                   <ShoppingCart className="w-6 h-6 text-green-600" />
-                  <h3 className="font-semibold text-gray-900">{historicalPeriod === '1' ? 'This Month\'s Orders Count' : 'Total Bulk Orders Count'}</h3>
+                  <h3 className="font-semibold text-gray-900">
+                    {historicalPeriod === 'current' ? 'Current Month\'s Orders Count' : 
+                     historicalPeriod === '1' ? 'Last Month\'s Orders Count' : 
+                     'Total Bulk Orders Count'}
+                  </h3>
                 </div>
                 <p className="text-2xl font-bold text-gray-900 mb-2">
                   {isLoadingHistorical ? 'Loading...' : historicalCustomerData.length > 0 ? formatNumber(historicalCustomerData.reduce((sum, item) => sum + item.bulkOrdersCount, 0)) : 'No data'}
                 </p>
-                <div className="text-sm font-extralight text-gray-900">{historicalPeriod === '1' ? 'Current month' : `Total across the last ${historicalPeriod} months`}</div>
+                <div className="text-sm font-extralight text-gray-900">
+                  {historicalPeriod === 'current' ? 'Current month' : 
+                   historicalPeriod === '1' ? 'Last month' : 
+                   `Total across the last ${historicalPeriod} months`}
+                </div>
               </div>
 
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
                   <TrendingUp className="w-6 h-6 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">{historicalPeriod === '1' ? 'This Month\'s Orders Amount' : 'Total Bulk Orders Amount'}</h3>
+                  <h3 className="font-semibold text-gray-900">
+                    {historicalPeriod === 'current' ? 'Current Month\'s Orders Amount' : 
+                     historicalPeriod === '1' ? 'Last Month\'s Orders Amount' : 
+                     'Total Bulk Orders Amount'}
+                  </h3>
                 </div>
                 <p className="text-2xl font-bold text-gray-900 mb-2">
                   {isLoadingHistorical ? 'Loading...' : historicalCustomerData.length > 0 ? formatCurrency(historicalCustomerData.reduce((sum, item) => sum + item.bulkOrdersAmount, 0)) : 'No data'}
                 </p>
-                <div className="text-sm font-extralight text-gray-900">{historicalPeriod === '1' ? 'Current month' : `Total across the last ${historicalPeriod} months`}</div>
+                <div className="text-sm font-extralight text-gray-900">
+                  {historicalPeriod === 'current' ? 'Current month' : 
+                   historicalPeriod === '1' ? 'Last month' : 
+                   `Total across the last ${historicalPeriod} months`}
+                </div>
               </div>
             </div>
           </div>

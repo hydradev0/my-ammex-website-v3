@@ -4,6 +4,7 @@ import { Loader } from 'lucide-react';
 import { getDashboardMetrics } from '../../services/dashboardService';
 import MetricsCard from '../../Components-Dashboard/MetricsCard';
 import InventoryAlerts from '../../Components-Dashboard/InventoryAlerts';
+import DailyComparison from '../../Components-Dashboard/DailyComparison';
 import { getMetricsCardsForRole } from '../../utils/roleManager';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -39,10 +40,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [metrics, setMetrics] = useState({
-    sales: { total: 0, averageOrderValue: 0 },
-    orders: { total: 0, pending: 0 },
+    sales: { total: 0, averageOrderValue: 0, growth: 0 },
+    orders: { total: 0, pending: 0, growth: 0 },
     inventory: { lowStock: 0, critical: 0, totalStockValue: 0, outOfStock: 0, reorderPending: 0 },
-    customers: { active: 0, newSignups: 0 }
+    customers: { active: 0, newSignups: 0 },
+    comparison: { yesterday: { sales: 0, orders: 0 } }
   });
 
   useEffect(() => {
@@ -66,6 +68,18 @@ const Dashboard = () => {
   const userRole = user?.role || 'Admin';
   const metricsCards = getMetricsCardsForRole(userRole);
 
+  // Helper function to format growth percentage
+  const formatGrowth = (growth) => {
+    if (growth === null || growth === undefined || growth === 0) return null;
+    const isPositive = growth > 0;
+    const color = isPositive ? 'green' : 'red';
+    const sign = isPositive ? '+' : '';
+    return {
+      text: `${sign}${growth.toFixed(1)}%`,
+      color
+    };
+  };
+
   // Render metrics card based on title
   const renderMetricsCard = (title) => {
     switch (title) {
@@ -74,9 +88,10 @@ const Dashboard = () => {
           <MetricsCard
             key={title}
             title={title}
-            value={metrics.sales.total}
+            value={metrics.sales?.total || 0}
             valuePrefix="₱"
-            subtitle={`Average order value: ₱${metrics.sales.averageOrderValue.toLocaleString()}`}
+            subtitle={`Average order value: ₱${(metrics.sales?.averageOrderValue || 0).toLocaleString()}`}
+            statusIndicator={formatGrowth(metrics.sales?.growth)}
           />
         );
       
@@ -85,8 +100,9 @@ const Dashboard = () => {
           <MetricsCard
             key={title}
             title={title}
-            value={metrics.orders.total}
-            subtitle={`${metrics.orders.pending} orders pending`}
+            value={metrics.orders?.total || 0}
+            subtitle={`${metrics.orders?.pending || 0} orders pending`}
+            statusIndicator={formatGrowth(metrics.orders?.growth)}
           />
         );
       
@@ -95,11 +111,11 @@ const Dashboard = () => {
           <MetricsCard
             key={title}
             title={title}
-            value={metrics.inventory.lowStock}
+            value={metrics.inventory?.lowStock || 0}
             valueSuffix=" items"
             statusIndicator={{
-              text: metrics.inventory.critical > 0 ? 'Critical' : 'Warning',
-              color: metrics.inventory.critical > 0 ? 'red' : 'yellow'
+              text: (metrics.inventory?.critical || 0) > 0 ? 'Critical' : 'Warning',
+              color: (metrics.inventory?.critical || 0) > 0 ? 'red' : 'yellow'
             }}
           />
         );
@@ -111,7 +127,7 @@ const Dashboard = () => {
           <MetricsCard
             key={title}
             title={title}
-            value={metrics.inventory.totalStockValue}
+            value={metrics.inventory?.totalStockValue || 0}
             valuePrefix="₱"
             subtitle="Total value of all inventory in stock"
           />
@@ -122,7 +138,7 @@ const Dashboard = () => {
           <MetricsCard
             key={title}
             title={title}
-            value={metrics.inventory.outOfStock}
+            value={metrics.inventory?.outOfStock || 0}
             valueSuffix=" items"
             statusIndicator={{
               text: 'Good',
@@ -186,10 +202,17 @@ const Dashboard = () => {
             {metricsCards.map((title) => renderMetricsCard(title))}
           </div>
 
-          <div className="flex gap-6">
+
+          <div className="flex gap-6 items-start">
+            {/* Daily Comparison Component - Only visible to Admin and Sales Marketing */}
+            <div className="flex-1">
+              <DailyComparison metrics={metrics} />
+            </div>
 
             {/* Inventory Alert Container - Only show for Admin and Warehouse Supervisor roles */}
-            <InventoryAlerts />
+            <div className="flex-2">
+              <InventoryAlerts />
+            </div>
           </div>
         </div>
       </div>

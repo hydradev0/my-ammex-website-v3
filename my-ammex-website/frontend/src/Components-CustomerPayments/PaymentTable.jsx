@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Eye, Calendar, CreditCard } from 'lucide-react';
 import PaginationTable from '../Components/PaginationTable';
 
-const PaymentTable = ({ payments = [], onViewPayment, getPaymentMethodName }) => {
+const PaymentTable = ({ payments = [], onViewPayment, getPaymentMethodName, isLoading = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
@@ -44,6 +44,17 @@ const PaymentTable = ({ payments = [], onViewPayment, getPaymentMethodName }) =>
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-4 p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Pending Payments...</h3>
+        <p className="text-gray-500">Please wait while we fetch the pending payments.</p>
+      </div>
+    );
+  }
 
   return (
     <>

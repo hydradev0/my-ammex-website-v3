@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ActionDropdown from './ActionDropdown';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, Loader2 } from 'lucide-react';
 
 const AdvanceActionsDropdown = ({
   item,
   actions = [],
   onAction,
   quickActions = [],
+  loadingActions = [],
   dropdownClassName = "absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200",
   buttonClassName = "text-gray-400 hover:text-gray-600 p-1 rounded transition-colors",
   actionItemClassName = "w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
@@ -49,6 +50,10 @@ const AdvanceActionsDropdown = ({
     }
   };
 
+  const isActionLoading = (actionKey) => {
+    return loadingActions.includes(actionKey);
+  };
+
   return (
     <div className="flex items-center justify-end space-x-2">
       {/* Quick Actions */}
@@ -59,14 +64,21 @@ const AdvanceActionsDropdown = ({
         }
 
         const IconComponent = action.icon;
+        const loading = isActionLoading(action.key);
+
         return (
           <button
             key={action.key}
             onClick={() => handleAction(action)}
-            className={action.className || "p-1 rounded transition-colors"}
+            disabled={loading}
+            className={`${action.className || "p-1 rounded transition-colors"} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={action.title || action.label}
           >
-            {IconComponent && <IconComponent className="w-4 h-4" />}
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              IconComponent && <IconComponent className="w-4 h-4" />
+            )}
           </button>
         );
       })}
@@ -97,14 +109,21 @@ const AdvanceActionsDropdown = ({
                     }
 
                     const IconComponent = action.icon;
+                    const loading = isActionLoading(action.key);
+
                     return (
                       <button
                         key={action.key}
                         onClick={() => handleAction(action)}
-                        className={actionItemClassName}
+                        disabled={loading}
+                        className={`${actionItemClassName} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title={action.title}
                       >
-                        {IconComponent && <IconComponent className="w-4 h-4 mr-2" />}
+                        {loading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          IconComponent && <IconComponent className="w-4 h-4 mr-2" />
+                        )}
                         {action.label}
                       </button>
                     );

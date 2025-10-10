@@ -136,7 +136,7 @@ const InventoryAlerts = () => {
 
   if (loading) {
     return (
-      <div className="flex-[1.5] bg-white rounded-xl shadow-sm border border-gray-300">
+      <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-300">
         <div className='border-b border-gray-300'>
           <h2 className="text-2xl font-semibold px-6 py-3">Inventory Alerts</h2>
         </div>
@@ -149,7 +149,7 @@ const InventoryAlerts = () => {
 
   if (error) {
     return (
-      <div className="flex-[1.5] bg-white rounded-xl shadow-sm border border-gray-300">
+      <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-300">
         <div className='border-b border-gray-300'>
           <h2 className="text-2xl font-semibold px-6 py-3">Inventory Alerts</h2>
         </div>
@@ -162,7 +162,7 @@ const InventoryAlerts = () => {
 
   return (
     <>
-      <div className="flex-[1.5] bg-white rounded-xl shadow-sm border border-gray-300">
+      <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-300">
         <div className='border-b border-gray-300'>
           <h2 className="text-2xl font-semibold px-6 py-3">Inventory Alerts</h2>
         </div>
@@ -174,7 +174,7 @@ const InventoryAlerts = () => {
                 <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search items or SKUs..."
+                  placeholder="Search items"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent"

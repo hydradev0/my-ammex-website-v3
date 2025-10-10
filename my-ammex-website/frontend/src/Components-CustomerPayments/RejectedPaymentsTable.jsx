@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { XCircle } from 'lucide-react';
+import { XCircle, Loader2 } from 'lucide-react';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 
 const RejectedPaymentsTable = ({
@@ -8,21 +8,43 @@ const RejectedPaymentsTable = ({
   onDelete,
   getPaymentMethodName,
   formatCurrency,
-  formatDateTime
+  formatDateTime,
+  isLoading = false
 }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [loadingActions, setLoadingActions] = useState([]);
+
+  // Helper functions for loading states
+  const addLoadingAction = (actionKey) => {
+    setLoadingActions(prev => [...prev, actionKey]);
+  };
+
+  const removeLoadingAction = (actionKey) => {
+    setLoadingActions(prev => prev.filter(key => key !== actionKey));
+  };
+
+  const isActionLoading = (actionKey) => {
+    return loadingActions.includes(actionKey);
+  };
 
   const handleDeleteClick = (payment) => {
     setSelectedPayment(payment);
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedPayment) {
-      onDelete(selectedPayment);
-      setIsDeleteModalOpen(false);
-      setSelectedPayment(null);
+      try {
+        addLoadingAction(`delete_${selectedPayment.id}`);
+        await onDelete(selectedPayment);
+        setIsDeleteModalOpen(false);
+        setSelectedPayment(null);
+      } catch (error) {
+        console.error('Delete failed:', error);
+      } finally {
+        removeLoadingAction(`delete_${selectedPayment.id}`);
+      }
     }
   };
 
@@ -30,6 +52,28 @@ const RejectedPaymentsTable = ({
     setIsDeleteModalOpen(false);
     setSelectedPayment(null);
   };
+
+  const handleReApprove = async (payment) => {
+    try {
+      addLoadingAction(`reapprove_${payment.id}`);
+      await onReApprove(payment);
+    } catch (error) {
+      console.error('Re-approve failed:', error);
+    } finally {
+      removeLoadingAction(`reapprove_${payment.id}`);
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white shadow overflow-hidden sm:rounded-md p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Rejected Payments...</h3>
+        <p className="text-gray-500">Please wait while we fetch the rejected payments.</p>
+      </div>
+    );
+  }
 
   if (payments.length === 0) {
     return (
@@ -80,16 +124,32 @@ const RejectedPaymentsTable = ({
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => onReApprove(payment)}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    onClick={() => handleReApprove(payment)}
+                    disabled={isActionLoading(`reapprove_${payment.id}`)}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Re-approve
+                    {isActionLoading(`reapprove_${payment.id}`) ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Re-approve'
+                    )}
                   </button>
                   <button
                     onClick={() => handleDeleteClick(payment)}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    disabled={isActionLoading(`delete_${payment.id}`)}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Delete
+                    {isActionLoading(`delete_${payment.id}`) ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
                   </button>
                 </div>
               </div>

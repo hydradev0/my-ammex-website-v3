@@ -41,6 +41,11 @@ export const getRoleName = (role) => {
 // Check if user has access to inventory alerts
 export const hasInventoryAlertsAccess = (role) => {
   return ['Admin', 'Warehouse Supervisor'].includes(role);
+};
+
+// Check if user has access to daily comparison
+export const hasDailyComparisonAccess = (role) => {
+  return ['Admin', 'Sales Marketing', 'Warehouse Supervisor'].includes(role);
 }; 
 
 // Analytics metrics cards configuration

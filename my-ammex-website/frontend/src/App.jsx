@@ -37,6 +37,7 @@ import Invoices from './Pages/Sales/Invoices';
 
 import SalesTrend from './Components-Analytics/SalesTrend';
 import CustomerPurchase from './Components-Analytics/CustomerPurchase';
+import WebsiteData from './Components-Analytics/WebsiteData';
 
 function AppContent() {
   const location = useLocation();
@@ -271,6 +272,7 @@ function AppContent() {
           
         <Route path="home/analytics/sales-trend" element={<SalesTrend />} />
         <Route path="home/analytics/customer-purchase" element={<CustomerPurchase />} />
+        <Route path="home/analytics/website-data" element={<WebsiteData />} />
         
         {/* Default Page */}
         <Route path="/" element={<Login />} />

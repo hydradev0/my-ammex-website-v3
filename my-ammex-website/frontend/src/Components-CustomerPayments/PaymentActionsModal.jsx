@@ -61,7 +61,7 @@ const PaymentActionsModal = ({
               </div>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -115,7 +115,7 @@ const PaymentActionsModal = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2 cursor-pointer text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
@@ -123,7 +123,7 @@ const PaymentActionsModal = ({
                   type="button"
                   onClick={() => handleAction({ key: 'mark_as_paid' })}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 cursor-pointer text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Processing...' : 'Confirm Payment'}
                 </button>

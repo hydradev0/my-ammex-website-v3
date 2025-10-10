@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, XCircle, Image, Eye, Download } from 'lucide-react';
+import { X, CheckCircle, XCircle, Image, Eye, Download, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
@@ -16,6 +16,7 @@ const PaymentApprovalModal = ({
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(payment?.amount || 0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync paymentAmount with payment prop when payment changes
   useEffect(() => {
@@ -87,18 +88,36 @@ const PaymentApprovalModal = ({
     setSelectedAttachment(null);
   };
 
-  const handleReject = () => {
-    if (!rejectionReason || !rejectionReason.trim()) return;
-    onReject(payment, rejectionReason.trim());
-    setRejectionReason('');
+  const handleReject = async () => {
+    if (!rejectionReason || !rejectionReason.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onReject(payment, rejectionReason.trim());
+      setRejectionReason('');
+    } catch (error) {
+      console.error('Reject failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-  
-  const handleApprove = () => {
-    onApprove(paymentAmount);
-    setRejectionReason('');
+
+  const handleApprove = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onApprove(paymentAmount);
+      setRejectionReason('');
+    } catch (error) {
+      console.error('Approve failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
+    if (isSubmitting) return; // Don't allow closing while submitting
     setRejectionReason(''); // Clear rejection reason when closing
     onClose();
   };
@@ -114,7 +133,8 @@ const PaymentApprovalModal = ({
               <h2 className="text-xl font-semibold text-gray-900">Payment Approval</h2>
               <button
                 onClick={handleClose}
-                className="text-gray-400 cursor-pointer hover:text-gray-600 p-1 transition-colors"
+                disabled={isSubmitting}
+                className={`p-1 transition-colors ${isSubmitting ? 'text-gray-300 cursor-not-allowed opacity-50' : 'text-gray-400 cursor-pointer hover:text-gray-600'}`}
               >
                 <X className="w-6 h-6" />
               </button>
@@ -228,24 +248,44 @@ const PaymentApprovalModal = ({
             <div className="flex gap-3">
               <button
                 onClick={handleClose}
-                className="flex-1 cursor-pointer px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={isSubmitting}
+                className={`flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
-                disabled={!rejectionReason || !rejectionReason.trim()}
-                className={`flex-1 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${(!rejectionReason || !rejectionReason.trim()) ? 'bg-red-300 text-white cursor-not-allowed' : 'cursor-pointer bg-red-600 text-white hover:bg-red-700'}`}
+                disabled={!rejectionReason || !rejectionReason.trim() || isSubmitting}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${(!rejectionReason || !rejectionReason.trim() || isSubmitting) ? 'bg-red-300 text-white cursor-not-allowed opacity-50' : 'cursor-pointer bg-red-600 text-white hover:bg-red-700'}`}
               >
-                <XCircle className="w-4 h-4" />
-                Reject
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    Reject
+                  </>
+                )}
               </button>
               <button
                 onClick={handleApprove}
-                className="flex-1 cursor-pointer px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${isSubmitting ? 'bg-green-300 text-white cursor-not-allowed opacity-50' : 'cursor-pointer bg-green-600 text-white hover:bg-green-700'}`}
               >
-                <CheckCircle className="w-4 h-4" />
-                Approve
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Approve
+                  </>
+                )}
               </button>
             </div>
           </div>
