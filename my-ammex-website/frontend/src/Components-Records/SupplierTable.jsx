@@ -11,6 +11,7 @@ import { Plus } from 'lucide-react';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from '../services/supplierService';
+import { formatPhoneNumber } from '../utils/phoneFormatter';
 
 function SupplierTable() {
   const { refreshTriggers } = useDataRefresh();
@@ -271,7 +272,8 @@ function SupplierTable() {
       header: 'Telephone',
       width: 'w-56',
       cellClassName: 'w-56',
-      truncate: true
+      truncate: true,
+      render: (value) => formatPhoneNumber(value)
     },
   ];
   

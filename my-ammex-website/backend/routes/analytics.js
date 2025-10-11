@@ -36,6 +36,11 @@ router.post('/customer-bulk-forecast', /* protect, */ analyticsController.genera
 // @access  Private
 router.get('/dashboard-metrics', /* protect, */ analyticsController.getDashboardMetrics);
 
+// @route   GET /api/analytics/ytd-growth
+// @desc    Get YTD sales growth data
+// @access  Private
+router.get('/ytd-growth', /* protect, */ analyticsController.getYTDSalesGrowth);
+
 
 // @route   POST /api/analytics/refresh-facts
 // @desc    Refresh sales fact table (maintenance)

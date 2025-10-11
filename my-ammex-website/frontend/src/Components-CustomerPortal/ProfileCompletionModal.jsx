@@ -65,7 +65,7 @@ const ProfileCompletionModal = ({ isOpen, onClose, onComplete }) => {
                 </p>
                 <ul className="text-sm text-blue-700 mt-2 space-y-1">
                   <li>• Company Name</li>
-                  <li>• Mobile No. 1</li>
+                  <li>• Telephone 1</li>
                   <li>• Email Address</li>
                   <li>• Complete Address (Street, City, Postal Code, Country)</li>
                 </ul>

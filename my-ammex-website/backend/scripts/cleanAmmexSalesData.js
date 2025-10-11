@@ -1,16 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-/**
- * Specialized CSV Data Cleaning Script for Ammex Sales Data
- * 
- * This script is designed specifically for the Ammex sales CSV format:
- * - DATE column contains day numbers (1-31)
- * - TOTAL AMOUNT column contains daily sales amounts
- * - Data needs to be aggregated by month to create monthly totals
- * 
- * Output: month_start and total_revenue columns for sales_fact_monthly table
- */
+// cd my-ammex-website/backend
+// node scripts/cleanAmmexSalesData.js 
+// "C:/Users/Mike/Downloads/AMMEX FILE.xlsx - SALES 2022.csv" ammex_sales_2022_cleaned_corrected.csv
 
 class AmmexSalesDataCleaner {
     constructor() {

@@ -1,5 +1,6 @@
 // View configurations for different data types
 // These can be used with the generic ViewDetailsModal and EditDetailsModal component
+import { formatPhoneNumber } from '../utils/phoneFormatter';
 
 export const itemViewConfig = {
   title: 'Item Details',
@@ -71,6 +72,12 @@ export const itemViewConfig = {
           getValue: (item) => item.category?.name || 'N/A'
         },
         {
+          label: 'Subcategory',
+          key: 'subcategory',
+          width: 'w-1/3',
+          getValue: (item) => item.subcategory?.name || 'N/A'
+        },
+        {
           label: 'Minimum Level',
           key: 'minLevel',
           width: 'w-1/3'
@@ -115,7 +122,7 @@ export const editItemConfig = {
           key: 'vendor',
           width: 'w-2/3',
           type: 'dropdown',
-          required: true
+          required: true,
         },
         {
           label: 'Model No.',
@@ -164,7 +171,6 @@ export const editItemConfig = {
           prefix: '₱',
           step: '0.01',
           min: '0',
-          required: true
         }
       ]
     },
@@ -185,6 +191,13 @@ export const editItemConfig = {
           width: 'w-1/2',
           type: 'dropdown',
           required: true
+        },
+        {
+          label: 'Subcategory',
+          key: 'subcategory',
+          width: 'w-1/2',
+          type: 'dropdown',
+          required: false
         },
         {
           label: 'Minimum Level',
@@ -285,12 +298,14 @@ export const customerViewConfig = {
         {
           label: 'Telephone 1',
           key: 'telephone1',
-          width: 'w-1/2'
+          width: 'w-1/2',
+          customRender: (value) => formatPhoneNumber(value)
         },
         {
           label: 'Telephone 2',
           key: 'telephone2',
-          width: 'w-1/2'
+          width: 'w-1/2',
+          customRender: (value) => formatPhoneNumber(value)
         }
       ]
     },
@@ -359,7 +374,7 @@ export const editCustomerConfig = {
           label: 'City',
           key: 'city',
           width: 'w-1/2',
-          type: 'text'
+          type: 'cityDropdown'
         },
         {
           label: 'Postal Code',
@@ -371,7 +386,8 @@ export const editCustomerConfig = {
           label: 'Country',
           key: 'country',
           width: 'w-1/2',
-          type: 'text'
+          type: 'text',
+          disabled: true,
         }
       ]
     },
@@ -382,14 +398,14 @@ export const editCustomerConfig = {
         {
           label: 'Telephone 1',
           key: 'telephone1',
-          width: 'w-1/2',
-          type: 'tel',
+          width: 'w-2/3',
+          type: 'phoneInput',
         },
         {
           label: 'Telephone 2',
           key: 'telephone2',
-          width: 'w-1/2',
-          type: 'tel'
+          width: 'w-2/3',
+          type: 'phoneInput'
         }
       ]
     },
@@ -551,12 +567,14 @@ export const supplierViewConfig = {
         {
           label: 'Telephone 1',
           key: 'telephone1',
-          width: 'w-1/2'
+          width: 'w-1/2',
+          customRender: (value) => formatPhoneNumber(value)
         },
         {
           label: 'Telephone 2',
           key: 'telephone2',
-          width: 'w-1/2'
+          width: 'w-1/2',
+          customRender: (value) => formatPhoneNumber(value)
         }
       ]
     },
@@ -647,6 +665,7 @@ export const editSupplierConfig = {
           key: 'country',
           width: 'w-1/2',
           type: 'text'
+          
         }
       ]
     },
@@ -657,15 +676,14 @@ export const editSupplierConfig = {
         {
           label: 'Telephone 1',
           key: 'telephone1',
-          width: 'w-1/2',
-          type: 'tel',
-          required: true
+          width: 'w-2/3',
+          type: 'phoneInput',
         },
         {
           label: 'Telephone 2',
           key: 'telephone2',
-          width: 'w-1/2',
-          type: 'tel'
+          width: 'w-2/3',
+          type: 'phoneInput'
         }
       ]
     },

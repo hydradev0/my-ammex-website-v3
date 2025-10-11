@@ -13,10 +13,11 @@ function Inventory() {
   const { user } = useAuth();
   const role = user?.role;
   const isSalesReadOnly = role === 'Sales Marketing';
-  // Shared state for categories, units, and suppliers
+  // Shared state for categories, units, suppliers, and subcategories
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -36,6 +37,14 @@ function Inventory() {
 
         if (categoriesResponse.success) {
           setCategories(categoriesResponse.data);
+          // Extract all subcategories from categories
+          const allSubcategories = [];
+          categoriesResponse.data.forEach(category => {
+            if (category.subcategories && category.subcategories.length > 0) {
+              allSubcategories.push(...category.subcategories);
+            }
+          });
+          setSubcategories(allSubcategories);
         }
         
         if (unitsResponse.success) {
@@ -114,6 +123,7 @@ function Inventory() {
                   setCategories={handleCategoryUpdate}
                   units={units}
                   suppliers={suppliers}
+                  subcategories={subcategories}
                 />
               } 
             />
@@ -139,6 +149,7 @@ function Inventory() {
                   setCategories={handleCategoryUpdate}
                   units={units}
                   suppliers={suppliers}
+                  subcategories={subcategories}
                 />
               } 
             />
@@ -159,6 +170,7 @@ function Inventory() {
                   setCategories={handleCategoryUpdate}
                   units={units}
                   suppliers={suppliers}
+                  subcategories={subcategories}
                 />
               } 
             />

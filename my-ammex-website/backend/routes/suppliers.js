@@ -17,7 +17,6 @@ const {
 // Validation middleware
 const validateSupplier = [
   check('companyName', 'Company name is required').not().isEmpty().trim(),
-  check('telephone1', 'Telephone 1 is required').not().isEmpty().trim(),
   check('email1', 'Email 1 is required').isEmail(),
   check('email2').optional().custom((value) => {
     if (value === '' || value === null || value === undefined) {

@@ -1,10 +1,43 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, Boxes, DollarSign, Info, User, MapPin, Shield, Mail, Image as ImageIcon } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, Boxes, DollarSign, Info, User, MapPin, Shield, Mail, Image as ImageIcon } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 
 import ScrollLock from './ScrollLock';
 import SimpleImageUpload from './SimpleImageUpload';
+import PhoneInputField from './PhoneInputField';
+
+// Philippine cities organized by major regions
+const PHILIPPINE_CITIES = [
+  // Metro Manila
+  'Caloocan', 'Las Piñas', 'Makati', 'Malabon', 'Mandaluyong', 'Manila', 'Marikina', 'Muntinlupa',
+  'Navotas', 'Parañaque', 'Pasay', 'Pasig', 'Pateros', 'Quezon City', 'San Juan', 'Taguig', 'Valenzuela',
+
+  // Luzon (North)
+  'Baguio', 'Dagupan', 'San Fernando (La Union)', 'Vigan', 'Tuguegarao', 'Batac', 'Laoag',
+
+  // Luzon (Central)
+  'Angeles', 'San Fernando (Pampanga)', 'Olongapo', 'Balanga', 'Cabanatuan', 'Gapan', 'Palayan',
+  'San Jose del Monte', 'Tuguegarao', 'Batac', 'Laoag',
+
+  // Luzon (South)
+  'Batangas City', 'Lipa', 'Tanauan', 'Santo Tomas', 'Lucena', 'Tayabas', 'San Pablo',
+  'Calamba', 'Santa Rosa', 'Biñan', 'Cabuyao', 'San Pedro', 'Santa Cruz', 'Alaminos',
+
+  // Visayas
+  'Cebu City', 'Mandaue', 'Lapu-Lapu', 'Talisay', 'Toledo', 'Danao', 'Carcar', 'Bogo',
+  'Bacolod', 'Talisay (Negros Occidental)', 'Silay', 'Cadiz', 'Escalante', 'Sagay', 'Victorias',
+  'Iloilo City', 'Passi', 'Roxas', 'Tacloban', 'Ormoc', 'Baybay', 'Calbayog',
+
+  // Mindanao
+  'Davao City', 'Tagum', 'Panabo', 'Digos', 'Mati', 'Samal', 'Cagayan de Oro', 'Iligan',
+  'Butuan', 'Surigao', 'Bislig', 'Tandag', 'Bayugan', 'Malaybalay', 'Valencia', 'Ozamiz',
+  'Tangub', 'Oroquieta', 'Dipolog', 'Dapitan', 'Pagadian', 'Zamboanga City', 'Isabela',
+
+  // Other major cities
+  'General Santos', 'Koronadal', 'Tacurong', 'Kidapawan', 'Cotabato City', 'Marawi',
+  'Lamitan', 'Samal', 'Dipolog', 'Pagadian', 'Surigao', 'Butuan'
+].sort();
 
 function EditDetailsModal({
   isOpen = false,
@@ -12,9 +45,11 @@ function EditDetailsModal({
   data,
   categories = [],
   units = [],
+  subcategories = [],
   onDataUpdated,
   config,
-  updateService
+  updateService,
+  vendors = []
 }) {
   // State for form fields
   const [formData, setFormData] = useState({});
@@ -37,10 +72,18 @@ function EditDetailsModal({
       config.sections.forEach(section => {
         section.fields.forEach(field => {
           if (field.key) {
-            // Handle nested objects for dropdown fields (category, unit)
+            // Handle nested objects for dropdown fields (category, subcategory, unit)
             if (field.type === 'dropdown' && field.key === 'category' && data[field.key] && typeof data[field.key] === 'object') {
               initialFormData[field.key] = data[field.key].name || '';
               initialFormData[`${field.key}Id`] = data[field.key].id || '';
+            } else if (field.type === 'dropdown' && field.key === 'subcategory' && data[field.key] && typeof data[field.key] === 'object') {
+              initialFormData[field.key] = data[field.key].name || '';
+              initialFormData[`${field.key}Id`] = data[field.key].id || '';
+              // If we have subcategory data, we also need to set the categoryId from the subcategory's parentId
+              if (data[field.key].parentId) {
+                initialFormData.categoryId = data[field.key].parentId;
+                initialFormData.category = data.category?.name || ''; // Also set the category name for display
+              }
             } else if (field.type === 'dropdown' && field.key === 'unit' && data[field.key] && typeof data[field.key] === 'object') {
               initialFormData[field.key] = data[field.key].name || '';
               initialFormData[`${field.key}Id`] = data[field.key].id || '';
@@ -135,10 +178,14 @@ function EditDetailsModal({
         submissionData.images = images;
       }
       
-      // Convert category and unit names back to IDs for backend
+      // Convert category, subcategory, and unit names back to IDs for backend
       if (submissionData.category && submissionData.categoryId) {
         submissionData.categoryId = submissionData.categoryId;
         delete submissionData.category; // Remove the name, keep only ID
+      }
+      if (submissionData.subcategory && submissionData.subcategoryId) {
+        submissionData.subcategoryId = submissionData.subcategoryId;
+        delete submissionData.subcategory; // Remove the name, keep only ID
       }
       if (submissionData.unit && submissionData.unitId) {
         submissionData.unitId = submissionData.unitId;
@@ -169,15 +216,49 @@ function EditDetailsModal({
     }
   };
 
+  // Get dropdown options based on field type
+  const getDropdownOptions = (field) => {
+    if (field.key === 'vendor') {
+      return vendors;
+    } else if (field.key === 'category') {
+      return categories;
+    } else if (field.key === 'subcategory') {
+      // Filter subcategories based on selected category
+      const selectedCategoryId = formData.categoryId;
+      
+      // If no category is selected, return all subcategories (for initial load)
+      if (!selectedCategoryId) {
+        return subcategories;
+      }
+      
+      // Filter subcategories by the selected category
+      const filtered = subcategories.filter(sub => sub.parentId === selectedCategoryId);
+      return filtered;
+    } else if (field.key === 'unit') {
+      return units;
+    }
+    return field.options || [];
+  };
+
   // Handle dropdown selection
   const handleDropdownSelect = (field, value, option) => {
     // Store the name for display and ID for submission
-    if (field === 'category' || field === 'unit') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value, // Store the name for display
-        [`${field}Id`]: option.id // Store the ID for submission
-      }));
+    if (field === 'category' || field === 'subcategory' || field === 'unit') {
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          [field]: value, // Store the name for display
+          [`${field}Id`]: option.id // Store the ID for submission
+        };
+        
+        // If category is changed, clear the subcategory
+        if (field === 'category') {
+          newData.subcategory = '';
+          newData.subcategoryId = '';
+        }
+        
+        return newData;
+      });
     } else {
       setFormData(prev => ({
         ...prev,
@@ -197,18 +278,6 @@ function EditDetailsModal({
     }
   };
 
-  // Get dropdown options based on field type
-  const getDropdownOptions = (field) => {
-    if (field.key === 'vendor') {
-      return ['Vendor A', 'Vendor B', 'Vendor C', 'Vendor D'];
-    } else if (field.key === 'category') {
-      return categories;
-    } else if (field.key === 'unit') {
-      return units;
-    }
-    return field.options || [];
-  };
-
   // Render form field based on configuration
   const renderFormField = (field) => {
     const { key, label, type, width, required, disabled, prefix, step, min, isTextArea, options } = field;
@@ -221,6 +290,24 @@ function EditDetailsModal({
       const dropdownRef = dropdownRefs.current[key] || { current: null };
       const isOpen = dropdownStates[key] || false;
       const onToggle = () => setDropdownStates(prev => ({ ...prev, [key]: !prev[key] }));
+
+      // If no options available, render as disabled text input
+      if (!dropdownOptions || dropdownOptions.length === 0) {
+        return (
+          <FormField
+            id={key}
+            name={key}
+            label={label + isRequired}
+            type="text"
+            value={value}
+            onChange={handleInputChange}
+            error={error}
+            width={width}
+            disabled={true}
+            data-supplier={config.title === 'Edit Supplier' ? 'true' : 'false'}
+          />
+        );
+      }
 
       return (
         <div className="m-4">
@@ -239,8 +326,20 @@ function EditDetailsModal({
             {isOpen && (
               <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
                 {dropdownOptions.map((option) => {
-                  const optionValue = option.name || option;
-                  const optionKey = option.id || option;
+                  // Handle different option formats
+                  let optionValue, optionKey;
+                  if (typeof option === 'string') {
+                    optionValue = option;
+                    optionKey = option;
+                  } else if (option && typeof option === 'object') {
+                    // For vendor objects, use companyName or name
+                    optionValue = option.companyName || option.name || option.supplierId || '';
+                    optionKey = option.id || option.supplierId || optionValue;
+                  } else {
+                    optionValue = String(option);
+                    optionKey = String(option);
+                  }
+                  
                   return (
                     <li
                       key={optionKey}
@@ -261,6 +360,65 @@ function EditDetailsModal({
       );
     }
 
+    if (type === 'cityDropdown') {
+      const isOpen = dropdownStates[key] || false;
+      const onToggle = () => setDropdownStates(prev => ({ ...prev, [key]: !prev[key] }));
+
+      return (
+        <div className="m-4">
+          <label className="block text-lg font-medium text-gray-700 mb-2">
+            {label}{isRequired}
+          </label>
+          <div className={`relative ${width || 'w-full'}`} ref={el => dropdownRefs.current[key] = el}>
+            <button
+              type="button"
+              className={`cursor-pointer w-full text-lg pl-4 pr-4 py-2 rounded border ${error ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center`}
+              onClick={onToggle}
+            >
+              <span>{value || 'Select a city'}</span>
+              <ChevronRight className={`h-6 w-6 ml-2 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+            </button>
+            {isOpen && (
+              <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
+                <li
+                  className="px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black text-gray-500"
+                  onClick={() => handleDropdownSelect(key, '', {})}
+                >
+                  Select a city
+                </li>
+                {PHILIPPINE_CITIES.map((city) => (
+                  <li
+                    key={city}
+                    className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${value === city ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
+                    onClick={() => handleDropdownSelect(key, city, {})}
+                  >
+                    {city}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {error && (
+            <p className="text-red-500 text-md mt-1">{error}</p>
+          )}
+        </div>
+      );
+    }
+
+    if (type === 'phoneInput') {
+      return (
+        <PhoneInputField
+          id={key}
+          label={label + isRequired}
+          value={value}
+          onChange={handleInputChange}
+          error={error}
+          width={width}
+          disabled={disabled}
+        />
+      );
+    }
+
     if (type === 'textarea' || isTextArea) {
       return (
         <FormField
@@ -273,6 +431,7 @@ function EditDetailsModal({
           error={error}
           width={width}
           disabled={disabled}
+          data-supplier={config.title === 'Edit Supplier' ? 'true' : 'false'}
         />
       );
     }
@@ -291,6 +450,7 @@ function EditDetailsModal({
         min={min}
         width={width}
         disabled={disabled}
+        data-supplier={config.title === 'Edit Supplier' ? 'true' : 'false'}
       />
     );
   };
@@ -446,6 +606,12 @@ function EditDetailsModal({
 
 // Form Field Component
 function FormField({ id, name, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, ...props }) {
+  // Handle country field with default Philippines value only for customers, not suppliers
+  const isCountryField = name === 'country';
+  const isSupplierForm = props['data-supplier'] === 'true';
+  const fieldValue = (isCountryField && !isSupplierForm) ? 'Philippines' : value;
+  const fieldDisabled = (isCountryField && !isSupplierForm) ? true : disabled;
+
   return (
     <div className="m-4">
       <label htmlFor={id} className="block text-lg font-medium text-gray-700 mb-2">
@@ -456,10 +622,10 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
           <textarea
             id={id}
             name={name}
-            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-            value={value}
+            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${fieldDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            value={fieldValue}
             onChange={onChange}
-            disabled={disabled}
+            disabled={fieldDisabled}
             {...props}
           />
         ) : (
@@ -474,10 +640,10 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
               id={id}
               name={name}
               className={`${prefix ? 'pl-7' : 'px-3'} px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600
-               bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              value={value}
+               bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${fieldDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              value={fieldValue}
               onChange={onChange}
-              disabled={disabled}
+              disabled={fieldDisabled}
               {...props}
             />
           </>
@@ -486,6 +652,7 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
       {error && (
         <p className="text-red-500 text-md mt-1">{error}</p>
       )}
+     
     </div>
   );
 }
@@ -496,6 +663,8 @@ EditDetailsModal.propTypes = {
   data: PropTypes.object,
   categories: PropTypes.array,
   units: PropTypes.array,
+  subcategories: PropTypes.array,
+  vendors: PropTypes.array,
   onDataUpdated: PropTypes.func,
   config: PropTypes.object,
   updateService: PropTypes.func

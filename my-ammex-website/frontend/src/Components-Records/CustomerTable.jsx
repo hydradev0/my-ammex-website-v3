@@ -10,6 +10,7 @@ import { customerDropdownActions } from '../Components/dropdownActions';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../services/customerService';
+import { formatPhoneNumber } from '../utils/phoneFormatter';
 
 function CustomerTable() {
   const { refreshTriggers } = useDataRefresh();
@@ -273,7 +274,8 @@ function CustomerTable() {
       header: 'Telephone',
       width: 'w-56',
       cellClassName: 'w-56',
-      truncate: true
+      truncate: true,
+      render: (value) => formatPhoneNumber(value)
     },
   ];
   

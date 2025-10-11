@@ -160,16 +160,15 @@ function NewItem({
       newErrors.floorPrice = 'Floor price must be a positive number';
     }
 
-    if (!formData.ceilingPrice.trim()) {
-      newErrors.ceilingPrice = 'Ceiling price is required';
-    } else if (isNaN(formData.ceilingPrice) || Number(formData.ceilingPrice) < 0) {
-      newErrors.ceilingPrice = 'Ceiling price must be a positive number';
-    }
-
-    // Validate that ceiling price is greater than floor price
-    if (formData.floorPrice && formData.ceilingPrice && 
-        Number(formData.ceilingPrice) <= Number(formData.floorPrice)) {
-      newErrors.ceilingPrice = 'Ceiling price must be greater than floor price';
+    // Ceiling price is now optional - only validate if provided
+    if (formData.ceilingPrice && formData.ceilingPrice.trim()) {
+      if (isNaN(formData.ceilingPrice) || Number(formData.ceilingPrice) < 0) {
+        newErrors.ceilingPrice = 'Ceiling price must be a positive number';
+      }
+      // Validate that ceiling price is greater than floor price (only if both are provided)
+      if (formData.floorPrice && Number(formData.ceilingPrice) <= Number(formData.floorPrice)) {
+        newErrors.ceilingPrice = 'Ceiling price must be greater than floor price';
+      }
     }
 
     // Validate that price is within floor and ceiling range
@@ -207,23 +206,18 @@ function NewItem({
       newErrors.minLevel = 'Minimum level must be a positive number';
     }
 
-    // Validate maximum level
-    if (!formData.maxLevel.trim()) {
-      newErrors.maxLevel = 'Maximum level is required';
-    } else if (isNaN(formData.maxLevel) || Number(formData.maxLevel) < 0) {
-      newErrors.maxLevel = 'Maximum level must be a positive number';
+    // Maximum level is now optional - only validate if provided
+    if (formData.maxLevel && formData.maxLevel.trim()) {
+      if (isNaN(formData.maxLevel) || Number(formData.maxLevel) < 0) {
+        newErrors.maxLevel = 'Maximum level must be a positive number';
+      }
+      // Validate that max level is greater than min level (only if both are provided)
+      if (formData.minLevel && Number(formData.maxLevel) <= Number(formData.minLevel)) {
+        newErrors.maxLevel = 'Maximum level must be greater than minimum level';
+      }
     }
 
-    // Validate that max level is greater than min level
-    if (formData.minLevel && formData.maxLevel && 
-        Number(formData.maxLevel) <= Number(formData.minLevel)) {
-      newErrors.maxLevel = 'Maximum level must be greater than minimum level';
-    }
-
-    // Validate images (required)
-    if (!formData.images || formData.images.length === 0) {
-      newErrors.images = 'At least one product image is required';
-    }
+    // Images are now optional
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -265,15 +259,15 @@ function NewItem({
           vendor: formData.vendor,
           price: Number(formData.price),
           floorPrice: Number(formData.floorPrice),
-          ceilingPrice: Number(formData.ceilingPrice),
+          ceilingPrice: formData.ceilingPrice && formData.ceilingPrice.trim() ? Number(formData.ceilingPrice) : null,
           unitId: units.find(u => u.name === formData.unit)?.id,
           quantity: Number(formData.quantity),
           categoryId: selectedCategory?.id,
           subcategoryId: selectedSubcategory?.id || null,
           description: formData.description,
           minLevel: Number(formData.minLevel),
-          maxLevel: Number(formData.maxLevel),
-          images: imageUrls // Include Cloudinary URLs
+          maxLevel: formData.maxLevel && formData.maxLevel.trim() ? Number(formData.maxLevel) : null,
+          images: imageUrls.length > 0 ? imageUrls : [] // Include Cloudinary URLs or empty array
         };
 
         const response = await createItem(itemData);
@@ -300,9 +294,9 @@ function NewItem({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="-mb-6">
+      <div className="-mb-6 mt-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-12 -ml-22">
@@ -437,7 +431,7 @@ function NewItem({
                 />
                 <FormField
                   id="ceilingPrice"
-                  label={<span>Ceiling Price <span className="text-red-500">*</span></span>}
+                  label={<span>Ceiling Price</span>}
                   type="number"
                   value={formData.ceilingPrice}
                   onChange={handleInputChange}
@@ -601,7 +595,7 @@ function NewItem({
                 />
                 <FormField
                   id="maxLevel"
-                  label={<span>Maximum Level <span className="text-red-500">*</span></span>}
+                  label={<span>Maximum Level</span>}
                   type="number"
                   value={formData.maxLevel}
                   onChange={handleInputChange}
@@ -619,13 +613,13 @@ function NewItem({
             <div>
               <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
                 <Image className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
-                Product Images <span className="text-red-500">*</span>
+                Product Images
               </h3>
               <ImageUpload
                 images={formData.images}
                 onImagesChange={handleImagesChange}
                 maxImages={4}
-                required={true}
+                required={false}
                 className="mb-4"
               />
               {errors.images && (

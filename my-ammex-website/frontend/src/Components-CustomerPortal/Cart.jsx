@@ -74,12 +74,14 @@ const Cart = () => {
   const getStockIssues = (items) => {
     const insufficient = items.filter(item => (item.quantity || 0) > (item.stock || 0));
     if (insufficient.length === 0) return { hasIssues: false, message: "" };
+
     const details = insufficient
-      .map(i => `${i.name}: ordered ${i.quantity}, stock ${i.stock || 0}`)
+      .map(i => `${i.modelNo || 'Unknown Item'} : ordered ${i.quantity}, available ${i.stock || 0}`)
       .join('\n');
+
     return {
       hasIssues: true,
-      message: `Some items exceed available stock. Please adjust quantities and try again.\n\n${details}`
+      message: `The following items exceed available stock. Please adjust quantities and try again.\n\n${details}`
     };
   };
 

@@ -179,9 +179,9 @@ const Analytics = () => {
                   <div className="w-full">
                     <CustomerPerformance />
                   </div>
-                  <div className="w-full">
+                  {/* <div className="w-full">
                     <CartInsights data={cartInsightsData} />
-                  </div>
+                  </div> */}
                 </div>
               )}
 
@@ -194,9 +194,9 @@ const Analytics = () => {
                   <div className="w-full">
                     <CustomerPerformance />
                   </div>
-                  <div className="w-full">
+                  {/* <div className="w-full">
                     <CartInsights data={cartInsightsData} />
-                  </div>
+                  </div> */}
                 </div>
               )}
 

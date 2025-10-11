@@ -43,7 +43,7 @@ function mapStockDataToItemTableFormat(stockItem) {
   };
 }
 
-function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
+function ItemsTable({ categories, setCategories, units, suppliers = [], subcategories = [] }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { refreshTriggers } = useDataRefresh();
@@ -694,6 +694,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [] }) {
             data={selectedItem}
             categories={categories}
             units={units}
+            vendors={suppliers}
+            subcategories={subcategories}
             onDataUpdated={handleItemUpdated}
             config={editItemConfig}
             updateService={updateItem}
@@ -770,7 +772,13 @@ ItemsTable.propTypes = {
       email1: PropTypes.string,
       telephone1: PropTypes.string
     })
-  )
+  ).isRequired,
+  subcategories: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired
+    })
+  ).isRequired
 };
 
 export default ItemsTable;

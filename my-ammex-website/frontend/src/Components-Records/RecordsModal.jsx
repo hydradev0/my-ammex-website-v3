@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, User, MapPin, Mail, Phone } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
+import PhoneInputField from "../Components/PhoneInputField";
 
 function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
   // State for form fields
@@ -52,9 +53,6 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
       newErrors.companyName = 'Company name is required';
     }
 
-    if (!formData.telephone1.trim()) {
-      newErrors.telephone1 = 'Telephone 1 is required';
-    }
     
     if (!formData.email1.trim()) {
       newErrors.email1 = 'Email 1 is required';
@@ -247,24 +245,21 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
               
               {/* Section Container */}
               <div className="grid grid-cols-2 gap-6 bg-white rounded-xl p-4">
-                <FormField
+                <PhoneInputField
                   id="telephone1"
                   label="Telephone 1"
-                  type="tel"
                   value={formData.telephone1}
                   onChange={handleInputChange}
                   error={errors.telephone1}
-                  required
-                  width="w-1/2"
+                  width="w-2/3"
                 />
-                <FormField
+                <PhoneInputField
                   id="telephone2"
                   label="Telephone 2"
-                  type="tel"
                   value={formData.telephone2}
                   onChange={handleInputChange}
                   error={errors.telephone2}
-                  width="w-1/2"
+                  width="w-2/3"
                 />
               </div>
             </div>

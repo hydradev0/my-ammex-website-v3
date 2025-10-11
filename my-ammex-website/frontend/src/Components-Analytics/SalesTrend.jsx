@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getHistoricalSales, postForecast, getTopProducts } from '../services/analytics';
+import { getHistoricalSales, postForecast, getTopProducts, getYTDSalesGrowth } from '../services/analytics';
 import {
   LineChart,
   Line,
@@ -107,6 +107,10 @@ const SalesTrend = () => {
   const [topProductsData, setTopProductsData] = useState({});
   const [isLoadingTopProducts, setIsLoadingTopProducts] = useState(true);
 
+  // YTD growth state
+  const [ytdGrowthData, setYtdGrowthData] = useState(null);
+  const [isLoadingYtdGrowth, setIsLoadingYtdGrowth] = useState(true);
+
   // Filter historical data based on selected period
   const getHistoricalData = () => {
     if (historicalPeriod === 'current') {
@@ -156,10 +160,11 @@ const SalesTrend = () => {
       setIsLoadingHistorical(true);
       try {
         const months = historicalPeriod === 'current' ? 1 : Math.max(parseInt(historicalPeriod), 1);
-        const res = await getHistoricalSales(months);
+        const includeCurrent = historicalPeriod === 'current';
+        const res = await getHistoricalSales(months, includeCurrent);
         if (!isMounted) return;
         // Backend returns items like { month: '2025-09-01', sales: 750000 }
-        // Map to UI-friendly labels like 'Sep 2025'
+        // Map to UI labels like 'Sep 2025'
         const mapped = (res?.data || []).map((d) => {
           const dt = new Date(d.month);
           const label = dt.toLocaleString('en-US', { month: 'short', year: 'numeric' });
@@ -200,6 +205,27 @@ const SalesTrend = () => {
     })();
     return () => { isMounted = false; };
   }, [historicalPeriod]);
+
+  // Fetch YTD growth data
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setIsLoadingYtdGrowth(true);
+      try {
+        const res = await getYTDSalesGrowth();
+        if (!isMounted) return;
+        setYtdGrowthData(res?.data || null);
+      } catch (e) {
+        console.error('Failed to fetch YTD growth data:', e);
+        setYtdGrowthData(null);
+      } finally {
+        if (isMounted) {
+          setIsLoadingYtdGrowth(false);
+        }
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
 
   // Dropdown options
   const historicalPeriodOptions = [
@@ -617,8 +643,20 @@ const SalesTrend = () => {
                   <BarChart3 className="w-6 h-6 text-purple-600" />
                   <h3 className="font-semibold text-gray-900">YTD Sales Growth</h3>
                 </div>
-                <p className="text-2xl font-bold text-green-600 mb-2">+18.5%</p>
-                <div className="text-xs text-gray-600">Compared to last year</div>
+                <p className="text-2xl font-bold mb-2">
+                  {isLoadingYtdGrowth ? (
+                    <span className="text-gray-400">Loading...</span>
+                  ) : ytdGrowthData ? (
+                    <span className={ytdGrowthData.growthPercentage >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {ytdGrowthData.growthPercentage >= 0 ? '+' : ''}{ytdGrowthData.growthPercentage}%
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">No data</span>
+                  )}
+                </p>
+                <div className="text-xs text-gray-600">
+                  {ytdGrowthData ? `Compared to ${ytdGrowthData.previousYear} (${ytdGrowthData.period})` : 'Compared to last year'}
+                </div>
               </div>
             </div>
           </div>

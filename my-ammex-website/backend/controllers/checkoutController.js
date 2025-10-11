@@ -17,7 +17,7 @@ async function validateCustomerProfileOrThrow(customerId) {
     city: 'City',
     postalCode: 'Postal code',
     country: 'Country',
-    telephone1: 'Mobile No. 1',
+    telephone1: 'Telephone 1',
     email1: 'Email 1'
   };
   const missing = Object.keys(requiredFields).filter(

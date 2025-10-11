@@ -6,12 +6,8 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
-/**
- * Import Script for Ammex Sales Data
- * 
- * This script imports the cleaned Ammex sales CSV data into the sales_fact_monthly table.
- * It uses UPSERT (INSERT ... ON CONFLICT) to safely handle duplicate entries.
- */
+// cd my-ammex-website/backend
+// node scripts/importAmmexSalesData.js ammex_sales_2022_cleaned_corrected.csv
 
 class AmmexSalesDataImporter {
     constructor() {

@@ -32,10 +32,18 @@ export const AccountModal = ({
           <div className="flex items-center justify-between">
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              {editMode ? 'Edit Account' : 'Create Account'}
+              {editMode 
+                ? `Edit ${formData.role === 'Client' ? 'Client' : 'Account'}`
+                : `Create ${formData.role === 'Client' ? 'Client Account' : 'Account'}`
+              }
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {editMode ? 'Update account information.' : 'Fill out the details to create a new account.'}
+              {editMode 
+                ? `Update ${formData.role === 'Client' ? 'client' : 'account'} information.`
+                : formData.role === 'Client'
+                  ? 'Create a new client account. Use the company name as the account name.'
+                  : 'Fill out the details to create a new account.'
+              }
             </p>
           </div>
             <button
@@ -63,7 +71,9 @@ export const AccountModal = ({
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <label className="block text-sm font-medium text-gray-700">
+                {formData.role === 'Client' ? 'Company Name' : 'Name'}
+              </label>
               <input
                 type="text"
                 name="name"
@@ -74,7 +84,7 @@ export const AccountModal = ({
                     ? 'border-red-300 focus:ring-red-500 focus:border-white' 
                     : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-white'
                 }`}
-                placeholder="Enter Name (Company Name for Client Accounts)"
+                placeholder={formData.role === 'Client' ? 'Enter company name' : 'Enter full name'}
               />
               {fieldErrors?.name && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../utils/apiConfig';
 
-export async function getHistoricalSales(months = 12) {
-  const url = `${API_BASE_URL}/analytics/historical-sales?months=${months}`;
+export async function getHistoricalSales(months = 12, includeCurrent = false) {
+  const url = `${API_BASE_URL}/analytics/historical-sales?months=${months}&includeCurrent=${includeCurrent}`;
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error(`Historical sales request failed: ${res.status}`);
   const json = await res.json();
@@ -93,6 +93,15 @@ export async function getTopBulkCustomers({ months = 12, limit = 10 } = {}) {
   if (!res.ok) throw new Error(`Top bulk customers request failed: ${res.status}`);
   const json = await res.json();
   if (!json?.success) throw new Error(json?.error || 'Top bulk customers error');
+  return json;
+}
+
+export async function getYTDSalesGrowth() {
+  const url = `${API_BASE_URL}/analytics/ytd-growth`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`YTD sales growth request failed: ${res.status}`);
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'YTD sales growth error');
   return json;
 }
 

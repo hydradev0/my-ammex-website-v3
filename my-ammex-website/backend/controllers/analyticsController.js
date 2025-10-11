@@ -5,7 +5,18 @@ class AnalyticsController {
   // Get historical sales data for AI forecasting
   getHistoricalSalesForAI = async (req, res) => {
     try {
-      const { months = 36 } = req.query || {}; // Default to 3 years
+      const { months = 36, includeCurrent = false } = req.query || {}; // Default to 3 years
+      
+      // Build the WHERE clause based on whether to include current month
+      let whereClause;
+      if (includeCurrent === 'true') {
+        // Include current month for "current month" requests
+        whereClause = `WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months - 1} months'`;
+      } else {
+        // Exclude current month for all historical periods (including "Last Month")
+        whereClause = `WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+                      AND month_start < date_trunc('month', CURRENT_DATE)`;
+      }
       
             const data = await getSequelize().query(`
               SELECT 
@@ -16,7 +27,7 @@ class AnalyticsController {
                 avg_order_value,
                 new_customers
               FROM sales_fact_monthly 
-              WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+              ${whereClause}
               ORDER BY month_start
             `, { type: QueryTypes.SELECT });
 
@@ -62,6 +73,7 @@ class AnalyticsController {
         FROM customer_bulk_monthly cf
         LEFT JOIN sales_fact_monthly sf ON sf.month_start = cf.month_start
         WHERE cf.month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+        AND cf.month_start < date_trunc('month', CURRENT_DATE)
         ORDER BY cf.month_start
       `, { type: QueryTypes.SELECT });
 
@@ -108,6 +120,7 @@ class AnalyticsController {
           ranking
         FROM sales_fact_monthly_by_product 
         WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+        AND month_start < date_trunc('month', CURRENT_DATE)
           AND ranking <= ${parseInt(limit)}
         ORDER BY month_start DESC, ranking ASC
       `, { type: QueryTypes.SELECT });
@@ -172,6 +185,7 @@ class AnalyticsController {
           ranking
         FROM customer_bulk_monthly_by_name 
         WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+        AND month_start < date_trunc('month', CURRENT_DATE)
           AND ranking <= ${parseInt(limit)}
         ORDER BY month_start DESC, ranking ASC
       `, { type: QueryTypes.SELECT });
@@ -1065,6 +1079,65 @@ Return this exact structure:
         success: false, 
         error: 'Failed to fetch dashboard metrics',
         details: error.message 
+      });
+    }
+  }
+
+  // Get YTD sales growth
+  async getYTDSalesGrowth(req, res) {
+    try {
+      const { QueryTypes } = require('sequelize');
+      const sequelize = getSequelize();
+
+      // Get current year YTD sales
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1; // 1-based month
+
+      const currentYTDSales = await sequelize.query(`
+        SELECT COALESCE(SUM(total_revenue), 0) as ytd_sales
+        FROM sales_fact_monthly 
+        WHERE EXTRACT(YEAR FROM month_start) = ${currentYear}
+        AND EXTRACT(MONTH FROM month_start) <= ${currentMonth}
+      `, { type: QueryTypes.SELECT });
+
+      // Get previous year YTD sales for the same period
+      const previousYear = currentYear - 1;
+      const previousYTDSales = await sequelize.query(`
+        SELECT COALESCE(SUM(total_revenue), 0) as ytd_sales
+        FROM sales_fact_monthly 
+        WHERE EXTRACT(YEAR FROM month_start) = ${previousYear}
+        AND EXTRACT(MONTH FROM month_start) <= ${currentMonth}
+      `, { type: QueryTypes.SELECT });
+
+      const currentYTD = parseFloat(currentYTDSales[0]?.ytd_sales || 0);
+      const previousYTD = parseFloat(previousYTDSales[0]?.ytd_sales || 0);
+
+      // Calculate growth percentage
+      let growthPercentage = 0;
+      if (previousYTD > 0) {
+        growthPercentage = ((currentYTD - previousYTD) / previousYTD) * 100;
+      } else if (currentYTD > 0) {
+        growthPercentage = 100; // 100% growth if no previous data
+      }
+
+      res.json({
+        success: true,
+        data: {
+          currentYTD,
+          previousYTD,
+          growthPercentage: Math.round(growthPercentage * 100) / 100, // Round to 2 decimal places
+          period: `${currentMonth} months YTD`,
+          currentYear,
+          previousYear
+        }
+      });
+
+    } catch (error) {
+      console.error('Error calculating YTD sales growth:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to calculate YTD sales growth',
+        details: error.message
       });
     }
   }
