@@ -1,8 +1,7 @@
 import { API_BASE_URL } from '../utils/apiConfig';
-import { dashboardData } from '../data/dashboardData';
 
 // Get real daily dashboard metrics from API
-export const getDashboardMetrics = async () => {
+export const getDailyDashboardMetrics = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/dashboard/daily-metrics`, {
       credentials: 'include',
@@ -29,26 +28,35 @@ export const getDashboardMetrics = async () => {
   }
 };
 
-// This function will be replaced with actual API call later
-export const getSalesMetrics = async () => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return dashboardData.sales;
-};
 
-// This function will be replaced with actual API call later
-export const getOrderMetrics = async () => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return dashboardData.orders;
-};
+// Get inventory alerts from API
+export const getInventoryAlerts = async (severity = 'all') => {
+  try {
+    const url = new URL(`${API_BASE_URL}/dashboard/inventory-alerts`);
+    if (severity && severity !== 'all') {
+      url.searchParams.append('severity', severity);
+    }
 
-// This function will be replaced with actual API call later
-export const getInventoryMetrics = async () => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return dashboardData.inventory;
-};
+    const response = await fetch(url, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-// This function will be replaced with actual API call later
-export const getCustomerMetrics = async () => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return dashboardData.customers;
+    if (!response.ok) {
+      throw new Error(`Inventory alerts request failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch inventory alerts');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Error fetching inventory alerts:', error);
+    throw error;
+  }
 }; 

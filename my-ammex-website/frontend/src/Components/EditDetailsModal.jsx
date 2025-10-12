@@ -179,18 +179,51 @@ function EditDetailsModal({
       }
       
       // Convert category, subcategory, and unit names back to IDs for backend
-      if (submissionData.category && submissionData.categoryId) {
-        submissionData.categoryId = submissionData.categoryId;
-        delete submissionData.category; // Remove the name, keep only ID
+      // Handle categoryId - convert to integer or null
+      if (submissionData.categoryId) {
+        submissionData.categoryId = parseInt(submissionData.categoryId) || null;
+      } else {
+        submissionData.categoryId = null;
       }
-      if (submissionData.subcategory && submissionData.subcategoryId) {
-        submissionData.subcategoryId = submissionData.subcategoryId;
-        delete submissionData.subcategory; // Remove the name, keep only ID
+      
+      // Handle subcategoryId - convert to integer or null
+      if (submissionData.subcategoryId) {
+        submissionData.subcategoryId = parseInt(submissionData.subcategoryId) || null;
+      } else {
+        submissionData.subcategoryId = null;
       }
-      if (submissionData.unit && submissionData.unitId) {
-        submissionData.unitId = submissionData.unitId;
-        delete submissionData.unit; // Remove the name, keep only ID
+      
+      // Handle unitId - convert to integer or null
+      if (submissionData.unitId) {
+        submissionData.unitId = parseInt(submissionData.unitId) || null;
+      } else {
+        submissionData.unitId = null;
       }
+      
+      // Handle other numeric fields that might be empty strings
+      if (submissionData.price !== undefined) {
+        submissionData.price = submissionData.price === '' ? null : parseFloat(submissionData.price);
+      }
+      if (submissionData.floorPrice !== undefined) {
+        submissionData.floorPrice = submissionData.floorPrice === '' ? null : parseFloat(submissionData.floorPrice);
+      }
+      if (submissionData.ceilingPrice !== undefined) {
+        submissionData.ceilingPrice = submissionData.ceilingPrice === '' ? null : parseFloat(submissionData.ceilingPrice);
+      }
+      if (submissionData.quantity !== undefined) {
+        submissionData.quantity = submissionData.quantity === '' ? null : parseInt(submissionData.quantity);
+      }
+      if (submissionData.minLevel !== undefined) {
+        submissionData.minLevel = submissionData.minLevel === '' ? null : parseInt(submissionData.minLevel);
+      }
+      if (submissionData.maxLevel !== undefined) {
+        submissionData.maxLevel = submissionData.maxLevel === '' ? null : parseInt(submissionData.maxLevel);
+      }
+      
+      // Remove the name fields as they're not needed for the backend
+      delete submissionData.category;
+      delete submissionData.subcategory;
+      delete submissionData.unit;
 
       // Use the provided update service
       const response = await updateService(data.id, submissionData);

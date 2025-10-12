@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getHistoricalCustomerData, postCustomerBulkForecast, getTopBulkCustomers } from '../services/analytics';
+import { getHistoricalCustomerData, postCustomerBulkForecast } from '../services/analytics';
 import {
   LineChart,
   Line,
@@ -27,7 +27,8 @@ import {
   FileChartColumn,
   AlignEndHorizontal,
   ChevronDown,
-  ArrowLeft
+  ArrowLeft,
+  Package
 } from 'lucide-react';
 import Modal from './Modal';
 import LoadingModal from './LoadingModal';
@@ -98,14 +99,11 @@ const CustomerPurchaseForecast = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [predictions, setPredictions] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(null);
+  const [selectedMonthTab, setSelectedMonthTab] = useState(0);
 
   // Historical customer data (fetched from backend)
   const [allHistoricalData, setAllHistoricalData] = useState([]);
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(true);
-
-  // Top bulk customers data
-  const [topBulkCustomersData, setTopBulkCustomersData] = useState({});
-  const [isLoadingTopBulkCustomers, setIsLoadingTopBulkCustomers] = useState(false);
 
   // Filter historical data based on selected period
   const getHistoricalData = () => {
@@ -118,14 +116,6 @@ const CustomerPurchaseForecast = () => {
   };
 
   const historicalCustomerData = getHistoricalData();
-
-  // Get latest top bulk customers for display
-  const getLatestTopBulkCustomers = () => {
-    const months = Object.keys(topBulkCustomersData).sort((a, b) => new Date(b) - new Date(a));
-    return months.length > 0 ? topBulkCustomersData[months[0]] : [];
-  };
-
-  const latestTopBulkCustomers = getLatestTopBulkCustomers();
 
   // Check cooldown status on component mount and periodically
   useEffect(() => {
@@ -184,28 +174,6 @@ const CustomerPurchaseForecast = () => {
     return () => { isMounted = false; };
   }, [historicalPeriod]);
 
-  // Fetch top bulk customers data
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      setIsLoadingTopBulkCustomers(true);
-      try {
-        const months = historicalPeriod === 'current' ? 1 : Math.max(parseInt(historicalPeriod), 1);
-        const res = await getTopBulkCustomers({ months, limit: 10 });
-        if (!isMounted) return;
-        setTopBulkCustomersData(res?.data || {});
-      } catch (e) {
-        console.error('Failed to fetch top bulk customers data:', e);
-        setTopBulkCustomersData({});
-      } finally {
-        if (isMounted) {
-          setIsLoadingTopBulkCustomers(false);
-        }
-      }
-    })();
-    return () => { isMounted = false; };
-  }, [historicalPeriod]);
-
   // Dropdown options
   const historicalPeriodOptions = [
     { value: 'current', label: 'Current Month' },
@@ -243,17 +211,20 @@ const CustomerPurchaseForecast = () => {
           month: p.month, // backend labels months
           bulkOrdersCount: Math.round(p.bulkOrdersCount || 0),
           bulkOrdersAmount: Math.round(p.bulkOrdersAmount || 0),
-          momChange: p.momChange || 0
+          momChange: p.momChange || 0,
+          topCustomers: p.topCustomers || []
         }));
         const payload = {
           period: `${periodInt} months`,
           totalGrowth: f.totalGrowth || 0,
           monthlyBreakdown: monthly,
-          topBulkCustomers: f.topBulkCustomers || f['Top Bulk Customers'] || [],
           insights: f.insights || [],
           recommendations: f.recommendations || []
         };
         setPredictions(payload);
+        
+        // Select first month by default
+        setSelectedMonthTab(0);
         
         // Only set cooldown on successful prediction
         localStorage.setItem('lastCustomerForecastSuccess', Date.now().toString());
@@ -339,15 +310,21 @@ const CustomerPurchaseForecast = () => {
   const exportPredictionData = () => {
     if (!predictions) return;
     
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Month,Predicted Bulk Orders Count,Predicted Bulk Orders Amount,Avg Bulk Order Size\n"
-      + predictions.monthlyBreakdown.map(row => 
-          (() => {
-            const avgSize = row.bulkOrdersCount ? Math.round(row.bulkOrdersAmount / row.bulkOrdersCount) : 0;
-            return `${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize}`;
-          })()
-        ).join("\n");
+    let csvRows = ["Month,Bulk Orders Count,Bulk Orders Amount,Avg Order Size,MoM Change,Customer Name,Model No,Expected Amount"];
+
+    predictions.monthlyBreakdown.forEach(row => {
+      const avgSize = row.bulkOrdersCount ? Math.round(row.bulkOrdersAmount / row.bulkOrdersCount) : 0;
+
+      if (row.topCustomers && row.topCustomers.length > 0) {
+        row.topCustomers.forEach(customer => {
+          csvRows.push(`${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize},${row.momChange}%,"${customer.name}",${customer.modelNo},${customer.expectedAmount}`);
+        });
+      } else {
+        csvRows.push(`${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize},${row.momChange}%,,,`);
+      }
+    });
     
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -367,7 +344,8 @@ const CustomerPurchaseForecast = () => {
         currency: 'PHP',
         minimumFractionDigits: 0
     }).format(value);
-};
+  };
+
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -876,18 +854,13 @@ const CustomerPurchaseForecast = () => {
                     <tbody>
                       {predictions.monthlyBreakdown.map((item, index) => {
                         const momChange = item.momChange || 0;
-                        const momTrend = momChange > 0 ? 'up' : momChange < 0 ? 'down' : 'stable';
+                        const avgSize = item.bulkOrdersCount ? Math.round(item.bulkOrdersAmount / item.bulkOrdersCount) : 0;
                         
                         return (
-                          <tr key={index} className="border-t border-gray-200">
+                          <tr key={index} className="border-t border-gray-200 hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 font-medium text-gray-900">{item.month}</td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatNumber(item.bulkOrdersCount)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-gray-900">{
-                              (() => {
-                                const avgSize = item.bulkOrdersCount ? Math.round(item.bulkOrdersAmount / item.bulkOrdersCount) : 0;
-                                return formatCurrency(avgSize);
-                              })()
-                            }</td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(avgSize)}</td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(item.bulkOrdersAmount)}</td>
                             <td className="px-4 py-3 text-center">
                               <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
@@ -906,34 +879,102 @@ const CustomerPurchaseForecast = () => {
                 </div>
               </div>
 
-              {/* AI Predicted Top Bulk Customers */}
-              {!predictions.error && predictions.topBulkCustomers && predictions.topBulkCustomers.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Bulk Customers</h3>
-                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                    <p className="text-sm text-orange-800">
-                      <strong>Note:</strong> These are AI-predicted top bulk customers based on last year's top bulk customers.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {predictions.topBulkCustomers.slice(0, 5).map((customer, index) => (
-                      <div key={index} className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-600 flex items-center justify-center text-white font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 text-sm">{customer}</h4>
-                          </div>
-                          <div className="text-right">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* Top Customers by Month */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Expected Customers by Month</h3>
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm text-purple-800">
+                    <strong>AI-Predicted:</strong> These customers are expected to be the top bulk buyers for each forecasted month based on historical patterns.
+                  </p>
                 </div>
-              )}
+
+                {/* Month Tabs */}
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                  {predictions.monthlyBreakdown.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedMonthTab(index)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all cursor-pointer ${
+                        selectedMonthTab === index
+                          ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {item.month}
+                      {item.topCustomers && item.topCustomers.length > 0 && (
+                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                          selectedMonthTab === index
+                            ? 'bg-white/20 text-white'
+                            : 'bg-gray-300 text-gray-700'
+                        }`}>
+                          {item.topCustomers.length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Selected Month Content */}
+                {predictions.monthlyBreakdown[selectedMonthTab] && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h4 className="text-xl font-bold text-gray-900">
+                          {predictions.monthlyBreakdown[selectedMonthTab].month}
+                        </h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Predicted: {formatCurrency(predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersAmount)} from {formatNumber(predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersCount)} orders
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Avg Order Size</p>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {formatCurrency(
+                            predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersCount 
+                              ? Math.round(predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersAmount / predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersCount)
+                              : 0
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {predictions.monthlyBreakdown[selectedMonthTab].topCustomers && 
+                     predictions.monthlyBreakdown[selectedMonthTab].topCustomers.length > 0 ? (
+                      <div className="space-y-3">
+                        {predictions.monthlyBreakdown[selectedMonthTab].topCustomers.map((customer, custIndex) => (
+                          <div 
+                            key={custIndex} 
+                            className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
+                          >
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {custIndex + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-base">{customer.name}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Package className="w-4 h-4 text-gray-400" />
+                                  <span className="text-sm text-gray-600">{customer.modelNo}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-4">
+                              <p className="text-lg font-bold text-purple-600">{formatCurrency(customer.expectedAmount)}</p>
+                              <p className="text-xs text-gray-500">expected sales</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-gray-500">
+                        <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-base font-medium">No specific customer predictions</p>
+                        <p className="text-sm mt-1">AI could not identify specific top customers for this month</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* AI Insights and Recommendations */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

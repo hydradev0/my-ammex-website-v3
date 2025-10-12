@@ -1,7 +1,5 @@
-import { API_BASE_URL, apiCall } from '../utils/apiConfig';
+import { apiCall } from '../utils/apiConfig';
 
-// Import for legacy support (will be removed when API is ready)
-import { inventoryAlertsData } from '../data/inventoryAlertsData';
 
 // ==================== ITEMS API ====================
 
@@ -147,32 +145,3 @@ export const deleteUnit = async (id) => {
   });
 };
 
-// ==================== INVENTORY ALERTS (Legacy Support) ====================
-
-// Import moved to top of file
-// import { inventoryAlertsData } from '../data/inventoryAlertsData';
-
-// This function will be replaced with actual API call later
-export const getInventoryAlerts = async () => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // For now, return mock data
-  return inventoryAlertsData.map(alert => ({
-    ...alert,
-    severity: calculateSeverity(alert.currentStock, alert.minimumStockLevel),
-    status: calculateStatus(alert.currentStock, alert.minimumStockLevel)
-  }));
-};
-
-const calculateSeverity = (currentStock, minimumStockLevel) => {
-  if (currentStock === 0) return 'critical';
-  if (currentStock <= minimumStockLevel * 0.3) return 'critical';
-  if (currentStock <= minimumStockLevel * 0.5) return 'high';
-  if (currentStock <= minimumStockLevel) return 'medium';
-  return 'low';
-};
-
-const calculateStatus = (currentStock, minimumStockLevel) => {
-  return currentStock < minimumStockLevel ? 'active' : 'resolved';
-}; 

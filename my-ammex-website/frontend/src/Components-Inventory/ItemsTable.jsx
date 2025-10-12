@@ -99,8 +99,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
   });
   const [adjustingPrice, setAdjustingPrice] = useState(false);
 
-  // Windowed fetching (fetch 3 UI pages at a time)
-  const PAGE_WINDOW_MULTIPLIER = 3;
+  // Windowed fetching (fetch 10 UI pages at a time)
+  const PAGE_WINDOW_MULTIPLIER = 10;
   const [fetchedBackendPage, setFetchedBackendPage] = useState(1);
   const [fetchedLimit, setFetchedLimit] = useState(itemsPerPage * PAGE_WINDOW_MULTIPLIER);
 

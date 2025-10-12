@@ -38,7 +38,7 @@ const MetricsCard = ({
         {valuePrefix}{formatValue(value)}{valueSuffix}
       </p>
       {subtitle !== null && (
-        <p className="text-lg text-gray-500 mt-2">
+        <p className="text-md text-gray-500 mt-2">
           <span className={statusIndicator?.color === 'red' ? 'text-red-500' : 'text-gray-500'}>{subtitle}</span>
         </p>
       )}

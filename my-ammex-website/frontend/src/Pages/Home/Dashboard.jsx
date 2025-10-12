@@ -1,39 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import { Loader } from 'lucide-react';
-import { getDashboardMetrics } from '../../services/dashboardService';
+import { getDailyDashboardMetrics } from '../../services/dashboardService';
 import MetricsCard from '../../Components-Dashboard/MetricsCard';
 import InventoryAlerts from '../../Components-Dashboard/InventoryAlerts';
 import DailyComparison from '../../Components-Dashboard/DailyComparison';
 import { getMetricsCardsForRole } from '../../utils/roleManager';
 import { useAuth } from '../../contexts/AuthContext';
 
-const quickActions = [
-  {
-    label: 'New Quotes',
-    color: 'border-blue-500 text-blue-600 hover:bg-blue-50',
-    link: '/Sales/SalesQuotes',
-    icon: <img src="/Resource/icons8-quote-100.png" alt="Add Customer" className="w-8 h-8 mr-2 inline" />,
-  },
-  {
-    label: 'New Invoice',
-    color: 'border-blue-500 text-blue-600 hover:bg-blue-50',
-    link: '/Sales/SalesInvoice',
-    icon: <img src="/Resource/icons8-invoice-100.png" alt="Add Customer" className="w-8 h-8 mr-2 inline" />,
-  },
-  {
-    label: 'New Order',
-    color: 'border-green-500 text-green-600 hover:bg-green-50',
-    link: '/Sales/SalesOrder',
-    icon: <img src="/Resource/icons8-sales-order-100.png" alt="Add Customer" className="w-8 h-8 mr-2 inline" />,
-  },
-  {
-    label: 'Add Customer',
-    color: 'border-cyan-500 text-cyan-600 hover:bg-cyan-50',
-    link: '/BusinessPartners/Customers',
-    icon: <img src="/Resource/user-round-plus-48.png" alt="Add Customer" className="w-8 h-8 mr-2 inline" />,
-  },
-];
+
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -51,7 +26,7 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const metricsData = await getDashboardMetrics();
+        const metricsData = await getDailyDashboardMetrics();
         setMetrics(metricsData);
       } catch (err) {
         setError(err.message);
@@ -113,9 +88,10 @@ const Dashboard = () => {
             title={title}
             value={metrics.inventory?.lowStock || 0}
             valueSuffix=" items"
+            subtitle={`below minimum stock level`}
             statusIndicator={{
-              text: (metrics.inventory?.critical || 0) > 0 ? 'Critical' : 'Warning',
-              color: (metrics.inventory?.critical || 0) > 0 ? 'red' : 'yellow'
+              text: (metrics.inventory?.lowStock || 0) > 5 ? 'Critical' : 'Warning',
+              color: (metrics.inventory?.lowStock || 0) > 5 ? 'red' : 'yellow'
             }}
           />
         );
@@ -139,10 +115,10 @@ const Dashboard = () => {
             key={title}
             title={title}
             value={metrics.inventory?.outOfStock || 0}
-            valueSuffix=" items"
+            valueSuffix={` ${metrics.inventory?.outOfStock || 0 === 1 ? 'item out of stock' : 'items out of stock '}`}
             statusIndicator={{
-              text: 'Good',
-              color: 'green'
+              text: (metrics.inventory?.outOfStock || 0) > 5 ? 'Critical' : 'Warning',
+              color: (metrics.inventory?.outOfStock || 0) > 5 ? 'red' : 'yellow'
             }}
           />
         );

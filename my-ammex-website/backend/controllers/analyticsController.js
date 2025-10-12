@@ -169,6 +169,7 @@ class AnalyticsController {
     }
   }
 
+
   // Get top bulk customers data
   getTopBulkCustomers = async (req, res) => {
     try {
@@ -623,7 +624,11 @@ Based on the top products data provided, predict which products will likely cont
     const recentMonths = months.slice(0, 12);
     return recentMonths.map(month => ({
       month,
-      topBulkCustomers: (topBulkCustomersData[month] || []).slice(0, 5)
+      topBulkCustomers: (topBulkCustomersData[month] || []).slice(0, 5).map(customer => ({
+        customerName: customer.customerName,
+        bulkOrdersAmount: customer.bulkOrdersAmount,
+        modelNo: customer.modelNo || null
+      }))
     }));
   }
 
@@ -740,10 +745,11 @@ Based on the top products data provided, predict which products will likely cont
       ).join(' OR ');
       
       let topBulkCustomersData = await getSequelize().query(`
-        SELECT month_start, customer_name, bulk_orders_amount, ranking
-        FROM customer_bulk_monthly_by_name 
-        WHERE (${monthConditions}) AND ranking <= 5
-        ORDER BY month_start DESC, ranking ASC
+        SELECT month_start, customer_name, bulk_orders_amount, model_no
+        FROM customer_bulk_monthly_by_name
+        WHERE (${monthConditions})
+        ORDER BY month_start DESC, bulk_orders_amount DESC
+        LIMIT 5
       `, { type: QueryTypes.SELECT });
       
       // Fallback logic for missing months
@@ -754,10 +760,11 @@ Based on the top products data provided, predict which products will likely cont
       
       if (missingMonths.length > 0) {
         const fallbackData = await getSequelize().query(`
-          SELECT month_start, customer_name, bulk_orders_amount, ranking
-          FROM customer_bulk_monthly_by_name 
+          SELECT month_start, customer_name, bulk_orders_amount, model_no
+          FROM customer_bulk_monthly_by_name
           WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
-          AND ranking <= 5 ORDER BY month_start DESC, ranking ASC LIMIT 15
+          ORDER BY month_start DESC, bulk_orders_amount DESC
+          LIMIT 15
         `, { type: QueryTypes.SELECT });
         
         const existingMonths = new Set(topBulkCustomersData.map(item => item.month_start));
@@ -774,10 +781,13 @@ Based on the top products data provided, predict which products will likely cont
         if (!acc[monthKey]) {
           acc[monthKey] = [];
         }
+
+        // Model number is already included in the query from customer_bulk_monthly_by_name table
+
         acc[monthKey].push({
           customerName: item.customer_name,
           bulkOrdersAmount: parseFloat(item.bulk_orders_amount),
-          ranking: parseInt(item.ranking)
+          modelNo: item.model_no || null  // Get model_no directly from the table
         });
         return acc;
       }, {});
@@ -855,35 +865,30 @@ ${JSON.stringify(historicalBulkData, null, 2)}
 Historical Top Bulk Customers by Month (Previous Year Same Months + Recent Fallback):
 ${JSON.stringify(processedTopBulkCustomers, null, 2)}
 
-Based on the historical top bulk customers from the same months in the previous year (and recent months as fallback), predict which customers will likely be top bulk customers in the forecasted months.
+For each forecasted month, predict:
+1. Total bulk orders count and amount
+2. Top 3-5 customers likely to place bulk orders (based on their historical patterns)
+3. Include customer names and their model numbers
 
 IMPORTANT: Respond with ONLY valid JSON. No markdown.
-Return this exact structure:
+You must generate EXACTLY ${forecastPeriod} objects in the "monthlyBreakdown" array - one for each forecasted month.
+
+Return this exact JSON structure:
 {
   "period": "${forecastPeriod} months",
-  "totalGrowth": number (percentage from 0-100, e.g., 15.5 for 15.5% growth),
+  "totalGrowth": number,
   "monthlyBreakdown": [
-    {
-      "bulkOrdersCount": number,
-      "bulkOrdersAmount": number
-    }
-  ],
-  "topBulkCustomers": [
-    "string customer name 1",
-    "string customer name 2",
-    "string customer name 3",
-    "string customer name 4",
-    "string customer name 5"
+    ${forecastPeriod >= 1 ? '{\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 2 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 3 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 4 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 5 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 6 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}
   ],
   "insights": [
-    "string insight 1",
-    "string insight 2",
-    "string insight 3"
+    "insight 1",
+    "insight 2",
+    "insight 3"
   ],
   "recommendations": [
-    "string recommendation 1",
-    "string recommendation 2",
-    "string recommendation 3"
+    "recommendation 1",
+    "recommendation 2",
+    "recommendation 3"
   ]
 }`;
 
@@ -984,7 +989,7 @@ Return this exact structure:
         const baselineValue = lastHistoricalValue || avgHistoricalValue;
         if (baselineValue > 0) {
           const totalPredicted = forecast.monthlyBreakdown.reduce((sum, item) => sum + item.bulkOrdersAmount, 0);
-          forecast.totalGrowth = Math.round(((totalPredicted - (baselineValue * forecastPeriod)) / (baselineValue * forecastPeriod)) * 100);
+          forecast.totalGrowth = Math.round(((totalPredicted - (baselineValue * expectedPeriod)) / (baselineValue * expectedPeriod)) * 100);
         }
       }
       
@@ -1000,10 +1005,21 @@ Return this exact structure:
       forecastDate.setMonth(currentDate.getMonth() + index + 1);
       const monthLabel = forecastDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
       
+      // Validate and normalize topCustomers
+      let topCustomers = [];
+      if (Array.isArray(item.topCustomers)) {
+        topCustomers = item.topCustomers.map(customer => ({
+          name: customer.name || 'Unknown Customer',
+          modelNo: customer.modelNo || 'N/A',
+          expectedAmount: Math.max(0, Math.round(customer.expectedAmount || 0))
+        }));
+      }
+      
       return {
         month: monthLabel,
         bulkOrdersCount: Math.max(0, Math.round(item.bulkOrdersCount || 0)),
-        bulkOrdersAmount: Math.max(0, Math.round(item.bulkOrdersAmount || 0))
+        bulkOrdersAmount: Math.max(0, Math.round(item.bulkOrdersAmount || 0)),
+        topCustomers
       };
     });
 
@@ -1017,8 +1033,11 @@ Return this exact structure:
         : 0;
       
       return {
-        ...item,
-        momChange
+        month: item.month,
+        bulkOrdersCount: item.bulkOrdersCount,
+        bulkOrdersAmount: item.bulkOrdersAmount,
+        topCustomers: item.topCustomers || [],
+        momChange: momChange
       };
     });
     forecast.insights = forecast.insights || [];

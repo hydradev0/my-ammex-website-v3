@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter } from 'lucide-react';
-import ReorderModal from '../Components/ReorderModal';
-import { inventoryAlertsData } from '../data/inventoryAlertsData';
+import { getInventoryAlerts } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
 
 const InventoryAlerts = () => {
@@ -10,10 +9,7 @@ const InventoryAlerts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterSeverity, setFilterSeverity] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('active');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const severityDropdownRef = useRef(null);
 
@@ -28,11 +24,13 @@ const InventoryAlerts = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // In production, this would fetch from the API
-        // const alertsData = await getInventoryAlerts();
-        setAlerts(inventoryAlertsData);
+        setError(null);
+        const alertsData = await getInventoryAlerts();
+        setAlerts(alertsData);
       } catch (err) {
+        console.error('Error fetching inventory alerts:', err);
         setError(err.message);
+        setAlerts([]);
       } finally {
         setLoading(false);
       }
@@ -68,15 +66,15 @@ const InventoryAlerts = () => {
 
   const filteredAlerts = alerts.filter(alert => {
     // Skip alerts with missing required properties
-    if (!alert.productName || !alert.sku) {
+    if (!alert.modelNo || !alert.categoryName) {
       return false;
     }
     
     const matchesSeverity = filterSeverity === 'all' || alert.severity === filterSeverity;
-    const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
-    const matchesSearch = alert.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alert.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSeverity && matchesStatus && matchesSearch;
+    const matchesSearch = alert.modelNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         alert.categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (alert.modelNo && alert.modelNo.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesSeverity && matchesSearch;
   });
 
   const getSeverityColor = (severity) => {
@@ -95,35 +93,6 @@ const InventoryAlerts = () => {
       case 'medium': return <Clock className="w-4 h-4" />;
       default: return <Bell className="w-4 h-4" />;
     }
-  };
-
-  const handleReorder = (itemId, quantity) => {
-    // TODO: Implement reorder logic
-    console.log(`Reordering ${quantity} units of item ${itemId}`);
-    setIsReorderModalOpen(false);
-    setSelectedItem(null);
-  };
-
-  const openReorderModal = (alert) => {
-    // Ensure all required properties exist before opening modal
-    if (!alert.productName || !alert.sku || alert.currentStock === undefined || alert.minimumStockLevel === undefined) {
-      console.warn('Alert missing required properties:', alert);
-      return;
-    }
-    
-    setSelectedItem({
-      id: alert.id,
-      itemName: alert.productName,
-      sku: alert.sku,
-      currentStock: alert.currentStock,
-      minimumStockLevel: alert.minimumStockLevel,
-      reorderQuantity: alert.minimumStockLevel * 2,
-      monthlySales: alert.monthlySales || Math.ceil(alert.minimumStockLevel * 0.8),
-      setReorderQuantity: (quantity) => {
-        setSelectedItem(prev => ({ ...prev, reorderQuantity: quantity }));
-      }
-    });
-    setIsReorderModalOpen(true);
   };
 
   // Check if user has access to inventory alerts
@@ -174,7 +143,7 @@ const InventoryAlerts = () => {
                 <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search items"
+                  placeholder="Search items by model or category"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent"
@@ -187,7 +156,7 @@ const InventoryAlerts = () => {
               </div>
               <button
                 type="button"
-                className="pl-10 gap-2 pr-4 py-2 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center w-full"
+                className="pl-10 cursor-pointer gap-2 pr-4 py-2 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-gray-50 text-left flex justify-between items-center w-full"
                 onClick={() => setSeverityDropdownOpen((open) => !open)}
               >
                 <span>{filterSeverity === 'all' ? 'All Severities' : filterSeverity.charAt(0).toUpperCase() + filterSeverity.slice(1)}</span>
@@ -225,21 +194,21 @@ const InventoryAlerts = () => {
                       </span>
                     </div>
                     
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {alert.productName || 'Unknown Item'}
+                    <h3 className="text-sm text-gray-500 mb-1">
+                      Model: <span className="font-semibold text-gray-900">{alert.modelNo || 'Unknown Item'}</span>
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">SKU: {alert.sku || 'N/A'}</p>
+                    <p className="text-sm text-gray-500 mb-2">Category: <span className="font-semibold text-gray-900">{alert.categoryName || 'N/A'}</span></p>
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-500">Current Stock:</span>
-                        <span className={`ml-2 font-semibold text-xl ${(alert.currentStock || 0) < (alert.minimumStockLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
+                        <span className={`ml-2 font-semibold text-lg ${(alert.currentStock || 0) < (alert.minimumStockLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
                           {alert.currentStock || 0} units
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-500">Minimum Stock Level:</span>
-                        <span className="ml-2 font-semibold text-xl text-gray-900">{alert.minimumStockLevel || 0} units</span>
+                        <span className="ml-2 font-semibold text-lg text-gray-900">{alert.minimumStockLevel || 0} units</span>
                       </div>
                     </div>
                     
@@ -252,15 +221,6 @@ const InventoryAlerts = () => {
                         {getStockStatus(alert.currentStock || 0, alert.minimumStockLevel || 0)}
                       </span>
                     </div>
-                  </div>
-                  
-                  <div className="flex gap-2 ml-4">
-                    <button 
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                      onClick={() => openReorderModal(alert)}
-                    >
-                      Reorder
-                    </button>
                   </div>
                 </div>
               </div>
@@ -276,16 +236,6 @@ const InventoryAlerts = () => {
           )}
         </div>
       </div>
-
-      <ReorderModal
-        isOpen={isReorderModalOpen}
-        onClose={() => {
-          setIsReorderModalOpen(false);
-          setSelectedItem(null);
-        }}
-        item={selectedItem}
-        onReorder={handleReorder}
-      />
     </>
   );
 };

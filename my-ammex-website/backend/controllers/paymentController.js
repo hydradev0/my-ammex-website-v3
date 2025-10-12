@@ -759,7 +759,7 @@ const getBalanceHistory = async (req, res, next) => {
     const { PaymentHistory, Invoice, Customer } = getModels();
 
     const balanceHistory = await PaymentHistory.findAll({
-      where: { action: ['approved', 'rejected'] },
+      where: { action: 'approved' }, // Only show approved payments in balance tracking
       include: [
         { 
           model: Customer, 

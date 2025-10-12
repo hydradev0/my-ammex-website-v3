@@ -5,7 +5,7 @@ export const inventoryAlertsData = itemsData
   .map((item, idx) => ({
     id: idx + 1,
     productName: item.itemName,
-    sku: item.itemCode,
+    itemCode: item.itemCode,
     currentStock: item.quantity,
     minimumStockLevel: item.minLevel,
     category: item.category,

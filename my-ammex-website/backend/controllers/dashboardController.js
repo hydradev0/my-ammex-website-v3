@@ -201,6 +201,76 @@ class DashboardController {
       });
     }
   }
+
+  // Get inventory alerts - items that need reordering
+  async getInventoryAlerts(req, res) {
+    try {
+      const { severity } = req.query; // optional filter: 'all', 'critical', 'high', 'medium'
+
+      // Base query to get items with low stock
+      let severityCondition = '';
+      if (severity && severity !== 'all') {
+        if (severity === 'critical') {
+          severityCondition = 'AND i.quantity = 0';
+        } else if (severity === 'high') {
+          severityCondition = 'AND i.quantity > 0 AND i.quantity <= (i.min_level * 0.3)';
+        } else if (severity === 'medium') {
+          severityCondition = 'AND i.quantity > (i.min_level * 0.3) AND i.quantity <= i.min_level';
+        }
+      }
+
+      const alerts = await getSequelize().query(`
+        SELECT 
+          i.id,
+          i.item_code as "itemCode",
+          i.model_no as "modelNo",
+          i.vendor,
+          i.quantity as "currentStock",
+          i.min_level as "minimumStockLevel",
+          i.max_level as "maximumStockLevel",
+          i.price,
+          c.name as "categoryName",
+          CASE 
+            WHEN i.quantity = 0 THEN 'critical'
+            WHEN i.quantity <= (i.min_level * 0.3) THEN 'high'
+            WHEN i.quantity <= (i.min_level * 0.5) THEN 'high'
+            WHEN i.quantity <= i.min_level THEN 'medium'
+            ELSE 'low'
+          END as severity,
+          'active' as status,
+          i.created_at as "createdAt",
+          i.updated_at as "updatedAt"
+        FROM "Item" i
+        LEFT JOIN "Category" c ON i.category_id = c.id
+        WHERE i.is_active = true 
+          AND i.quantity <= i.min_level
+          ${severityCondition}
+        ORDER BY 
+          CASE 
+            WHEN i.quantity = 0 THEN 1
+            WHEN i.quantity <= (i.min_level * 0.3) THEN 2
+            WHEN i.quantity <= (i.min_level * 0.5) THEN 3
+            ELSE 4
+          END,
+          i.quantity ASC
+      `, { 
+        type: QueryTypes.SELECT 
+      });
+
+      res.json({ 
+        success: true, 
+        data: alerts,
+        count: alerts.length 
+      });
+    } catch (error) {
+      console.error('Error fetching inventory alerts:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch inventory alerts',
+        details: error.message 
+      });
+    }
+  }
 }
 
 module.exports = new DashboardController();

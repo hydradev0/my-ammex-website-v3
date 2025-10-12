@@ -164,6 +164,33 @@ const updateItem = async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    // Clean up empty string values for integer fields
+    const cleanUpdateData = { ...updateData };
+    
+    // Convert empty strings to null for integer fields
+    const integerFields = ['categoryId', 'subcategoryId', 'unitId', 'quantity', 'minLevel', 'maxLevel'];
+    integerFields.forEach(field => {
+      if (cleanUpdateData[field] === '') {
+        cleanUpdateData[field] = null;
+      } else if (cleanUpdateData[field] !== undefined && cleanUpdateData[field] !== null) {
+        // Ensure it's a valid integer
+        const parsed = parseInt(cleanUpdateData[field]);
+        cleanUpdateData[field] = isNaN(parsed) ? null : parsed;
+      }
+    });
+    
+    // Convert empty strings to null for decimal fields
+    const decimalFields = ['price', 'floorPrice', 'ceilingPrice'];
+    decimalFields.forEach(field => {
+      if (cleanUpdateData[field] === '') {
+        cleanUpdateData[field] = null;
+      } else if (cleanUpdateData[field] !== undefined && cleanUpdateData[field] !== null) {
+        // Ensure it's a valid number
+        const parsed = parseFloat(cleanUpdateData[field]);
+        cleanUpdateData[field] = isNaN(parsed) ? null : parsed;
+      }
+    });
+
     const currentItem = await Item.findByPk(id, {
       include: [
         { model: Category, as: 'category' },
@@ -180,10 +207,10 @@ const updateItem = async (req, res, next) => {
 
 
     // Check for duplicate Code (excluding current item)
-    if (updateData.itemCode && updateData.itemCode !== currentItem.itemCode) {
+    if (cleanUpdateData.itemCode && cleanUpdateData.itemCode !== currentItem.itemCode) {
       const existingCode = await Item.findOne({
         where: {
-          itemCode: updateData.itemCode,
+          itemCode: cleanUpdateData.itemCode,
           id: { [Op.ne]: id }
         }
       });
@@ -196,9 +223,9 @@ const updateItem = async (req, res, next) => {
     }
 
     // If vendor/category/modelNo provided, regenerate itemCode while preserving running number
-    if (updateData.vendor || updateData.categoryId || updateData.modelNo) {
-      const vendorName = (updateData.vendor || currentItem.vendor || '').toString().trim();
-      const categoryId = updateData.categoryId || currentItem.categoryId;
+    if (cleanUpdateData.vendor || cleanUpdateData.categoryId || cleanUpdateData.modelNo) {
+      const vendorName = (cleanUpdateData.vendor || currentItem.vendor || '').toString().trim();
+      const categoryId = cleanUpdateData.categoryId || currentItem.categoryId;
       const category = await Category.findByPk(categoryId);
       const categoryName = (category?.name || '').toString().trim();
 
@@ -208,17 +235,22 @@ const updateItem = async (req, res, next) => {
 
       const vendorCode = vendorName.substring(0, 3).toUpperCase();
       const categoryCode = categoryName.substring(0, 3).toUpperCase();
-      const modelNo = (updateData.modelNo || parts[3] || '').toString().trim();
+      const modelNo = (cleanUpdateData.modelNo || parts[3] || '').toString().trim();
 
       const newCode = `${vendorCode}-${categoryCode}-${existingNumber}-${modelNo}`;
-      updateData.itemCode = newCode;
-      // Do not attempt to persist modelNo if not part of the ORM model
-      if (Object.prototype.hasOwnProperty.call(updateData, 'modelNo')) {
-        delete updateData.modelNo;
+      cleanUpdateData.itemCode = newCode;
+      // Ensure modelNo is set to the value from the request (if provided)
+      // or keep the existing value if not provided
+      cleanUpdateData.modelNo = cleanUpdateData.modelNo || modelNo;
+    } else {
+      // If itemCode regeneration is not triggered but modelNo is provided,
+      // ensure it's still updated
+      if (cleanUpdateData.modelNo !== undefined) {
+        cleanUpdateData.modelNo = cleanUpdateData.modelNo.toString().trim();
       }
     }
 
-    await currentItem.update(updateData);
+    await currentItem.update(cleanUpdateData);
     
     // Fetch the updated item with related data
     const updatedItem = await Item.findByPk(id, {

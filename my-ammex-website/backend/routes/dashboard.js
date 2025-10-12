@@ -8,9 +8,10 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/daily-metrics', /* protect, */ dashboardController.getDailyDashboardMetrics);
 
-// @route   GET /api/dashboard/basic-metrics
-// @desc    Get basic dashboard metrics (monthly view)
+
+// @route   GET /api/dashboard/inventory-alerts
+// @desc    Get inventory alerts for items that need reordering
 // @access  Private
-router.get('/basic-metrics', /* protect, */ dashboardController.getBasicDashboardMetrics);
+router.get('/inventory-alerts', /* protect, */ dashboardController.getInventoryAlerts);
 
 module.exports = router;

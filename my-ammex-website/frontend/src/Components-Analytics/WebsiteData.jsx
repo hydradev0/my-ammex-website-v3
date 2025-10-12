@@ -25,11 +25,11 @@ const WebsiteData = () => {
   ];
 
   const cartAdditionsData = [
-    { name: 'Phone Case', additions: 450, revenue: 13500 },
-    { name: 'USB Cable', additions: 380, revenue: 7600 },
-    { name: 'Water Bottle', additions: 320, revenue: 9600 },
-    { name: 'Notebook Set', additions: 290, revenue: 5800 },
-    { name: 'Desk Lamp', additions: 250, revenue: 12500 }
+    { name: 'Phone Case', additions: 450, value: 13500 },
+    { name: 'USB Cable', additions: 380, value: 7600 },
+    { name: 'Water Bottle', additions: 320, value: 9600 },
+    { name: 'Notebook Set', additions: 290, value: 5800 },
+    { name: 'Desk Lamp', additions: 250, value: 12500 }
   ];
 
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
@@ -114,7 +114,7 @@ const WebsiteData = () => {
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey="additions" fill="#f59e0b" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="revenue" fill="#10b981" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
