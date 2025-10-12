@@ -100,6 +100,7 @@ const CustomerPurchaseForecast = () => {
   const [predictions, setPredictions] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(null);
   const [selectedMonthTab, setSelectedMonthTab] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Historical customer data (fetched from backend)
   const [allHistoricalData, setAllHistoricalData] = useState([]);
@@ -173,6 +174,33 @@ const CustomerPurchaseForecast = () => {
     })();
     return () => { isMounted = false; };
   }, [historicalPeriod]);
+
+  // Update loading progress while analyzing
+  useEffect(() => {
+    if (isAnalyzing) {
+      setLoadingProgress(0);
+      const duration = 10000; // 10 seconds estimated duration
+      const interval = 50; // Update every 50ms
+      const increment = (interval / duration) * 100;
+      
+      const timer = setInterval(() => {
+        setLoadingProgress(prev => {
+          const next = prev + increment;
+          // Cap at 95% until actual completion
+          return next >= 95 ? 95 : next;
+        });
+      }, interval);
+      
+      return () => clearInterval(timer);
+    } else {
+      // Complete the progress when done
+      setLoadingProgress(100);
+      const resetTimer = setTimeout(() => {
+        setLoadingProgress(0);
+      }, 500);
+      return () => clearTimeout(resetTimer);
+    }
+  }, [isAnalyzing]);
 
   // Dropdown options
   const historicalPeriodOptions = [
@@ -530,9 +558,9 @@ const CustomerPurchaseForecast = () => {
             {/* Minimal Progress Bar */}
             <div className="mb-6">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full transition-all duration-1000 ease-out" style={{width: '75%'}}></div>
+                <div className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full transition-all duration-300 ease-out" style={{width: `${loadingProgress}%`}}></div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">Processing data... 75%</p>
+              <p className="text-sm text-gray-500 mt-2">Processing data... {Math.round(loadingProgress)}%</p>
             </div>
 
             {/* Simple Footer */}
@@ -917,26 +945,6 @@ const CustomerPurchaseForecast = () => {
                 {/* Selected Month Content */}
                 {predictions.monthlyBreakdown[selectedMonthTab] && (
                   <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h4 className="text-xl font-bold text-gray-900">
-                          {predictions.monthlyBreakdown[selectedMonthTab].month}
-                        </h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Predicted: {formatCurrency(predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersAmount)} from {formatNumber(predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersCount)} orders
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">Avg Order Size</p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {formatCurrency(
-                            predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersCount 
-                              ? Math.round(predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersAmount / predictions.monthlyBreakdown[selectedMonthTab].bulkOrdersCount)
-                              : 0
-                          )}
-                        </p>
-                      </div>
-                    </div>
 
                     {predictions.monthlyBreakdown[selectedMonthTab].topCustomers && 
                      predictions.monthlyBreakdown[selectedMonthTab].topCustomers.length > 0 ? (
@@ -951,10 +959,9 @@ const CustomerPurchaseForecast = () => {
                                 {custIndex + 1}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 text-base">{customer.name}</p>
+                                <p className="text-sm text-gray-600">Customer: <span className="font-semibold text-gray-900">{customer.name}</span></p>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <Package className="w-4 h-4 text-gray-400" />
-                                  <span className="text-sm text-gray-600">{customer.modelNo}</span>
+                                  <span className="text-sm text-gray-600">Model: <span className="font-semibold text-gray-900">{customer.modelNo}</span></span>
                                 </div>
                               </div>
                             </div>

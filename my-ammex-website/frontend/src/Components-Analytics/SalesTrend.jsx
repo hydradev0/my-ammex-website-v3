@@ -14,10 +14,10 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  BarChart3, 
+import {
+  TrendingUp,
+  DollarSign,
+  BarChart3,
   Calendar,
   Brain,
   ArrowUp,
@@ -27,7 +27,8 @@ import {
   FileChartColumn,
   AlignEndHorizontal,
   ChevronDown,
-  ArrowLeft
+  ArrowLeft,
+  Package
 } from 'lucide-react';
 import Modal from './Modal';
 import LoadingModal from './LoadingModal';
@@ -98,6 +99,8 @@ const SalesTrend = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [predictions, setPredictions] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(null);
+  const [selectedProductTab, setSelectedProductTab] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Historical sales state (fetched from backend)
   const [allHistoricalData, setAllHistoricalData] = useState([]);
@@ -227,6 +230,33 @@ const SalesTrend = () => {
     return () => { isMounted = false; };
   }, []);
 
+  // Update loading progress while analyzing
+  useEffect(() => {
+    if (isAnalyzing) {
+      setLoadingProgress(0);
+      const duration = 10000; // 10 seconds estimated duration
+      const interval = 50; // Update every 50ms
+      const increment = (interval / duration) * 100;
+      
+      const timer = setInterval(() => {
+        setLoadingProgress(prev => {
+          const next = prev + increment;
+          // Cap at 95% until actual completion
+          return next >= 95 ? 95 : next;
+        });
+      }, interval);
+      
+      return () => clearInterval(timer);
+    } else {
+      // Complete the progress when done
+      setLoadingProgress(100);
+      const resetTimer = setTimeout(() => {
+        setLoadingProgress(0);
+      }, 500);
+      return () => clearTimeout(resetTimer);
+    }
+  }, [isAnalyzing]);
+
   // Dropdown options
   const historicalPeriodOptions = [
     { value: 'current', label: 'Current Month' },
@@ -268,7 +298,8 @@ const SalesTrend = () => {
         const monthly = f.monthlyBreakdown.map((p) => ({
           month: p.month,
           predicted: Math.round(p.predicted || 0),
-          momChange: p.momChange || 0
+          momChange: p.momChange || 0,
+          topProducts: p.topProducts || []
         }));
         const totalPredicted = monthly.reduce((s, m) => s + (m.predicted || 0), 0);
         const avgMonthly = monthly.length ? Math.round(totalPredicted / monthly.length) : 0;
@@ -279,12 +310,17 @@ const SalesTrend = () => {
           totalGrowth: f.totalGrowth || 0,
           growthRate: f.growthRate || 0,
           monthlyBreakdown: monthly,
-          topProducts: f['Top Products'] || f.TopProducts || [],
           insights: f.insights || [],
           recommendations: f.recommendations || []
         };
         setPredictions(payload);
-        
+
+        // Select first month by default for product tabs if available
+        const hasTopProducts = payload.monthlyBreakdown.some(item => item.topProducts && item.topProducts.length > 0);
+        if (hasTopProducts) {
+          setSelectedProductTab(0);
+        }
+
         // Only set cooldown on successful prediction
         localStorage.setItem('lastSalesForecastSuccess', Date.now().toString());
       } else {
@@ -367,13 +403,25 @@ const SalesTrend = () => {
 
   const exportPredictionData = () => {
     if (!predictions || predictions.error || !predictions.monthlyBreakdown) return;
-    
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Month,Predicted Sales\n"
-      + predictions.monthlyBreakdown.map(row => 
-          `${row.month},${row.predicted}`
-        ).join("\n");
-    
+
+    let csvRows = ["Month,Predicted Sales,MoM Change"];
+
+    predictions.monthlyBreakdown.forEach(row => {
+      csvRows.push(`${row.month},${row.predicted},${row.momChange}%`);
+    });
+
+    // Add top products section if available
+    const allTopProducts = predictions.monthlyBreakdown.flatMap(item => item.topProducts || []);
+    if (allTopProducts.length > 0) {
+      csvRows.push("");
+      csvRows.push("Top Products Forecast");
+      csvRows.push("Rank,Product Name,Category,Expected Orders");
+      allTopProducts.slice(0, 6).forEach((product, index) => {
+        csvRows.push(`${index + 1},"${product.name}",${product.category},${product.expectedOrders}`);
+      });
+    }
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -389,7 +437,14 @@ const SalesTrend = () => {
         currency: 'PHP',
         minimumFractionDigits: 0
     }).format(value);
-};
+  };
+
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -807,9 +862,9 @@ const SalesTrend = () => {
             {/* Minimal Progress Bar */}
             <div className="mb-6">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-1000 ease-out" style={{width: '75%'}}></div>
+                <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out" style={{width: `${loadingProgress}%`}}></div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">Processing data... 75%</p>
+              <p className="text-sm text-gray-500 mt-2">Processing data... {Math.round(loadingProgress)}%</p>
             </div>
 
             {/* Simple Footer */}
@@ -876,7 +931,7 @@ const SalesTrend = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-                    <h3 className="text-sm font-medium opacity-90">Total Predicted</h3>
+                    <h3 className="text-sm font-medium opacity-90">Total Predicted Sales</h3>
                     <p className="text-2xl font-bold">{formatCurrency(predictions.totalPredicted)}</p>
                   </div>
                   <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
@@ -921,8 +976,9 @@ const SalesTrend = () => {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Predictions</h3>
+              {/* Monthly Sales Forecast Table */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Sales Forecast</h3>
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Note:</strong> Month-over-Month (MoM) calculations are based on <strong>Predicted Sales</strong> to show sales volume growth trends.
@@ -933,29 +989,28 @@ const SalesTrend = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Month</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Monthly Average</th>
                         <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Predicted Sales</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Monthly Average</th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Month over Month (MoM)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {predictions.monthlyBreakdown.map((item, index) => {
                         const momChange = item.momChange || 0;
-                        const momTrend = momChange > 0 ? 'up' : momChange < 0 ? 'down' : 'stable';
-                        
+
                         return (
-                          <tr key={index} className="border-t border-gray-200">
+                          <tr key={index} className="border-t border-gray-200 hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 font-medium text-gray-900">{item.month}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                              {formatCurrency(predictions.avgMonthly)}
-                            </td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-900">
                               {formatCurrency(item.predicted)}
                             </td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                              {formatCurrency(predictions.avgMonthly)}
+                            </td>
                             <td className="px-4 py-3 text-center">
                               <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                                momChange > 0 ? 'bg-green-100 text-green-800' : 
-                                momChange < 0 ? 'bg-red-100 text-red-800' : 
+                                momChange > 0 ? 'bg-green-100 text-green-800' :
+                                momChange < 0 ? 'bg-red-100 text-red-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}>
                                 {momChange > 0 ? '+' : ''}{momChange}%
@@ -971,34 +1026,79 @@ const SalesTrend = () => {
                 </>
               )}
 
-              {/* AI Predicted Top Products */}
-              {!predictions.error && predictions.topProducts && predictions.topProducts.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products</h3>
-                  <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                    <p className="text-sm text-purple-800">
-                      <strong>Note:</strong> These are AI-predicted top performing products based on forecasted sales.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {predictions.topProducts.slice(0, 6).map((product, index) => (
-                      <div key={index} className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 text-sm">{product}</h4>
-                          </div>
-                          <div className="text-right">
-                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* Top Products by Month */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Expected Products by Month</h3>
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm text-purple-800">
+                    <strong>AI-Predicted:</strong> These products are expected to be the top performers for each forecasted month based on historical patterns.
+                  </p>
                 </div>
-              )}
+
+                {/* Month Tabs */}
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                  {predictions.monthlyBreakdown.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedProductTab(index)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all cursor-pointer ${
+                        selectedProductTab === index
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {item.month}
+                      {item.topProducts && item.topProducts.length > 0 && (
+                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                          selectedProductTab === index
+                            ? 'bg-white/20 text-white'
+                            : 'bg-gray-300 text-gray-700'
+                        }`}>
+                          {item.topProducts.length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Selected Month Content */}
+                {predictions.monthlyBreakdown[selectedProductTab] && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+
+                    {predictions.monthlyBreakdown[selectedProductTab].topProducts &&
+                     predictions.monthlyBreakdown[selectedProductTab].topProducts.length > 0 ? (
+                      <div className="space-y-3">
+                        {predictions.monthlyBreakdown[selectedProductTab].topProducts.map((product, prodIndex) => (
+                          <div
+                            key={prodIndex}
+                            className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
+                          >
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {prodIndex + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-gray-600 text-sm">Model: <span className="font-semibold text-gray-900">{product.name}</span></p>
+                                <p className="text-gray-600 text-sm">Category: <span className="font-semibold text-gray-900">{product.category}</span></p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-4">
+                              <p className="text-lg font-bold text-blue-600">{formatNumber(product.expectedOrders)}</p>
+                              <p className="text-xs text-gray-500">expected orders</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-gray-500">
+                        <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-base font-medium">No specific product predictions</p>
+                        <p className="text-sm mt-1">AI could not identify specific top products for this month</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* AI Insights and Recommendations */}
               {!predictions.error && (

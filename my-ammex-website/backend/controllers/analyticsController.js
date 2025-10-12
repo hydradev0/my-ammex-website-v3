@@ -109,30 +109,103 @@ class AnalyticsController {
     try {
       const { months = 12, limit = 10 } = req.query || {}; // Default to 12 months, top 10 products
       
-      // Get top products for the specified period
-      const data = await getSequelize().query(`
+      console.log(`🎯 Fetching top products: ${limit} per month for ${months} months`);
+      
+      // Primary: Same months from last 2-3 years (not just 1 year)
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      // Get same months from last 2-3 years
+      const sameMonthsData = [];
+      for (let yearOffset = 1; yearOffset <= 3; yearOffset++) {
+        for (let monthOffset = 0; monthOffset < months; monthOffset++) {
+          const targetYear = currentYear - yearOffset;
+          const targetMonth = (currentMonth - monthOffset + 12) % 12;
+          const targetDate = new Date(targetYear, targetMonth, 1);
+          
+          const monthCondition = `(EXTRACT(YEAR FROM month_start) = ${targetYear} AND EXTRACT(MONTH FROM month_start) = ${targetMonth + 1})`;
+          
+          const yearData = await getSequelize().query(`
+            SELECT 
+              month_start,
+              model_no,
+              category_name,
+              category_id,
+              subcategory_id,
+              order_count
+            FROM sales_fact_monthly_by_product 
+            WHERE ${monthCondition}
+            ORDER BY order_count DESC
+            LIMIT ${parseInt(limit)}
+          `, { type: QueryTypes.SELECT });
+          
+          sameMonthsData.push(...yearData);
+        }
+      }
+      
+      console.log(`📊 Primary data: Found ${sameMonthsData.length} records from same months (2-3 years)`);
+      
+      // Secondary: Last 12 months for recent trends
+      const recentData = await getSequelize().query(`
         SELECT 
           month_start,
           model_no,
           category_name,
           category_id,
           subcategory_id,
-          ranking
+          order_count
         FROM sales_fact_monthly_by_product 
-        WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+        WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
         AND month_start < date_trunc('month', CURRENT_DATE)
-          AND ranking <= ${parseInt(limit)}
-        ORDER BY month_start DESC, ranking ASC
+        ORDER BY month_start DESC, order_count DESC
+        LIMIT ${parseInt(limit) * 12}
       `, { type: QueryTypes.SELECT });
+      
+      console.log(`📈 Secondary data: Found ${recentData.length} records from recent 12 months`);
+      
+      // Fallback: Last 6 months if primary data is missing
+      let fallbackData = [];
+      if (sameMonthsData.length === 0) {
+        fallbackData = await getSequelize().query(`
+          SELECT 
+            month_start,
+            model_no,
+            category_name,
+            category_id,
+            subcategory_id,
+            order_count
+          FROM sales_fact_monthly_by_product 
+          WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '6 months'
+          AND month_start < date_trunc('month', CURRENT_DATE)
+          ORDER BY month_start DESC, order_count DESC
+          LIMIT ${parseInt(limit) * 6}
+        `, { type: QueryTypes.SELECT });
+        
+        console.log(`🔄 Fallback data: Found ${fallbackData.length} records from last 6 months`);
+      }
+      
+      // Combine data with priority: Primary > Secondary > Fallback
+      let combinedData = [...sameMonthsData];
+      
+      // Add recent data that doesn't duplicate primary data
+      const primaryMonths = new Set(sameMonthsData.map(item => item.month_start));
+      const uniqueRecentData = recentData.filter(item => !primaryMonths.has(item.month_start));
+      combinedData = [...combinedData, ...uniqueRecentData];
+      
+      // Add fallback data if no primary data exists
+      if (fallbackData.length > 0) {
+        combinedData = [...combinedData, ...fallbackData];
+      }
 
       // Format for frontend consumption
-      const formattedData = data.map(item => ({
+      const formattedData = combinedData.map(item => ({
         month: item.month_start,
         modelNo: item.model_no,
         categoryName: item.category_name,
         categoryId: parseInt(item.category_id),
         subcategoryId: item.subcategory_id ? parseInt(item.subcategory_id) : null,
-        ranking: parseInt(item.ranking)
+        orderCount: parseInt(item.order_count)
       }));
 
       // Group by month for easier consumption
@@ -145,10 +218,12 @@ class AnalyticsController {
           categoryName: item.categoryName,
           categoryId: item.categoryId,
           subcategoryId: item.subcategoryId,
-          ranking: item.ranking
+          orderCount: item.orderCount
         });
         return acc;
       }, {});
+
+      console.log(`✅ Total top products data: ${formattedData.length} records`);
 
       res.json({ 
         success: true, 
@@ -175,8 +250,45 @@ class AnalyticsController {
     try {
       const { months = 12, limit = 10 } = req.query || {}; // Default to 12 months, top 10 customers
       
-      // Get top bulk customers for the specified period
-      const data = await getSequelize().query(`
+      console.log(`🎯 Fetching top bulk customers: ${limit} per month for ${months} months`);
+      
+      // Primary: Same months from last 2-3 years (not just 1 year)
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      // Get same months from last 2-3 years
+      const sameMonthsData = [];
+      for (let yearOffset = 1; yearOffset <= 3; yearOffset++) {
+        for (let monthOffset = 0; monthOffset < months; monthOffset++) {
+          const targetYear = currentYear - yearOffset;
+          const targetMonth = (currentMonth - monthOffset + 12) % 12;
+          const targetDate = new Date(targetYear, targetMonth, 1);
+          
+          const monthCondition = `(EXTRACT(YEAR FROM month_start) = ${targetYear} AND EXTRACT(MONTH FROM month_start) = ${targetMonth + 1})`;
+          
+          const yearData = await getSequelize().query(`
+            SELECT 
+              month_start,
+              customer_name,
+              bulk_orders_count,
+              bulk_orders_amount,
+              average_bulk_order_value,
+              ranking
+            FROM customer_bulk_monthly_by_name 
+            WHERE ${monthCondition}
+            AND ranking <= ${parseInt(limit)}
+            ORDER BY ranking ASC
+          `, { type: QueryTypes.SELECT });
+          
+          sameMonthsData.push(...yearData);
+        }
+      }
+      
+      console.log(`📊 Primary data: Found ${sameMonthsData.length} records from same months (2-3 years)`);
+      
+      // Secondary: Last 12 months for recent trends
+      const recentData = await getSequelize().query(`
         SELECT 
           month_start,
           customer_name,
@@ -185,14 +297,52 @@ class AnalyticsController {
           average_bulk_order_value,
           ranking
         FROM customer_bulk_monthly_by_name 
-        WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
+        WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
         AND month_start < date_trunc('month', CURRENT_DATE)
-          AND ranking <= ${parseInt(limit)}
+        AND ranking <= ${parseInt(limit)}
         ORDER BY month_start DESC, ranking ASC
+        LIMIT ${parseInt(limit) * 12}
       `, { type: QueryTypes.SELECT });
+      
+      console.log(`📈 Secondary data: Found ${recentData.length} records from recent 12 months`);
+      
+      // Fallback: Last 6 months if primary data is missing
+      let fallbackData = [];
+      if (sameMonthsData.length === 0) {
+        fallbackData = await getSequelize().query(`
+          SELECT 
+            month_start,
+            customer_name,
+            bulk_orders_count,
+            bulk_orders_amount,
+            average_bulk_order_value,
+            ranking
+          FROM customer_bulk_monthly_by_name 
+          WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '6 months'
+          AND month_start < date_trunc('month', CURRENT_DATE)
+          AND ranking <= ${parseInt(limit)}
+          ORDER BY month_start DESC, ranking ASC
+          LIMIT ${parseInt(limit) * 6}
+        `, { type: QueryTypes.SELECT });
+        
+        console.log(`🔄 Fallback data: Found ${fallbackData.length} records from last 6 months`);
+      }
+      
+      // Combine data with priority: Primary > Secondary > Fallback
+      let combinedData = [...sameMonthsData];
+      
+      // Add recent data that doesn't duplicate primary data
+      const primaryMonths = new Set(sameMonthsData.map(item => item.month_start));
+      const uniqueRecentData = recentData.filter(item => !primaryMonths.has(item.month_start));
+      combinedData = [...combinedData, ...uniqueRecentData];
+      
+      // Add fallback data if no primary data exists
+      if (fallbackData.length > 0) {
+        combinedData = [...combinedData, ...fallbackData];
+      }
 
       // Format for frontend consumption
-      const formattedData = data.map(item => ({
+      const formattedData = combinedData.map(item => ({
         month: item.month_start,
         customerName: item.customer_name,
         bulkOrdersCount: parseInt(item.bulk_orders_count),
@@ -215,6 +365,8 @@ class AnalyticsController {
         });
         return acc;
       }, {});
+
+      console.log(`✅ Total top bulk customers data: ${formattedData.length} records`);
 
       res.json({ 
         success: true, 
@@ -296,11 +448,11 @@ class AnalyticsController {
           month_start,
           model_no,
           category_name,
-          ranking
+          order_count
         FROM sales_fact_monthly_by_product 
         WHERE (${monthConditions})
-        AND ranking <= 5
-        ORDER BY month_start DESC, ranking ASC
+        ORDER BY month_start DESC, order_count DESC
+        LIMIT 25
       `, { 
         type: QueryTypes.SELECT
       });
@@ -321,11 +473,10 @@ class AnalyticsController {
             month_start,
             model_no,
             category_name,
-            ranking
+            order_count
           FROM sales_fact_monthly_by_product 
           WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
-          AND ranking <= 5
-          ORDER BY month_start DESC, ranking ASC
+          ORDER BY month_start DESC, order_count DESC
           LIMIT 30
         `, { 
           type: QueryTypes.SELECT
@@ -449,7 +600,7 @@ class AnalyticsController {
     
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1; // 0-based to 1-based
+    const currentMonth = currentDate.getMonth() + 1; // 0 is January to 11 is December
     
     const prompt = `You are a business analyst AI specializing in sales forecasting. Analyze this historical sales data and top performing products for Ammex company and provide a detailed ${forecastPeriod}-month forecast.
 
@@ -466,40 +617,25 @@ Based on the historical top products from the same months in the previous year (
 
 IMPORTANT: You must respond with ONLY valid JSON. Do not include any markdown formatting, explanations, or text outside the JSON. Start your response with { and end with }.
 
-Return this exact JSON structure (month field will be generated automatically):
+Return this exact JSON structure:
 {
   "period": "${forecastPeriod} months",
   "totalPredicted": number,
   "avgMonthly": number,
   "totalGrowth": number (percentage from 0-100, e.g., 15.5 for 15.5% growth),
-  "growthRate": number (decimal rate, e.g., 0.155 for 15.5%),
   "monthlyBreakdown": [
-    {
-      "predicted": number,
-      "seasonalFactor": number
-    }
-  ],
-  "Top Products": [
-    "string top product 1 (model no, category)",
-    "string top product 2",
-    "string top product 3",
-    "string top product 4",
-    "string top product 5",
+    ${forecastPeriod >= 1 ? '{\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 2 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 3 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 4 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 5 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 6 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}
   ],
   "insights": [
-    "string insight 1",
-    "string insight 2",
-    "string insight 3",
-    "string insight 4",
-    "string insight 5"
+    "insight 1",
+    "insight 2",
+    "insight 3"
   ],
   "recommendations": [
-    "string recommendation 1",
-    "string recommendation 2",
-    "string recommendation 3",
-    "string recommendation 4",
-    "string recommendation 5"
-  ],
+    "recommendation 1",
+    "recommendation 2",
+    "recommendation 3"
+  ]
 }
 
 Based on the top products data provided, predict which products will likely continue to perform well in the forecast period. Consider seasonal trends and product category performance. Ensure all monetary values are in the same currency as the historical data (PHP). Be realistic and conservative in your predictions.
@@ -516,7 +652,7 @@ Based on the top products data provided, predict which products will likely cont
           'X-Title': 'Ammex Sales Forecasting'
         },
         body: JSON.stringify({
-            model: 'deepseek/deepseek-chat-v3.1:free',
+            model: 'meta-llama/llama-4-maverick:free',
           messages: [
             { 
               role: 'system', 
@@ -673,30 +809,43 @@ Based on the top products data provided, predict which products will likely cont
       forecast.totalGrowth = 0;
     }
 
-    // First pass: generate dynamic month names
+    // First pass: generate dynamic month names and validate structure
     const currentDate = new Date();
     forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {
       const forecastDate = new Date(currentDate);
       forecastDate.setMonth(currentDate.getMonth() + index + 1); // +1 to start from next month
       const monthLabel = forecastDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-      
+
+      // Validate and normalize topProducts
+      let topProducts = [];
+      if (Array.isArray(item.topProducts)) {
+        topProducts = item.topProducts.map(product => ({
+          name: product.name || 'Unknown Product',
+          category: product.category || 'General',
+          expectedOrders: Math.max(0, Math.round(product.expectedOrders || 0))
+        }));
+      }
+
       return {
-        ...item,
-        month: monthLabel
+        month: monthLabel,
+        predicted: Math.max(0, Math.round(item.predicted || 0)),
+        topProducts
       };
     });
 
     // Second pass: calculate MoM (Month-over-Month) changes
     forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {
-      const prevMonthValue = index === 0 
+      const prevMonthValue = index === 0
         ? (historicalData.length > 0 ? historicalData[historicalData.length - 1].sales : item.predicted)
         : forecast.monthlyBreakdown[index - 1].predicted;
-      const momChange = prevMonthValue !== 0 
+      const momChange = prevMonthValue !== 0
         ? Math.round(((item.predicted - prevMonthValue) / prevMonthValue) * 100)
         : 0;
-      
+
       return {
-        ...item,
+        month: item.month,
+        predicted: item.predicted,
+        topProducts: item.topProducts || [],
         momChange
       };
     });
@@ -903,7 +1052,7 @@ Return this exact JSON structure:
           'X-Title': 'Ammex Customer Bulk Forecast'
         },
         body: JSON.stringify({
-            model: 'deepseek/deepseek-chat-v3.1:free',
+            model: 'meta-llama/llama-4-maverick:free',
           messages: [
             { role: 'system', content: `You are a professional business analyst specializing in forecasting. Always return valid JSON. TODAY'S DATE IS ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01. Generate forecasts for NEXT months only.` },
             { role: 'user', content: prompt }
