@@ -278,7 +278,18 @@ function NewItem({
         } else {
           // Handle error - you might want to show error messages
           console.error('Failed to create item:', response.message);
-          setErrors({ general: response.message || 'Failed to create item' });
+          console.error('Response:', response);
+          
+          // If there are specific validation errors, display them
+          if (response.errors && Array.isArray(response.errors)) {
+            const validationErrors = {};
+            response.errors.forEach(error => {
+              validationErrors[error.field] = error.message;
+            });
+            setErrors({ ...validationErrors, general: 'Please fix the validation errors below.' });
+          } else {
+            setErrors({ general: response.message || 'Failed to create item' });
+          }
         }
       } catch (error) {
         console.error('Error submitting form:', error);

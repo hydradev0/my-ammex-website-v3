@@ -132,9 +132,8 @@ const initializeModels = (sequelize) => {
     },
     ceilingPrice: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
       validate: {
-        notEmpty: { msg: 'Ceiling price is required' },
         min: { args: [0], msg: 'Ceiling price must be a positive number' }
       }
     },
@@ -192,10 +191,8 @@ const initializeModels = (sequelize) => {
     },
     maxLevel: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
+      allowNull: true,
       validate: {
-        notEmpty: { msg: 'Maximum level is required' },
         min: { args: [0], msg: 'Maximum level must be a positive number' }
       }
     },
@@ -224,13 +221,13 @@ const initializeModels = (sequelize) => {
     timestamps: true,
     hooks: {
       beforeValidate: (item) => {
-        // Validate that ceiling price is greater than floor price
+        // Validate that ceiling price is greater than floor price (only if both are provided)
         if (item.ceilingPrice && item.floorPrice && 
             Number(item.ceilingPrice) <= Number(item.floorPrice)) {
           throw new Error('Ceiling price must be greater than floor price');
         }
         
-        // Validate that price is within floor and ceiling range
+        // Validate that price is within floor and ceiling range (only if ceiling is provided)
         if (item.price && item.floorPrice && item.ceilingPrice) {
           const price = Number(item.price);
           const floorPrice = Number(item.floorPrice);
@@ -241,7 +238,7 @@ const initializeModels = (sequelize) => {
           }
         }
         
-        // Validate that max level is greater than min level
+        // Validate that max level is greater than min level (only if both are provided)
         if (item.maxLevel && item.minLevel && 
             Number(item.maxLevel) <= Number(item.minLevel)) {
           throw new Error('Maximum level must be greater than minimum level');

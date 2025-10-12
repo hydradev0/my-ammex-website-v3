@@ -19,16 +19,39 @@ const {
 // Validation middleware
 const validateItem = [
   check('modelNo', 'Model number is required').not().isEmpty(),
+  check('itemName', 'Item name must be a string').optional().isString(),
   check('vendor', 'Vendor is required').not().isEmpty(),
   check('price', 'Price must be a positive number').isFloat({ min: 0 }),
   check('floorPrice', 'Floor price must be a positive number').isFloat({ min: 0 }),
-  check('ceilingPrice', 'Ceiling price must be a positive number').isFloat({ min: 0 }),
+  check('ceilingPrice', 'Ceiling price must be a positive number').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 0) {
+      throw new Error('Ceiling price must be a positive number');
+    }
+    return true;
+  }),
   check('unitId', 'Unit is required').isInt({ min: 1 }),
   check('categoryId', 'Category is required').isInt({ min: 1 }),
-  check('subcategoryId', 'Subcategory must be a valid ID').optional().isInt({ min: 1 }),
+  check('subcategoryId', 'Subcategory must be a valid ID').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    const num = parseInt(value);
+    if (isNaN(num) || num < 1) {
+      throw new Error('Subcategory must be a valid ID');
+    }
+    return true;
+  }),
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 }),
   check('minLevel', 'Minimum level must be a non-negative integer').isInt({ min: 0 }),
-  check('maxLevel', 'Maximum level must be a non-negative integer').isInt({ min: 0 }),
+  check('maxLevel', 'Maximum level must be a non-negative integer').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    const num = parseInt(value);
+    if (isNaN(num) || num < 0) {
+      throw new Error('Maximum level must be a non-negative integer');
+    }
+    return true;
+  }),
+  check('description', 'Description must be a string').optional().isString(),
   check('images', 'Images must be an array').optional().isArray(),
   check('images.*', 'Each image must be a valid URL').optional().isURL()
 ];

@@ -75,7 +75,7 @@ const createItem = async (req, res, next) => {
   try {
     const { Item, Category, Unit, Supplier } = getModels();
     const itemData = req.body;
-
+    
     // Expect: vendor (company name string), categoryId (number), modelNo (string)
     const vendorName = (itemData.vendor || '').toString().trim();
     const categoryId = itemData.categoryId;
