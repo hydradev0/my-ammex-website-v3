@@ -19,7 +19,13 @@ const {
 // Validation middleware
 const validateItem = [
   check('modelNo', 'Model number is required').not().isEmpty(),
-  check('itemName', 'Item name must be a string').optional().isString(),
+  check('itemName', 'Item name must be a string').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    if (typeof value !== 'string') {
+      throw new Error('Item name must be a string');
+    }
+    return true;
+  }),
   check('vendor', 'Vendor is required').not().isEmpty(),
   check('price', 'Price must be a positive number').isFloat({ min: 0 }),
   check('floorPrice', 'Floor price must be a positive number').isFloat({ min: 0 }),
@@ -51,9 +57,33 @@ const validateItem = [
     }
     return true;
   }),
-  check('description', 'Description must be a string').optional().isString(),
-  check('images', 'Images must be an array').optional().isArray(),
-  check('images.*', 'Each image must be a valid URL').optional().isURL()
+  check('description', 'Description must be a string').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    if (typeof value !== 'string') {
+      throw new Error('Description must be a string');
+    }
+    return true;
+  }),
+  check('images', 'Images must be an array').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    if (!Array.isArray(value)) {
+      throw new Error('Images must be an array');
+    }
+    // Validate each image URL if the array is not empty
+    for (let i = 0; i < value.length; i++) {
+      const url = value[i];
+      if (typeof url !== 'string' || !url.trim()) {
+        throw new Error(`Image ${i + 1} must be a valid URL`);
+      }
+      // Basic URL validation
+      try {
+        new URL(url);
+      } catch {
+        throw new Error(`Image ${i + 1} must be a valid URL`);
+      }
+    }
+    return true;
+  })
 ];
 
 // @route   GET /api/items
