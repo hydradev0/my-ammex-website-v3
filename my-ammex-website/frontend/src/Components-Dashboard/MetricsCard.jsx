@@ -34,7 +34,7 @@ const MetricsCard = ({
           </span>
         )}
       </div>
-      <p className="text-3xl font-bold text-gray-900">
+      <p className="text-2xl font-bold text-gray-900">
         {valuePrefix}{formatValue(value)}{valueSuffix}
       </p>
       {subtitle !== null && (

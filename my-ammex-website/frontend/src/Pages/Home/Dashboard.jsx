@@ -76,6 +76,7 @@ const Dashboard = () => {
             key={title}
             title={title}
             value={metrics.orders?.total || 0}
+            valueSuffix={` ${metrics.orders?.total || 0 === 1 ? 'order' : 'orders'}`}
             subtitle={`${metrics.orders?.pending || 0} orders pending`}
             statusIndicator={formatGrowth(metrics.orders?.growth)}
           />

@@ -652,7 +652,7 @@ Based on the top products data provided, predict which products will likely cont
           'X-Title': 'Ammex Sales Forecasting'
         },
         body: JSON.stringify({
-            model: 'meta-llama/llama-4-maverick:free',
+            model: 'anthropic/claude-3.5-sonnet',
           messages: [
             { 
               role: 'system', 
@@ -1052,7 +1052,7 @@ Return this exact JSON structure:
           'X-Title': 'Ammex Customer Bulk Forecast'
         },
         body: JSON.stringify({
-            model: 'meta-llama/llama-4-maverick:free',
+            model: 'anthropic/claude-3.5-sonnet',
           messages: [
             { role: 'system', content: `You are a professional business analyst specializing in forecasting. Always return valid JSON. TODAY'S DATE IS ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01. Generate forecasts for NEXT months only.` },
             { role: 'user', content: prompt }
