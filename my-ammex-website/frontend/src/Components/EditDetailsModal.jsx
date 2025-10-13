@@ -207,9 +207,6 @@ function EditDetailsModal({
       if (submissionData.floorPrice !== undefined) {
         submissionData.floorPrice = submissionData.floorPrice === '' ? null : parseFloat(submissionData.floorPrice);
       }
-      if (submissionData.ceilingPrice !== undefined) {
-        submissionData.ceilingPrice = submissionData.ceilingPrice === '' ? null : parseFloat(submissionData.ceilingPrice);
-      }
       if (submissionData.quantity !== undefined) {
         submissionData.quantity = submissionData.quantity === '' ? null : parseInt(submissionData.quantity);
       }

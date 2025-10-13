@@ -48,12 +48,6 @@ export const itemViewConfig = {
           width: 'w-1/3',
           customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
         },
-        {
-          label: 'Ceiling Price',
-          key: 'ceilingPrice',
-          width: 'w-1/3',
-          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
-        }
       ]
     },
     {
@@ -166,15 +160,6 @@ export const editItemConfig = {
           min: '0',
           required: true
         },
-        {
-          label: 'Ceiling Price',
-          key: 'ceilingPrice',
-          width: 'w-2/3',
-          type: 'number',
-          prefix: '₱',
-          step: '0.01',
-          min: '0',
-        }
       ]
     },
     {

@@ -114,27 +114,20 @@ const initializeModels = (sequelize) => {
         notEmpty: { msg: 'Supplier is required' }
       }
     },
-    price: {
+    sellingPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        notEmpty: { msg: 'Price is required' },
-        min: { args: [0], msg: 'Price must be a positive number' }
+        notEmpty: { msg: 'Selling price is required' },
+        min: { args: [0], msg: 'Selling price must be a positive number' }
       }
     },
-    floorPrice: {
+    supplierPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        notEmpty: { msg: 'Floor price is required' },
-        min: { args: [0], msg: 'Floor price must be a positive number' }
-      }
-    },
-    ceilingPrice: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      validate: {
-        min: { args: [0], msg: 'Ceiling price must be a positive number' }
+        notEmpty: { msg: 'Supplier price is required' },
+        min: { args: [0], msg: 'Supplier price must be a positive number' }
       }
     },
     unitId: {
@@ -221,23 +214,6 @@ const initializeModels = (sequelize) => {
     timestamps: true,
     hooks: {
       beforeValidate: (item) => {
-        // Validate that ceiling price is greater than floor price (only if both are provided)
-        if (item.ceilingPrice && item.floorPrice && 
-            Number(item.ceilingPrice) <= Number(item.floorPrice)) {
-          throw new Error('Ceiling price must be greater than floor price');
-        }
-        
-        // Validate that price is within floor and ceiling range (only if ceiling is provided)
-        if (item.price && item.floorPrice && item.ceilingPrice) {
-          const price = Number(item.price);
-          const floorPrice = Number(item.floorPrice);
-          const ceilingPrice = Number(item.ceilingPrice);
-          
-          if (price < floorPrice || price > ceilingPrice) {
-            throw new Error('Price must be between floor price and ceiling price');
-          }
-        }
-        
         // Validate that max level is greater than min level (only if both are provided)
         if (item.maxLevel && item.minLevel && 
             Number(item.maxLevel) <= Number(item.minLevel)) {

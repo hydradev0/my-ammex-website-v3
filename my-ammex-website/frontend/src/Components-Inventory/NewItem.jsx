@@ -20,9 +20,8 @@ function NewItem({
     modelNo: '',
     itemName: '',
     vendor: '',
-    price: '',
-    floorPrice: '',
-    ceilingPrice: '',
+    sellingPrice: '',
+    supplierPrice: '',
     unit: '',
     quantity: '',
     category: '',
@@ -150,36 +149,14 @@ function NewItem({
       newErrors.vendor = 'Supplier is required';
     }
 
-    if (!formData.price.trim()) {
-      newErrors.price = 'Price is required';
+    if (!formData.sellingPrice.trim()) {
+      newErrors.sellingPrice = 'Selling price is required';
     }
 
-    if (!formData.floorPrice.trim()) {
-      newErrors.floorPrice = 'Floor price is required';
-    } else if (isNaN(formData.floorPrice) || Number(formData.floorPrice) < 0) {
-      newErrors.floorPrice = 'Floor price must be a positive number';
-    }
-
-    // Ceiling price is now optional - only validate if provided
-    if (formData.ceilingPrice && formData.ceilingPrice.trim()) {
-      if (isNaN(formData.ceilingPrice) || Number(formData.ceilingPrice) < 0) {
-        newErrors.ceilingPrice = 'Ceiling price must be a positive number';
-      }
-      // Validate that ceiling price is greater than floor price (only if both are provided)
-      if (formData.floorPrice && Number(formData.ceilingPrice) <= Number(formData.floorPrice)) {
-        newErrors.ceilingPrice = 'Ceiling price must be greater than floor price';
-      }
-    }
-
-    // Validate that price is within floor and ceiling range
-    if (formData.price && formData.floorPrice && formData.ceilingPrice) {
-      const price = Number(formData.price);
-      const floorPrice = Number(formData.floorPrice);
-      const ceilingPrice = Number(formData.ceilingPrice);
-      
-      if (price < floorPrice || price > ceilingPrice) {
-        newErrors.price = 'Price must be between floor price and ceiling price';
-      }
+    if (!formData.supplierPrice.trim()) {
+      newErrors.supplierPrice = 'Supplier price is required';
+    } else if (isNaN(formData.supplierPrice) || Number(formData.supplierPrice) < 0) {
+      newErrors.supplierPrice = 'Supplier price must be a positive number';
     }
 
     if (!formData.unit.trim()) {
@@ -257,9 +234,8 @@ function NewItem({
           modelNo: formData.modelNo,
           itemName: formData.itemName && formData.itemName.trim() ? formData.itemName.trim() : null,
           vendor: formData.vendor,
-          price: Number(formData.price),
-          floorPrice: Number(formData.floorPrice),
-          ceilingPrice: formData.ceilingPrice && formData.ceilingPrice.trim() ? Number(formData.ceilingPrice) : null,
+          sellingPrice: Number(formData.sellingPrice),
+          supplierPrice: Number(formData.supplierPrice),
           unitId: units.find(u => u.name === formData.unit)?.id,
           quantity: Number(formData.quantity),
           categoryId: selectedCategory?.id,
@@ -405,66 +381,8 @@ function NewItem({
                   onChange={handleInputChange}
                   error={errors.itemName}
                 />
-              </div>
-            </div>
 
-            {/* Divider */}
-            <div className="border-t border-gray-300"></div>
-
-            {/* Pricing Information Section */}
-            <div>
-              <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
-                Pricing Information
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <FormField
-                  id="price"
-                  label={<span>Price <span className="text-red-500">*</span></span>}
-                  type="number"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  error={errors.price}
-                  prefix="₱"
-                  step="0.01"
-                  min="0"
-                />
-                <FormField
-                  id="floorPrice"
-                  label={<span>Floor Price <span className="text-red-500">*</span></span>}
-                  type="number"
-                  value={formData.floorPrice}
-                  onChange={handleInputChange}
-                  error={errors.floorPrice}
-                  prefix="₱"
-                  step="0.01"
-                  min="0"
-                />
-                <FormField
-                  id="ceilingPrice"
-                  label={<span>Ceiling Price</span>}
-                  type="number"
-                  value={formData.ceilingPrice}
-                  onChange={handleInputChange}
-                  error={errors.ceilingPrice}
-                  prefix="₱"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-gray-300"></div>
-
-            {/* Stock Information Section */}
-            <div>
-              <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                <Boxes className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
-                Stock Information
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Category Dropdown */}
+                  {/* Category Dropdown */}
                 <div>
                   <label className="block text-lg font-medium text-gray-700 mb-2">Category <span className="text-red-500">*</span></label>
                   <div className="relative w-full" ref={categoryDropdownRef}>
@@ -583,6 +501,55 @@ function NewItem({
                     <p className="text-red-500 text-sm mt-1">{errors.unit}</p>
                   )}
                 </div>
+
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-300"></div>
+
+            {/* Pricing Information Section */}
+            <div>
+              <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                Pricing Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-2/3">
+                <FormField
+                  id="supplierPrice"
+                  label={<span>Supplier Price <span className="text-red-500">*</span></span>}
+                  type="number"
+                  value={formData.supplierPrice}
+                  onChange={handleInputChange}
+                  error={errors.supplierPrice}
+                  prefix="₱"
+                  step="0.01"
+                  min="0"
+                />
+                <FormField
+                  id="sellingPrice"
+                  label={<span>Selling Price <span className="text-red-500">*</span></span>}
+                  type="number"
+                  value={formData.sellingPrice}
+                  onChange={handleInputChange}
+                  error={errors.sellingPrice}
+                  prefix="₱"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-300"></div>
+
+            {/* Stock Information Section */}
+            <div>
+              <h3 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                <Boxes className="w-5 h-5 md:w-6 md:h-6 text-[#3182ce]" />
+                Stock Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 <FormField
                   id="minLevel"
