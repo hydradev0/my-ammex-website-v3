@@ -3,11 +3,11 @@
  * Returns the number as-is if already formatted by react-international-phone,
  * or applies basic formatting for legacy/unformatted numbers
  * @param {string} phoneNumber - The phone number to format
- * @returns {string} - Formatted phone number or 'N/A' if empty
+ * @returns {string} - Formatted phone number or empty string if empty
  */
 export const formatPhoneNumber = (phoneNumber) => {
   if (!phoneNumber || phoneNumber.trim() === '') {
-    return 'N/A';
+    return '';
   }
   
   // If the phone number already has proper international formatting with parentheses

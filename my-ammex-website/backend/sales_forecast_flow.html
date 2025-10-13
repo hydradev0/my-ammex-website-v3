@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ammex Analytics - Sales Forecast Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .download-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            background: #f0f0f0;
+        }
+        
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        
+        .diagram-container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        #mermaidDiagram {
+            display: flex;
+            justify-content: center;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .diagram-container {
+                padding: 20px;
+            }
+            
+            .download-btn {
+                padding: 12px 24px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Sales Forecast Generation Flow</h1>
+        <p>Ammex Analytics - AI-Powered Sales Forecasting</p>
+    </div>
+    
+    <button class="download-btn" onclick="downloadDiagram()">
+        <span>📥</span>
+        <span>Download as PNG</span>
+    </button>
+    
+    <div class="diagram-container">
+        <div id="mermaidDiagram" class="mermaid">
+flowchart TD
+    A[🌐 Frontend Request<br/>POST /api/analytics/forecast/sales] -->|period: 3 months| B[⚙️ generateSalesForecast Controller]
+    
+    B --> C[🗄️ Query PostgreSQL Database]
+    
+    C --> D1[📊 Historical Sales Data<br/>Table: sales_fact_monthly<br/>✓ revenue, orders, customers<br/>✓ avg_order_value]
+    C --> D2[🏆 Top Products Data<br/>Table: sales_fact_monthly_by_product<br/>✓ Same months from 2-3 years ago<br/>✓ Recent 12 months fallback]
+    
+    D1 --> E[📝 Format & Preprocess Data]
+    D2 --> E
+    
+    E --> F1[preprocessDataForLLM<br/>Round numbers, clean format]
+    E --> F2[preprocessTopProductsForLLM<br/>Top 5 products per month]
+    
+    F1 --> G[🤖 callOpenRouterAPISales]
+    F2 --> G
+    
+    G --> H[📤 Build AI Prompt<br/>Historical Context:<br/>• Sales trends<br/>• Top products<br/>• Seasonal patterns<br/>• Current date]
+    
+    H --> I[🔮 OpenRouter API Call<br/>Model: Claude 3.5 Sonnet<br/>Temperature: 0.3<br/>Max Tokens: 2000]
+    
+    I --> J{✅ Success?}
+    
+    J -->|❌ Error| K[🚨 Error Handler<br/>• Rate limit: Retry message<br/>• Model unavailable<br/>• Invalid response]
+    K --> L[Return Error Response]
+    
+    J -->|✅ Success| M[🔍 Parse AI Response<br/>• Extract JSON<br/>• Remove markdown<br/>• Clean formatting]
+    
+    M --> N[✔️ validateForecastResponse<br/>✓ Check required fields<br/>✓ Normalize growth %<br/>✓ Generate month labels<br/>✓ Calculate MoM changes<br/>✓ Validate top products]
+    
+    N --> O[📈 Return Forecast<br/>Including:<br/>• Monthly predictions<br/>• Top products/month<br/>• Growth metrics<br/>• Insights & recommendations<br/>• Usage statistics]
+    
+    O --> P[🎨 Frontend: Display Results]
+    
+    style A fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style B fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style D1 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style D2 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style G fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style I fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style N fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    style O fill:#e8eaf6,stroke:#3f51b5,stroke-width:3px
+    style P fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style K fill:#ffebee,stroke:#c62828,stroke-width:2px
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+        
+        async function downloadDiagram() {
+            try {
+                // Get the SVG element generated by Mermaid
+                const svg = document.querySelector('#mermaidDiagram svg');
+                if (!svg) {
+                    alert('Diagram not loaded yet. Please wait a moment and try again.');
+                    return;
+                }
+                
+                // Clone the SVG to avoid modifying the original
+                const clonedSvg = svg.cloneNode(true);
+                
+                // Get SVG dimensions
+                const bbox = svg.getBoundingClientRect();
+                const width = bbox.width;
+                const height = bbox.height;
+                
+                // Set explicit dimensions on the cloned SVG
+                clonedSvg.setAttribute('width', width);
+                clonedSvg.setAttribute('height', height);
+                
+                // Serialize the SVG to string
+                const svgData = new XMLSerializer().serializeToString(clonedSvg);
+                
+                // Create a canvas
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas size with padding
+                const padding = 40;
+                canvas.width = width + (padding * 2);
+                canvas.height = height + (padding * 2);
+                
+                // Fill white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Create an image from SVG
+                const img = new Image();
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    // Draw the image with padding
+                    ctx.drawImage(img, padding, padding, width, height);
+                    
+                    // Convert canvas to PNG and download
+                    canvas.toBlob(function(blob) {
+                        const link = document.createElement('a');
+                        link.download = 'ammex_sales_forecast_flow.png';
+                        link.href = URL.createObjectURL(blob);
+                        link.click();
+                        
+                        // Cleanup
+                        URL.revokeObjectURL(url);
+                        URL.revokeObjectURL(link.href);
+                    });
+                };
+                
+                img.onerror = function() {
+                    alert('Failed to convert diagram to image. Please try again.');
+                    URL.revokeObjectURL(url);
+                };
+                
+                img.src = url;
+                
+            } catch (error) {
+                console.error('Error downloading diagram:', error);
+                alert('Failed to download diagram. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -65,7 +65,7 @@ function ViewDetailsModal({
                     <ViewField
                       key={fieldIndex}
                       label={field.label}
-                      value={field.getValue ? field.getValue(data) : (data[field.key] || 'N/A')}
+                      value={field.getValue ? field.getValue(data) : (data[field.key] || '')}
                       width={field.width || 'w-full'}
                       isTextArea={field.isTextArea || false}
                       customRender={field.customRender}

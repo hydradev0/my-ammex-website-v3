@@ -226,15 +226,6 @@ const ProcessedInvoices = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleInvoiceAction(null, 'export')}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Export
-              </button>
-            </div>
           </div>
         </div>
 

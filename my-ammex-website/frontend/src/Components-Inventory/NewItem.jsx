@@ -255,7 +255,7 @@ function NewItem({
         // Prepare submission data with IDs and image URLs
         const itemData = {
           modelNo: formData.modelNo,
-          itemName: formData.itemName,
+          itemName: formData.itemName && formData.itemName.trim() ? formData.itemName.trim() : null,
           vendor: formData.vendor,
           price: Number(formData.price),
           floorPrice: Number(formData.floorPrice),
@@ -264,7 +264,7 @@ function NewItem({
           quantity: Number(formData.quantity),
           categoryId: selectedCategory?.id,
           subcategoryId: selectedSubcategory?.id || null,
-          description: formData.description,
+          description: formData.description && formData.description.trim() ? formData.description.trim() : null,
           minLevel: Number(formData.minLevel),
           maxLevel: formData.maxLevel && formData.maxLevel.trim() ? Number(formData.maxLevel) : null,
           images: imageUrls.length > 0 ? imageUrls : [] // Include Cloudinary URLs or empty array

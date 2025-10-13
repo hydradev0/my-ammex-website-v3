@@ -27,6 +27,7 @@ export const itemViewConfig = {
         {
           label: 'Item Name',
           key: 'itemName',
+          customRender: (value) => value || '',
           width: 'w-2/3'
         }
       ]
@@ -39,19 +40,19 @@ export const itemViewConfig = {
           label: 'Price',
           key: 'price',
           width: 'w-1/3',
-          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : 'N/A'
+          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
         },
         {
           label: 'Floor Price',
           key: 'floorPrice',
           width: 'w-1/3',
-          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : 'N/A'
+          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
         },
         {
           label: 'Ceiling Price',
           key: 'ceilingPrice',
           width: 'w-1/3',
-          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : 'N/A'
+          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
         }
       ]
     },
@@ -63,19 +64,19 @@ export const itemViewConfig = {
           label: 'Unit',
           key: 'unit',
           width: 'w-1/3',
-          getValue: (item) => item.unit?.name || 'N/A'
+          getValue: (item) => item.unit?.name || ''
         },
         {
           label: 'Category',
           key: 'category',
           width: 'w-1/3',
-          getValue: (item) => item.category?.name || 'N/A'
+          getValue: (item) => item.category?.name || ''
         },
         {
           label: 'Subcategory',
           key: 'subcategory',
           width: 'w-1/3',
-          getValue: (item) => item.subcategory?.name || 'N/A'
+          getValue: (item) => item.subcategory?.name || ''
         },
         {
           label: 'Minimum Level',
@@ -86,12 +87,13 @@ export const itemViewConfig = {
           label: 'Quantity',
           key: 'quantity',
           width: 'w-1/3',
-          customRender: (value) => value ? value.toLocaleString() : 'N/A'
+          customRender: (value) => value ? value.toLocaleString() : ''
         },
         {
           label: 'Maximum Level',
           key: 'maxLevel',
-          width: 'w-1/3'
+          width: 'w-1/3',
+          customRender: (value) => value ? value.toString() : ''
         }
       ]
     },
@@ -102,6 +104,7 @@ export const itemViewConfig = {
         {
           label: 'Description',
           key: 'description',
+          customRender: (value) => value || '',
           isTextArea: true
         }
       ]
@@ -221,7 +224,6 @@ export const editItemConfig = {
           width: 'w-1/3',
           type: 'number',
           min: '0',
-          required: true
         }
       ]
     },
@@ -590,21 +592,10 @@ export const supplierViewConfig = {
         {
           label: 'Email 2',
           key: 'email2',
-          width: 'w-1/2'
+          width: 'w-1/2',
         }
       ]
     },
-    {
-      title: 'Status Information',
-      gridCols: 'grid-cols-1',
-      fields: [
-        {
-          label: 'Active Status',
-          key: 'isActive',
-          customRender: (value) => value ? 'Active' : 'Inactive'
-        }
-      ]
-    }
   ]
 };
 

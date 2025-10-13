@@ -52,11 +52,10 @@ const connectDB = async () => {
         Sequelize: sequelize.Sequelize
       };
       
-      // Sync all models (in development)
-      if (process.env.NODE_ENV === 'development') {
-        await sequelize.sync({ alter: true });
-        console.log('✅ Database synchronized.');
-      }
+      // Sync all models (force sync for schema changes)
+      console.log('🔄 Synchronizing database schema...');
+      await sequelize.sync({ alter: true });
+      console.log('✅ Database synchronized.');
     }
 
   } catch (error) {

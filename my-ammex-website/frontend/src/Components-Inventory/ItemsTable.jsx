@@ -167,6 +167,14 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       truncate: true
     },
     { 
+      key: 'itemName', 
+      header: 'Item Name',
+      render: (value) => value || '',
+      width: 'w-80',
+      cellClassName: 'w-80',
+      truncate: true
+    },
+    { 
       key: 'modelNo', 
       header: 'Model No.',
       width: 'w-80',
@@ -216,8 +224,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
     return items.filter(item => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch = 
-        item.itemName.toLowerCase().includes(searchLower) ||
-        item.itemCode.toLowerCase().includes(searchLower) ||
+        (item.itemName || '').toLowerCase().includes(searchLower) ||
+        (item.itemCode || '').toLowerCase().includes(searchLower) ||
         (item.category?.name || '').toLowerCase().includes(searchLower);
       
       const matchesFilter = filterValue === 'Filter by...' || (item.category?.name || item.category) === filterValue;

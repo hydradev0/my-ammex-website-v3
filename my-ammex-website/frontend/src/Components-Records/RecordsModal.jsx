@@ -197,33 +197,6 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
               {/* Section Container */}
               <div className="grid grid-cols-2 gap-6 rounded-xl p-4">
                 <FormField
-                  id="street"
-                  label="Street"
-                  type="text"
-                  value={formData.street}
-                  onChange={handleInputChange}
-                  error={errors.street}
-                  width="w-full"
-                />
-                <FormField
-                  id="city"
-                  label="City"
-                  type="text"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  error={errors.city}
-                  width="w-1/2"
-                />
-                <FormField
-                  id="postalCode"
-                  label="Postal Code"
-                  type="text"
-                  value={formData.postalCode}
-                  onChange={handleInputChange}
-                  error={errors.postalCode}
-                  width="w-0.5/2"
-                />
-                <FormField
                   id="country"
                   label="Country"
                   type="text"
@@ -231,6 +204,33 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
                   onChange={handleInputChange}
                   error={errors.country}
                   width="w-1/2"
+                />
+                  <FormField
+                    id="city"
+                    label="City"
+                    type="text"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    error={errors.city}
+                    width="w-1/2"
+                  />
+                  <FormField
+                    id="postalCode"
+                    label="Postal Code"
+                    type="text"
+                    value={formData.postalCode}
+                    onChange={handleInputChange}
+                    error={errors.postalCode}
+                    width="w-0.5/2"
+                  />
+                <FormField
+                  id="street"
+                  label="Street"
+                  type="text"
+                  value={formData.street}
+                  onChange={handleInputChange}
+                  error={errors.street}
+                  width="w-full"
                 />
               </div>
             </div>
@@ -283,6 +283,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
                   error={errors.email1}
                   required
                   width="w-1/2"
+
                 />
                 <FormField
                   id="email2"
@@ -341,7 +342,7 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
   return (
     <div className="m-4">
       <label htmlFor={id} className="block text-lg font-medium text-gray-700 mb-2">
-        {label}{required ? ' *' : ''}
+        {label}{required ? <span className="text-red-500"> *</span> : ''}
       </label>
       <div className={`relative ${error ? 'mb-1' : ''}`}>
         {prefix && (
