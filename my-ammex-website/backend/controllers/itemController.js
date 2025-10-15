@@ -171,7 +171,12 @@ const updateItem = async (req, res, next) => {
     const integerFields = ['categoryId', 'subcategoryId', 'unitId', 'quantity', 'minLevel', 'maxLevel'];
     integerFields.forEach(field => {
       if (cleanUpdateData[field] === '') {
-        cleanUpdateData[field] = null;
+        // For required fields like minLevel and maxLevel, don't allow null
+        if (field === 'minLevel' || field === 'maxLevel') {
+          delete cleanUpdateData[field]; // Remove the field to keep existing value
+        } else {
+          cleanUpdateData[field] = null;
+        }
       } else if (cleanUpdateData[field] !== undefined && cleanUpdateData[field] !== null) {
         // Ensure it's a valid integer
         const parsed = parseInt(cleanUpdateData[field]);
@@ -180,7 +185,7 @@ const updateItem = async (req, res, next) => {
     });
     
     // Convert empty strings to null for decimal fields
-    const decimalFields = ['price', 'floorPrice', 'ceilingPrice'];
+    const decimalFields = ['sellingPrice', 'supplierPrice'];
     decimalFields.forEach(field => {
       if (cleanUpdateData[field] === '') {
         cleanUpdateData[field] = null;
@@ -438,9 +443,9 @@ const updateItemStock = async (req, res, next) => {
 // Update item price
 const updateItemPrice = async (req, res, next) => {
   try {
-    const { Item, Category, Unit } = getModels();
+    const { Item, Category, Unit, PriceHistory } = getModels();
     const { id } = req.params;
-    const { price, reason } = req.body;
+    let { sellingPrice, supplierPrice, markupPercentage, adjustmentType } = req.body;
 
     const item = await Item.findByPk(id, {
       include: [
@@ -455,21 +460,63 @@ const updateItemPrice = async (req, res, next) => {
       });
     }
 
-    // Validate price is within floor/ceiling bounds if they exist
-    if (item.floorPrice && parseFloat(price) < parseFloat(item.floorPrice)) {
-      return res.status(400).json({
-        success: false,
-        message: `New price (₱${price}) cannot be below floor price (₱${item.floorPrice})`
-      });
+    // Store old values for history
+    // Supplier price is optionally overridden by the request; default to current
+    supplierPrice = supplierPrice !== undefined && supplierPrice !== null && supplierPrice !== ''
+      ? parseFloat(supplierPrice)
+      : parseFloat(item.supplierPrice);
+    const oldSellingPrice = parseFloat(item.sellingPrice);
+    const oldMarkup = ((oldSellingPrice - supplierPrice) / supplierPrice) * 100;
+
+    // Calculate based on adjustment type
+    if (adjustmentType === 'markup' && markupPercentage !== undefined) {
+      // Calculate selling price from markup percentage
+      markupPercentage = parseFloat(markupPercentage);
+      sellingPrice = supplierPrice * (1 + markupPercentage / 100);
+    } else if (adjustmentType === 'price' && sellingPrice !== undefined) {
+      // Calculate markup percentage from selling price
+      sellingPrice = parseFloat(sellingPrice);
+      markupPercentage = ((sellingPrice - supplierPrice) / supplierPrice) * 100;
+    } else {
+      // Default: if only sellingPrice provided
+      sellingPrice = parseFloat(sellingPrice);
+      markupPercentage = ((sellingPrice - supplierPrice) / supplierPrice) * 100;
     }
-    if (item.ceilingPrice && parseFloat(price) > parseFloat(item.ceilingPrice)) {
+
+    // Validate selling price is not below supplier price
+    if (sellingPrice < supplierPrice) {
       return res.status(400).json({
         success: false,
-        message: `New price (₱${price}) cannot exceed ceiling price (₱${item.ceilingPrice})`
+        message: `New selling price (₱${sellingPrice.toFixed(2)}) cannot be below supplier price (₱${supplierPrice.toFixed(2)})`
       });
     }
 
-    await item.update({ price });
+    // Validate markup percentage is non-negative
+    if (markupPercentage < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Markup percentage cannot be negative'
+      });
+    }
+
+    // Create price history record (supplier price may change if provided)
+    await PriceHistory.create({
+      itemId: id,
+      oldSupplierPrice: parseFloat(item.supplierPrice),
+      newSupplierPrice: supplierPrice,
+      oldSellingPrice: oldSellingPrice,
+      newSellingPrice: sellingPrice,
+      oldMarkup: oldMarkup,
+      newMarkup: markupPercentage,
+      adjustmentType: adjustmentType || 'price',
+      changedBy: req.user.id
+    });
+
+    // Update selling price and optionally supplier price
+    await item.update({ 
+      sellingPrice: sellingPrice,
+      supplierPrice: supplierPrice
+    });
     
     // Fetch the updated item with related data
     const updatedItem = await Item.findByPk(id, {
@@ -482,8 +529,38 @@ const updateItemPrice = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: updatedItem,
-      message: `Price updated successfully from ₱${item.price} to ₱${price}`
+      data: {
+        ...updatedItem.toJSON(),
+        markupPercentage: markupPercentage
+      },
+      message: `Price updated successfully. Selling price: ₱${oldSellingPrice.toFixed(2)} → ₱${sellingPrice.toFixed(2)} (Markup: ${oldMarkup.toFixed(1)}% → ${markupPercentage.toFixed(1)}%)`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get price history for an item
+const getPriceHistory = async (req, res, next) => {
+  try {
+    const { PriceHistory, User } = getModels();
+    const { id } = req.params;
+
+    const history = await PriceHistory.findAll({
+      where: { itemId: id },
+      include: [
+        {
+          model: User,
+          as: 'changer',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: history
     });
   } catch (error) {
     next(error);
@@ -500,5 +577,6 @@ module.exports = {
   restoreItem,
   getLowStockItems,
   updateItemStock,
-  updateItemPrice
+  updateItemPrice,
+  getPriceHistory
 }; 

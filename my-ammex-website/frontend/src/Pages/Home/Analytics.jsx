@@ -5,13 +5,9 @@ import { useAuth } from '../../contexts/AuthContext';
 
 // Import new components
 import SalesPerformance from '../../Components-Analytics/SalesPerformance';
-import SmartReorder from '../../Components-Analytics/SmartReorder';
-import StockMovement from '../../Components-Analytics/StockMovement';
-import MetricsCard from '../../Components-Analytics/MetricsCard';
 import CustomerPerformance from '../../Components-Analytics/CustomerPerformance';
-import { getSalesData, getCartInsights } from '../../services/analyticsService';
-import { getFormattedMetrics } from '../../data/analyticsData';
-import CartInsights from '../../Components-Analytics/CartInsights';
+
+import MetricsCard from '../../Components-Analytics/MetricsCard';
 import { getAnalyticsCardsForRole } from '../../utils/roleManager';
 
 const Analytics = () => {
@@ -29,8 +25,6 @@ const Analytics = () => {
     slowMovingItems: { value: '0 Items', previousMonth: '0 Items', percentageChange: 0 },
     inventoryGrowthRate: { value: '0%', previousMonth: '0%', percentageChange: 0 }
   });
-  const [salesData, setSalesData] = useState(null);
-  const [cartInsightsData, setCartInsightsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -110,14 +104,8 @@ const Analytics = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [formattedMetrics, salesData, cartInsightsData] = await Promise.all([
-          Promise.resolve(getFormattedMetrics()),
-          getSalesData(),
-          getCartInsights()
-        ]);
-        setMetrics((prev) => ({ ...prev, ...formattedMetrics }));
-        setSalesData(salesData);
-        setCartInsightsData(cartInsightsData);
+        // Remove the function calls that don't exist
+        // The UI components will handle their own data fetching
       } catch (err) {
         console.error('Error fetching analytics data:', err);
         setError('Failed to load analytics data');
@@ -179,9 +167,6 @@ const Analytics = () => {
                   <div className="w-full">
                     <CustomerPerformance />
                   </div>
-                  {/* <div className="w-full">
-                    <CartInsights data={cartInsightsData} />
-                  </div> */}
                 </div>
               )}
 
@@ -194,23 +179,9 @@ const Analytics = () => {
                   <div className="w-full">
                     <CustomerPerformance />
                   </div>
-                  {/* <div className="w-full">
-                    <CartInsights data={cartInsightsData} />
-                  </div> */}
                 </div>
               )}
 
-              {/* Warehouse Supervisor only: single column layout */}
-              {/* {(!isAdmin && isWarehouseSupervisor) && (
-                <div className="flex flex-col gap-6">
-                  <div className="w-full">
-                    <StockMovement />
-                  </div>
-                  <div className="w-full">
-                    <SmartReorder />
-                  </div>
-                </div>
-              )} */}
             </>
           )}
 

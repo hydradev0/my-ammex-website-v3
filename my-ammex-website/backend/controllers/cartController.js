@@ -25,7 +25,7 @@ const getCustomerCart = async (req, res) => {
       include: [{
         model: Item,
         as: 'item',
-        attributes: ['id', 'itemName', 'modelNo', 'itemCode', 'price', 'quantity', 'description', 'vendor'],
+        attributes: ['id', 'itemName', 'modelNo', 'itemCode', 'sellingPrice', 'quantity', 'description', 'vendor'],
         include: [
           {
             model: Category,
@@ -137,7 +137,7 @@ const addToCart = async (req, res) => {
 
       await existingCartItem.update({
         quantity: newQuantity,
-        unitPrice: item.price
+        unitPrice: item.sellingPrice
       });
     } else {
       // Add new item to cart
@@ -145,7 +145,7 @@ const addToCart = async (req, res) => {
         cartId: cart.id,
         itemId,
         quantity,
-        unitPrice: item.price
+        unitPrice: item.sellingPrice
       });
     }
 

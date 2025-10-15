@@ -51,7 +51,7 @@ class DashboardController {
           COUNT(CASE WHEN quantity > 0 AND quantity < min_level THEN 1 END) as low_stock,
           COUNT(CASE WHEN quantity = 0 THEN 1 END) as out_of_stock,
           COUNT(CASE WHEN quantity <= min_level * 0.5 THEN 1 END) as reorder_pending,
-          COALESCE(SUM(quantity * price), 0) as total_stock_value
+          COALESCE(SUM(quantity * selling_price), 0) as total_stock_value
         FROM "Item"
         WHERE is_active = true
       `, { type: QueryTypes.SELECT });
@@ -154,7 +154,7 @@ class DashboardController {
         SELECT 
           COUNT(CASE WHEN quantity > 0 AND quantity < min_level THEN 1 END) as low_stock,
           COUNT(CASE WHEN quantity = 0 THEN 1 END) as out_of_stock,
-          COALESCE(SUM(quantity * price), 0) as total_stock_value
+          COALESCE(SUM(quantity * selling_price), 0) as total_stock_value
         FROM "Item"
         WHERE is_active = true
       `, { type: QueryTypes.SELECT });
@@ -228,7 +228,7 @@ class DashboardController {
           i.quantity as "currentStock",
           i.min_level as "minimumStockLevel",
           i.max_level as "maximumStockLevel",
-          i.price,
+          i.selling_price as "price",
           c.name as "categoryName",
           CASE 
             WHEN i.quantity = 0 THEN 'critical'

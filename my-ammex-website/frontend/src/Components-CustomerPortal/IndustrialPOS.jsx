@@ -90,7 +90,7 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
         name: item.itemName,
         category: item.category?.name || 'Uncategorized',
         subcategory: item.subcategory?.name || null,
-        price: parseFloat(item.price) || 0,
+        price: parseFloat(item.sellingPrice || item.price) || 0,
         image: displayImage,
         images: item.images || [], // Include full images array
         alt: item.modelNo,
@@ -172,7 +172,7 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
         return;
       }
 
-      // Use main cart service - BULLETPROOF APPROACH
+      // Use main cart service 
       console.log('🛒 [CART SERVICE] Adding item via main service:', { itemId: product.id, quantity: product.quantity, name: product.name });
       const result = await addToCart(user.id, product.id, product.quantity, product);
       

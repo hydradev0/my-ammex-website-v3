@@ -12,7 +12,6 @@ import SalesQuotes from './Pages/Sales/SalesQuotes';
 import PurchaseQuotes from './Pages/Purchasing/PurchaseQuotes';
 import PurchaseOrder from './Pages/Purchasing/PurchaseOrder';
 import Inventory from './Pages/Inventory/Inventory';
-import ProductSpecs from './Pages/Inventory/ProductSpecs';
 
 import SalesOrder from './Pages/Sales/SalesOrder';
 import SalesInvoice from './Pages/Sales/SalesInvoice';
@@ -34,6 +33,8 @@ import CustomerOrders from './Pages/Sales/CustomerOrders';
 import CustomerPayments from './Pages/Sales/CustomerPayments';
 import ManagePaymentMethods from './Components-CustomerPayments/ManagePaymentMethods';
 import Invoices from './Pages/Sales/Invoices';
+
+import MonthlyReport from './Pages/Reports/MonthlyReport';
 
 import SalesTrend from './Components-Analytics/SalesTrend';
 import CustomerPurchase from './Components-Analytics/CustomerPurchase';
@@ -182,14 +183,6 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/inventory/productspecs"
-          element={
-            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor"]}>
-              <ProductSpecs />
-            </ProtectedRoute>
-          }
-        />
 
         {/* Purchasing - Admin and Sales Marketing */}
         <Route
@@ -268,12 +261,20 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        {/* Reports */}
+        <Route
+          path="reports/monthly-report"
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor"]}>
+              <MonthlyReport />
+            </ProtectedRoute>
+          }
+        />
 
-          
         <Route path="home/analytics/sales-trend" element={<SalesTrend />} />
         <Route path="home/analytics/customer-purchase" element={<CustomerPurchase />} />
         <Route path="home/analytics/website-data" element={<WebsiteData />} />
-        
+          
         {/* Default Page */}
         <Route path="/" element={<Login />} />
       </Routes>

@@ -72,11 +72,15 @@ export const updateItemStock = async (id, quantity) => {
   });
 };
 
-export const updateItemPrice = async (id, price, reason) => { 
+export const updateItemPrice = async (id, { sellingPrice, supplierPrice, markupPercentage, adjustmentType }) => { 
   return await apiCall(`/items/${id}/price`, {
     method: 'PATCH',
-    body: JSON.stringify({ price, reason }),
+    body: JSON.stringify({ sellingPrice, supplierPrice, markupPercentage, adjustmentType }),
   });
+};
+
+export const getPriceHistory = async (itemId) => {
+  return await apiCall(`/items/${itemId}/price-history`);
 };
 
 // ==================== CATEGORIES API ====================

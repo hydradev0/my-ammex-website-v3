@@ -119,7 +119,16 @@ function NewItem({
   // Handle form input changes
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData({ ...formData, [id]: value });
+    let updatedFormData = { ...formData, [id]: value };
+    
+    // Auto-calculate selling price when supplier price changes
+    if (id === 'supplierPrice' && value && !isNaN(value)) {
+      const supplierPrice = parseFloat(value);
+      const sellingPrice = supplierPrice * 1.30; // 30% markup
+      updatedFormData.sellingPrice = sellingPrice.toFixed(2);
+    }
+    
+    setFormData(updatedFormData);
     
     // Clear error when field is edited
     if (errors[id]) {
@@ -229,22 +238,56 @@ function NewItem({
         const selectedCategory = categories.find(cat => cat.name === formData.category);
         const selectedSubcategory = subcategories.find(sub => sub.name === formData.subcategory);
         
-        // Prepare submission data with IDs and image URLs
+        // Find the selected supplier by company name
+        const selectedSupplier = suppliers.find(supplier => supplier.companyName === formData.vendor);
+        const selectedUnit = units.find(u => u.name === formData.unit);
+
+        // Validate required selections
+        if (!selectedSupplier) {
+          setErrors({ vendor: 'Please select a valid supplier' });
+          return;
+        }
+
+        if (!selectedUnit) {
+          setErrors({ unit: 'Please select a valid unit' });
+          return;
+        }
+
+        if (!selectedCategory) {
+          setErrors({ category: 'Please select a valid category' });
+          return;
+        }
+
+        // Prepare submission data with IDs and image URLs - only send non-null values
         const itemData = {
           modelNo: formData.modelNo,
-          itemName: formData.itemName && formData.itemName.trim() ? formData.itemName.trim() : null,
           vendor: formData.vendor,
+          supplierId: selectedSupplier.id,
           sellingPrice: Number(formData.sellingPrice),
           supplierPrice: Number(formData.supplierPrice),
-          unitId: units.find(u => u.name === formData.unit)?.id,
+          unitId: selectedUnit.id,
           quantity: Number(formData.quantity),
-          categoryId: selectedCategory?.id,
-          subcategoryId: selectedSubcategory?.id || null,
-          description: formData.description && formData.description.trim() ? formData.description.trim() : null,
+          categoryId: selectedCategory.id,
           minLevel: Number(formData.minLevel),
-          maxLevel: formData.maxLevel && formData.maxLevel.trim() ? Number(formData.maxLevel) : null,
-          images: imageUrls.length > 0 ? imageUrls : [] // Include Cloudinary URLs or empty array
+          maxLevel: Number(formData.maxLevel) || 0,
+          images: imageUrls.length > 0 ? imageUrls : []
         };
+
+        // Only add optional fields if they have values
+        if (formData.itemName && formData.itemName.trim()) {
+          itemData.itemName = formData.itemName.trim();
+        }
+
+        if (selectedSubcategory?.id) {
+          itemData.subcategoryId = selectedSubcategory.id;
+        }
+
+        if (formData.description && formData.description.trim()) {
+          itemData.description = formData.description.trim();
+        }
+
+        // Debug: Log the data being sent
+        console.log('Sending item data:', itemData);
 
         const response = await createItem(itemData);
         
@@ -528,7 +571,7 @@ function NewItem({
                 />
                 <FormField
                   id="sellingPrice"
-                  label={<span>Selling Price <span className="text-red-500">*</span></span>}
+                  label={<span>Selling Price <span className="text-red-500">*</span> <span className="text-xs text-gray-500">(Auto-calculated: Supplier Price + 30%)</span></span>}
                   type="number"
                   value={formData.sellingPrice}
                   onChange={handleInputChange}
@@ -536,6 +579,7 @@ function NewItem({
                   prefix="₱"
                   step="0.01"
                   min="0"
+                  disabled={formData.supplierPrice && !isNaN(formData.supplierPrice)}
                 />
               </div>
             </div>

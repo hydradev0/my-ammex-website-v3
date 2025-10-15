@@ -13,7 +13,8 @@ const {
   restoreItem,
   getLowStockItems,
   updateItemStock,
-  updateItemPrice
+  updateItemPrice,
+  getPriceHistory
 } = require('../controllers/itemController');
 
 // Validation middleware
@@ -27,16 +28,8 @@ const validateItem = [
     return true;
   }),
   check('vendor', 'Vendor is required').not().isEmpty(),
-  check('price', 'Price must be a positive number').isFloat({ min: 0 }),
-  check('floorPrice', 'Floor price must be a positive number').isFloat({ min: 0 }),
-  check('ceilingPrice', 'Ceiling price must be a positive number').optional().custom((value) => {
-    if (value === null || value === undefined || value === '') return true;
-    const num = parseFloat(value);
-    if (isNaN(num) || num < 0) {
-      throw new Error('Ceiling price must be a positive number');
-    }
-    return true;
-  }),
+  check('sellingPrice', 'Selling price must be a positive number').isFloat({ min: 0 }),
+  check('supplierPrice', 'Supplier price must be a positive number').isFloat({ min: 0 }),
   check('unitId', 'Unit is required').isInt({ min: 1 }),
   check('categoryId', 'Category is required').isInt({ min: 1 }),
   check('subcategoryId', 'Subcategory must be a valid ID').optional().custom((value) => {
@@ -127,9 +120,16 @@ router.patch('/:id/stock', protect, authorize('Admin', 'Warehouse Supervisor'), 
 // @desc    Update item price
 // @access  Private (Admin, Warehouse Supervisor)
 router.patch('/:id/price', protect, authorize('Admin', 'Warehouse Supervisor'), [
-  check('price', 'Price must be a positive number').isFloat({ min: 0 }),
-  check('reason', 'Reason is required').not().isEmpty()
+  check('sellingPrice', 'Selling price must be a positive number').optional().isFloat({ min: 0 }),
+  check('supplierPrice', 'Supplier price must be a positive number').optional().isFloat({ min: 0 }),
+  check('markupPercentage', 'Markup percentage must be a non-negative number').optional().isFloat({ min: 0 }),
+  check('adjustmentType', 'Adjustment type must be either "price" or "markup"').optional().isIn(['price', 'markup'])
 ], handleValidationErrors, updateItemPrice);
+
+// @route   GET /api/items/:id/price-history
+// @desc    Get price history for an item
+// @access  Private (Admin, Warehouse Supervisor, Sales Marketing)
+router.get('/:id/price-history', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getPriceHistory);
 
 // @route   DELETE /api/items/:id
 // @desc    Delete item

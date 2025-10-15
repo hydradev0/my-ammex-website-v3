@@ -400,7 +400,7 @@ const Cart = () => {
   };
 
   const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => total + ((item.sellingPrice || item.price || 0) * item.quantity), 0);
   };
 
   const getTotalItems = () => {
@@ -412,7 +412,7 @@ const Cart = () => {
   };
 
   const getSelectedTotalPrice = () => {
-    return getSelectedItems().reduce((total, item) => total + (item.price * item.quantity), 0);
+    return getSelectedItems().reduce((total, item) => total + ((item.sellingPrice || item.price || 0) * item.quantity), 0);
   };
 
 
@@ -593,10 +593,10 @@ const Cart = () => {
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900">{item.modelNo}</h4>
                     <p className="text-sm text-gray-500">{item.subcategory || item.category}</p>
-                    <p className="text-sm text-gray-500">Qty: {item.quantity} × {item.price.toLocaleString()}</p>
+                    <p className="text-sm text-gray-500">Qty: {item.quantity} × {(item.sellingPrice || item.price || 0).toLocaleString()}</p>
                   </div>
                   <div className="text-right ml-4">
-                    <p className="font-semibold text-gray-900">₱{(item.price * item.quantity).toLocaleString()}</p>
+                    <p className="font-semibold text-gray-900">₱{((item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -611,6 +611,13 @@ const Cart = () => {
               <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
               <span className="text-xl font-bold text-gray-900">₱{getSelectedTotalPrice().toLocaleString()}</span>
             </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="text-sm text-gray-500">
+            <p>Disclaimer:</p>
+            <p>•All orders are subject to approval.</p>
+            <p>•Confirming this order means it can no longer be canceled.</p>
           </div>
 
           <div className="flex gap-3">
@@ -852,7 +859,7 @@ const Cart = () => {
                           </div>
                           <div className="flex justify-between">
                             <p className="text-gray-600 mb-3">
-                              ₱{item.price.toLocaleString()}
+                              ₱{(item.sellingPrice || item.price || 0).toLocaleString()}
                             </p>
                             <p className="text-gray-600 mb-3">
                               Quantity: {item.quantity} 
@@ -939,7 +946,7 @@ const Cart = () => {
                             
                             <div className="flex items-center gap-4">
                               <span className="text-lg font-semibold text-gray-900">
-                                ₱{(item.price * item.quantity).toLocaleString()}
+                                ₱{((item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}
                               </span>
                               <button
                                 onClick={() => handleRemoveItemClick(item.id)}

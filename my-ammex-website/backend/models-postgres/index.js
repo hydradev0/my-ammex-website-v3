@@ -214,8 +214,13 @@ const initializeModels = (sequelize) => {
     timestamps: true,
     hooks: {
       beforeValidate: (item) => {
+        // Auto-calculate selling price when supplier price is provided
+        if (item.supplierPrice && !item.sellingPrice) {
+          item.sellingPrice = item.supplierPrice * 1.30; // 30% markup
+        }
+
         // Validate that max level is greater than min level (only if both are provided)
-        if (item.maxLevel && item.minLevel && 
+        if (item.maxLevel && item.minLevel &&
             Number(item.maxLevel) <= Number(item.minLevel)) {
           throw new Error('Maximum level must be greater than minimum level');
         }
@@ -1111,6 +1116,72 @@ const initializeModels = (sequelize) => {
     timestamps: true
   });
 
+  // PriceHistory Model (for tracking price changes)
+  const PriceHistory = sequelize.define('PriceHistory', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    itemId: {
+      type: DataTypes.INTEGER,
+      field: 'item_id',
+      allowNull: false,
+      references: {
+        model: 'Item',
+        key: 'id'
+      }
+    },
+    oldSupplierPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'old_supplier_price',
+      allowNull: false
+    },
+    newSupplierPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'new_supplier_price',
+      allowNull: false
+    },
+    oldSellingPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'old_selling_price',
+      allowNull: false
+    },
+    newSellingPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'new_selling_price',
+      allowNull: false
+    },
+    oldMarkup: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'old_markup',
+      allowNull: false
+    },
+    newMarkup: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'new_markup',
+      allowNull: false
+    },
+    adjustmentType: {
+      type: DataTypes.ENUM('price', 'markup'),
+      field: 'adjustment_type',
+      allowNull: false
+    },
+    changedBy: {
+      type: DataTypes.INTEGER,
+      field: 'changed_by',
+      allowNull: false,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
+    }
+  }, {
+    tableName: 'PriceHistory',
+    timestamps: true,
+    updatedAt: false
+  });
+
   // Define relationships
   User.hasMany(Order, {
     foreignKey: 'userId',
@@ -1376,6 +1447,27 @@ const initializeModels = (sequelize) => {
     as: 'customer'
   });
 
+  // PriceHistory relationships
+  Item.hasMany(PriceHistory, {
+    foreignKey: 'itemId',
+    as: 'priceHistory'
+  });
+
+  PriceHistory.belongsTo(Item, {
+    foreignKey: 'itemId',
+    as: 'item'
+  });
+
+  User.hasMany(PriceHistory, {
+    foreignKey: 'changedBy',
+    as: 'priceChanges'
+  });
+
+  PriceHistory.belongsTo(User, {
+    foreignKey: 'changedBy',
+    as: 'changer'
+  });
+
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
@@ -1398,7 +1490,8 @@ const initializeModels = (sequelize) => {
     Bank,
     Payment,
     PaymentHistory,
-    Notification
+    Notification,
+    PriceHistory
   };
 };
 

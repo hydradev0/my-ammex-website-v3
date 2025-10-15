@@ -65,7 +65,20 @@ export const itemViewConfig = {
           label: 'Selling Price',
           key: 'sellingPrice',
           width: 'w-1/3',
-          getValue: (item) => item.sellingPrice ? `₱${Number(item.sellingPrice).toFixed(2)}` : ''
+          customRender: (value, item) => {
+            const displayValue = value ? Number(value).toFixed(2) : '';
+            const supplierPrice = item?.supplierPrice ? Number(item.supplierPrice).toFixed(2) : '';
+            return (
+              <div className="space-y-1">
+                <div>₱{displayValue}</div>
+                {supplierPrice && (
+                  <div className="text-xs text-gray-500">
+                    (Supplier: ₱{supplierPrice} + 30%)
+                  </div>
+                )}
+              </div>
+            );
+          }
         },
       ]
     },
@@ -170,9 +183,7 @@ export const editItemConfig = {
           prefix: '₱',
           step: '0.01',
           min: '0',
-          required: true,
-          disabled: true,
-          helperText: 'Editable via Adjust Pricing only'
+          required: true
         },
         {
           label: 'Selling Price',
@@ -183,8 +194,8 @@ export const editItemConfig = {
           step: '0.01',
           min: '0',
           required: true,
-          disabled: true,
-          helperText: 'Editable via Adjust Pricing only'
+          disabled: true, // Auto-calculated field
+          helperText: 'Auto-calculated: Supplier Price + 30%'
         },
       ]
     },
@@ -214,6 +225,7 @@ export const editItemConfig = {
           width: 'w-1/3',
           type: 'number',
           min: '0',
+          required: true
         }
       ]
     },

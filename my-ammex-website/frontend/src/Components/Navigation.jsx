@@ -15,6 +15,7 @@ function Navigation() {
   const isPurchasingAllowed = role === 'Admin' || role === 'Sales Marketing';
   const customerAllowed = role === 'Admin' || role === 'Sales Marketing';
   const supplierAllowed = role === 'Admin' || role === 'Warehouse Supervisor';
+  const isReportsAllowed = role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor';
 
   const navItems = [
     {
@@ -65,21 +66,13 @@ function Navigation() {
             ]
       )
     } : null,
-    // {
-    //   name: 'Financial',
-    //   dropdownItems: [
-    //     { name: 'Collection', link: '/Financial/Collection' },
-    //     { name: 'Voucher', link: '/Financial/Voucher' },
-    //   ]
-    // },
-    // {
-    //   name: 'Reports',
-    //   dropdownItems: [
-    //     { name: 'Sales Report', link: '/Reports/Sales' },
-    //     { name: 'Purchase Report', link: '/Reports/Purchase' },
-    //     { name: 'Sales per Item', link: '/Reports/SalesPerItem' }
-    //   ]
-    // }
+    isReportsAllowed ? {
+      name: 'Reports',
+      dropdownItems: [
+        { name: 'Monthly Report', link: '/reports/monthly-report' },
+        //{ name: 'Sales per Item', link: '/Reports/SalesPerItem' }
+      ]
+    } : null,
   ];
 
   const filteredNavItems = navItems.filter(Boolean);

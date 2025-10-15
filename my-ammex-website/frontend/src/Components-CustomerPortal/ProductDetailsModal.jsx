@@ -257,7 +257,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
 
                   {/* Price */}
                   <div className="flex items-center space-x-3 lg:space-x-4">
-                    <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">₱{product.price.toLocaleString()}</span>
+                    <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">₱{(product.price || 0).toLocaleString()}</span>
                     {/* Discounted Price */}
                     {/* <span className="text-sm text-gray-500 line-through">${(product.price * 1.2).toLocaleString()}</span>
                     <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-semibold">20% OFF</span> */}

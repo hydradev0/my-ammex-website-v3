@@ -54,8 +54,14 @@ const connectDB = async () => {
       
       // Sync all models (force sync for schema changes)
       console.log('🔄 Synchronizing database schema...');
-      await sequelize.sync({ alter: true });
-      console.log('✅ Database synchronized.');
+      try {
+        await sequelize.sync({ alter: true });
+        console.log('✅ Database synchronized.');
+      } catch (syncError) {
+        console.error('⚠️  Database sync error:', syncError.message);
+        console.log('🔄 Attempting to continue without full sync...');
+        // Continue without full sync for development
+      }
     }
 
   } catch (error) {

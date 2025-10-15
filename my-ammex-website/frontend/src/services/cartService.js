@@ -81,6 +81,7 @@ export const addToCart = async (customerId, itemId, quantity = 1, productData = 
       const cartItem = {
         id: itemId,
         price: productData?.price || 0,
+        sellingPrice: productData?.price || 0, // Add new field for consistency
         stock: productData?.stock || 0,
         itemCode: productData?.itemCode || '',
         modelNo: productData?.modelNo || '',
@@ -317,6 +318,7 @@ export const recoverCartFromDatabase = async (customerId) => {
         id: cartItem.item.id,
         name: cartItem.item.itemName,
         price: parseFloat(cartItem.unitPrice),
+        sellingPrice: parseFloat(cartItem.unitPrice), // Add new field for consistency
         stock: cartItem.item.quantity,
         itemCode: cartItem.item.itemCode,
         modelNo: cartItem.item.modelNo,
@@ -633,6 +635,7 @@ export const initializeCartFromDatabase = async (customerId, overwriteLocalStora
         id: cartItem.item.id,
         name: cartItem.item.itemName,
         price: parseFloat(cartItem.unitPrice),
+        sellingPrice: parseFloat(cartItem.unitPrice), // Add new field for consistency
         stock: cartItem.item.quantity,
         itemCode: cartItem.item.itemCode,
         modelNo: cartItem.item.modelNo,

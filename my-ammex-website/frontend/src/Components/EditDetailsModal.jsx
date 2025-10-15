@@ -94,6 +94,8 @@ function EditDetailsModal({
         });
       });
       
+      // Keep existing sellingPrice from backend; do not auto-override on load
+      
       setFormData(initialFormData);
       setInitialData(initialFormData);
       setImages(data.images || []);
@@ -123,11 +125,18 @@ function EditDetailsModal({
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
+
+    setFormData(prev => {
+      let updatedFormData = {
+        ...prev,
+        [name]: value
+      };
+
+      // Do not auto-calculate selling price when supplier price changes; respect saved backend values
+
+      return updatedFormData;
+    });
+
     // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
@@ -215,6 +224,14 @@ function EditDetailsModal({
       }
       if (submissionData.maxLevel !== undefined) {
         submissionData.maxLevel = submissionData.maxLevel === '' ? null : parseInt(submissionData.maxLevel);
+      }
+      
+      // Validate that max level is greater than min level if both are provided
+      if (submissionData.maxLevel && submissionData.minLevel && 
+          Number(submissionData.maxLevel) <= Number(submissionData.minLevel)) {
+        setErrors({ maxLevel: 'Maximum level must be greater than minimum level' });
+        setIsLoading(false);
+        return;
       }
       
       // Remove the name fields as they're not needed for the backend
@@ -480,6 +497,7 @@ function EditDetailsModal({
         min={min}
         width={width}
         disabled={disabled}
+        helperText={field.helperText}
         data-supplier={config.title === 'Edit Supplier' ? 'true' : 'false'}
       />
     );
@@ -510,18 +528,8 @@ function EditDetailsModal({
             <X className="h-6 w-6" />
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-grow p-6 mr-3 bg-white">
-          {/* Success Message */}
-          {successMessage && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 rounded-xl shadow-sm">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="font-medium">{successMessage}</span>
-              </div>
-            </div>
-          )}
-
+        
+        <div className="px-6">
           {/* Error Summary Section */}
           {Object.keys(errors).length > 0 && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -540,6 +548,19 @@ function EditDetailsModal({
               </ul>
             </div>
           )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-grow p-6 mr-3 bg-white">
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 rounded-xl shadow-sm">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="font-medium">{successMessage}</span>
+              </div>
+            </div>
+          )}
+
 
           {/* Render form sections based on config */}
           {config.sections.map((section, sectionIndex) => (
@@ -635,7 +656,7 @@ function EditDetailsModal({
 }
 
 // Form Field Component
-function FormField({ id, name, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, ...props }) {
+function FormField({ id, name, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, helperText, ...props }) {
   // Handle country field with default Philippines value only for customers, not suppliers
   const isCountryField = name === 'country';
   const isSupplierForm = props['data-supplier'] === 'true';
@@ -682,7 +703,10 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
       {error && (
         <p className="text-red-500 text-md mt-1">{error}</p>
       )}
-     
+      {helperText && !error && (
+        <p className="text-gray-500 text-sm mt-1">{helperText}</p>
+      )}
+
     </div>
   );
 }

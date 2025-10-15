@@ -9,6 +9,7 @@ import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
 import StockAdjustmentModal from './StockAdjustmentModal';
 import PriceAdjustmentModal from './PriceAdjustmentModal';
+import PriceHistoryModal from './PriceHistoryModal';
 import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
 import { getItems, createItem, updateItem, deleteItem, updateItemStock, updateItemPrice } from '../services/inventoryService';
@@ -32,9 +33,8 @@ function mapStockDataToItemTableFormat(stockItem) {
     itemName: stockItem.name || '',
     quantity: stockItem.currentStock || 0,
     unit: 'pcs', // Default, as StockMovement doesn't specify unit
-    price: stockItem.price || 0,
-    floorPrice: stockItem.price ? (stockItem.price * 0.9) : 0, // Example: 10% below price
-    ceilingPrice: stockItem.price ? (stockItem.price * 1.1) : 0, // Example: 10% above price
+    sellingPrice: stockItem.price || 0,
+    supplierPrice: stockItem.price ? (stockItem.price * 0.9) : 0, // Example: 10% below price
     category: stockItem.category || '',
     vendor: '', // Not available in StockMovement
     description: '', // Not available in StockMovement
@@ -98,6 +98,12 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
     item: null
   });
   const [adjustingPrice, setAdjustingPrice] = useState(false);
+
+  // State for price history modal
+  const [priceHistoryModal, setPriceHistoryModal] = useState({
+    isOpen: false,
+    item: null
+  });
 
   // Windowed fetching (fetch 10 UI pages at a time)
   const PAGE_WINDOW_MULTIPLIER = 10;
@@ -170,36 +176,36 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       key: 'itemName', 
       header: 'Item Name',
       render: (value) => value || '',
-      width: 'w-80',
-      cellClassName: 'w-80',
+      width: 'w-60',
+      cellClassName: 'w-60',
       truncate: true
     },
     { 
       key: 'modelNo', 
       header: 'Model No.',
-      width: 'w-80',
-      cellClassName: 'w-80',
+      width: 'w-60',
+      cellClassName: 'w-60',
       truncate: true
     },
     { 
       key: 'quantity', 
       header: 'Quantity',
       render: (value) => value.toLocaleString(),
-      width: 'w-40',
-      cellClassName: 'w-40',
+      width: 'w-30',
+      cellClassName: 'w-30',
       truncate: true
     },
     { 
       key: 'unit', 
       header: 'Unit',
       render: (value, item) => item.unit?.name || value,
-      width: 'w-40',
-      cellClassName: 'w-40',
+      width: 'w-30',
+      cellClassName: 'w-30',
       truncate: true
     },
     { 
-      key: 'price', 
-      header: 'Price',
+      key: 'sellingPrice', 
+      header: 'Selling Price',
       render: (value) => `₱${Number(value).toFixed(2)}`,
       width: 'w-40',
       cellClassName: 'w-40',
@@ -213,8 +219,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
           {item.category?.name || value}
         </span>
       ),
-      width: 'w-40',
-      cellClassName: 'w-40',
+      width: 'w-30',
+      cellClassName: 'w-30',
       truncate: true
     }
   ];
@@ -265,9 +271,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
         modelNo: newItem.modelNo,
         itemName: newItem.itemName,
         vendor: newItem.vendor,
-        price: Number(newItem.price),
-        floorPrice: Number(newItem.floorPrice),
-        ceilingPrice: Number(newItem.ceilingPrice),
+        sellingPrice: Number(newItem.sellingPrice),
+        supplierPrice: Number(newItem.supplierPrice),
         unitId: units.find(u => u.name === newItem.unit)?.id,
         quantity: Number(newItem.quantity),
         categoryId: categories.find(c => c.name === newItem.category)?.id,
@@ -371,9 +376,8 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
         modelNo: updatedItem.modelNo,
         itemName: updatedItem.itemName,
         vendor: updatedItem.vendor,
-        price: Number(updatedItem.price),
-        floorPrice: Number(updatedItem.floorPrice),
-        ceilingPrice: Number(updatedItem.ceilingPrice),
+        sellingPrice: Number(updatedItem.sellingPrice),
+        supplierPrice: Number(updatedItem.supplierPrice),
         unitId: units.find(u => u.name === updatedItem.unit)?.id,
         quantity: Number(updatedItem.quantity),
         categoryId: categories.find(c => c.name === updatedItem.category)?.id,
@@ -506,26 +510,32 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       setAdjustingPrice(true);
       setError(null);
       
-      const { newPrice, reason } = adjustmentData;
       const itemId = priceAdjustmentModal.item.id;
       
-      // Update price via API
-      const response = await updateItemPrice(itemId, newPrice, reason);
+      // Update price via API with new structure
+      const response = await updateItemPrice(itemId, adjustmentData);
       
       if (response.success) {
-        // Update local state
+        const updatedItem = response.data || {};
+
+        // Update list items with full payload from backend (keeps all fields in sync)
         setItems(items.map(item => 
           item.id === itemId 
-            ? { ...item, price: newPrice }
+            ? { ...item, ...updatedItem }
             : item
         ));
+
+        // If a details modal is open for this item, sync it too
+        if (selectedItem && selectedItem.id === itemId) {
+          setSelectedItem(prev => ({ ...prev, ...updatedItem }));
+        }
         
         // Close modal and show success message
         setPriceAdjustmentModal({ isOpen: false, item: null });
         setSuccessModal({
           isOpen: true,
           title: 'Price Updated Successfully!',
-          message: `Price has been updated for "${priceAdjustmentModal.item.itemName}". New price: ₱${newPrice.toFixed(2)}`
+          message: response.message || `Price has been updated for "${priceAdjustmentModal.item.itemName}".`
         });
       } else {
         setError(response.message || 'Failed to update price');
@@ -536,6 +546,11 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
     } finally {
       setAdjustingPrice(false);
     }
+  };
+
+  // Handle view price history
+  const handleViewPriceHistory = (item) => {
+    setPriceHistoryModal({ isOpen: true, item });
   };
 
   // Handle close view modal
@@ -751,8 +766,16 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
             onSubmit={handlePriceAdjustment}
             item={priceAdjustmentModal.item}
             isLoading={adjustingPrice}
+            onViewHistory={handleViewPriceHistory}
           />
         )}
+
+        {/* Price History Modal */}
+        <PriceHistoryModal
+          isOpen={priceHistoryModal.isOpen}
+          onClose={() => setPriceHistoryModal({ isOpen: false, item: null })}
+          item={priceHistoryModal.item}
+        />
         
       </div>
   );
