@@ -25,7 +25,7 @@ const getCustomerCart = async (req, res) => {
       include: [{
         model: Item,
         as: 'item',
-        attributes: ['id', 'itemName', 'modelNo', 'itemCode', 'sellingPrice', 'quantity', 'description', 'vendor'],
+        attributes: ['id', 'itemName', 'modelNo', 'itemCode', 'sellingPrice', 'quantity', 'description', 'vendor', 'images'],
         include: [
           {
             model: Category,

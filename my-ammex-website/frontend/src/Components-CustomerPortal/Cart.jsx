@@ -849,9 +849,26 @@ const Cart = () => {
                             onChange={() => toggleItemSelected(item.id)}
                           />
                         </div>
-                        {/* Product Image Placeholder */}
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <ShoppingBag size={24} className="text-gray-400" />
+                        {/* Product Image */}
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {(() => {
+                            // Get the first image from images array or fallback to single image
+                            const displayImage = (item.images && Array.isArray(item.images) && item.images.length > 0) 
+                              ? item.images[0] 
+                              : item.image;
+                            
+                            if (displayImage && (displayImage.startsWith('/') || displayImage.startsWith('http'))) {
+                              return (
+                                <img 
+                                  src={displayImage} 
+                                  alt={item.modelNo || 'Product'}
+                                  className="object-contain w-full h-full"
+                                />
+                              );
+                            } else {
+                              return <ShoppingBag size={24} className="text-gray-400" />;
+                            }
+                          })()}
                         </div>
                         
                         {/* Product Details */}
@@ -984,14 +1001,14 @@ const Cart = () => {
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
                 
                 <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-gray-600">
+                  {/* <div className="flex justify-between text-gray-600">
                     <span>Selected ({selectedIds.size} items)</span>
                     <span>₱{getSelectedTotalPrice().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
                     <span>Free</span>
-                  </div>
+                  </div> */}
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between text-lg font-semibold text-gray-900">
                       <span>Total</span>

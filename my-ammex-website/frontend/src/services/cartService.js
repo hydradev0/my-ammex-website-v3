@@ -104,8 +104,12 @@ export const addToCart = async (customerId, itemId, quantity = 1, productData = 
         vendor: productData?.vendor || '',
         description: productData?.description || '',
         unit: productData?.unit || 'pcs',
-        quantity: quantity
+        quantity: quantity,
+        // Include image properties
+        image: productData?.image || null,
+        images: productData?.images || []
       };
+      
       
       updatedCart = [...savedCart, cartItem];
     }
@@ -342,7 +346,10 @@ export const recoverCartFromDatabase = async (customerId) => {
         unit: cartItem.item.unit?.name || 'pcs',
         quantity: cartItem.quantity,
         category: cartItem.item.category?.name || null,
-        subcategory: cartItem.item.subcategory?.name || null
+        subcategory: cartItem.item.subcategory?.name || null,
+        // Include image properties from database
+        image: cartItem.item.image || null,
+        images: cartItem.item.images || []
       }));
 
       // Restore to localStorage and create backup
@@ -690,7 +697,10 @@ export const initializeCartFromDatabase = async (customerId, overwriteLocalStora
         unit: cartItem.item.unit?.name || 'pcs',
         quantity: cartItem.quantity,
         category: cartItem.item.category?.name || null,
-        subcategory: cartItem.item.subcategory?.name || null
+        subcategory: cartItem.item.subcategory?.name || null,
+        // Include image properties from database
+        image: cartItem.item.image || null,
+        images: cartItem.item.images || []
       }));
       
       // Only update localStorage if explicitly requested (not during sync operations)
