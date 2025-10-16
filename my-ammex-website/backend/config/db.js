@@ -52,15 +52,23 @@ const connectDB = async () => {
         Sequelize: sequelize.Sequelize
       };
       
-      // Sync all models (force sync for schema changes)
-      console.log('🔄 Synchronizing database schema...');
-      try {
-        await sequelize.sync({ alter: true });
-        console.log('✅ Database synchronized.');
-      } catch (syncError) {
-        console.error('⚠️  Database sync error:', syncError.message);
-        console.log('🔄 Attempting to continue without full sync...');
-        // Continue without full sync for development
+      // Sync all models based on env config (safer defaults)
+      const shouldSync = String(process.env.DB_AUTO_SYNC || '').toLowerCase() === 'true';
+      if (shouldSync) {
+        const force = String(process.env.DB_SYNC_FORCE || '').toLowerCase() === 'true';
+        const alter = String(process.env.DB_SYNC_ALTER || '').toLowerCase() !== 'false';
+        console.log('🔄 Synchronizing database schema...');
+        console.log(`   Options -> force: ${force}, alter: ${alter}`);
+        try {
+          await sequelize.sync({ force, alter });
+          console.log('✅ Database synchronized.');
+        } catch (syncError) {
+          console.error('⚠️  Database sync error:', syncError.message);
+          console.log('🔄 Attempting to continue without full sync...');
+          // Continue without full sync for development
+        }
+      } else {
+        console.log('ℹ️  DB_AUTO_SYNC is disabled. Skipping automatic sync.');
       }
     }
 

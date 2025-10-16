@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import ErrorModal from "../Components/ErrorModal";
 import TopBarPortal from './TopBarPortal';
-import { updateCartItem, removeFromCart, clearCart, getLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm, recoverCartFromDatabase } from '../services/cartService';
+import { updateCartItem, removeFromCart, clearCart, getLocalCart, setLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm, recoverCartFromDatabase, preventDatabaseSync } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
 
 const Cart = () => {
@@ -39,6 +39,7 @@ const Cart = () => {
       if (!user?.id) {
         const local = getLocalCart();
         const uniqueLocal = local.filter((it, i, arr) => i === arr.findIndex(t => t.id === it.id));
+        setLocalCart(uniqueLocal); // Use setLocalCart to sync global state
         setCart(uniqueLocal);
         setSelectedIds(new Set(uniqueLocal.map(it => it.id)));
         return uniqueLocal;
@@ -61,7 +62,7 @@ const Cart = () => {
         }
       });
 
-      localStorage.setItem('customerCart', JSON.stringify(merged));
+      setLocalCart(merged); // Use setLocalCart to sync global state
       setCart(merged);
       setSelectedIds(new Set(merged.map(it => it.id)));
       return merged;
@@ -155,6 +156,8 @@ const Cart = () => {
           const recoveredCart = await recoverCartFromDatabase(user.id);
           if (recoveredCart.length > 0) {
             cart = recoveredCart;
+            // Ensure global state is synced when recovering from database
+            setLocalCart(cart);
           }
         } catch (error) {
           console.error('Database recovery failed:', error);
@@ -488,10 +491,13 @@ const Cart = () => {
        const ids = selectedItems.map(i => i.id);
        const result = await checkoutConfirm(user?.id, { itemIds: ids });
 
-      // Remove only the selected items locally
+      // Prevent database sync for 2 seconds to avoid race conditions
+      preventDatabaseSync(2000);
+
+      // Remove only the selected items locally using setLocalCart to ensure global state sync
       const remaining = cart.filter(item => !selectedIds.has(item.id));
+      setLocalCart(remaining); // This updates localStorage, global state, and backup
       setCart(remaining);
-      localStorage.setItem('customerCart', JSON.stringify(remaining));
       setSelectedIds(new Set(remaining.map(item => item.id)));
 
       // Show success using server order number
@@ -614,10 +620,10 @@ const Cart = () => {
           </div>
 
           {/* Disclaimer */}
-          <div className="text-sm text-gray-500">
-            <p>Disclaimer:</p>
-            <p>•All orders are subject to approval.</p>
-            <p>•Confirming this order means it can no longer be canceled.</p>
+          <div className="text-sm text-amber-700 mb-6 bg-amber-100 rounded-lg p-4 border border-amber-300">
+            <p className="font-semibold">Disclaimer:</p>
+            <p>• All orders are subject to approval.</p>
+            <p>• Confirming this order means it can no longer be canceled.</p>
           </div>
 
           <div className="flex gap-3">

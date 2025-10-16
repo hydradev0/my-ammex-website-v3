@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, CartesianGrid, XAxis, YAxis, Legend, ResponsiveContainer
 } from 'recharts';
-import { Eye, MousePointer, ShoppingCart } from 'lucide-react';
+import { Eye, MousePointer, ShoppingCart, BarChart3, ArrowLeft, ChartBar } from 'lucide-react';
 import RoleBasedLayout from '../Components/RoleBasedLayout';
 
 const WebsiteData = () => {
+  const navigate = useNavigate();
   const categoryTrafficData = [
     { category: 'Electronics', clicks: 4500, percentage: 28 },
     { category: 'Clothing', clicks: 3200, percentage: 20 },
@@ -32,7 +34,30 @@ const WebsiteData = () => {
     { name: 'Desk Lamp', additions: 250, value: 12500 }
   ];
 
+  const [insights, setInsights] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+
+  const generateInsights = () => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      setInsights({
+        trends: [
+          'Electronics category leads with 28% of traffic - consider expanding product offerings',
+          'Running Shoes and Smart Watches show strong click-through rates - potential for bundled promotions',
+          'USB Cables have high cart additions but lower value - opportunity for upselling premium variants'
+        ],
+        recommendations: [
+          'Focus marketing efforts on Electronics and Clothing categories',
+          'Create "Trending Now" section featuring Wireless Headphones and Running Shoes',
+          'Implement "Frequently Bought Together" for Phone Cases and USB Cables',
+          'Consider discount bundles for Home & Garden items to boost cart additions'
+        ]
+      });
+      setIsGenerating(false);
+    }, 2000);
+  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -53,8 +78,28 @@ const WebsiteData = () => {
   return (
     <>
     <RoleBasedLayout />
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="min-h-screen p-8 ">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center -mx-36 gap-4 mb-5">
+            <button
+              onClick={() => navigate('/home/analytics')}
+              className="group flex items-center cursor-pointer gap-2 px-4 py-2.5 bg-white hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 rounded-xl border border-gray-200 hover:border-indigo-200 transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="font-medium">Back</span>
+            </button>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-2 -mt-17">
+            <ChartBar className="w-8 h-8 text-indigo-600" />
+            Website Traffics
+          </h1>
+          <p className="text-gray-600 -mt-2">Analyze website traffic patterns and user behavior insights</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Category Traffic Distribution */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -119,6 +164,73 @@ const WebsiteData = () => {
           </ResponsiveContainer>
         </div>
 
+      </div>
+
+      {/* AI Insights Button */}
+      <div className="max-w-6xl mx-auto mt-6 flex justify-center">
+        <button
+          onClick={generateInsights}
+          disabled={isGenerating}
+          className="group cursor-pointer relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+        >
+          <span className="flex items-center gap-3">
+            <svg 
+              className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              {isGenerating ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              )}
+            </svg>
+            {isGenerating ? 'Generating Insights...' : 'Generate AI Insights & Recommendations'}
+          </span>
+          <div className="absolute inset-0 rounded-xl bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
+        </button>
+      </div>
+
+      {/* Insights Display */}
+      {insights && (
+        <div className="max-w-6xl mx-auto mt-6 bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl shadow-sm border border-purple-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                Key Trends
+              </h4>
+              <ul className="space-y-2">
+                {insights.trends.map((trend, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-purple-600 mt-1">•</span>
+                    <span>{trend}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-pink-900 mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Recommendations
+              </h4>
+              <ul className="space-y-2">
+                {insights.recommendations.map((rec, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-pink-600 mt-1">•</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
     </>

@@ -8,6 +8,7 @@ let isCartInitialized = false;
 // Debounce mechanism to prevent too many database calls
 let syncTimeout = null;
 const DEBOUNCE_DELAY = 500; // 0.5 second delay
+let preventSync = false; // Flag to prevent sync after checkout
 
 const cancelDebouncedSync = () => {
   if (syncTimeout) {
@@ -16,13 +17,27 @@ const cancelDebouncedSync = () => {
   }
 };
 
+// Temporarily prevent database sync (used after checkout)
+export const preventDatabaseSync = (duration = 2000) => {
+  preventSync = true;
+  setTimeout(() => {
+    preventSync = false;
+  }, duration);
+};
+
 const debouncedSync = (customerId, cartItems) => {
+  if (preventSync) {
+    return; // Skip sync if prevented (e.g., after checkout)
+  }
+  
   if (syncTimeout) {
     clearTimeout(syncTimeout);
   }
   
   syncTimeout = setTimeout(() => {
-    syncCartToDatabase(customerId, cartItems);
+    if (!preventSync) { // Double-check before syncing
+      syncCartToDatabase(customerId, cartItems);
+    }
     syncTimeout = null;
   }, DEBOUNCE_DELAY);
 };
@@ -450,6 +465,37 @@ export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = 
   return data;
 };
 
+
+// Update cart state everywhere (localStorage, global state, and backup)
+export const setLocalCart = (cart) => {
+  try {
+    const cartArray = Array.isArray(cart) ? cart : [];
+    
+    // Update global state
+    globalCartState = cartArray;
+    isCartInitialized = true;
+    
+    // Update localStorage
+    localStorage.setItem('customerCart', JSON.stringify(cartArray));
+    
+    // Update or clear backup
+    if (cartArray.length > 0) {
+      localStorage.setItem('customerCart_backup', JSON.stringify(cartArray));
+    } else {
+      localStorage.removeItem('customerCart_backup');
+    }
+    
+    // Dispatch update event for real-time sync
+    window.dispatchEvent(new CustomEvent('cartUpdated', { 
+      detail: { action: 'set', totalItems: cartArray.length } 
+    }));
+    
+    return { success: true, cart: cartArray };
+  } catch (error) {
+    console.error('❌ [SET LOCAL ERROR] Error setting local cart:', error);
+    return { success: false, cart: [] };
+  }
+};
 
 // Get cart from localStorage (for immediate UI updates) with bulletproof global state
 export const getLocalCart = () => {
