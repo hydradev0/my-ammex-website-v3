@@ -38,7 +38,7 @@ function HandleOrders() {
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState(null);
-  const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountPercent, setDiscountPercent] = useState('');
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
   // Pagination state
@@ -213,7 +213,7 @@ function HandleOrders() {
 
   const handleReviewOrder = (order) => {
     setSelectedOrder(order);
-    setDiscountPercent(0); // Reset discount when opening process modal
+    setDiscountPercent(''); // Reset discount when opening process modal
     setIsProcessModalOpen(true);
   };
 
@@ -226,7 +226,7 @@ function HandleOrders() {
   const handleCloseProcessModal = () => {
     setIsProcessModalOpen(false);
     setSelectedOrder(null);
-    setDiscountPercent(""); // Reset discount when closing process modal
+    setDiscountPercent(''); // Reset discount when closing process modal
   };
 
   const handleProcess = async (orderId, discount) => {

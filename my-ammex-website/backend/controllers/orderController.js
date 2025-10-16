@@ -300,6 +300,25 @@ const updateOrderStatus = async (req, res, next) => {
     if (status === 'approved' && (discountPercent !== undefined || discountAmount !== undefined)) {
       const discountPct = parseFloat(discountPercent) || 0;
       const discountAmt = parseFloat(discountAmount) || 0;
+      
+      // Validate discount percentage (maximum 30%)
+      if (discountPct > 30) {
+        return res.status(400).json({
+          success: false,
+          message: 'Discount percentage cannot exceed 30%'
+        });
+      }
+      
+      // Validate that discount amount matches the percentage (with small tolerance for rounding)
+      const expectedDiscountAmount = (order.totalAmount * discountPct) / 100;
+      const amountDifference = Math.abs(discountAmt - expectedDiscountAmount);
+      if (amountDifference > 0.01) { // Allow 1 cent tolerance for rounding
+        return res.status(400).json({
+          success: false,
+          message: 'Discount amount does not match the specified percentage'
+        });
+      }
+      
       const finalAmt = order.totalAmount - discountAmt;
       
       updateData.discountPercent = discountPct;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Eye, FileText, Clock, CheckCircle, X, XCircle, CreditCard, DollarSign, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Eye, FileText, Clock, CheckCircle, X, XCircle, CreditCard, DollarSign, Calendar, ChevronDown, ChevronUp, Upload, Download } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
@@ -20,11 +20,57 @@ const Invoice = () => {
   // Modal state
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showPaymentReceiptsModal, setShowPaymentReceiptsModal] = useState(false);
+  const [isPaymentReceiptsModalAnimating, setIsPaymentReceiptsModalAnimating] = useState(false);
   const modalRef = useRef(null);
+  const paymentReceiptsModalRef = useRef(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Mock payment receipts data
+  const paymentReceipts = [
+    {
+      id: 1,
+      receiptNumber: 'RCP-2024-001',
+      invoiceNumber: 'INV-2024-001',
+      paymentDate: '2024-01-15',
+      amount: 1500.00,
+      totalAmount: 3000.00,
+      remainingAmount: 1500.00,
+      paymentMethod: 'Bank Transfer',
+      status: 'partially paid',
+      reference: 'TXN123456789',
+      bankDetails: 'BDO - 1234567890'
+    },
+    {
+      id: 2,
+      receiptNumber: 'RCP-2024-002',
+      invoiceNumber: 'INV-2024-002',
+      paymentDate: '2024-01-20',
+      amount: 2500.00,
+      totalAmount: 2500.00,
+      remainingAmount: 0.00,
+      paymentMethod: 'GCash',
+      status: 'fully paid',
+      reference: 'GCASH987654321',
+      bankDetails: 'GCash - 09171234567'
+    },
+    {
+      id: 3,
+      receiptNumber: 'RCP-2024-003',
+      invoiceNumber: 'INV-2024-003',
+      paymentDate: '2024-01-25',
+      amount: 3200.00,
+      totalAmount: 3200.00,
+      remainingAmount: 0.00,
+      paymentMethod: 'PayMaya',
+      status: 'fully paid',
+      reference: 'PM456789123',
+      bankDetails: 'PayMaya - 09187654321'
+    }
+  ];
 
   useEffect(() => {
     const loadInvoices = async () => {
@@ -84,13 +130,27 @@ const Invoice = () => {
       if (showInvoiceModal && modalRef.current && event.target === modalRef.current) {
         closeInvoiceModal();
       }
+      if (showPaymentReceiptsModal && paymentReceiptsModalRef.current && event.target === paymentReceiptsModalRef.current) {
+        closePaymentReceiptsModal();
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showInvoiceModal]);
+  }, [showInvoiceModal, showPaymentReceiptsModal]);
+
+  // Handle payment receipts modal animation
+  useEffect(() => {
+    if (showPaymentReceiptsModal) {
+      // Small delay to ensure the modal is rendered before animation starts
+      const timer = setTimeout(() => {
+        setIsPaymentReceiptsModalAnimating(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [showPaymentReceiptsModal]);
 
   const handleBack = () => {
     navigate('/Products');
@@ -167,6 +227,18 @@ const Invoice = () => {
     setSelectedInvoice(null);
   };
 
+  const handleViewPaymentReceipts = () => {
+    setShowPaymentReceiptsModal(true);
+    setIsPaymentReceiptsModalAnimating(true);
+  };
+
+  const closePaymentReceiptsModal = () => {
+    setIsPaymentReceiptsModalAnimating(false);
+    setTimeout(() => {
+      setShowPaymentReceiptsModal(false);
+    }, 500); // Match the animation duration
+  };
+
   // Sorting function
   const handleSort = (field) => {
     if (sortField === field) {
@@ -234,6 +306,17 @@ const Invoice = () => {
         return 'bg-red-100 text-red-800';
       case 'overdue':
         return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentReceiptStatusColor = (status) => {
+    switch (status) {
+      case 'partially paid':
+        return 'bg-orange-100 text-orange-800';
+      case 'fully paid':
+        return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -351,6 +434,99 @@ const Invoice = () => {
     </div>
   ) : null;
 
+  // Payment Receipts Modal
+  const paymentReceiptsModalContent = showPaymentReceiptsModal ? (
+    <div 
+      ref={paymentReceiptsModalRef}
+      className={`fixed inset-0 bg-black/30 flex items-end sm:items-center justify-end z-50 p-0 sm:p-0 transition-opacity duration-300 ${
+        isPaymentReceiptsModalAnimating ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <div 
+        className={`bg-white rounded-t-2xl sm:rounded-l-2xl sm:rounded-r-none shadow-2xl w-full sm:w-[85vw] sm:max-w-xl h-[100vh] sm:h-[100vh] flex flex-col transform transition-all duration-500 ease-in-out ${
+          isPaymentReceiptsModalAnimating ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">   
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Payment Receipts</h2>
+              <p className="text-sm text-gray-600 mt-1">Your payment history and receipts</p>
+            </div>
+            <button
+              onClick={closePaymentReceiptsModal}
+              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer transition-colors duration-200"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-3 sm:p-4 overflow-y-auto flex-1">
+          <div className="space-y-3">
+            {paymentReceipts.map((receipt) => (
+              <div key={receipt.id} className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                {/* Header Row */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-semibold text-gray-900">{receipt.receiptNumber}</h3>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPaymentReceiptStatusColor(receipt.status)}`}>
+                        {receipt.status === 'partially paid' ? 'Partial' : 'Full'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">{receipt.invoiceNumber} • {formatDate(receipt.paymentDate)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-green-600">{formatCurrency(receipt.amount)}</p>
+                    <p className="text-xs text-gray-500">{receipt.paymentMethod}</p>
+                  </div>
+                </div>
+
+                {/* Payment Summary */}
+                <div className="bg-gray-50 rounded-md p-2 mb-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-gray-500">Total Amount:</span>
+                      <p className="font-medium">{formatCurrency(receipt.totalAmount)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Remaining:</span>
+                      <p className={`font-medium ${receipt.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(receipt.remainingAmount)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reference Info */}
+                <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
+                  <span>Ref: {receipt.reference}</span>
+                  <span>{receipt.bankDetails}</span>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-2 justify-end">
+                  <button className="flex border border-gray-300 bg-gray-50 hover:bg-gray-100 cursor-pointer text-gray-900 px-3 py-1.5 rounded text-xs font-medium transition-colors duration-200 items-center justify-center gap-1">
+                    <Download className="w-3 h-3" />
+                    Download
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {paymentReceipts.length === 0 && (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Payment Receipts</h3>
+              <p className="text-gray-500">Payment receipts will appear here once payments are processed.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -367,16 +543,24 @@ const Invoice = () => {
           <ChevronRight className="w-4 h-4 mx-2" />
           <span className="text-gray-700 font-medium">Invoices</span>
         </div>
-        
-        <div className="flex gap-8 md:gap-8 lg:gap-12 mb-6 mt-8 mx-1 md:-mx-15 lg:-mx-30 xl:-mx-35">
-          <button 
-            onClick={handleBack}
-            className="flex items-center justify-center cursor-pointer bg-[#3182ce] hover:bg-[#4992d6] text-white px-3 py-2 rounded-3xl gap-1 transition-colors whitespace-nowrap w-20 sm:w-auto"
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 mt-8 mx-1 md:-mx-15 lg:-mx-30 xl:-mx-35">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handleBack}
+              className="flex items-center justify-center cursor-pointer bg-[#3182ce] hover:bg-[#4992d6] text-white px-3 py-2 rounded-3xl gap-1 transition-colors whitespace-nowrap"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back
+            </button>
+            <h1 className="text-2xl font-bold text-gray-800 lg:ml-12">Invoices</h1>
+          </div>
+          <button
+            onClick={handleViewPaymentReceipts}
+            className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-sm md:mr-16 lg:mr-36"
           >
-            <ArrowLeft className="w-5 h-5" />
-            Back
+            <span>View Payment Receipts</span>
           </button>
-          <h1 className="text-2xl sm:text-2xl md:text-2xl lg:text-2xl font-bold text-gray-800 text-center sm:text-left sm:-ml-4 -md:ml-2 -lg:ml-2 xl:ml-2">Invoices</h1>
         </div>
 
         {/* Loading State */}
@@ -508,8 +692,9 @@ const Invoice = () => {
       </div>
 
       {/* Invoice Details Modal */}
-      <ScrollLock active={showInvoiceModal} />
+      <ScrollLock active={showInvoiceModal || showPaymentReceiptsModal} />
       {createPortal(invoiceModalContent, document.body)}
+      {createPortal(paymentReceiptsModalContent, document.body)}
 
     </>
   );

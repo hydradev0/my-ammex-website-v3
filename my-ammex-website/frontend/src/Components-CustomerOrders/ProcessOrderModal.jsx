@@ -3,17 +3,56 @@ import HandleCustomerModal from './HandleCustomerModal';
 
 function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discountPercent, setDiscountPercent, isProcessing, isRejecting }) {
   const [rejectionReason, setRejectionReason] = useState('');
+  const [discountError, setDiscountError] = useState('');
   
   if (!order) return null;
 
   const handleDiscountChange = (e) => {
-    const value = parseFloat(e.target.value) || 0;
-    // Ensure the percentage is between 0 and 100
-    setDiscountPercent(Math.min(Math.max(value, 0), 100));
+    const value = e.target.value;
+    
+    // Clear previous error
+    setDiscountError('');
+    
+    // Allow empty input for better UX
+    if (value === '' || value === null || value === undefined) {
+      setDiscountPercent('');
+      return;
+    }
+    
+    const numValue = parseFloat(value);
+    
+    // Check for invalid input
+    if (isNaN(numValue)) {
+      setDiscountError('Please enter a valid number');
+      return;
+    }
+    
+    // Check for negative values
+    if (numValue < 0) {
+      setDiscountError('Discount cannot be negative');
+      setDiscountPercent(0);
+      return;
+    }
+    
+    // Check for values above 30%
+    if (numValue > 30) {
+      setDiscountError('Maximum discount allowed is 30%');
+      setDiscountPercent(numValue); // Allow them to type the value but show error
+      return;
+    }
+    
+    // Valid input
+    setDiscountPercent(numValue);
   };
 
   const handleProcess = () => {
-    const discountAmount = (order.total * discountPercent) / 100;
+    // Don't process if there's a discount error
+    if (discountError) {
+      return;
+    }
+    
+    const discountPct = discountPercent || 0;
+    const discountAmount = (order.total * discountPct) / 100;
     onProcess(order.id, discountAmount);
   };
 
@@ -21,7 +60,8 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
     onReject(order, rejectionReason);
   };
 
-  const discountAmount = (order.total * discountPercent) / 100;
+  const discountPct = discountPercent || 0;
+  const discountAmount = (order.total * discountPct) / 100;
   const finalTotal = order.total - discountAmount;
 
   const footerContent = (
@@ -52,9 +92,9 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
       </button>
       <button
         onClick={handleProcess}
-        disabled={isProcessing || isRejecting}
+        disabled={isProcessing || isRejecting || discountError}
         className={`px-4 py-2 cursor-pointer text-sm font-medium text-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-          isProcessing || isRejecting
+          isProcessing || isRejecting || discountError
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
         }`}
@@ -151,22 +191,27 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
       {/* Discount Section */}
       <div className="mb-6">
         <label htmlFor="discount" className="block text-sm font-medium text-gray-700 mb-2">
-          Discount Percentage
+          Discount Percentage (Maximum 30%)
         </label>
         <div className="relative">
           <input
             type="number"
             id="discount"
             name="discount"
+            value={discountPercent}
             onChange={handleDiscountChange}
             min="0"
             max="100"
             step="0.01"
-            className="pl-4 pr-8 py-2 max-w-2xl border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-600 focus:border-transparent 
-            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className={`pl-4 pr-8 py-2 max-w-2xl border rounded-lg focus:ring-2 focus:outline-none focus:border-transparent 
+            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+            ${discountError ? 'border-red-300 focus:ring-red-600' : 'border-gray-300 focus:ring-blue-600'}`}
           />
-          <span className="absolute center pl-2 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
+          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
         </div>
+        {discountError && (
+          <p className="mt-1 text-sm text-red-600">{discountError}</p>
+        )}
       </div>
 
       {/* Rejection Reason Section */}
@@ -193,7 +238,7 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
             <span>₱{order.total.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-red-600">
-            <span>Discount ({discountPercent}%):</span>
+            <span>Discount ({discountPct}%):</span>
             <span>-₱{discountAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-lg font-semibold">
