@@ -618,8 +618,27 @@ const CustomerPurchaseForecast = () => {
                   textAnchor="end"
                   height={80}
                 />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} stroke="#64748b" />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} stroke="#64748b" />
+                <YAxis 
+                  yAxisId="left" 
+                  tick={{ fontSize: 12 }} 
+                  stroke="#64748b"
+                  tickFormatter={(value) => formatNumber(value)}
+                />
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="right" 
+                  tick={{ fontSize: 12 }} 
+                  stroke="#64748b"
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) {
+                      return `₱${(value / 1000000).toFixed(1)}M`;
+                    } else if (value >= 1000) {
+                      return `₱${(value / 1000).toFixed(0)}K`;
+                    } else {
+                      return `₱${value}`;
+                    }
+                  }}
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Line
@@ -835,8 +854,27 @@ const CustomerPurchaseForecast = () => {
                       textAnchor="end"
                       height={80}
                     />
-                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} stroke="#64748b" />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} stroke="#64748b" />
+                    <YAxis 
+                      yAxisId="left" 
+                      tick={{ fontSize: 12 }} 
+                      stroke="#64748b"
+                      tickFormatter={(value) => formatNumber(value)}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      tick={{ fontSize: 12 }} 
+                      stroke="#64748b"
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) {
+                          return `₱${(value / 1000000).toFixed(1)}M`;
+                        } else if (value >= 1000) {
+                          return `₱${(value / 1000).toFixed(0)}K`;
+                        } else {
+                          return `₱${value}`;
+                        }
+                      }}
+                    />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Line

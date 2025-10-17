@@ -615,7 +615,15 @@ const SalesTrend = () => {
                 <YAxis 
                   tick={{ fontSize: 12 }} 
                   stroke="#64748b"
-                  tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) {
+                      return `₱${(value / 1000000).toFixed(1)}M`;
+                    } else if (value >= 1000) {
+                      return `₱${(value / 1000).toFixed(0)}K`;
+                    } else {
+                      return `₱${value}`;
+                    }
+                  }}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
@@ -960,7 +968,15 @@ const SalesTrend = () => {
                       <YAxis 
                         tick={{ fontSize: 12 }} 
                         stroke="#64748b"
-                        tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}K`}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000) {
+                            return `₱${(value / 1000000).toFixed(1)}M`;
+                          } else if (value >= 1000) {
+                            return `₱${(value / 1000).toFixed(0)}K`;
+                          } else {
+                            return `₱${value}`;
+                          }
+                        }}
                       />
                       <Tooltip 
                         formatter={(value) => [formatCurrency(value), 'Predicted Sales']}
