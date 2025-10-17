@@ -16,7 +16,8 @@ import {
 import { 
   Users, 
   ShoppingCart, 
-  TrendingUp, 
+  TrendingUp,
+  TrendingDown, 
   Calendar,
   Brain,
   Sparkles,
@@ -565,7 +566,7 @@ const CustomerPurchaseForecast = () => {
 
             {/* Simple Footer */}
             <div className="text-sm text-gray-500">
-              This usually takes 5-10 seconds
+              This usually takes 10-20 seconds
             </div>
           </div>
         </LoadingModal>
@@ -891,12 +892,13 @@ const CustomerPurchaseForecast = () => {
                             <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(avgSize)}</td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(item.bulkOrdersAmount)}</td>
                             <td className="px-4 py-3 text-center">
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                                 momChange > 0 ? 'bg-green-100 text-green-800' : 
                                 momChange < 0 ? 'bg-red-100 text-red-800' : 
                                 'bg-gray-100 text-gray-800'
                               }`}>
                                 {momChange > 0 ? '+' : ''}{momChange}%
+                                {momChange > 0 ? <TrendingUp className="w-3 h-3" /> : momChange < 0 ? <TrendingDown className="w-3 h-3" /> : null}
                               </span>
                             </td>
                           </tr>
