@@ -157,4 +157,19 @@ router.get('/status/:paymentIntentId', protect, authorize('Client'), ctrl.getPay
 // @access  Private (Admin, Sales Marketing)
 router.get('/failed', protect, authorize('Admin', 'Sales Marketing'), ctrl.getFailedPayments);
 
+// @route   GET /api/payments/receipts/my
+// @desc    Get authenticated client's payment receipts
+// @access  Private (Client)
+router.get('/receipts/my', protect, authorize('Client'), ctrl.getMyPaymentReceipts);
+
+// @route   GET /api/payments/receipts/:receiptId
+// @desc    Get specific payment receipt details
+// @access  Private (Client)
+router.get('/receipts/:receiptId', protect, authorize('Client'), ctrl.getPaymentReceiptDetails);
+
+// @route   GET /api/payments/receipts/:receiptId/download
+// @desc    Download payment receipt as PDF
+// @access  Private (Client)
+router.get('/receipts/:receiptId/download', protect, authorize('Client'), ctrl.downloadPaymentReceipt);
+
 module.exports = router;

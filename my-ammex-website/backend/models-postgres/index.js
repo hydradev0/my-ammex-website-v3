@@ -1218,6 +1218,105 @@ const initializeModels = (sequelize) => {
     updatedAt: false
   });
 
+  // PaymentReceipt Model (for payment acknowledgement receipts)
+  const PaymentReceipt = sequelize.define('PaymentReceipt', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    receiptNumber: {
+      type: DataTypes.STRING,
+      field: 'receipt_number',
+      allowNull: false,
+      unique: true,
+      validate: {
+        notEmpty: { msg: 'Receipt number is required' }
+      }
+    },
+    paymentId: {
+      type: DataTypes.INTEGER,
+      field: 'payment_id',
+      allowNull: false,
+      references: {
+        model: 'Payment',
+        key: 'id'
+      }
+    },
+    invoiceId: {
+      type: DataTypes.INTEGER,
+      field: 'invoice_id',
+      allowNull: false,
+      references: {
+        model: 'Invoice',
+        key: 'id'
+      }
+    },
+    customerId: {
+      type: DataTypes.INTEGER,
+      field: 'customer_id',
+      allowNull: false,
+      references: {
+        model: 'Customer',
+        key: 'id'
+      }
+    },
+    paymentDate: {
+      type: DataTypes.DATE,
+      field: 'payment_date',
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        min: { args: [0.01], msg: 'Receipt amount must be greater than 0' }
+      }
+    },
+    totalAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'total_amount',
+      allowNull: false,
+      comment: 'Total invoice amount at time of payment'
+    },
+    remainingAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      field: 'remaining_amount',
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: 'Remaining balance after this payment'
+    },
+    paymentMethod: {
+      type: DataTypes.STRING,
+      field: 'payment_method',
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Payment method is required' }
+      }
+    },
+    paymentReference: {
+      type: DataTypes.STRING,
+      field: 'payment_reference',
+      allowNull: true,
+      comment: 'Transaction reference number from payment gateway'
+    },
+    status: {
+      type: DataTypes.ENUM('Partial', 'Completed'),
+      allowNull: false,
+      defaultValue: 'Partial'
+    },
+    receiptData: {
+      type: DataTypes.JSON,
+      field: 'receipt_data',
+      allowNull: true,
+      comment: 'Additional receipt data (invoice details, customer info, etc.)'
+    }
+  }, {
+    tableName: 'PaymentReceipt',
+    timestamps: true
+  });
+
   // Define relationships
   User.hasMany(Order, {
     foreignKey: 'userId',
@@ -1504,6 +1603,37 @@ const initializeModels = (sequelize) => {
     as: 'changer'
   });
 
+  // PaymentReceipt relationships
+  Payment.hasOne(PaymentReceipt, {
+    foreignKey: 'paymentId',
+    as: 'receipt'
+  });
+
+  PaymentReceipt.belongsTo(Payment, {
+    foreignKey: 'paymentId',
+    as: 'payment'
+  });
+
+  Invoice.hasMany(PaymentReceipt, {
+    foreignKey: 'invoiceId',
+    as: 'receipts'
+  });
+
+  PaymentReceipt.belongsTo(Invoice, {
+    foreignKey: 'invoiceId',
+    as: 'invoice'
+  });
+
+  Customer.hasMany(PaymentReceipt, {
+    foreignKey: 'customerId',
+    as: 'receipts'
+  });
+
+  PaymentReceipt.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+  });
+
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
@@ -1526,6 +1656,7 @@ const initializeModels = (sequelize) => {
     Bank,
     Payment,
     PaymentHistory,
+    PaymentReceipt,
     Notification,
     PriceHistory
   };

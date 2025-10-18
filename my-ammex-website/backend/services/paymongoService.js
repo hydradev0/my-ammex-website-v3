@@ -223,10 +223,11 @@ const verifyWebhookSignature = (payload, signature) => {
 const parseWebhookEvent = (body) => {
   try {
     const event = body.data;
+    
     return {
       id: event.id,
       type: event.attributes.type,
-      data: event.attributes.data,
+      data: event.attributes.data || event.attributes, // Use attributes directly if data is not available
       createdAt: event.attributes.created_at,
       updatedAt: event.attributes.updated_at
     };

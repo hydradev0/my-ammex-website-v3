@@ -75,6 +75,28 @@ const FailedPaymentsTab = ({
     }
   };
 
+  const getFailureMessage = (payment) => {
+    if (payment.failureMessage && payment.failureMessage !== 'unknown') {
+      return payment.failureMessage;
+    }
+    
+    // Map common PayMongo error codes to user-friendly messages
+    const errorMappings = {
+      'card_declined': 'Card was declined by the bank',
+      'insufficient_funds': 'Insufficient funds in the account',
+      'expired_card': 'Card has expired',
+      'invalid_card': 'Invalid card information provided',
+      'processing_error': 'Payment processing error occurred',
+      'authentication_required': 'Additional authentication required',
+      'cvv_required': 'CVV code is required',
+      'unknown': 'Payment failed - Contact support for assistance'
+    };
+    
+    return errorMappings[payment.failureCode] || 
+           payment.failureCode || 
+           'Payment failed - No additional details available';
+  };
+
   const handleContactCustomer = (payment) => {
     const customerEmail = payment.customer?.email1 || payment.customerEmail;
     if (customerEmail) {
@@ -207,7 +229,7 @@ const FailedPaymentsTab = ({
                           </span>
                         )}
                         <div className="text-sm text-gray-600 line-clamp-2">
-                          {payment.failureMessage || 'Payment failed'}
+                          {getFailureMessage(payment)}
                         </div>
                       </div>
                     </td>

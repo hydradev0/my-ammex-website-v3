@@ -749,7 +749,7 @@ const Payment = () => {
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
         title="Payment Submitted Successfully!"
-        message={`Your payment of ${formatCurrency(lastSubmittedAmount)} has been submitted for processing. You will receive a notification once it's confirmed.`}
+        message={`Your payment of ${formatCurrency(lastSubmittedAmount)} has been submitted for processing. You will receive a payment receipt once the transaction is confirmed. Check your invoices page to view your payment receipts.`}
         autoClose={false}
         showCloseButton={true}
       />

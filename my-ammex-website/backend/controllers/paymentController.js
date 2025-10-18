@@ -12,6 +12,79 @@ function generatePaymentNumber() {
   return `PAY-${yyyy}${mm}${dd}-${random}`;
 }
 
+// Generate unique receipt number
+async function generateReceiptNumber() {
+  const { PaymentReceipt } = getModels();
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  
+  // Get the count of receipts this year
+  const count = await PaymentReceipt.count({
+    where: {
+      receiptNumber: {
+        [require('sequelize').Op.like]: `RCP-${yyyy}-%`
+      }
+    }
+  });
+  
+  const nextNumber = String(count + 1).padStart(4, '0');
+  return `RCP-${yyyy}-${nextNumber}`;
+}
+
+// Create payment receipt after successful payment
+async function createPaymentReceipt(payment, invoice) {
+  try {
+    const { PaymentReceipt, Customer } = getModels();
+    
+    // Get customer details
+    const customer = await Customer.findByPk(payment.customerId);
+    if (!customer) {
+      console.error('Customer not found for payment:', payment.id);
+      return null;
+    }
+    
+    // Calculate remaining amount after this payment
+    const remainingAmount = Number(invoice.remainingBalance) || 0;
+    
+    // Determine status based on remaining balance
+    const status = remainingAmount <= 0 ? 'Completed' : 'Partial';
+    
+    // Generate receipt number
+    const receiptNumber = await generateReceiptNumber();
+    
+    // Prepare receipt data
+    const receiptData = {
+      invoiceNumber: invoice.invoiceNumber,
+      customerName: customer.customerName || customer.contactName,
+      customerEmail: customer.email1,
+      paymentMethod: payment.paymentMethod,
+      gatewayReference: payment.reference || payment.gatewayPaymentId
+    };
+    
+    // Create receipt
+    const receipt = await PaymentReceipt.create({
+      receiptNumber: receiptNumber,
+      paymentId: payment.id,
+      invoiceId: payment.invoiceId,
+      customerId: payment.customerId,
+      paymentDate: new Date(),
+      amount: payment.amount,
+      totalAmount: invoice.totalAmount,
+      remainingAmount: remainingAmount,
+      paymentMethod: payment.paymentMethod,
+      paymentReference: payment.reference || payment.gatewayPaymentId,
+      status: status,
+      receiptData: receiptData
+    });
+    
+    console.log('✓ Payment receipt created:', receipt.receiptNumber);
+    return receipt;
+  } catch (error) {
+    console.error('Error creating payment receipt:', error);
+    return null;
+  }
+}
+
 // Customer submits a payment
 const submitPayment = async (req, res, next) => {
   try {
@@ -1257,6 +1330,9 @@ async function handlePaymentPaid(paymentData, Payment, Invoice, Notification, Pa
       notes: 'Payment automatically approved via PayMongo gateway'
     });
 
+    // Create payment receipt
+    await createPaymentReceipt(payment, payment.invoice);
+
     // Create notification for customer
     await Notification.create({
       customerId: payment.customerId,
@@ -1296,8 +1372,23 @@ async function handlePaymentFailed(paymentData, Payment, Notification) {
     }
 
     // Extract failure information
-    const failureCode = paymentData.attributes.last_payment_error?.code || 'unknown';
-    const failureMessage = paymentData.attributes.last_payment_error?.message || 'Payment failed';
+    const lastError = paymentData.attributes.last_payment_error;
+    
+    // Try multiple possible error locations
+    const errorData = lastError || paymentData.attributes.error || paymentData.attributes.errors?.[0];
+    
+    const failureCode = errorData?.code || 
+                       errorData?.failed_code || 
+                       errorData?.type ||
+                       paymentData.attributes.status ||
+                       'unknown';
+                       
+    const failureMessage = errorData?.message || 
+                          errorData?.failed_message || 
+                          errorData?.detail ||
+                          errorData?.description ||
+                          paymentData.attributes.status || 
+                          'Payment failed';
 
     // Update payment status
     await payment.update({
@@ -1349,8 +1440,22 @@ async function handlePaymentIntentFailed(intentData, Payment, Notification) {
 
     // Extract failure information
     const lastError = intentData.attributes.last_payment_error;
-    const failureCode = lastError?.code || lastError?.failed_code || 'unknown';
-    const failureMessage = lastError?.message || lastError?.failed_message || 'Payment failed';
+    
+    // Try multiple possible error locations
+    const errorData = lastError || intentData.attributes.error || intentData.attributes.errors?.[0];
+    
+    const failureCode = errorData?.code || 
+                       errorData?.failed_code || 
+                       errorData?.type ||
+                       intentData.attributes.status ||
+                       'unknown';
+                       
+    const failureMessage = errorData?.message || 
+                          errorData?.failed_message || 
+                          errorData?.detail ||
+                          errorData?.description ||
+                          intentData.attributes.status || 
+                          'Payment failed';
 
     // Update payment status
     await payment.update({
@@ -1430,6 +1535,9 @@ async function handleSourceChargeable(sourceData, Payment, Invoice, Notification
       notes: 'E-wallet payment automatically approved via PayMongo gateway'
     });
 
+    // Create payment receipt
+    await createPaymentReceipt(payment, payment.invoice);
+
     // Create notification for customer
     await Notification.create({
       customerId: payment.customerId,
@@ -1473,6 +1581,7 @@ const getFailedPayments = async (req, res, next) => {
       order: [['updatedAt', 'DESC']]
     });
 
+
     res.json({
       success: true,
       data: payments
@@ -1480,6 +1589,184 @@ const getFailedPayments = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error fetching failed payments:', error);
+    next(error);
+  }
+};
+
+// Customer: Get all payment receipts
+const getMyPaymentReceipts = async (req, res, next) => {
+  try {
+    const { PaymentReceipt, Invoice, Customer } = getModels();
+    let customerId = req.user.customerId;
+
+    // Fallback: if token lacks customerId but role is Client, derive via linked Customer.userId
+    if (!customerId && req.user && req.user.role === 'Client') {
+      const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+      if (linkedCustomer) {
+        customerId = linkedCustomer.id;
+      }
+    }
+
+    if (!customerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Customer authentication required'
+      });
+    }
+
+    // Fetch all receipts for the customer
+    const receipts = await PaymentReceipt.findAll({
+      where: { customerId: customerId },
+      include: [
+        {
+          model: Invoice,
+          as: 'invoice',
+          attributes: ['id', 'invoiceNumber', 'totalAmount', 'dueDate']
+        }
+      ],
+      order: [['paymentDate', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: receipts
+    });
+
+  } catch (error) {
+    console.error('Error fetching payment receipts:', error);
+    next(error);
+  }
+};
+
+// Customer: Get specific payment receipt details
+const getPaymentReceiptDetails = async (req, res, next) => {
+  try {
+    const { PaymentReceipt, Invoice, Payment, Customer } = getModels();
+    const { receiptId } = req.params;
+    let customerId = req.user.customerId;
+
+    // Fallback: if token lacks customerId but role is Client, derive via linked Customer.userId
+    if (!customerId && req.user && req.user.role === 'Client') {
+      const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+      if (linkedCustomer) {
+        customerId = linkedCustomer.id;
+      }
+    }
+
+    if (!customerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Customer authentication required'
+      });
+    }
+
+    // Fetch receipt with related data
+    const receipt = await PaymentReceipt.findOne({
+      where: { 
+        id: receiptId,
+        customerId: customerId
+      },
+      include: [
+        {
+          model: Invoice,
+          as: 'invoice',
+          attributes: ['id', 'invoiceNumber', 'totalAmount', 'dueDate', 'invoiceDate']
+        },
+        {
+          model: Payment,
+          as: 'payment',
+          attributes: ['id', 'paymentNumber', 'paymentMethod', 'reference']
+        },
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'customerName', 'contactName', 'email1', 'street', 'city', 'postalCode', 'country']
+        }
+      ]
+    });
+
+    if (!receipt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment receipt not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: receipt
+    });
+
+  } catch (error) {
+    console.error('Error fetching payment receipt details:', error);
+    next(error);
+  }
+};
+
+// Customer: Download payment receipt as PDF
+const downloadPaymentReceipt = async (req, res, next) => {
+  try {
+    const { PaymentReceipt, Invoice, Payment, Customer } = getModels();
+    const { receiptId } = req.params;
+    let customerId = req.user.customerId;
+
+    // Fallback: if token lacks customerId but role is Client, derive via linked Customer.userId
+    if (!customerId && req.user && req.user.role === 'Client') {
+      const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+      if (linkedCustomer) {
+        customerId = linkedCustomer.id;
+      }
+    }
+
+    if (!customerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Customer authentication required'
+      });
+    }
+
+    // Fetch receipt with full details
+    const receipt = await PaymentReceipt.findOne({
+      where: { 
+        id: receiptId,
+        customerId: customerId
+      },
+      include: [
+        {
+          model: Invoice,
+          as: 'invoice',
+          attributes: ['id', 'invoiceNumber', 'totalAmount', 'dueDate', 'invoiceDate']
+        },
+        {
+          model: Payment,
+          as: 'payment',
+          attributes: ['id', 'paymentNumber', 'paymentMethod', 'reference']
+        },
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'customerName', 'contactName', 'email1', 'telephone1', 'street', 'city', 'postalCode', 'country']
+        }
+      ]
+    });
+
+    if (!receipt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment receipt not found'
+      });
+    }
+
+    // For now, return receipt data as JSON
+    // TODO: Implement actual PDF generation using a library like puppeteer or pdfkit
+    res.json({
+      success: true,
+      data: receipt,
+      message: 'PDF generation coming soon. Use this data to generate PDF on frontend.'
+    });
+
+  } catch (error) {
+    console.error('Error downloading payment receipt:', error);
     next(error);
   }
 };
@@ -1508,5 +1795,9 @@ module.exports = {
   createPaymentSource,
   handlePayMongoWebhook,
   getPaymentStatus,
-  getFailedPayments
+  getFailedPayments,
+  // Payment Receipt endpoints
+  getMyPaymentReceipts,
+  getPaymentReceiptDetails,
+  downloadPaymentReceipt
 };
