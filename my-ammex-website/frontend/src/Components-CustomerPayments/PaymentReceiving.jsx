@@ -55,7 +55,7 @@ const PaymentReceiving = () => {
           const balanceHistoryResponse = await getBalanceHistory();
           const bhRaw = (balanceHistoryResponse.data || []).map(h => ({
             id: h.id,
-            customerName: h.customer?.customer_name || 'Unknown',
+            customerName: h.customer?.customerName || 'Unknown',
             invoiceNumber: h.invoice?.invoiceNumber || '',
             invoiceId: h.invoice?.id,
             action: h.action,
@@ -93,7 +93,7 @@ const PaymentReceiving = () => {
           const paymentHistoryResponse = await getAllPaymentHistory();
           const phRaw = (paymentHistoryResponse.data || []).map(h => ({
             id: h.id,
-            customerName: h.customer?.customer_name || 'Unknown',
+            customerName: h.customer?.customerName || 'Unknown',
             invoiceNumber: h.invoice?.invoice_number || h.invoice?.invoiceNumber || '',
             invoiceId: h.invoice?.id,
             action: h.action,

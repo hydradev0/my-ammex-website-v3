@@ -532,7 +532,7 @@ const getPaymentHistory = async (req, res, next) => {
         { 
           model: Customer, 
           as: 'customer',
-          attributes: ['id', 'customer_name']
+          attributes: ['id', 'customerName']
         },
         { 
           model: User, 
@@ -564,7 +564,7 @@ const getAllPaymentHistory = async (req, res, next) => {
         { 
           model: Customer, 
           as: 'customer',
-          attributes: ['id', 'customer_name', 'contact_name']
+          attributes: ['id', 'customerName', 'contactName']
         },
         { 
           model: User, 
@@ -765,7 +765,7 @@ const getBalanceHistory = async (req, res, next) => {
         { 
           model: Customer, 
           as: 'customer',
-          attributes: ['id', 'customer_name', 'contact_name']
+          attributes: ['id', 'customerName', 'contactName']
         },
         { 
           model: Invoice, 
@@ -1252,7 +1252,7 @@ async function handlePaymentPaid(paymentData, Payment, Invoice, Notification, Pa
       customerId: payment.customerId,
       action: 'approved',
       amount: paymentAmount,
-      paymentMethod: 'paymongo',
+      paymentMethod: payment.paymentMethod || 'paymongo',
       reference: paymentData.id,
       notes: 'Payment automatically approved via PayMongo gateway'
     });
@@ -1425,7 +1425,7 @@ async function handleSourceChargeable(sourceData, Payment, Invoice, Notification
       customerId: payment.customerId,
       action: 'approved',
       amount: paymentAmount,
-      paymentMethod: 'paymongo',
+      paymentMethod: payment.paymentMethod || 'paymongo',
       reference: sourceData.id,
       notes: 'E-wallet payment automatically approved via PayMongo gateway'
     });
