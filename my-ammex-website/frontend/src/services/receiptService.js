@@ -3,8 +3,10 @@ import { apiCall } from '../utils/apiConfig';
 // Get all payment receipts for authenticated customer
 export const getMyPaymentReceipts = async () => {
   try {
-    const response = await apiCall.get('/payments/receipts/my');
-    return response.data;
+    const response = await apiCall('/payments/receipts/my', {
+      method: 'GET'
+    });
+    return response;
   } catch (error) {
     console.error('Error fetching payment receipts:', error);
     throw error;
@@ -14,8 +16,10 @@ export const getMyPaymentReceipts = async () => {
 // Get specific payment receipt details
 export const getPaymentReceiptDetails = async (receiptId) => {
   try {
-    const response = await apiCall.get(`/payments/receipts/${receiptId}`);
-    return response.data;
+    const response = await apiCall(`/payments/receipts/${receiptId}`, {
+      method: 'GET'
+    });
+    return response;
   } catch (error) {
     console.error('Error fetching payment receipt details:', error);
     throw error;
@@ -25,8 +29,10 @@ export const getPaymentReceiptDetails = async (receiptId) => {
 // Download payment receipt as PDF
 export const downloadPaymentReceipt = async (receiptId) => {
   try {
-    const response = await apiCall.get(`/payments/receipts/${receiptId}/download`);
-    return response.data;
+    const response = await apiCall(`/payments/receipts/${receiptId}/download`, {
+      method: 'GET'
+    });
+    return response;
   } catch (error) {
     console.error('Error downloading payment receipt:', error);
     throw error;
@@ -75,39 +81,54 @@ export const generateReceiptHTML = (receipt) => {
       <meta charset="UTF-8">
       <title>Payment Receipt - ${receipt.receiptNumber}</title>
       <style>
+        @media print {
+          @page { margin: 0; }
+          body { margin: 1cm; }
+        }
         body {
-          font-family: Arial, sans-serif;
+          font-family: 'Segoe UI', Arial, sans-serif;
           max-width: 800px;
           margin: 0 auto;
           padding: 40px 20px;
-          color: #333;
+          color: #1a1a1a;
+          background: white;
         }
         .receipt-header {
-          text-align: center;
-          border-bottom: 3px solid #3182ce;
+          border-bottom: 2px solid #1a1a1a;
           padding-bottom: 20px;
           margin-bottom: 30px;
         }
         .receipt-header h1 {
-          color: #3182ce;
-          margin: 0 0 10px 0;
-          font-size: 32px;
+          color: #1a1a1a;
+          margin: 0 0 5px 0;
+          font-size: 28px;
+          font-weight: 700;
+        }
+        .receipt-label {
+          font-size: 11px;
+          color: #666;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 5px;
         }
         .receipt-number {
-          font-size: 18px;
-          color: #666;
-          font-weight: bold;
+          font-size: 20px;
+          color: #1a1a1a;
+          font-weight: 600;
         }
         .section {
           margin-bottom: 30px;
+          page-break-inside: avoid;
         }
         .section-title {
-          font-size: 14px;
-          color: #666;
+          font-size: 11px;
+          color: #1a1a1a;
           text-transform: uppercase;
           letter-spacing: 1px;
-          margin-bottom: 10px;
-          font-weight: bold;
+          margin-bottom: 15px;
+          font-weight: 600;
+          border-bottom: 1px solid #e0e0e0;
+          padding-bottom: 8px;
         }
         .info-grid {
           display: grid;
@@ -119,89 +140,97 @@ export const generateReceiptHTML = (receipt) => {
           margin-bottom: 15px;
         }
         .info-label {
-          font-size: 12px;
+          font-size: 11px;
           color: #666;
-          margin-bottom: 5px;
+          margin-bottom: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
         .info-value {
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
-          color: #333;
+          color: #1a1a1a;
         }
         .amount-box {
-          background: #f7fafc;
-          border: 2px solid #3182ce;
-          border-radius: 8px;
-          padding: 20px;
-          text-align: center;
-          margin: 30px 0;
+          background: #f5f5f5;
+          border: 2px solid #1a1a1a;
+          border-radius: 4px;
+          padding: 24px;
+          text-align: right;
+          margin: 20px 0;
         }
         .amount-label {
-          font-size: 14px;
+          font-size: 12px;
           color: #666;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
-        .amount-value {
-          font-size: 36px;
-          font-weight: bold;
-          color: #3182ce;
-        }
-        .status-badge {
-          display: inline-block;
-          padding: 8px 16px;
-          border-radius: 20px;
-          font-size: 14px;
-          font-weight: 600;
-        }
-        .status-partial {
-          background: #fef3c7;
-          color: #92400e;
-        }
-        .status-completed {
-          background: #d1fae5;
-          color: #065f46;
-        }
-        .summary-table {
+         .amount-value {
+           font-size: 32px;
+           font-weight: 700;
+           color: #1a1a1a;
+         }
+         .summary-table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 20px;
+          margin-top: 15px;
         }
         .summary-table td {
-          padding: 12px;
-          border-bottom: 1px solid #e5e7eb;
+          padding: 10px 0;
+          border-bottom: 1px solid #e0e0e0;
+          font-size: 14px;
         }
         .summary-table td:first-child {
-          color: #666;
-          width: 40%;
+          color: #4a4a4a;
+          width: 50%;
         }
         .summary-table td:last-child {
           text-align: right;
           font-weight: 600;
+          color: #1a1a1a;
         }
-        .summary-table tr:last-child td {
-          border-bottom: none;
-          font-size: 18px;
-          padding-top: 15px;
+        .summary-table tr.total-row td {
+          border-top: 2px solid #1a1a1a;
+          border-bottom: 2px solid #1a1a1a;
+          font-size: 16px;
+          font-weight: 700;
+          padding: 15px 0;
+          color: #1a1a1a;
         }
         .footer {
-          margin-top: 50px;
+          margin-top: 40px;
           padding-top: 20px;
-          border-top: 2px solid #e5e7eb;
+          border-top: 1px solid #e0e0e0;
           text-align: center;
           color: #666;
-          font-size: 12px;
+          font-size: 10px;
+          page-break-inside: avoid;
         }
-        @media print {
-          body {
-            padding: 20px;
-          }
+        .confirmed-badge {
+          display: inline-block;
+          padding: 6px 12px;
+          background: #f5f5f5;
+          border: 1px solid #d0d0d0;
+          border-radius: 3px;
+          font-size: 12px;
+          margin-top: 10px;
         }
       </style>
     </head>
     <body>
       <div class="receipt-header">
-        <h1>PAYMENT RECEIPT</h1>
-        <div class="receipt-number">${receipt.receiptNumber}</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div class="receipt-label">Payment Receipt</div>
+            <h1>${receipt.receiptNumber}</h1>
+            <div class="confirmed-badge">✓ Payment Confirmed</div>
+          </div>
+          <div class="amount-box" style="margin: 0; max-width: 280px;">
+            <div class="amount-label">Amount Paid</div>
+            <div class="amount-value">${formatCurrency(receipt.amount)}</div>
+          </div>
+        </div>
       </div>
 
       <div class="section">
@@ -212,15 +241,10 @@ export const generateReceiptHTML = (receipt) => {
             <div class="info-value">${receipt.customer?.customerName || receipt.customer?.contactName || 'N/A'}</div>
           </div>
           <div class="info-item">
-            <div class="info-label">Email</div>
+            <div class="info-label">Email Address</div>
             <div class="info-value">${receipt.customer?.email1 || 'N/A'}</div>
           </div>
         </div>
-      </div>
-
-      <div class="amount-box">
-        <div class="amount-label">Payment Amount</div>
-        <div class="amount-value">${formatCurrency(receipt.amount)}</div>
       </div>
 
       <div class="section">
@@ -244,67 +268,65 @@ export const generateReceiptHTML = (receipt) => {
             <td>${receipt.paymentReference}</td>
           </tr>
           ` : ''}
-          <tr>
-            <td>Invoice Number</td>
-            <td>${receipt.invoice?.invoiceNumber || 'N/A'}</td>
-          </tr>
-          <tr>
-            <td>Status</td>
-            <td>
-              <span class="status-badge status-${receipt.status.toLowerCase()}">${receipt.status}</span>
-            </td>
-          </tr>
+           <tr>
+             <td>Invoice Number</td>
+             <td>${receipt.invoice?.invoiceNumber || 'N/A'}</td>
+           </tr>
         </table>
       </div>
 
       <div class="section">
-        <div class="section-title">Invoice Summary</div>
+        <div class="section-title">Payment Summary</div>
         <table class="summary-table">
           <tr>
-            <td>Total Invoice Amount</td>
+            <td>Invoice Total</td>
             <td>${formatCurrency(receipt.totalAmount)}</td>
           </tr>
           <tr>
-            <td>Payment Made</td>
-            <td>${formatCurrency(receipt.amount)}</td>
+            <td>This Payment</td>
+            <td>- ${formatCurrency(receipt.amount)}</td>
           </tr>
-          <tr>
-            <td>Remaining Balance</td>
-            <td style="color: ${Number(receipt.remainingAmount) > 0 ? '#dc2626' : '#059669'}">
-              ${formatCurrency(receipt.remainingAmount)}
-            </td>
+          <tr class="total-row">
+            <td>Balance Remaining</td>
+            <td>${formatCurrency(receipt.remainingAmount)}</td>
           </tr>
         </table>
       </div>
 
       <div class="footer">
-        <p>This is an automatically generated payment receipt.</p>
-        <p>Generated on ${formatDate(new Date())} at ${formatTime(new Date())}</p>
-        <p>For inquiries, please contact our support team.</p>
+        <p>This receipt serves as proof of payment. For inquiries, please contact our support team with your receipt number.</p>
+        <p style="margin-top: 10px;">Generated on ${formatDate(new Date())} at ${formatTime(new Date())}</p>
       </div>
     </body>
     </html>
   `;
 };
 
-// Print receipt
+// Print/Download receipt as PDF
 export const printReceipt = async (receiptId) => {
   try {
     const response = await getPaymentReceiptDetails(receiptId);
     const receipt = response.data;
     
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
     if (printWindow) {
       printWindow.document.write(generateReceiptHTML(receipt));
       printWindow.document.close();
       
-      // Wait for content to load then print
+      // Wait for content to load then trigger print dialog
       printWindow.onload = () => {
-        printWindow.print();
+        // Small delay to ensure styles are loaded
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 250);
       };
+    } else {
+      // Popup blocked - fallback message
+      alert('Please allow popups to download the receipt. Or check your browser settings.');
     }
   } catch (error) {
-    console.error('Error printing receipt:', error);
+    console.error('Error generating receipt:', error);
     throw error;
   }
 };
