@@ -1225,6 +1225,12 @@ async function handlePaymentPaid(paymentData, Payment, Invoice, Notification, Pa
       return;
     }
 
+    // Check if payment is already processed (idempotency check)
+    if (payment.status === 'succeeded') {
+      console.log('⚠️ Payment already processed, skipping duplicate:', payment.id);
+      return;
+    }
+
     // Update payment status
     await payment.update({
       status: 'succeeded',
@@ -1389,6 +1395,12 @@ async function handleSourceChargeable(sourceData, Payment, Invoice, Notification
 
     if (!payment) {
       console.error('Payment not found for source:', sourceData.id);
+      return;
+    }
+
+    // Check if payment is already processed (idempotency check)
+    if (payment.status === 'succeeded') {
+      console.log('⚠️ Payment already processed, skipping duplicate:', payment.id);
       return;
     }
 
