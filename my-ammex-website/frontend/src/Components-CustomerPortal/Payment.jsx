@@ -221,6 +221,7 @@ const Payment = () => {
           
           if (status === 'succeeded') {
             clearInterval(pollInterval);
+            console.log('✅ Payment succeeded! Showing success modal...');
             setLastSubmittedAmount(parseFloat(paymentAmount));
             setShowSuccessModal(true);
             setIsProcessing(false);
@@ -346,8 +347,10 @@ const Payment = () => {
                 startPaymentPolling(paymentIntentId);
               } else {
                 // Payment already succeeded
+                console.log('✅ Payment already succeeded! Showing success modal...');
                 setLastSubmittedAmount(amount);
                 setShowSuccessModal(true);
+                setIsProcessing(false);
               }
         } else {
           throw new Error('Unexpected payment status: ' + status);

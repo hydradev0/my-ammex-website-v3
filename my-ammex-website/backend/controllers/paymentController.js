@@ -1330,7 +1330,10 @@ async function handlePaymentPaid(paymentData, Payment, Invoice, Notification, Pa
       notes: 'Payment automatically approved via PayMongo gateway'
     });
 
-    // Create payment receipt
+    // Reload invoice with updated balance for receipt
+    await payment.invoice.reload();
+    
+    // Create payment receipt with updated invoice data
     await createPaymentReceipt(payment, payment.invoice);
 
     // Create notification for customer
@@ -1535,7 +1538,10 @@ async function handleSourceChargeable(sourceData, Payment, Invoice, Notification
       notes: 'E-wallet payment automatically approved via PayMongo gateway'
     });
 
-    // Create payment receipt
+    // Reload invoice with updated balance for receipt
+    await payment.invoice.reload();
+    
+    // Create payment receipt with updated invoice data
     await createPaymentReceipt(payment, payment.invoice);
 
     // Create notification for customer

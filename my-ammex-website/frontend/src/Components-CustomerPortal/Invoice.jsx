@@ -29,6 +29,7 @@ const Invoice = () => {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [paymentReceipts, setPaymentReceipts] = useState([]);
   const [isLoadingReceipts, setIsLoadingReceipts] = useState(false);
+  const [showPaymentSuccessNotification, setShowPaymentSuccessNotification] = useState(false);
   const modalRef = useRef(null);
   const paymentReceiptsModalRef = useRef(null);
   const receiptDetailModalRef = useRef(null);
@@ -49,15 +50,23 @@ const Invoice = () => {
               // Clear URL parameter to prevent infinite loops on reload
               window.history.replaceState({}, document.title, window.location.pathname);
               
-              // Show success message
-              console.log('Payment completed successfully!');
+              // Show success notification
+              setShowPaymentSuccessNotification(true);
+              console.log('✅ Payment completed successfully! Showing notification...');
               
-              // In production, webhooks will handle the payment processing
-              // The payment status will be updated automatically
+              // Auto-hide notification after 8 seconds
+              const hideTimer = setTimeout(() => {
+                setShowPaymentSuccessNotification(false);
+              }, 8000);
+              
+              // Cleanup timer on unmount
+              return () => clearTimeout(hideTimer);
             }
         
         if (paymentStatus === 'failed') {
           // E-wallet payment failed
+          window.history.replaceState({}, document.title, window.location.pathname);
+          // You can add a failure notification here if needed
         }
 
 
@@ -893,13 +902,13 @@ const Invoice = () => {
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={closeReceiptDetailModal}
-                  className="px-3 py-2 border cursor-pointer border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-2 border cursor-pointer border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Close
                 </button>
                 <button
                   onClick={() => handleDownloadReceipt(selectedReceipt.id)}
-                  className="flex items-center cursor-pointer gap-1 px-2 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center cursor-pointer gap-1 px-2 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   Download PDF
@@ -916,6 +925,39 @@ const Invoice = () => {
       {createPortal(invoiceModalContent, document.body)}
       {createPortal(paymentReceiptsModalContent, document.body)}
 
+      {/* Payment Success Notification */}
+      {showPaymentSuccessNotification && createPortal(
+        <div className="fixed top-4 right-4 z-[9999] transition-all duration-300 ease-out">
+          <div className="bg-white rounded-lg shadow-2xl border-l-4 border-green-500 p-4 max-w-md">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  Payment Successful!
+                </h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  Your payment has been processed successfully. Your receipt has been generated and is available below.
+                </p>
+                <button
+                  onClick={() => handleOpenPaymentReceiptsModal()}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 underline"
+                >
+                  View Payment Receipts
+                </button>
+              </div>
+              <button
+                onClick={() => setShowPaymentSuccessNotification(false)}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
