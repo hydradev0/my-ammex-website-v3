@@ -356,7 +356,8 @@ const Payment = () => {
         const { paymentMethodId } = methodResponse.data;
         
         // Step 3: Attach payment method to intent
-        const returnUrl = `${window.location.origin}/Products/Invoices?payment=success`;
+        const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+        const returnUrl = `${frontendUrl}/Products/Invoices?payment=success`;
         
         const attachResponse = await attachPaymentToIntent(
           paymentIntentId,

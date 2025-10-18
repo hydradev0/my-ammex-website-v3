@@ -135,6 +135,18 @@ router.post('/webhook/paymongo', express.raw({type: 'application/json'}), ctrl.h
 // @access  Public (webhook)
 router.post('/webhook', ctrl.handlePayMongoWebhook);
 
+// @route   GET /api/payments/webhook/test
+// @desc    Test webhook endpoint (to verify it's accessible)
+// @access  Public
+router.get('/webhook/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Webhook endpoint is accessible',
+    timestamp: new Date().toISOString(),
+    url: req.originalUrl
+  });
+});
+
 // @route   GET /api/payments/status/:paymentIntentId
 // @desc    Get payment status from PayMongo
 // @access  Private (Client)

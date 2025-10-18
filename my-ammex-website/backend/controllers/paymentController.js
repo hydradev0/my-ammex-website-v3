@@ -1096,50 +1096,80 @@ const createPaymentSource = async (req, res, next) => {
 // PayMongo: Webhook Handler
 const handlePayMongoWebhook = async (req, res, next) => {
   try {
+    console.log('========================================');
+    console.log('🔔 WEBHOOK RECEIVED');
+    console.log('Time:', new Date().toISOString());
+    console.log('Method:', req.method);
+    console.log('URL:', req.originalUrl);
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('========================================');
+    
     const { Payment, Invoice, Notification, PaymentHistory } = getModels();
     
     // Verify webhook signature (skip in development if testing locally)
     const signature = req.headers['paymongo-signature'];
     const rawBody = JSON.stringify(req.body);
     
+    console.log('Signature:', signature);
+    console.log('Has Signature:', !!signature);
+    
     if (signature && !paymongoService.verifyWebhookSignature(rawBody, signature)) {
+      console.error('❌ Invalid webhook signature');
       return res.status(401).json({
         success: false,
         message: 'Invalid webhook signature'
       });
     }
+    
+    console.log('✅ Signature verified (or skipped)');
 
     // Parse webhook event
     const event = paymongoService.parseWebhookEvent(req.body);
     
-    console.log('PayMongo webhook received:', event.type);
+    console.log('📦 Event Type:', event.type);
+    console.log('📦 Event ID:', event.id);
+    console.log('📦 Event Data:', JSON.stringify(event.data, null, 2));
 
     // Handle different event types
     switch (event.type) {
       case 'payment.paid':
+        console.log('▶️ Processing payment.paid event...');
         await handlePaymentPaid(event.data, Payment, Invoice, Notification, PaymentHistory);
+        console.log('✅ payment.paid processed');
         break;
       
       case 'payment.failed':
+        console.log('▶️ Processing payment.failed event...');
         await handlePaymentFailed(event.data, Payment, Notification);
+        console.log('✅ payment.failed processed');
         break;
       
       case 'payment_intent.payment_failed':
+        console.log('▶️ Processing payment_intent.payment_failed event...');
         await handlePaymentIntentFailed(event.data, Payment, Notification);
+        console.log('✅ payment_intent.payment_failed processed');
         break;
       
       case 'source.chargeable':
+        console.log('▶️ Processing source.chargeable event...');
         await handleSourceChargeable(event.data, Payment, Invoice, Notification, PaymentHistory);
+        console.log('✅ source.chargeable processed');
         break;
       
       default:
-        console.log('Unhandled webhook event type:', event.type);
+        console.log('⚠️ Unhandled webhook event type:', event.type);
     }
 
+    console.log('✅ Webhook processed successfully');
+    console.log('========================================\n');
+    
     res.json({ success: true, received: true });
 
   } catch (error) {
-    console.error('Error handling PayMongo webhook:', error);
+    console.error('❌ Error handling PayMongo webhook:', error);
+    console.error('Stack trace:', error.stack);
+    console.log('========================================\n');
     next(error);
   }
 };
