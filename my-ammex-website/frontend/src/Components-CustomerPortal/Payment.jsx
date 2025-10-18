@@ -9,8 +9,7 @@ import {
   createPaymentMethod,
   attachPaymentToIntent,
   createPaymentSource,
-  getPaymentStatus,
-  getMyPayments 
+  getPaymentStatus
 } from '../services/paymentService';
 
 const Payment = () => {
@@ -22,7 +21,6 @@ const Payment = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('card');
   const [validationErrors, setValidationErrors] = useState({});
-  const [existingPendingPayment, setExistingPendingPayment] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSubmittedAmount, setLastSubmittedAmount] = useState(0);
   const [paymentError, setPaymentError] = useState('');
@@ -166,38 +164,6 @@ const Payment = () => {
     loadInvoice();
   }, [invoiceId, navigate]);
 
-  // Check for existing pending payments
-  useEffect(() => {
-    const checkExistingPayments = async () => {
-      if (!invoice?.id) return;
-
-      try {
-        const response = await getMyPayments();
-        const myPayments = response.data || [];
-        
-        const pendingPaymentsForInvoice = myPayments.filter(payment => 
-          payment.invoiceId === invoice.id && 
-          (payment.status === 'pending_payment' || 
-           payment.status === 'processing' ||
-           payment.status === 'pending_approval')
-        );
-
-        const fullAmountPendingPayment = pendingPaymentsForInvoice.find(payment => 
-          payment.amount >= invoice.remainingAmount
-        );
-
-        if (fullAmountPendingPayment) {
-          setExistingPendingPayment(fullAmountPendingPayment);
-        } else {
-          setExistingPendingPayment(null);
-        }
-      } catch (error) {
-        console.error('Failed to check existing payments:', error);
-      }
-    };
-
-    checkExistingPayments();
-  }, [invoice]);
 
   const handleBack = () => {
     navigate('/Products/Invoices');
@@ -226,12 +192,6 @@ const Payment = () => {
       }
     }
 
-    if (existingPendingPayment && paymentAmount) {
-      const amount = parseFloat(paymentAmount);
-      if (amount >= invoice.remainingAmount) {
-        errors.amount = `You already have a pending payment for the full amount (${formatCurrency(existingPendingPayment.amount)}). Please wait for processing before submitting another payment.`;
-      }
-    }
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -323,7 +283,7 @@ const Payment = () => {
       const amount = parseFloat(paymentAmount);
 
       // Step 1: Create payment intent via backend
-      const intentResponse = await createPaymentIntent(invoice.id, amount);
+      const intentResponse = await createPaymentIntent(invoice.id, amount, selectedMethod);
       
       if (!intentResponse.success) {
         throw new Error(intentResponse.message || 'Failed to create payment');
@@ -523,29 +483,6 @@ const Payment = () => {
           </div>
         </div>
 
-        {/* Existing Pending Payment Warning */}
-        {existingPendingPayment && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Pending Payment In Progress
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    You have a pending payment for <strong>{formatCurrency(existingPendingPayment.amount)}</strong> submitted on{' '}
-                    <strong>{new Date(existingPendingPayment.submittedAt).toLocaleDateString()}</strong> for this invoice.
-                  </p>
-                  <p className="mt-1">
-                    Please wait for processing before submitting another payment for the full amount.
-                    You can still submit partial payments if needed.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Payment Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -565,11 +502,8 @@ const Payment = () => {
                   <button
                     type="button"
                     onClick={() => handleAmountChange(invoice.remainingAmount.toString())}
-                    disabled={!!existingPendingPayment}
                     className={`text-xs underline ${
-                      existingPendingPayment 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-[#3182ce] hover:text-[#2c5282] cursor-pointer'
+                      'text-[#3182ce] hover:text-[#2c5282] cursor-pointer'
                     }`}
                   >
                     Pay Full Amount ({formatCurrency(invoice.remainingAmount)})
@@ -790,7 +724,7 @@ const Payment = () => {
             <div className="flex justify-end">
               <button
                 onClick={handlePaymentSubmit}
-                disabled={isProcessing || !paymentAmount || (existingPendingPayment && paymentAmount && parseFloat(paymentAmount) >= invoice.remainingAmount)}
+                disabled={isProcessing || !paymentAmount}
                 className="flex items-center cursor-pointer px-8 py-3 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 {isProcessing ? (

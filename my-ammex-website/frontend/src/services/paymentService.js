@@ -140,10 +140,10 @@ export const getAllPaymentHistory = async () => {
 };
 
 // PayMongo: Create payment intent
-export const createPaymentIntent = async (invoiceId, amount) => {
+export const createPaymentIntent = async (invoiceId, amount, paymentMethod = 'card') => {
   return apiRequest('/payments/create-payment-intent', {
     method: 'POST',
-    body: JSON.stringify({ invoiceId, amount })
+    body: JSON.stringify({ invoiceId, amount, paymentMethod })
   });
 };
 

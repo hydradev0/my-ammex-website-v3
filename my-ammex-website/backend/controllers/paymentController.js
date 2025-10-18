@@ -826,7 +826,7 @@ const deleteRejectedPayment = async (req, res, next) => {
 const createPaymentIntent = async (req, res, next) => {
   try {
     const { Payment, Invoice, Customer } = getModels();
-    const { invoiceId, amount } = req.body;
+    const { invoiceId, amount, paymentMethod = 'card' } = req.body;
     let customerId = req.user.customerId;
 
     // Fallback: if token lacks customerId but role is Client, derive via linked Customer.userId
@@ -911,7 +911,7 @@ const createPaymentIntent = async (req, res, next) => {
       invoiceId: invoiceId,
       customerId: customerId,
       amount: paymentAmount,
-      paymentMethod: 'paymongo',
+      paymentMethod: paymentMethod,
       status: 'pending_payment',
       gatewayProvider: 'paymongo',
       gatewayPaymentId: paymentIntent.id,
@@ -1064,6 +1064,7 @@ const createPaymentSource = async (req, res, next) => {
     if (paymentId) {
       await Payment.update(
         {
+          paymentMethod: type,
           gatewayPaymentId: source.id,
           gatewayStatus: source.attributes.status,
           gatewayMetadata: source,
@@ -1466,7 +1467,7 @@ const getFailedPayments = async (req, res, next) => {
         { 
           model: Customer, 
           as: 'customer',
-          attributes: ['id', 'customer_name', 'contact_name', 'email1']
+          attributes: ['id', 'customerName', 'contactName', 'email1']
         }
       ],
       order: [['updatedAt', 'DESC']]

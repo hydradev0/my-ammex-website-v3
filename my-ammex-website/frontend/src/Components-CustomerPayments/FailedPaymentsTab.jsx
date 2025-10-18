@@ -22,7 +22,7 @@ const FailedPaymentsTab = ({
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       filtered = filtered.filter(payment =>
-        String(payment.customer?.customer_name || payment.customerName || '').toLowerCase().includes(q) ||
+        String(payment.customer?.customerName || payment.customerName || '').toLowerCase().includes(q) ||
         String(payment.invoice?.invoiceNumber || payment.invoiceNumber || '').toLowerCase().includes(q) ||
         String(payment.failureMessage || '').toLowerCase().includes(q)
       );
@@ -177,7 +177,7 @@ const FailedPaymentsTab = ({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {payment.customer?.customer_name || payment.customerName || 'Unknown'}
+                          {payment.customer?.customerName || payment.customerName || 'Unknown'}
                         </div>
                         <div className="text-sm text-gray-500">
                           {payment.customer?.email1 || payment.customerEmail || ''}
