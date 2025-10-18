@@ -55,12 +55,9 @@ const Invoice = () => {
               console.log('✅ Payment completed successfully! Showing notification...');
               
               // Auto-hide notification after 8 seconds
-              const hideTimer = setTimeout(() => {
+              setTimeout(() => {
                 setShowPaymentSuccessNotification(false);
               }, 8000);
-              
-              // Cleanup timer on unmount
-              return () => clearTimeout(hideTimer);
             }
         
         if (paymentStatus === 'failed') {
@@ -941,7 +938,7 @@ const Invoice = () => {
                   Your payment has been processed successfully. Your receipt has been generated and is available below.
                 </p>
                 <button
-                  onClick={() => handleOpenPaymentReceiptsModal()}
+                  onClick={() => handleViewPaymentReceipts()}
                   className="text-sm font-medium text-blue-600 hover:text-blue-700 underline"
                 >
                   View Payment Receipts
