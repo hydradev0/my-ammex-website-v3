@@ -1,5 +1,6 @@
 const { getModels } = require('../config/db');
 const { updateInvoicePayment } = require('../utils/invoiceUtils');
+const paymongoService = require('../services/paymongoService');
 
 // Generate unique payment number
 function generatePaymentNumber() {
@@ -821,6 +822,621 @@ const deleteRejectedPayment = async (req, res, next) => {
   }
 };
 
+// PayMongo: Create Payment Intent
+const createPaymentIntent = async (req, res, next) => {
+  try {
+    const { Payment, Invoice, Customer } = getModels();
+    const { invoiceId, amount } = req.body;
+    let customerId = req.user.customerId;
+
+    // Fallback: if token lacks customerId but role is Client, derive via linked Customer.userId
+    if (!customerId && req.user && req.user.role === 'Client') {
+      const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+      if (linkedCustomer) {
+        customerId = linkedCustomer.id;
+      }
+    }
+
+    if (!customerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Customer authentication required'
+      });
+    }
+
+    // Validate required fields
+    if (!invoiceId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invoice ID and amount are required'
+      });
+    }
+
+    // Check if invoice exists and belongs to customer
+    const invoice = await Invoice.findByPk(invoiceId, {
+      include: [{ model: Customer, as: 'customer' }]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
+      });
+    }
+
+    if (invoice.customerId !== customerId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only create payments for your own invoices'
+      });
+    }
+
+    // Check if invoice has remaining balance
+    const remainingBalance = Number(invoice.remainingBalance || invoice.totalAmount);
+    if (remainingBalance <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This invoice is already fully paid'
+      });
+    }
+
+    // Validate payment amount
+    const paymentAmount = Number(amount);
+    if (paymentAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment amount must be greater than 0'
+      });
+    }
+
+    if (paymentAmount > remainingBalance) {
+      return res.status(400).json({
+        success: false,
+        message: `Payment amount cannot exceed remaining balance of ₱${remainingBalance.toFixed(2)}`
+      });
+    }
+
+    // Create PayMongo Payment Intent
+    const description = `Payment for Invoice ${invoice.invoiceNumber}`;
+    const paymentIntent = await paymongoService.createPaymentIntent(
+      paymentAmount,
+      invoiceId,
+      customerId,
+      description
+    );
+
+    // Create payment record with pending_payment status
+    const payment = await Payment.create({
+      paymentNumber: generatePaymentNumber(),
+      invoiceId: invoiceId,
+      customerId: customerId,
+      amount: paymentAmount,
+      paymentMethod: 'paymongo',
+      status: 'pending_payment',
+      gatewayProvider: 'paymongo',
+      gatewayPaymentId: paymentIntent.id,
+      gatewayStatus: paymentIntent.attributes.status,
+      gatewayMetadata: paymentIntent
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Payment intent created successfully',
+      data: {
+        paymentId: payment.id,
+        clientKey: paymentIntent.attributes.client_key,
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.attributes.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating payment intent:', error);
+    next(error);
+  }
+};
+
+// PayMongo: Create Payment Method (Card)
+const createPaymentMethod = async (req, res, next) => {
+  try {
+    const { cardDetails, billingDetails } = req.body;
+
+    // Validate required fields
+    if (!cardDetails || !cardDetails.card_number || !cardDetails.exp_month || !cardDetails.exp_year || !cardDetails.cvc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Card number, expiry date, and CVC are required'
+      });
+    }
+
+    if (!billingDetails || !billingDetails.name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cardholder name is required'
+      });
+    }
+
+    // Create payment method via PayMongo
+    const paymentMethod = await paymongoService.createPaymentMethod(cardDetails, billingDetails);
+
+    res.status(201).json({
+      success: true,
+      message: 'Payment method created successfully',
+      data: {
+        paymentMethodId: paymentMethod.id,
+        type: paymentMethod.attributes.type,
+        details: paymentMethod.attributes.details
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating payment method:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create payment method'
+    });
+  }
+};
+
+// PayMongo: Attach Payment Method to Intent
+const attachPaymentToIntent = async (req, res, next) => {
+  try {
+    const { Payment } = getModels();
+    const { paymentIntentId, paymentMethodId, returnUrl, paymentId } = req.body;
+
+    // Validate required fields
+    if (!paymentIntentId || !paymentMethodId || !returnUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment intent ID, payment method ID, and return URL are required'
+      });
+    }
+
+    // Attach payment method to payment intent
+    const attachedIntent = await paymongoService.attachPaymentMethod(
+      paymentIntentId,
+      paymentMethodId,
+      returnUrl
+    );
+
+    // Update payment record if paymentId is provided
+    if (paymentId) {
+      await Payment.update(
+        {
+          gatewayStatus: attachedIntent.attributes.status,
+          gatewayMetadata: attachedIntent
+        },
+        { where: { id: paymentId } }
+      );
+    }
+
+    const response = {
+      success: true,
+      message: 'Payment method attached successfully',
+      data: {
+        paymentIntentId: attachedIntent.id,
+        status: attachedIntent.attributes.status,
+        nextAction: attachedIntent.attributes.next_action || null
+      }
+    };
+
+    res.status(200).json(response);
+
+  } catch (error) {
+    console.error('Error attaching payment method:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to attach payment method'
+    });
+  }
+};
+
+// PayMongo: Create Source (E-Wallets)
+const createPaymentSource = async (req, res, next) => {
+  try {
+    const { Payment } = getModels();
+    const { type, amount, invoiceId, paymentId } = req.body;
+
+    // Validate required fields
+    if (!type || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment type and amount are required'
+      });
+    }
+
+    // Build redirect URLs
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const redirectUrl = {
+      success: `${baseUrl}/Products/Invoices?payment=success`,
+      failed: `${baseUrl}/Products/Invoices?payment=failed`
+    };
+
+    const metadata = {
+      invoice_id: String(invoiceId || ''),
+      payment_id: String(paymentId || '')
+    };
+
+    // Create source via PayMongo
+    const source = await paymongoService.createSource(type, amount, redirectUrl, metadata);
+
+    // Update payment record if paymentId is provided
+    if (paymentId) {
+      await Payment.update(
+        {
+          gatewayPaymentId: source.id,
+          gatewayStatus: source.attributes.status,
+          gatewayMetadata: source,
+          status: 'processing'
+        },
+        { where: { id: paymentId } }
+      );
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Payment source created successfully',
+      data: {
+        sourceId: source.id,
+        type: source.attributes.type,
+        status: source.attributes.status,
+        checkoutUrl: source.attributes.redirect?.checkout_url
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating payment source:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create payment source'
+    });
+  }
+};
+
+// PayMongo: Webhook Handler
+const handlePayMongoWebhook = async (req, res, next) => {
+  try {
+    const { Payment, Invoice, Notification, PaymentHistory } = getModels();
+    
+    // Verify webhook signature (skip in development if testing locally)
+    const signature = req.headers['paymongo-signature'];
+    const rawBody = JSON.stringify(req.body);
+    
+    if (signature && !paymongoService.verifyWebhookSignature(rawBody, signature)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid webhook signature'
+      });
+    }
+
+    // Parse webhook event
+    const event = paymongoService.parseWebhookEvent(req.body);
+    
+    console.log('PayMongo webhook received:', event.type);
+
+    // Handle different event types
+    switch (event.type) {
+      case 'payment.paid':
+        await handlePaymentPaid(event.data, Payment, Invoice, Notification, PaymentHistory);
+        break;
+      
+      case 'payment.failed':
+        await handlePaymentFailed(event.data, Payment, Notification);
+        break;
+      
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data, Payment, Notification);
+        break;
+      
+      case 'source.chargeable':
+        await handleSourceChargeable(event.data, Payment, Invoice, Notification, PaymentHistory);
+        break;
+      
+      default:
+        console.log('Unhandled webhook event type:', event.type);
+    }
+
+    res.json({ success: true, received: true });
+
+  } catch (error) {
+    console.error('Error handling PayMongo webhook:', error);
+    next(error);
+  }
+};
+
+// Production: Get payment status from PayMongo
+const getPaymentStatus = async (req, res, next) => {
+  try {
+    const { paymentIntentId } = req.params;
+    
+    if (!paymentIntentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment Intent ID is required'
+      });
+    }
+
+    // Retrieve payment status from PayMongo
+    const paymentIntent = await paymongoService.retrievePaymentIntent(paymentIntentId);
+    
+    return res.json({
+      success: true,
+      data: {
+        status: paymentIntent.attributes.status,
+        amount: paymentIntent.attributes.amount,
+        currency: paymentIntent.attributes.currency,
+        metadata: paymentIntent.attributes.metadata
+      }
+    });
+
+  } catch (error) {
+    console.error('Error retrieving payment status:', error);
+    next(error);
+  }
+};
+
+// Helper: Handle payment.paid event
+async function handlePaymentPaid(paymentData, Payment, Invoice, Notification, PaymentHistory) {
+  try {
+    const paymentIntentId = paymentData.attributes.payment_intent_id;
+    
+    // Find payment record
+    const payment = await Payment.findOne({
+      where: { gatewayPaymentId: paymentIntentId },
+      include: [{ model: Invoice, as: 'invoice' }]
+    });
+
+    if (!payment) {
+      console.error('Payment not found for intent:', paymentIntentId);
+      return;
+    }
+
+    // Update payment status
+    await payment.update({
+      status: 'succeeded',
+      gatewayStatus: 'succeeded',
+      gatewayMetadata: paymentData,
+      reference: paymentData.id,
+      reviewedAt: new Date()
+    });
+
+    // Update invoice payment
+    const paymentAmount = Number(payment.amount);
+    const invoiceUpdate = await updateInvoicePayment(payment.invoiceId, paymentAmount);
+
+    // Create payment history record
+    await PaymentHistory.create({
+      paymentId: payment.id,
+      invoiceId: payment.invoiceId,
+      customerId: payment.customerId,
+      action: 'approved',
+      amount: paymentAmount,
+      paymentMethod: 'paymongo',
+      reference: paymentData.id,
+      notes: 'Payment automatically approved via PayMongo gateway'
+    });
+
+    // Create notification for customer
+    await Notification.create({
+      customerId: payment.customerId,
+      type: 'payment_approved',
+      title: 'Payment Successful',
+      message: `Your payment of <span class="font-semibold">₱${paymentAmount.toFixed(2)}</span> for invoice <span class="font-semibold">${payment.invoice.invoiceNumber}</span> has been successfully processed.`,
+      data: {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        amount: paymentAmount,
+        gatewayReference: paymentData.id
+      }
+    });
+
+    // Note: Admin will see this in Balance Tracking and Payment History tabs via PaymentHistory
+
+    console.log('Payment successfully processed:', payment.id);
+  } catch (error) {
+    console.error('Error handling payment.paid:', error);
+    throw error;
+  }
+}
+
+// Helper: Handle payment.failed event
+async function handlePaymentFailed(paymentData, Payment, Notification) {
+  try {
+    const paymentIntentId = paymentData.attributes.payment_intent_id;
+    
+    // Find payment record
+    const payment = await Payment.findOne({
+      where: { gatewayPaymentId: paymentIntentId }
+    });
+
+    if (!payment) {
+      console.error('Payment not found for intent:', paymentIntentId);
+      return;
+    }
+
+    // Extract failure information
+    const failureCode = paymentData.attributes.last_payment_error?.code || 'unknown';
+    const failureMessage = paymentData.attributes.last_payment_error?.message || 'Payment failed';
+
+    // Update payment status
+    await payment.update({
+      status: 'failed',
+      gatewayStatus: 'failed',
+      gatewayMetadata: paymentData,
+      failureCode: failureCode,
+      failureMessage: failureMessage
+    });
+
+    // Create notification for customer
+    await Notification.create({
+      customerId: payment.customerId,
+      type: 'payment_rejected',
+      title: 'Payment Failed',
+      message: `Your payment of <span class="font-semibold">₱${payment.amount}</span> could not be processed. Reason: <span class="font-medium text-red-500">${failureMessage}</span>`,
+      data: {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        amount: payment.amount,
+        failureCode: failureCode,
+        failureMessage: failureMessage
+      }
+    });
+
+    // Note: Admin will see failed payments in the Failed Payments tab
+
+    console.log('Payment failed:', payment.id, failureCode);
+  } catch (error) {
+    console.error('Error handling payment.failed:', error);
+    throw error;
+  }
+}
+
+// Helper: Handle payment_intent.payment_failed event
+async function handlePaymentIntentFailed(intentData, Payment, Notification) {
+  try {
+    const paymentIntentId = intentData.id;
+    
+    // Find payment record
+    const payment = await Payment.findOne({
+      where: { gatewayPaymentId: paymentIntentId }
+    });
+
+    if (!payment) {
+      console.error('Payment not found for intent:', paymentIntentId);
+      return;
+    }
+
+    // Extract failure information
+    const lastError = intentData.attributes.last_payment_error;
+    const failureCode = lastError?.code || lastError?.failed_code || 'unknown';
+    const failureMessage = lastError?.message || lastError?.failed_message || 'Payment failed';
+
+    // Update payment status
+    await payment.update({
+      status: 'failed',
+      gatewayStatus: intentData.attributes.status,
+      gatewayMetadata: intentData,
+      failureCode: failureCode,
+      failureMessage: failureMessage
+    });
+
+    // Create notification for customer
+    await Notification.create({
+      customerId: payment.customerId,
+      type: 'payment_rejected',
+      title: 'Payment Failed',
+      message: `Your payment of <span class="font-semibold">₱${payment.amount}</span> could not be processed. Reason: <span class="font-medium text-red-500">${failureMessage}</span>`,
+      data: {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        amount: payment.amount,
+        failureCode: failureCode,
+        failureMessage: failureMessage
+      }
+    });
+
+    console.log('Payment intent failed:', payment.id, failureCode);
+  } catch (error) {
+    console.error('Error handling payment_intent.payment_failed:', error);
+    throw error;
+  }
+}
+
+// Helper: Handle source.chargeable event (for e-wallets)
+async function handleSourceChargeable(sourceData, Payment, Invoice, Notification, PaymentHistory) {
+  try {
+    console.log('Source chargeable event received:', sourceData.id);
+    
+    // Find payment by source ID
+    const payment = await Payment.findOne({
+      where: { gatewayPaymentId: sourceData.id },
+      include: [{ model: Invoice, as: 'invoice' }]
+    });
+
+    if (!payment) {
+      console.error('Payment not found for source:', sourceData.id);
+      return;
+    }
+
+    // Update payment status to succeeded
+    await payment.update({
+      status: 'succeeded',
+      gatewayStatus: 'succeeded',
+      gatewayMetadata: sourceData,
+      reference: sourceData.id,
+      reviewedAt: new Date()
+    });
+
+    // Update invoice payment
+    const paymentAmount = Number(payment.amount);
+    const invoiceUpdate = await updateInvoicePayment(payment.invoiceId, paymentAmount);
+
+    // Create payment history record
+    await PaymentHistory.create({
+      paymentId: payment.id,
+      invoiceId: payment.invoiceId,
+      customerId: payment.customerId,
+      action: 'approved',
+      amount: paymentAmount,
+      paymentMethod: 'paymongo',
+      reference: sourceData.id,
+      notes: 'E-wallet payment automatically approved via PayMongo gateway'
+    });
+
+    // Create notification for customer
+    await Notification.create({
+      customerId: payment.customerId,
+      type: 'payment_approved',
+      title: 'Payment Successful',
+      message: `Your payment of <span class="font-semibold">₱${paymentAmount.toFixed(2)}</span> for invoice <span class="font-semibold">${payment.invoice.invoiceNumber}</span> has been successfully processed.`,
+      data: {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        amount: paymentAmount,
+        gatewayReference: sourceData.id
+      }
+    });
+
+    console.log('E-wallet payment successfully processed:', payment.id);
+  } catch (error) {
+    console.error('Error handling source.chargeable:', error);
+    throw error;
+  }
+}
+
+// Admin: Get failed payments
+const getFailedPayments = async (req, res, next) => {
+  try {
+    const { Payment, Invoice, Customer } = getModels();
+
+    const payments = await Payment.findAll({
+      where: { status: 'failed' },
+      include: [
+        { 
+          model: Invoice, 
+          as: 'invoice',
+          attributes: ['id', 'invoiceNumber', 'totalAmount', 'remainingBalance', 'status']
+        },
+        { 
+          model: Customer, 
+          as: 'customer',
+          attributes: ['id', 'customer_name', 'contact_name', 'email1']
+        }
+      ],
+      order: [['updatedAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: payments
+    });
+
+  } catch (error) {
+    console.error('Error fetching failed payments:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   submitPayment,
   getMyPayments,
@@ -837,5 +1453,13 @@ module.exports = {
   markAllNotificationsAsRead,
   getBalanceHistory,
   reapproveRejectedPayment,
-  deleteRejectedPayment
+  deleteRejectedPayment,
+  // PayMongo endpoints
+  createPaymentIntent,
+  createPaymentMethod,
+  attachPaymentToIntent,
+  createPaymentSource,
+  handlePayMongoWebhook,
+  getPaymentStatus,
+  getFailedPayments
 };

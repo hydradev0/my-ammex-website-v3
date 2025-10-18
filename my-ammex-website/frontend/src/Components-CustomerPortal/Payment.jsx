@@ -1,45 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, X, DollarSign } from 'lucide-react';
+import { ArrowLeft, ChevronRight, DollarSign, CreditCard, Wallet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
-import QRCodeModal from './QRCodeModal';
 import SuccessModal from '../Components/SuccessModal';
 import { getMyInvoices } from '../services/invoiceService';
-import { fetchPaymentMethods } from '../services/paymentMethodsService';
-import { fetchBanks } from '../services/banksService';
-import { submitPayment, getMyPayments } from '../services/paymentService';
+import { 
+  createPaymentIntent, 
+  createPaymentMethod,
+  attachPaymentToIntent,
+  createPaymentSource,
+  getPaymentStatus,
+  getMyPayments 
+} from '../services/paymentService';
 
 const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [invoice, setInvoice] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [paymentData, setPaymentData] = useState({
-    amount: '',
-    paymentMethod: '',
-    reference: ''
-  });
-  const [invoiceReceipts, setInvoiceReceipts] = useState({});
-  const [showMethodMenu, setShowMethodMenu] = useState(false);
-  const [showBankMenu, setShowBankMenu] = useState(false);
-  const [selectedBank, setSelectedBank] = useState('');
-  const [showQRModal, setShowQRModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState('card');
   const [validationErrors, setValidationErrors] = useState({});
-  const [isDraftSaved, setIsDraftSaved] = useState(false);
   const [existingPendingPayment, setExistingPendingPayment] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSubmittedAmount, setLastSubmittedAmount] = useState(0);
-  const methodMenuRef = useRef(null);
-  const bankMenuRef = useRef(null);
-
-  // Methods and Banks from backend
-  const [methods, setMethods] = useState([]);
-  const [bankOptions, setBankOptions] = useState([]);
+  const [paymentError, setPaymentError] = useState('');
+  
+  // Card details state
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
 
   // Get invoice ID from URL params
   const invoiceId = new URLSearchParams(location.search).get('invoiceId');
+
+  // Payment methods configuration
+  const paymentMethods = [
+    { key: 'card', label: 'Credit/Debit Card', icon: CreditCard, description: 'Visa, Mastercard, JCB' },
+    { key: 'gcash', label: 'GCash', icon: Wallet, description: 'Pay via GCash e-wallet' },
+    { key: 'grab_pay', label: 'GrabPay', icon: Wallet, description: 'Pay via GrabPay' },
+    { key: 'paymaya', label: 'Maya', icon: Wallet, description: 'Pay via Maya (PayMaya)' }
+  ];
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -50,10 +53,82 @@ const Payment = () => {
 
       setIsLoading(true);
       try {
+        // Check if returning from 3DS authentication
+        const pendingPaymentIntentId = sessionStorage.getItem('pendingPaymentIntentId');
+        if (pendingPaymentIntentId) {
+          sessionStorage.removeItem('pendingPaymentIntentId');
+          
+          // Complete the payment after 3DS
+          try {
+            const completeResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/payments/complete-payment-manually`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ paymentIntentId: pendingPaymentIntentId })
+            });
+            
+            const completeData = await completeResponse.json();
+            
+            if (completeData.success) {
+              console.log('Payment completed after 3DS:', completeData);
+              navigate('/Products/Invoices?payment=success');
+              return;
+            }
+          } catch (err) {
+            console.error('Error completing payment after 3DS:', err);
+          }
+        }
+
+        // Check if returning from GCash/e-wallet payment
+        const urlParams = new URLSearchParams(location.search);
+        const paymentStatus = urlParams.get('payment');
+        const sourceId = urlParams.get('source_id');
+        
+        if (paymentStatus === 'success' && sourceId) {
+          console.log('Returning from GCash payment:', sourceId);
+          
+          // In development, manually complete the e-wallet payment
+          if (import.meta.env.DEV) {
+            try {
+              console.log('Development mode: Completing e-wallet payment...');
+              const completeResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/payments/complete-payment-manually`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ paymentIntentId: sourceId })
+              });
+              
+              const completeData = await completeResponse.json();
+              
+              if (completeData.success) {
+                console.log('E-wallet payment completed:', completeData);
+                navigate('/Products/Invoices?payment=success');
+                return;
+              }
+            } catch (err) {
+              console.error('Error completing e-wallet payment:', err);
+            }
+          } else {
+            // In production, webhook will handle it
+            console.log('Production mode: Webhook will handle e-wallet payment');
+            navigate('/Products/Invoices?payment=success');
+            return;
+          }
+        }
+        
+        if (paymentStatus === 'failed') {
+          console.log('E-wallet payment failed');
+          navigate('/Products/Invoices?payment=failed');
+          return;
+        }
+
         const response = await getMyInvoices();
         const invoiceData = response.data || [];
         
-        // Find the specific invoice
         const foundInvoice = invoiceData.find(inv => inv.id === parseInt(invoiceId));
         
         if (!foundInvoice) {
@@ -61,7 +136,6 @@ const Payment = () => {
           return;
         }
 
-        // Transform backend data to match frontend format
         const transformedInvoice = {
           id: foundInvoice.id,
           invoiceNumber: foundInvoice.invoiceNumber,
@@ -73,30 +147,14 @@ const Payment = () => {
           remainingAmount: Number(foundInvoice.remainingAmount) || Number(foundInvoice.totalAmount) || 0,
           paymentStatus: foundInvoice.paymentStatus,
           paymentTerms: foundInvoice.paymentTerms,
-          items: (foundInvoice.items || []).map(item => {
-            const transformedItem = {
-              name: item.name || item.itemName || 'Unknown Item',
-              quantity: Number(item.quantity) || 0,
-              price: Number(item.unitPrice) || 0, 
-              total: Number(item.total) || 0, 
-              description: item.description || '',
-              unit: item.unit || 'pcs'
-            };
-            return transformedItem;
-          }),
           customer: {
             name: foundInvoice.customerName || 'Unknown Customer',
             email: foundInvoice.customerEmail || ''
-          },
-          ...(foundInvoice.lastPayment && { lastPayment: foundInvoice.lastPayment })
+          }
         };
 
         setInvoice(transformedInvoice);
-        setPaymentData({
-          amount: '',
-          paymentMethod: '',
-          reference: ''
-        });
+        setPaymentAmount('');
       } catch (error) {
         console.error('Failed to load invoice:', error);
         navigate('/Products/Invoices');
@@ -108,33 +166,7 @@ const Payment = () => {
     loadInvoice();
   }, [invoiceId, navigate]);
 
-  // Load payment methods and banks
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const [m, b] = await Promise.all([
-          fetchPaymentMethods(),
-          fetchBanks()
-        ]);
-        const activeMethods = (m || []).filter(x => x.isActive);
-        const activeBanks = (b || []).filter(x => x.isActive);
-        setMethods(activeMethods);
-        // map banks to UI structure { key, label, accountNumber, accountName, qrCodeBase64 }
-        setBankOptions(activeBanks.map(bank => ({
-          key: String(bank.id),
-          label: bank.bankName,
-          accountName: bank.accountName,
-          accountNumber: bank.accountNumber,
-          qrCodeBase64: bank.qrCodeBase64
-        })));
-      } catch (e) {
-        console.error('Failed to load payment config', e);
-      }
-    };
-    loadConfig();
-  }, []);
-
-  // Check for existing pending payments for this invoice
+  // Check for existing pending payments
   useEffect(() => {
     const checkExistingPayments = async () => {
       if (!invoice?.id) return;
@@ -143,19 +175,13 @@ const Payment = () => {
         const response = await getMyPayments();
         const myPayments = response.data || [];
         
-        // Find pending payments for this specific invoice
-        // Check for various possible pending status values
         const pendingPaymentsForInvoice = myPayments.filter(payment => 
           payment.invoiceId === invoice.id && 
-          (payment.status === 'pending' || 
-           payment.status === 'Pending' || 
-           payment.status === 'PENDING' ||
-           payment.status === 'Pending Approval' ||
-           payment.status === 'pending_approval' ||
-           payment.status === 'submitted')
+          (payment.status === 'pending_payment' || 
+           payment.status === 'processing' ||
+           payment.status === 'pending_approval')
         );
 
-        // Check if there's a pending payment for the full amount
         const fullAmountPendingPayment = pendingPaymentsForInvoice.find(payment => 
           payment.amount >= invoice.remainingAmount
         );
@@ -173,32 +199,6 @@ const Payment = () => {
     checkExistingPayments();
   }, [invoice]);
 
-  // Handle click outside method menu and bank menu
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showMethodMenu && methodMenuRef.current && !methodMenuRef.current.contains(event.target)) {
-        setShowMethodMenu(false);
-      }
-      if (showBankMenu && bankMenuRef.current && !bankMenuRef.current.contains(event.target)) {
-        setShowBankMenu(false);
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        if (showMethodMenu) setShowMethodMenu(false);
-        if (showBankMenu) setShowBankMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showMethodMenu, showBankMenu]);
-
   const handleBack = () => {
     navigate('/Products/Invoices');
   };
@@ -212,15 +212,13 @@ const Payment = () => {
     navigate('/Products/Invoices');
   };
 
-  // Validation functions
-  const validatePaymentData = () => {
+  const validatePaymentAmount = () => {
     const errors = {};
     
-    // Amount validation first
-    if (!paymentData.amount || paymentData.amount.toString().trim() === '') {
+    if (!paymentAmount || paymentAmount.trim() === '') {
       errors.amount = 'Payment amount is required';
     } else {
-      const amount = parseFloat(paymentData.amount);
+      const amount = parseFloat(paymentAmount);
       if (isNaN(amount) || amount <= 0) {
         errors.amount = 'Payment amount must be greater than 0';
       } else if (invoice && amount > invoice.remainingAmount) {
@@ -228,201 +226,199 @@ const Payment = () => {
       }
     }
 
-    // Check if there's already a pending payment for full amount AFTER basic amount validation
-    if (existingPendingPayment && paymentData.amount) {
-      const amount = parseFloat(paymentData.amount);
+    if (existingPendingPayment && paymentAmount) {
+      const amount = parseFloat(paymentAmount);
       if (amount >= invoice.remainingAmount) {
-        errors.amount = `You already have a pending payment for the full amount (${formatCurrency(existingPendingPayment.amount)}) submitted. Please wait for admin approval before submitting another payment if needed.`;
+        errors.amount = `You already have a pending payment for the full amount (${formatCurrency(existingPendingPayment.amount)}). Please wait for processing before submitting another payment.`;
       }
     }
 
-    // Payment method validation
-    if (!paymentData.paymentMethod) {
-      errors.paymentMethod = 'Payment method is required';
-    }
-
-    // Reference number is required for all payment submissions
-    if (!paymentData.reference || paymentData.reference.trim() === '') {
-      errors.reference = 'Reference number is required';
-    }
-
-    // Reference number validation (if provided)
-    if (paymentData.reference && paymentData.reference.length > 50) {
-      errors.reference = 'Reference number must be 50 characters or less';
-    }
-
-    // Set validation errors and return validation result
     setValidationErrors(errors);
-    const isValid = Object.keys(errors).length === 0;
-    
-    return { isValid, errors };
+    return Object.keys(errors).length === 0;
   };
 
-  const clearValidationErrors = () => {
-    setValidationErrors({});
+  const handleAmountChange = (value) => {
+    setPaymentAmount(value);
+    if (validationErrors.amount) {
+      setValidationErrors(prev => ({ ...prev, amount: undefined }));
+    }
+    setPaymentError('');
   };
 
-  const handleInputChange = (field, value) => {
-    setPaymentData(prev => ({ ...prev, [field]: value }));
+  // Production: Poll payment status until completion
+  const startPaymentPolling = async (paymentIntentId) => {
+    const maxAttempts = 30; // 5 minutes max (10 seconds * 30)
+    let attempts = 0;
     
-    // Clear validation error for this field when user starts typing
-    if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-    
-    // Reset selected bank when payment method changes
-    if (field === 'paymentMethod') {
-      setSelectedBank('');
-    }
-
-    // Real-time validation for amount field when there's an existing pending payment
-    if (field === 'amount' && existingPendingPayment && value) {
-      const amount = parseFloat(value);
-      if (!isNaN(amount) && amount >= invoice.remainingAmount) {
-        setValidationErrors(prev => ({
-          ...prev,
-          amount: `You already have a pending payment for the full amount (${formatCurrency(existingPendingPayment.amount)}) submitted. Please wait for admin approval before submitting another payment if needed.`
-        }));
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      
+      try {
+        const statusResponse = await getPaymentStatus(paymentIntentId);
+        
+        if (statusResponse.success) {
+          const { status } = statusResponse.data;
+          
+          if (status === 'succeeded') {
+            clearInterval(pollInterval);
+            setLastSubmittedAmount(parseFloat(paymentAmount));
+            setShowSuccessModal(true);
+            setIsProcessing(false);
+          } else if (status === 'failed') {
+            clearInterval(pollInterval);
+            setPaymentError('Payment failed. Please try again.');
+            setIsProcessing(false);
+          } else if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            setPaymentError('Payment is taking longer than expected. Please check your payment status.');
+            setIsProcessing(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling payment status:', error);
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          setPaymentError('Unable to verify payment status. Please contact support.');
+          setIsProcessing(false);
+        }
       }
-    }
-  };
-
-  const handleBankSelect = (bankKey) => {
-    setSelectedBank(bankKey);
-    setShowBankMenu(false);
-  };
-  // Map method name to internal key for UI compatibility
-  const mapMethodKey = (name) => {
-    const n = (name || '').toLowerCase();
-    if (n.includes('bank') || n.includes('transfer')) return 'bank_transfer';
-    if (n.includes('gcash')) return 'gcash';
-    if (n.includes('maya')) return 'maya';
-    if (n.includes('check')) return 'check';
-    return n.replace(/\s+/g, '_');
-  };
-
-  const methodOptions = methods.map(m => ({ key: mapMethodKey(m.name), label: m.name, raw: m }));
-  const selectedMethod = methods.find(m => mapMethodKey(m.name) === paymentData.paymentMethod);
-
-
-  const handleReceiptUpload = (file) => {
-    if (!file) return;
-    const existing = invoiceReceipts[invoice.id];
-    if (existing && existing.url) {
-      URL.revokeObjectURL(existing.url);
-    }
-    const objectUrl = URL.createObjectURL(file);
-    setInvoiceReceipts(prev => ({
-      ...prev,
-      [invoice.id]: {
-        file,
-        url: objectUrl,
-        name: file.name,
-        type: file.type,
-        size: file.size
-      }
-    }));
-  };
-
-  const handleRemoveReceipt = () => {
-    const existing = invoiceReceipts[invoice.id];
-    if (existing && existing.url) {
-      URL.revokeObjectURL(existing.url);
-    }
-    setInvoiceReceipts(prev => {
-      const newReceipts = { ...prev };
-      delete newReceipts[invoice.id];
-      return newReceipts;
-    });
+    }, 10000); // Poll every 10 seconds
   };
 
   const handlePaymentSubmit = async () => {
-    if (!invoice) return;
-
-    // Clear previous validation errors
-    clearValidationErrors();
-
-    // Validate payment data
-    const { isValid } = validatePaymentData();
-
-    if (!isValid) {
-      // Show validation errors and prevent submission
+    if (!invoice || !validatePaymentAmount()) {
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      const paymentAmount = parseFloat(paymentData.amount);
-
-      const receipt = invoiceReceipts[invoice.id];
-      const payload = {
-        invoiceId: invoice.id,
-        amount: paymentAmount,
-        paymentMethod: paymentData.paymentMethod,
-        reference: paymentData.reference || undefined,
-        attachments: receipt ? [{ name: receipt.name, type: receipt.type, size: receipt.size }] : []
-      };
-
-      await submitPayment(payload);
-
-      // Store the submitted amount for the success message
-      setLastSubmittedAmount(paymentAmount);
+    // Validate card details for card payments
+    if (selectedMethod === 'card') {
+      const errors = {};
       
-      // Show success modal instead of immediately navigating
-      setShowSuccessModal(true);
-      
-      // Clear form data
-      setPaymentData({
-        amount: '',
-        paymentMethod: '',
-        reference: ''
-      });
-      setSelectedBank('');
-      
-      // Clear any uploaded receipt
-      if (invoiceReceipts[invoice.id]) {
-        URL.revokeObjectURL(invoiceReceipts[invoice.id].url);
-        setInvoiceReceipts(prev => {
-          const newReceipts = { ...prev };
-          delete newReceipts[invoice.id];
-          return newReceipts;
-        });
+      if (!cardNumber || cardNumber.replace(/\s/g, '').length < 13) {
+        errors.cardNumber = 'Valid card number is required';
       }
       
-    } catch (error) {
-      console.error('Payment submission failed:', error);
-      setValidationErrors({ submit: typeof error === 'string' ? error : 'Payment submission failed. Please try again.' });
-    } finally {
-      setIsSubmitting(false);
+      if (!cardExpiry || !/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+        errors.cardExpiry = 'Valid expiry date (MM/YY) is required';
+      }
+      
+      if (!cardCvc || cardCvc.length < 3) {
+        errors.cardCvc = 'Valid CVC is required';
+      }
+      
+      if (!cardholderName || cardholderName.trim().length < 3) {
+        errors.cardholderName = 'Cardholder name is required';
+      }
+      
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(prev => ({ ...prev, ...errors }));
+        return;
+      }
     }
-  };
 
-  const handleSaveDraft = async () => {
-    if (!invoice) return;
-
-    setIsSavingDraft(true);
+    setIsProcessing(true);
+    setPaymentError('');
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const amount = parseFloat(paymentAmount);
 
-      // Here you would typically save the draft to localStorage or send to API
-      const draftData = {
-        invoiceId: invoice.id,
-        paymentData,
-        receipt: invoiceReceipts[invoice.id]?.file,
-        savedAt: new Date().toISOString()
-      };
-
-      localStorage.setItem(`payment_draft_${invoice.id}`, JSON.stringify(draftData));
+      // Step 1: Create payment intent via backend
+      const intentResponse = await createPaymentIntent(invoice.id, amount);
       
-      setIsDraftSaved(true);
-      setTimeout(() => setIsDraftSaved(false), 3000); // Hide success message after 3 seconds
+      if (!intentResponse.success) {
+        throw new Error(intentResponse.message || 'Failed to create payment');
+      }
+
+      const { paymentIntentId, paymentId } = intentResponse.data;
+
+      if (selectedMethod === 'card') {
+        // Step 2: Create payment method with card details
+        const [expMonth, expYear] = cardExpiry.split('/');
+        
+        const cardDetails = {
+          card_number: cardNumber.replace(/\s/g, ''),
+          exp_month: parseInt(expMonth, 10),
+          exp_year: parseInt('20' + expYear, 10),
+          cvc: cardCvc
+        };
+        
+        const billingDetails = {
+          name: cardholderName,
+          email: invoice.customer.email || ''
+        };
+        
+        const methodResponse = await createPaymentMethod(cardDetails, billingDetails);
+        
+        if (!methodResponse.success) {
+          throw new Error(methodResponse.message || 'Failed to create payment method');
+        }
+        
+        const { paymentMethodId } = methodResponse.data;
+        
+        // Step 3: Attach payment method to intent
+        const returnUrl = `${window.location.origin}/Products/Invoices?payment=success`;
+        
+        const attachResponse = await attachPaymentToIntent(
+          paymentIntentId,
+          paymentMethodId,
+          returnUrl,
+          paymentId
+        );
+        
+        if (!attachResponse.success) {
+          throw new Error(attachResponse.message || 'Failed to attach payment method');
+        }
+        
+        const { status, nextAction } = attachResponse.data;
+        
+        // Step 4: Handle response based on status
+        if (status === 'awaiting_next_action' && nextAction?.redirect?.url) {
+          // 3D Secure required - redirect to authentication page
+          // Store payment intent ID for completion after redirect
+          sessionStorage.setItem('pendingPaymentIntentId', paymentIntentId);
+          window.location.href = nextAction.redirect.url;
+            } else if (status === 'processing' || status === 'succeeded') {
+              // Payment is processing or succeeded
+              
+              if (status === 'processing') {
+                // Start polling for payment completion
+                startPaymentPolling(paymentIntentId);
+              } else {
+                // Payment already succeeded
+                setLastSubmittedAmount(amount);
+                setShowSuccessModal(true);
+              }
+        } else {
+          throw new Error('Unexpected payment status: ' + status);
+        }
+        
+      } else {
+        // E-wallet payment (GCash, GrabPay, Maya)
+        const sourceResponse = await createPaymentSource(
+          selectedMethod,
+          amount,
+          invoice.id,
+          paymentId
+        );
+        
+        if (!sourceResponse.success) {
+          throw new Error(sourceResponse.message || 'Failed to create payment source');
+        }
+        
+        const { checkoutUrl } = sourceResponse.data;
+        
+        if (checkoutUrl) {
+          // Redirect to e-wallet checkout page
+          window.location.href = checkoutUrl;
+        } else {
+          throw new Error('No checkout URL received from payment provider');
+        }
+      }
+
     } catch (error) {
-      console.error('Draft save failed:', error);
-    } finally {
-      setIsSavingDraft(false);
+      console.error('Payment submission failed:', error);
+      setPaymentError(error.message || 'Payment submission failed. Please try again.');
+      setIsProcessing(false);
     }
   };
 
@@ -530,22 +526,18 @@ const Payment = () => {
         {existingPendingPayment && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
+              <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
                 <h3 className="text-sm font-medium text-yellow-800">
-                  Pending Payment Already Submitted
+                  Pending Payment In Progress
                 </h3>
                 <div className="mt-2 text-sm text-yellow-700">
                   <p>
-                    You already have a pending payment for <strong>{formatCurrency(existingPendingPayment.amount)}</strong> submitted on{' '}
-                    <strong>{new Date(existingPendingPayment.submittedDate).toLocaleDateString()}</strong> for this invoice.
+                    You have a pending payment for <strong>{formatCurrency(existingPendingPayment.amount)}</strong> submitted on{' '}
+                    <strong>{new Date(existingPendingPayment.submittedAt).toLocaleDateString()}</strong> for this invoice.
                   </p>
                   <p className="mt-1">
-                    Please wait for admin approval before submitting another payment for the full amount.
+                    Please wait for processing before submitting another payment for the full amount.
                     You can still submit partial payments if needed.
                   </p>
                 </div>
@@ -558,390 +550,258 @@ const Payment = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Payment Information</h3>
+            <p className="text-sm text-gray-600 mt-1">Secure payment powered by PayMongo</p>
           </div>
           
           <div className="p-6 space-y-6">
-            {/* Payment Amount, Reference Number, and Payment Method Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Payment Amount */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">Payment Amount <span className="text-red-500">*</span></label>
-                  {invoice && (
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('amount', invoice.remainingAmount.toString())}
-                      disabled={!!existingPendingPayment}
-                      className={`text-xs underline ${
-                        existingPendingPayment 
-                          ? 'text-gray-400 cursor-not-allowed' 
-                          : 'text-[#3182ce] hover:text-[#2c5282]'
-                      }`}
-                      title={existingPendingPayment ? 'You already have a pending payment for the full amount' : ''}
-                    >
-                      Pay Full Amount ({formatCurrency(invoice.remainingAmount)})
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">₱</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={paymentData.amount}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^\d*(?:[.,]?\d{0,2})?$/.test(val)) {
-                        handleInputChange('amount', val.replace(',', '.'));
-                      }
-                    }}
-                    className={`w-full pl-6 pr-4 py-3 border rounded-lg focus:ring-2 focus:outline-none text-lg
-                    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
-                    ${validationErrors.amount ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
-                    placeholder="0.00"
-                  />
-                </div>
-                {validationErrors.amount && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.amount}</p>
-                )}
-              </div>
-
-              {/* Reference Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number<span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  value={paymentData.reference}
-                  onChange={(e) => handleInputChange('reference', e.target.value)}
-                  className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:outline-none
-                  ${validationErrors.reference ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
-                  placeholder="Transaction reference"
-                  maxLength={50}
-                />
-                {validationErrors.reference && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.reference}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">{paymentData.reference.length}/50 characters</p>
-              </div>
-
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method <span className="text-red-500">*</span></label>
-                <div className="relative" ref={methodMenuRef}>
+            {/* Payment Amount */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Payment Amount <span className="text-red-500">*</span>
+                </label>
+                {invoice && (
                   <button
                     type="button"
-                    onClick={() => setShowMethodMenu(!showMethodMenu)}
-                    className={`w-full px-3 py-3 border cursor-pointer rounded-lg text-left focus:ring-2 focus:outline-none flex items-center justify-between
-                    ${validationErrors.paymentMethod ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+                    onClick={() => handleAmountChange(invoice.remainingAmount.toString())}
+                    disabled={!!existingPendingPayment}
+                    className={`text-xs underline ${
+                      existingPendingPayment 
+                        ? 'text-gray-400 cursor-not-allowed' 
+                        : 'text-[#3182ce] hover:text-[#2c5282] cursor-pointer'
+                    }`}
                   >
-                    <span className={`${paymentData.paymentMethod ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {paymentData.paymentMethod
-                        ? (methodOptions.find(o => o.key === paymentData.paymentMethod)?.label || 'Select payment method')
-                        : 'Select payment method'}
-                    </span>
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    Pay Full Amount ({formatCurrency(invoice.remainingAmount)})
                   </button>
-                  {showMethodMenu && (
-                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
-                      {methodOptions.map(option => (
-                        <button
-                          key={option.key}
-                          type="button"
-                          onClick={() => { 
-                            handleInputChange('paymentMethod', option.key); 
-                            setShowMethodMenu(false); 
-                          }}
-                          className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${paymentData.paymentMethod === option.key ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
+                )}
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">₱</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={paymentAmount}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*(?:[.,]?\d{0,2})?$/.test(val)) {
+                      handleAmountChange(val.replace(',', '.'));
+                    }
+                  }}
+                  className={`w-full pl-6 pr-4 py-3 border rounded-lg focus:ring-2 focus:outline-none text-lg
+                  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                  ${validationErrors.amount ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+                  placeholder="0.00"
+                />
+              </div>
+              {validationErrors.amount && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.amount}</p>
+              )}
+            </div>
+
+            {/* Payment Method Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Payment Method <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {paymentMethods.map((method) => {
+                  const Icon = method.icon;
+                  return (
+                    <button
+                      key={method.key}
+                      type="button"
+                      onClick={() => setSelectedMethod(method.key)}
+                      className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedMethod === method.key
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className={`w-6 h-6 mt-0.5 mr-3 flex-shrink-0 ${
+                        selectedMethod === method.key ? 'text-blue-600' : 'text-gray-400'
+                      }`} />
+                      <div className="flex-1 text-left">
+                        <p className={`font-medium ${
+                          selectedMethod === method.key ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          {method.label}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">{method.description}</p>
+                      </div>
+                      {selectedMethod === method.key && (
+                        <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Card Details (only shown for card payments) */}
+            {selectedMethod === 'card' && (
+              <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Card Details</h4>
+                
+                {/* Card Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Card Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={cardNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                      setCardNumber(formatted);
+                      if (validationErrors.cardNumber) {
+                        setValidationErrors(prev => ({ ...prev, cardNumber: undefined }));
+                      }
+                    }}
+                    maxLength="19"
+                    placeholder="1234 5678 9012 3456"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${
+                      validationErrors.cardNumber 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
+                  />
+                  {validationErrors.cardNumber && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.cardNumber}</p>
                   )}
                 </div>
-                {validationErrors.paymentMethod && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.paymentMethod}</p>
-                )}
-              </div>
-            </div>
 
-            {/* QR Code Section */}
-            {paymentData.paymentMethod && (
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment QR Code</h4>
-                
-                {/* Bank Selection for Bank Transfer */}
-                {paymentData.paymentMethod === 'bank_transfer' && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Bank</label>
-                    <div className="relative" ref={bankMenuRef}>
-                      <button
-                        type="button"
-                        onClick={() => setShowBankMenu(!showBankMenu)}
-                        className="w-full px-3 py-3 border border-gray-300 rounded-lg text-left focus:ring-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
-                      >
-                        <span className={selectedBank ? 'text-gray-700' : 'text-gray-400'}>
-                          {selectedBank ? bankOptions.find(bank => bank.key === selectedBank)?.label : 'Select bank'}
-                        </span>
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                      </button>
-                      {showBankMenu && (
-                        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
-                          {bankOptions.map(bank => (
-                            <button
-                              key={bank.key}
-                              type="button"
-                              onClick={() => handleBankSelect(bank.key)}
-                              className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${selectedBank === bank.key ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                            >
-                              {bank.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="flex flex-col lg:flex-row gap-6 items-start">
-                  <div className="flex-shrink-0">
-                    <div 
-                      className="w-48 h-48 bg-white rounded-lg border-2 border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all duration-200"
-                      onClick={() => setShowQRModal(true)}
-                      title="Click to view larger QR code"
-                    >
-                      {paymentData.paymentMethod === 'bank_transfer' ? (
-                        selectedBank && bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64 ? (
-                          <img
-                            src={bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64}
-                            alt="Bank QR"
-                            className="w-40 h-40 object-contain rounded"
-                          />
-                        ) : (
-                          <div className="text-center">
-                            <div className="w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center mb-2">
-                              <span className="text-gray-600 font-bold text-lg">?</span>
-                            </div>
-                            <p className="text-xs text-gray-600">{selectedBank ? 'No QR available' : 'Select a bank'}</p>
-                          </div>
-                        )
-                      ) : selectedMethod?.qrCodeBase64 ? (
-                        <img
-                          src={selectedMethod.qrCodeBase64}
-                          alt="Payment QR"
-                          className="w-40 h-40 object-contain rounded"
-                        />
-                      ) : (
-                        <div className="text-center">
-                          <div className="w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center mb-2">
-                            <span className="text-gray-600 font-bold text-lg">?</span>
-                          </div>
-                          <p className="text-xs text-gray-600">QR Code</p>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 text-center">Click to view larger QR code</p>
+                {/* Expiry and CVC */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expiry Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={cardExpiry}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/\D/g, '');
+                        if (value.length >= 2) {
+                          value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                        }
+                        setCardExpiry(value);
+                        if (validationErrors.cardExpiry) {
+                          setValidationErrors(prev => ({ ...prev, cardExpiry: undefined }));
+                        }
+                      }}
+                      maxLength="5"
+                      placeholder="MM/YY"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${
+                        validationErrors.cardExpiry 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500'
+                      }`}
+                    />
+                    {validationErrors.cardExpiry && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.cardExpiry}</p>
+                    )}
                   </div>
 
-                  <div className="flex-1">
-                    <div className="space-y-3">
-                      <div>
-                        <h5 className="font-medium text-gray-900">
-                          {paymentData.paymentMethod === 'maya' ? 'Maya (PayMaya) Payment' :
-                           paymentData.paymentMethod === 'gcash' ? 'GCash Payment' :
-                           paymentData.paymentMethod === 'bank_transfer' ? 'Bank Transfer Payment' :
-                           paymentData.paymentMethod === 'check' ? 'Check Payment' :
-                           'Payment Instructions'}
-                        </h5>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {paymentData.paymentMethod === 'maya' ? 'Scan this QR code with your Maya app to complete the payment.' :
-                           paymentData.paymentMethod === 'gcash' ? 'Scan this QR code with your GCash app to complete the payment.' :
-                           paymentData.paymentMethod === 'bank_transfer' ? 'Use this QR code for bank transfer or scan with your banking app.' :
-                           paymentData.paymentMethod === 'check' ? 'Make check payable to the account below.' :
-                           'Follow the payment instructions for your selected method.'}
-                        </p>
-                      </div>
-                      
-                      {/* Account Number Display */}
-                      <div className="bg-white rounded-lg p-4 border border-gray-200">
-                        <h6 className="font-medium text-gray-900 mb-2">Account Details</h6>
-                        {paymentData.paymentMethod === 'bank_transfer' && selectedBank ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Bank Name:</span>
-                              <span className="text-sm font-medium text-gray-900">
-                                {bankOptions.find(bank => bank.key === selectedBank)?.label}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Account Name:</span>
-                              <span className="text-sm font-medium text-gray-900">{bankOptions.find(bank => bank.key === selectedBank)?.accountName || '—————'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Account Number:</span>
-                              <span className="text-sm font-medium text-gray-900">
-                                {bankOptions.find(bank => bank.key === selectedBank)?.accountNumber}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
-                            </div>
-                          </div>
-                        ) : paymentData.paymentMethod === 'bank_transfer' ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-center">
-                              <span className="text-sm text-gray-500">Please select a bank to view account details</span>
-                            </div>
-                          </div>
-                        ) : paymentData.paymentMethod === 'check' ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Payable to:</span>
-                              <span className="text-sm font-medium text-gray-900">Ammex Trading Corp.</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Amount:</span>
-                              <span className="text-sm font-medium text-gray-900">{formatCurrency(parseFloat(paymentData.amount) || 0)}</span>
-                            </div>
-                          </div>
-                        ) : selectedMethod ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Account Name:</span>
-                              <span className="text-sm font-medium text-gray-900">{selectedMethod.accountName || '—————'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Account Number:</span>
-                              <span className="text-sm font-medium text-gray-900">{selectedMethod.accountNumber || '—————'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Invoice Reference:</span>
-                              <span className="text-sm font-medium text-gray-900">{invoice?.invoiceNumber}</span>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                      {paymentData.amount && (
-                        <div className="bg-white rounded-lg p-4 border border-gray-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Amount to Pay:</span>
-                            <span className="font-semibold text-lg text-gray-900">{formatCurrency(parseFloat(paymentData.amount) || 0)}</span>
-                          </div>
-                        </div>
-                      )}
-                      <div className="text-xs text-gray-500">
-                        <p>• Make sure to include the reference number in your payment</p>
-                        <p>• Keep your payment receipt for verification</p>
-                        <p>• Payment will be processed within 1-2 business days</p>
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CVC <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={cardCvc}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setCardCvc(value);
+                        if (validationErrors.cardCvc) {
+                          setValidationErrors(prev => ({ ...prev, cardCvc: undefined }));
+                        }
+                      }}
+                      maxLength="4"
+                      placeholder="123"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${
+                        validationErrors.cardCvc 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500'
+                      }`}
+                    />
+                    {validationErrors.cardCvc && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.cardCvc}</p>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Payment Receipt - Moved to bottom */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Receipt (Optional)</label>
-              <div className="space-y-3">
+                {/* Cardholder Name */}
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cardholder Name <span className="text-red-500">*</span>
+                  </label>
                   <input
-                    id="receipt-upload-payment"
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => handleReceiptUpload(e.target.files && e.target.files[0])}
-                    className="block w-full cursor-pointer text-sm text-gray-700 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#3182ce] file:text-white hover:file:bg-[#2c5282]"
+                    type="text"
+                    value={cardholderName}
+                    onChange={(e) => {
+                      setCardholderName(e.target.value);
+                      if (validationErrors.cardholderName) {
+                        setValidationErrors(prev => ({ ...prev, cardholderName: undefined }));
+                      }
+                    }}
+                    placeholder="JUAN DELA CRUZ"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none uppercase ${
+                      validationErrors.cardholderName 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
                   />
-                  <p className="mt-1 text-xs text-gray-500">Upload an image or PDF of your payment receipt.</p>
+                  {validationErrors.cardholderName && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.cardholderName}</p>
+                  )}
                 </div>
-                {validationErrors.receipt && (
-                  <p className="text-sm text-red-600">{validationErrors.receipt}</p>
-                )}
+              </div>
+            )}
 
-                {invoiceReceipts[invoice.id] && (
-                  <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 break-all">{invoiceReceipts[invoice.id].name}</p>
-                      <p className="text-xs text-gray-500">{invoiceReceipts[invoice.id].type} • {(invoiceReceipts[invoice.id].size / 1024).toFixed(1)} KB</p>
-                      {invoiceReceipts[invoice.id].type.startsWith('image/') ? (
-                        <img
-                          src={invoiceReceipts[invoice.id].url}
-                          alt="Receipt preview"
-                          className="mt-2 max-h-40 rounded border border-gray-200"
-                        />
-                      ) : (
-                        <a
-                          href={invoiceReceipts[invoice.id].url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-block mt-2 text-[#3182ce] hover:text-[#2c5282] text-sm"
-                        >
-                          View PDF receipt
-                        </a>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleRemoveReceipt}
-                      className="shrink-0 cursor-pointer text-red-600 hover:text-red-800 text-sm font-medium"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
+            {/* Error Display */}
+            {paymentError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                  <p className="text-sm text-red-600">{paymentError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="text-sm text-blue-700">
+                  <p className="font-medium mb-1">Secure Payment</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Your payment is processed securely via PayMongo</li>
+                    <li>• Partial payments are supported</li>
+                    <li>• You will receive a confirmation once payment is successful</li>
+                    <li>• Payment will be reflected in your account within 1-2 business days</li>
+                  </ul>
+                </div>
               </div>
             </div>
-            {/* Form validation note */}
-            <p className="text-xs text-red-500">
-              <strong>Note:</strong> Required fields are marked with <span className="text-red-500">*</span>. 
-              Please fill in all required fields (Payment Amount, Reference Number, and Payment Method) before submitting your payment.
-            </p>
 
-            {/* Global validation error */}
-            {validationErrors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-600">{validationErrors.submit}</p>
-              </div>
-            )}
-
-            {/* Success message for draft save */}
-            {isDraftSaved && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-600">Draft saved successfully!</p>
-              </div>
-            )}
-
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={handleSaveDraft}
-                disabled={isSavingDraft || isSubmitting}
-                className="flex px-3 cursor-pointer py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {isSavingDraft ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  'Save as draft'
-                )}
-              </button>
+            {/* Submit Button */}
+            <div className="flex justify-end">
               <button
                 onClick={handlePaymentSubmit}
-                disabled={isSubmitting || isSavingDraft || (existingPendingPayment && paymentData.amount && parseFloat(paymentData.amount) >= invoice.remainingAmount)}
-                className="flex px-8 cursor-pointer py-3 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                title={existingPendingPayment && paymentData.amount && parseFloat(paymentData.amount) >= invoice.remainingAmount ? 'You already have a pending payment for the full amount' : ''}
+                disabled={isProcessing || !paymentAmount || (existingPendingPayment && paymentAmount && parseFloat(paymentAmount) >= invoice.remainingAmount)}
+                className="flex items-center cursor-pointer px-8 py-3 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                {isSubmitting ? (
+                {isProcessing ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Submitting...
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Processing...
                   </>
                 ) : (
-                  'Submit Payment'
+                  <>
+                    <DollarSign className="w-5 h-5 mr-2" />
+                    Pay {paymentAmount ? formatCurrency(parseFloat(paymentAmount)) : 'Now'}
+                  </>
                 )}
               </button>
             </div>
@@ -949,25 +809,12 @@ const Payment = () => {
         </div>
       </div>
 
-      {/* QR Code Modal */}
-      <QRCodeModal
-        isOpen={showQRModal}
-        onClose={() => setShowQRModal(false)}
-        paymentMethod={paymentData.paymentMethod}
-        selectedBank={selectedBank}
-        bankOptions={bankOptions}
-        methodQr={methodOptions.find(o => o.key === paymentData.paymentMethod)?.raw?.qrCodeBase64 || null}
-        bankQr={selectedBank ? bankOptions.find(b => b.key === selectedBank)?.qrCodeBase64 || null : null}
-        paymentAmount={paymentData.amount}
-        balance={invoice?.remainingAmount}
-      />
-
       {/* Success Modal */}
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
         title="Payment Submitted Successfully!"
-        message={`Your payment of ${formatCurrency(lastSubmittedAmount)} has been submitted for review. You will receive a notification once it's processed by our admin team.`}
+        message={`Your payment of ${formatCurrency(lastSubmittedAmount)} has been submitted for processing. You will receive a notification once it's confirmed.`}
         autoClose={false}
         showCloseButton={true}
       />
@@ -976,3 +823,4 @@ const Payment = () => {
 };
 
 export default Payment;
+

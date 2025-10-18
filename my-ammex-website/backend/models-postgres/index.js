@@ -948,7 +948,7 @@ const initializeModels = (sequelize) => {
       allowNull: true
     },
     status: {
-      type: DataTypes.ENUM('pending_approval', 'approved', 'rejected'),
+      type: DataTypes.ENUM('pending_payment', 'processing', 'succeeded', 'failed', 'pending_approval', 'approved', 'rejected'),
       allowNull: false,
       defaultValue: 'pending_approval'
     },
@@ -981,6 +981,42 @@ const initializeModels = (sequelize) => {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: []
+    },
+    gatewayProvider: {
+      type: DataTypes.STRING,
+      field: 'gateway_provider',
+      allowNull: true,
+      comment: 'Payment gateway provider (e.g., paymongo)'
+    },
+    gatewayPaymentId: {
+      type: DataTypes.STRING,
+      field: 'gateway_payment_id',
+      allowNull: true,
+      comment: 'External payment ID from gateway'
+    },
+    gatewayStatus: {
+      type: DataTypes.STRING,
+      field: 'gateway_status',
+      allowNull: true,
+      comment: 'Status from payment gateway'
+    },
+    gatewayMetadata: {
+      type: DataTypes.JSON,
+      field: 'gateway_metadata',
+      allowNull: true,
+      comment: 'Full gateway response metadata'
+    },
+    failureCode: {
+      type: DataTypes.STRING,
+      field: 'failure_code',
+      allowNull: true,
+      comment: 'Error code from payment gateway'
+    },
+    failureMessage: {
+      type: DataTypes.TEXT,
+      field: 'failure_message',
+      allowNull: true,
+      comment: 'Human-readable failure reason'
     }
   }, {
     tableName: 'Payment',

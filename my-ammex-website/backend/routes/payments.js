@@ -105,4 +105,44 @@ router.patch('/notifications/read-all', protect, authorize('Client', 'Admin', 'S
 // @access  Private (Admin, Sales Marketing)
 router.get('/balance-history', protect, authorize('Admin', 'Sales Marketing'), ctrl.getBalanceHistory);
 
+// @route   POST /api/payments/create-payment-intent
+// @desc    Create PayMongo payment intent for an invoice
+// @access  Private (Client)
+router.post('/create-payment-intent', protect, authorize('Client'), ctrl.createPaymentIntent);
+
+// @route   POST /api/payments/create-payment-method
+// @desc    Create PayMongo payment method (for card)
+// @access  Private (Client)
+router.post('/create-payment-method', protect, authorize('Client'), ctrl.createPaymentMethod);
+
+// @route   POST /api/payments/attach-payment-method
+// @desc    Attach payment method to payment intent
+// @access  Private (Client)
+router.post('/attach-payment-method', protect, authorize('Client'), ctrl.attachPaymentToIntent);
+
+// @route   POST /api/payments/create-payment-source
+// @desc    Create PayMongo source (for e-wallets)
+// @access  Private (Client)
+router.post('/create-payment-source', protect, authorize('Client'), ctrl.createPaymentSource);
+
+// @route   POST /api/payments/webhook/paymongo
+// @desc    PayMongo webhook handler
+// @access  Public (Verified via signature)
+router.post('/webhook/paymongo', express.raw({type: 'application/json'}), ctrl.handlePayMongoWebhook);
+
+// @route   POST /api/payments/webhook
+// @desc    PayMongo webhook endpoint
+// @access  Public (webhook)
+router.post('/webhook', ctrl.handlePayMongoWebhook);
+
+// @route   GET /api/payments/status/:paymentIntentId
+// @desc    Get payment status from PayMongo
+// @access  Private (Client)
+router.get('/status/:paymentIntentId', protect, authorize('Client'), ctrl.getPaymentStatus);
+
+// @route   GET /api/payments/failed
+// @desc    Get all failed payments
+// @access  Private (Admin, Sales Marketing)
+router.get('/failed', protect, authorize('Admin', 'Sales Marketing'), ctrl.getFailedPayments);
+
 module.exports = router;

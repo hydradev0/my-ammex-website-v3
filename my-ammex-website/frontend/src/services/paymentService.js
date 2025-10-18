@@ -138,3 +138,45 @@ export const getBalanceHistory = async () => {
 export const getAllPaymentHistory = async () => {
   return apiRequest('/payments/history');
 };
+
+// PayMongo: Create payment intent
+export const createPaymentIntent = async (invoiceId, amount) => {
+  return apiRequest('/payments/create-payment-intent', {
+    method: 'POST',
+    body: JSON.stringify({ invoiceId, amount })
+  });
+};
+
+// PayMongo: Create payment method (card)
+export const createPaymentMethod = async (cardDetails, billingDetails) => {
+  return apiRequest('/payments/create-payment-method', {
+    method: 'POST',
+    body: JSON.stringify({ cardDetails, billingDetails })
+  });
+};
+
+// PayMongo: Attach payment method to intent
+export const attachPaymentToIntent = async (paymentIntentId, paymentMethodId, returnUrl, paymentId) => {
+  return apiRequest('/payments/attach-payment-method', {
+    method: 'POST',
+    body: JSON.stringify({ paymentIntentId, paymentMethodId, returnUrl, paymentId })
+  });
+};
+
+// PayMongo: Create payment source (e-wallets)
+export const createPaymentSource = async (type, amount, invoiceId, paymentId) => {
+  return apiRequest('/payments/create-payment-source', {
+    method: 'POST',
+    body: JSON.stringify({ type, amount, invoiceId, paymentId })
+  });
+};
+
+// PayMongo: Get payment status
+export const getPaymentStatus = async (paymentIntentId) => {
+  return apiRequest(`/payments/status/${paymentIntentId}`);
+};
+
+// PayMongo: Get failed payments (Admin)
+export const getFailedPayments = async () => {
+  return apiRequest('/payments/failed');
+};

@@ -356,7 +356,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                       </p>
                     )}
                     {!quantityError && selectedQuantity === product.stock && (
-                      <p className="text-red-600 text-xs lg:text-sm mt-1">
+                      <p className="text-yellow-600 text-xs lg:text-sm mt-1">
                         You have reached the maximun quantity of {product.stock}
                       </p>
                     )}

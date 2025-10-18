@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Eye, FileText, Clock, CheckCircle, X, XCircle, CreditCard, DollarSign, Calendar, ChevronDown, ChevronUp, Upload, Download } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
@@ -8,6 +8,7 @@ import { getMyInvoices } from '../services/invoiceService';
 
 const Invoice = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // State for invoices
   const [invoices, setInvoices] = useState([]);
@@ -76,6 +77,26 @@ const Invoice = () => {
     const loadInvoices = async () => {
       setIsLoading(true);
       try {
+        // Check if returning from GCash/e-wallet payment
+        const urlParams = new URLSearchParams(location.search);
+        const paymentStatus = urlParams.get('payment');
+        
+            if (paymentStatus === 'success') {
+              // Clear URL parameter to prevent infinite loops on reload
+              window.history.replaceState({}, document.title, window.location.pathname);
+              
+              // Show success message
+              console.log('Payment completed successfully!');
+              
+              // In production, webhooks will handle the payment processing
+              // The payment status will be updated automatically
+            }
+        
+        if (paymentStatus === 'failed') {
+          // E-wallet payment failed
+        }
+
+
         // Load all invoices
         const response = await getMyInvoices();
         const allInvoices = response?.data || [];
@@ -570,7 +591,7 @@ const Invoice = () => {
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your invoices...</h3>
             <p className="text-gray-600">Please wait while we fetch your invoices</p>
           </div>
-        ) : paginatedInvoices.length === 0 ? (
+            ) : paginatedInvoices.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No Invoices Yet</h3>
