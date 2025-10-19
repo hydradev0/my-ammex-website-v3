@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, X } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, X, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
@@ -158,6 +158,13 @@ function TopBar() {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Settings size={16} /> Manage Accounts
+                </button>
+                )}
+                {user.role === 'Admin' && (<button
+                  onClick={() => navigate('/Admin/ImportData')}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Upload size={16} /> Import Data
                 </button>
                 )}
                 {(user.role === 'Sales Marketing' || user.role === 'Admin') && (<button

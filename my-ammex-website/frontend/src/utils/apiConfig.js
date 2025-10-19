@@ -1,10 +1,10 @@
 // API Configuration for different environments
 const getApiBaseUrl = () => {
   // Production environment with explicit API URL
-  if (import.meta.env.PROD && import.meta.env.VITE_API_URL) {
-    const apiUrl = import.meta.env.VITE_API_URL.trim();
+  if (import.meta.env.PROD && import.meta.env.VITE_API_BASE_URL) {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL.trim();
     if (!isValidUrl(apiUrl)) {
-      throw new Error(`Invalid VITE_API_URL: ${apiUrl}. Must be a valid URL.`);
+      throw new Error(`Invalid VITE_API_BASE_URL: ${apiUrl}. Must be a valid URL.`);
     }
     return apiUrl;
   }
@@ -12,7 +12,7 @@ const getApiBaseUrl = () => {
   // Development environment
   if (import.meta.env.DEV) {
     // Use explicit URL for development, or fallback to localhost backend
-    const devApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const devApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     return devApiUrl;
   }
   

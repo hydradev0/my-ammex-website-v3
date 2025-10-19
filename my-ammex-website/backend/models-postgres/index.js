@@ -1218,6 +1218,9 @@ const initializeModels = (sequelize) => {
     updatedAt: false
   });
 
+  // PayMongoPaymentMethod Model (for managing PayMongo payment method settings)
+  const PayMongoPaymentMethod = require('./PayMongoPaymentMethod')(sequelize);
+
   // PaymentReceipt Model (for payment acknowledgement receipts)
   const PaymentReceipt = sequelize.define('PaymentReceipt', {
     id: {
@@ -1654,6 +1657,7 @@ const initializeModels = (sequelize) => {
     InvoiceItem,
     PaymentMethod,
     Bank,
+    PayMongoPaymentMethod,
     Payment,
     PaymentHistory,
     PaymentReceipt,

@@ -24,6 +24,7 @@ const Payment = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSubmittedAmount, setLastSubmittedAmount] = useState(0);
   const [paymentError, setPaymentError] = useState('');
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   
   // Card details state
   const [cardNumber, setCardNumber] = useState('');
@@ -34,13 +35,92 @@ const Payment = () => {
   // Get invoice ID from URL params
   const invoiceId = new URLSearchParams(location.search).get('invoiceId');
 
-  // Payment methods configuration
-  const paymentMethods = [
-    { key: 'card', label: 'Credit/Debit Card', icon: CreditCard, description: 'Visa, Mastercard, JCB' },
-    { key: 'gcash', label: 'GCash', icon: Wallet, description: 'Pay via GCash e-wallet' },
-    { key: 'grab_pay', label: 'GrabPay', icon: Wallet, description: 'Pay via GrabPay' },
-    { key: 'paymaya', label: 'Maya', icon: Wallet, description: 'Pay via Maya (PayMaya)' }
-  ];
+  // Payment methods configuration - now dynamic
+  const [paymentMethods, setPaymentMethods] = useState([
+    { 
+      key: 'card', 
+      label: 'Credit/Debit Card', 
+      icon: CreditCard, 
+      description: 'Visa, Mastercard, JCB',
+      available: true,
+      processingTime: 'Instant',
+      fees: 'No additional fees',
+      color: 'blue',
+      minAmount: 1,
+      maxAmount: 100000
+    },
+    { 
+      key: 'gcash', 
+      label: 'GCash', 
+      icon: Wallet, 
+      description: 'Pay via GCash e-wallet',
+      available: true,
+      processingTime: '1-2 minutes',
+      fees: 'No additional fees',
+      color: 'green',
+      minAmount: 1,
+      maxAmount: 50000
+    },
+    { 
+      key: 'grab_pay', 
+      label: 'GrabPay', 
+      icon: Wallet, 
+      description: 'Pay via GrabPay',
+      available: true,
+      processingTime: '1-2 minutes',
+      fees: 'No additional fees',
+      color: 'purple',
+      minAmount: 1,
+      maxAmount: 50000
+    },
+    { 
+      key: 'paymaya', 
+      label: 'Maya', 
+      icon: Wallet, 
+      description: 'Pay via Maya (PayMaya)',
+      available: true,
+      processingTime: '1-2 minutes',
+      fees: 'No additional fees',
+      color: 'pink',
+      minAmount: 1,
+      maxAmount: 50000
+    }
+  ]);
+
+  // Load available payment methods from backend
+  const loadPaymentMethods = async () => {
+    setLoadingPaymentMethods(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/payments/methods/available`);
+      const data = await response.json();
+      
+      if (data.success && data.data.paymentMethods) {
+        // Map backend data to frontend format
+        const mappedMethods = data.data.paymentMethods.map(method => ({
+          key: method.key,
+          label: method.label,
+          icon: method.icon === 'CreditCard' ? CreditCard : Wallet,
+          description: method.description,
+          available: method.available,
+          processingTime: method.processingTime,
+          fees: method.fees,
+          color: method.color,
+          minAmount: method.minAmount || 1,
+          maxAmount: method.maxAmount || 100000
+        }));
+        
+        setPaymentMethods(mappedMethods);
+        console.log('Payment methods loaded from backend:', mappedMethods.length);
+      } else {
+        console.log('Using fallback payment methods');
+      }
+    } catch (error) {
+      console.error('Failed to load payment methods:', error);
+      console.log('Using fallback payment methods');
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -51,6 +131,8 @@ const Payment = () => {
 
       setIsLoading(true);
       try {
+        // Load payment methods
+        await loadPaymentMethods();
         // Check if returning from 3DS authentication
         const pendingPaymentIntentId = sessionStorage.getItem('pendingPaymentIntentId');
         if (pendingPaymentIntentId) {
@@ -189,6 +271,16 @@ const Payment = () => {
         errors.amount = 'Payment amount must be greater than 0';
       } else if (invoice && amount > invoice.remainingAmount) {
         errors.amount = `Payment amount cannot exceed outstanding balance of ${formatCurrency(invoice.remainingAmount)}`;
+      } else {
+        // Validate against payment method limits
+        const currentMethod = paymentMethods.find(m => m.key === selectedMethod);
+        if (currentMethod) {
+          if (currentMethod.minAmount && amount < currentMethod.minAmount) {
+            errors.amount = `${currentMethod.label} requires a minimum payment of ${formatCurrency(currentMethod.minAmount)}`;
+          } else if (currentMethod.maxAmount && amount > currentMethod.maxAmount) {
+            errors.amount = `${currentMethod.label} has a maximum limit of ${formatCurrency(currentMethod.maxAmount)}`;
+          }
+        }
       }
     }
 
@@ -538,41 +630,171 @@ const Payment = () => {
 
             {/* Payment Method Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-4">
                 Select Payment Method <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              
+              {loadingPaymentMethods ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="p-5 border-2 border-gray-200 rounded-xl bg-gray-50 animate-pulse">
+                      <div className="flex items-start mb-3">
+                        <div className="w-10 h-10 bg-gray-300 rounded-lg"></div>
+                        <div className="ml-3 flex-1">
+                          <div className="h-5 bg-gray-300 rounded w-3/4 mb-2"></div>
+                          <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-300 rounded w-full"></div>
+                        <div className="h-3 bg-gray-300 rounded w-2/3"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {paymentMethods.map((method) => {
                   const Icon = method.icon;
+                  const isSelected = selectedMethod === method.key;
+                  const isAvailable = method.available;
+                  
+                  // Color schemes for different payment methods
+                  const colorSchemes = {
+                    blue: {
+                      selected: 'border-blue-500 bg-blue-50 ring-2 ring-blue-200',
+                      unselected: 'border-gray-200 hover:border-blue-300 hover:bg-blue-25',
+                      icon: isSelected ? 'text-blue-600' : 'text-gray-400',
+                      text: isSelected ? 'text-blue-900' : 'text-gray-900',
+                      accent: 'text-blue-600'
+                    },
+                    green: {
+                      selected: 'border-green-500 bg-green-50 ring-2 ring-green-200',
+                      unselected: 'border-gray-200 hover:border-green-300 hover:bg-green-25',
+                      icon: isSelected ? 'text-green-600' : 'text-gray-400',
+                      text: isSelected ? 'text-green-900' : 'text-gray-900',
+                      accent: 'text-green-600'
+                    },
+                    purple: {
+                      selected: 'border-purple-500 bg-purple-50 ring-2 ring-purple-200',
+                      unselected: 'border-gray-200 hover:border-purple-300 hover:bg-purple-25',
+                      icon: isSelected ? 'text-purple-600' : 'text-gray-400',
+                      text: isSelected ? 'text-purple-900' : 'text-gray-900',
+                      accent: 'text-purple-600'
+                    },
+                    pink: {
+                      selected: 'border-pink-500 bg-pink-50 ring-2 ring-pink-200',
+                      unselected: 'border-gray-200 hover:border-pink-300 hover:bg-pink-25',
+                      icon: isSelected ? 'text-pink-600' : 'text-gray-400',
+                      text: isSelected ? 'text-pink-900' : 'text-gray-900',
+                      accent: 'text-pink-600'
+                    }
+                  };
+                  
+                  const colors = colorSchemes[method.color] || colorSchemes.blue;
+                  
                   return (
                     <button
                       key={method.key}
                       type="button"
                       onClick={() => setSelectedMethod(method.key)}
-                      className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        selectedMethod === method.key
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      disabled={!isAvailable}
+                      className={`group relative flex flex-col p-5 border-2 rounded-xl cursor-pointer transition-all duration-200 transform hover:scale-[1.02] ${
+                        isSelected 
+                          ? colors.selected 
+                          : isAvailable 
+                            ? colors.unselected 
+                            : 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                      } ${!isAvailable ? 'hover:scale-100' : ''}`}
                     >
-                      <Icon className={`w-6 h-6 mt-0.5 mr-3 flex-shrink-0 ${
-                        selectedMethod === method.key ? 'text-blue-600' : 'text-gray-400'
-                      }`} />
-                      <div className="flex-1 text-left">
-                        <p className={`font-medium ${
-                          selectedMethod === method.key ? 'text-blue-900' : 'text-gray-900'
+                      {/* Selection indicator */}
+                      {isSelected && (
+                        <div className="absolute top-3 right-3">
+                          <CheckCircle2 className={`w-6 h-6 ${colors.accent}`} />
+                        </div>
+                      )}
+                      
+                      {/* Payment method icon and header */}
+                      <div className="flex items-start mb-3">
+                        <div className={`p-2 rounded-lg ${
+                          isSelected 
+                            ? 'bg-white shadow-sm' 
+                            : 'bg-gray-50 group-hover:bg-white'
                         }`}>
-                          {method.label}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">{method.description}</p>
+                          <Icon className={`w-6 h-6 ${colors.icon}`} />
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <h3 className={`font-semibold text-lg ${
+                            isSelected ? colors.text : 'text-gray-900'
+                          }`}>
+                            {method.label}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {method.description}
+                          </p>
+                        </div>
                       </div>
-                      {selectedMethod === method.key && (
-                        <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 ml-2" />
+                      
+                      {/* Payment method details */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Processing time:</span>
+                          <span className={`font-medium ${
+                            isSelected ? colors.accent : 'text-gray-700'
+                          }`}>
+                            {method.processingTime}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Fees:</span>
+                          <span className={`font-medium ${
+                            isSelected ? colors.accent : 'text-gray-700'
+                          }`}>
+                            {method.fees}
+                          </span>
+                        </div>
+                        {method.minAmount && method.minAmount > 1 && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500">Minimum:</span>
+                            <span className={`font-medium ${
+                              isSelected ? colors.accent : 'text-gray-700'
+                            }`}>
+                              {formatCurrency(method.minAmount)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Status indicator */}
+                      {!isAvailable && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-80 rounded-xl">
+                          <span className="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded-full">
+                            Temporarily Unavailable
+                          </span>
+                        </div>
                       )}
                     </button>
                   );
                 })}
+                </div>
+              )}
+              
+              
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="text-sm text-blue-700">
+                  <p className="font-medium mb-1">Secure Payment</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Your payment is processed securely via PayMongo</li>
+                    <li>• Partial payments are supported</li>
+                    <li>• You will receive a confirmation once payment is successful</li>
+                    <li>• Payment will be reflected in your account within 1-2 business days</li>
+                  </ul>
+                </div>
               </div>
+            </div>
             </div>
 
             {/* Card Details (only shown for card payments) */}
@@ -707,21 +929,6 @@ const Payment = () => {
               </div>
             )}
 
-            {/* Info Box */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium mb-1">Secure Payment</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• Your payment is processed securely via PayMongo</li>
-                    <li>• Partial payments are supported</li>
-                    <li>• You will receive a confirmation once payment is successful</li>
-                    <li>• Payment will be reflected in your account within 1-2 business days</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
 
             {/* Submit Button */}
             <div className="flex justify-end">

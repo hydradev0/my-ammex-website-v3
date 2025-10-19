@@ -16,6 +16,7 @@ function Navigation() {
   const customerAllowed = role === 'Admin' || role === 'Sales Marketing';
   const supplierAllowed = role === 'Admin' || role === 'Warehouse Supervisor';
   const isReportsAllowed = role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor';
+  const isAdminAllowed = role === 'Admin';
 
   const navItems = [
     {

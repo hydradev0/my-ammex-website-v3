@@ -86,6 +86,7 @@ const initializeServer = async () => {
     // Connect to Database (PostgreSQL)
     await connectDB();
 
+
     // API Routes - Use PostgreSQL routes if database is available, otherwise use mock routes
     if (process.env.DATABASE_URL) {
       // Production/Development with database
@@ -100,11 +101,11 @@ const initializeServer = async () => {
       
       app.use('/api/orders', require('./routes/orders'));
       app.use('/api/invoices', require('./routes/invoices'));
-      app.use('/api/payment-methods', require('./routes/paymentMethods'));
       app.use('/api/payments', require('./routes/payments'));
-      app.use('/api/banks', require('./routes/banks'));
+      app.use('/api/paymongo-payment-methods', require('./routes/paymongoPaymentMethods'));
       app.use('/api/analytics', require('./routes/analytics'));
       app.use('/api/dashboard', require('./routes/dashboard'));
+      app.use('/api/import', require('./routes/import'));
     } else {
       // Development without database - mock routes
       app.get('/api/auth/me', (req, res) => {

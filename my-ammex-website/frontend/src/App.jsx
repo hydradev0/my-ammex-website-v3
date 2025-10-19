@@ -17,6 +17,7 @@ import SalesOrder from './Pages/Sales/SalesOrder';
 import SalesInvoice from './Pages/Sales/SalesInvoice';
 
 import AccountManagement from './Pages/Admin/AccountManagement';
+import ImportData from './Pages/Admin/ImportData';
 
 import CustomerPortal from './Pages/CustomerPortal/CustomerPortal';
 import Cart from './Components-CustomerPortal/Cart';
@@ -26,12 +27,13 @@ import Invoice from './Components-CustomerPortal/Invoice';
 import Payment from './Components-CustomerPortal/Payment';
 import LandingPage from './Components-CustomerPortal/LandingPage';
 
+import ManagePayMongoMethods from './Components-CustomerPayments/ManagePayMongoMethods';
+
 import ProtectedRoute from './Components/ProtectedRoute';
 import Login from './Pages/Auth/Login';
 
 import CustomerOrders from './Pages/Sales/CustomerOrders';
 import CustomerPayments from './Pages/Sales/CustomerPayments';
-import ManagePaymentMethods from './Components-CustomerPayments/ManagePaymentMethods';
 import Invoices from './Pages/Sales/Invoices';
 
 import MonthlyReport from './Pages/Reports/MonthlyReport';
@@ -146,7 +148,7 @@ function AppContent() {
           path="sales/managepaymentmethods"
           element={
             <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
-              <ManagePaymentMethods />
+              <ManagePayMongoMethods />
             </ProtectedRoute>
           }
         />
@@ -203,6 +205,7 @@ function AppContent() {
         />
         {/* Administration */}
         <Route path="admin/accountmanagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
+        <Route path="admin/importdata" element={<ProtectedRoute requiredRole="Admin"><ImportData /></ProtectedRoute>} />
         
         {/* Customer Portal - Client role only */}
         <Route

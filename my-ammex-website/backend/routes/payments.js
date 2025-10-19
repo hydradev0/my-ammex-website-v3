@@ -157,6 +157,11 @@ router.get('/status/:paymentIntentId', protect, authorize('Client'), ctrl.getPay
 // @access  Private (Admin, Sales Marketing)
 router.get('/failed', protect, authorize('Admin', 'Sales Marketing'), ctrl.getFailedPayments);
 
+// @route   GET /api/payments/methods/available
+// @desc    Get available payment methods
+// @access  Public
+router.get('/methods/available', ctrl.getAvailablePaymentMethods);
+
 // @route   GET /api/payments/receipts/my
 // @desc    Get authenticated client's payment receipts
 // @access  Private (Client)

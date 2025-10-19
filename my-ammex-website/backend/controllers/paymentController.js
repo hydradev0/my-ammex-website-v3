@@ -1777,6 +1777,45 @@ const downloadPaymentReceipt = async (req, res, next) => {
   }
 };
 
+// Get available payment methods
+const getAvailablePaymentMethods = async (req, res, next) => {
+  try {
+    const { PayMongoPaymentMethod } = getModels();
+
+    // Fetch enabled payment methods from database
+    const paymentMethods = await PayMongoPaymentMethod.findAll({
+      where: { isEnabled: true },
+      order: [['sortOrder', 'ASC']]
+    });
+
+    // Transform to frontend format
+    const formattedMethods = paymentMethods.map(method => ({
+      key: method.methodKey,
+      label: method.methodName,
+      description: method.description,
+      available: method.isEnabled,
+      processingTime: method.processingTime,
+      fees: method.fees,
+      color: method.color,
+      icon: method.icon,
+      minAmount: parseFloat(method.minAmount),
+      maxAmount: parseFloat(method.maxAmount)
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        paymentMethods: formattedMethods,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching available payment methods:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   submitPayment,
   getMyPayments,
@@ -1802,6 +1841,7 @@ module.exports = {
   handlePayMongoWebhook,
   getPaymentStatus,
   getFailedPayments,
+  getAvailablePaymentMethods,
   // Payment Receipt endpoints
   getMyPaymentReceipts,
   getPaymentReceiptDetails,

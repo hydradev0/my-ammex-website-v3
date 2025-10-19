@@ -7,7 +7,6 @@ import PaymentHistoryTab from './PaymentHistoryTab';
 import BalanceTab from './BalanceTab';
 import FailedPaymentsTab from './FailedPaymentsTab';
 import { 
-  getPaymentMethods,
   getBalanceHistory,
   getAllPaymentHistory,
   getFailedPayments
@@ -41,14 +40,8 @@ const PaymentReceiving = () => {
         setIsLoadingHistory(true);
         setIsLoadingFailed(true);
 
-        // Load payment methods
-        try {
-          const paymentMethodsResponse = await getPaymentMethods();
-          setPaymentMethods(paymentMethodsResponse.data || []);
-        } catch (error) {
-          console.error('Failed to load payment methods:', error);
-          setPaymentMethods([]);
-        }
+        // Payment methods are now managed through PayMongo integration
+        setPaymentMethods([]);
 
         // Load balance history
         try {

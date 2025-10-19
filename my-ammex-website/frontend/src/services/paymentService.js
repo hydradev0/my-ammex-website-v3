@@ -124,10 +124,6 @@ export const getAllInvoicesWithPayments = async (params = {}) => {
   return apiRequest(`/invoices/with-payments?${queryParams}`);
 };
 
-// Get payment methods
-export const getPaymentMethods = async () => {
-  return apiRequest('/payment-methods');
-};
 
 // Get balance history (for admin)
 export const getBalanceHistory = async () => {

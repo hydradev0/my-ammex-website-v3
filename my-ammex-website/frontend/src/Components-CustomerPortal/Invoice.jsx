@@ -235,7 +235,8 @@ const Invoice = () => {
     setIsLoadingReceipts(true);
     setShowPaymentReceiptsModal(true);
     setIsPaymentReceiptsModalAnimating(true);
-    
+    setShowPaymentSuccessNotification(false); // Close the success notification
+
     try {
       const response = await getMyPaymentReceipts();
       setPaymentReceipts(response.data || []);
