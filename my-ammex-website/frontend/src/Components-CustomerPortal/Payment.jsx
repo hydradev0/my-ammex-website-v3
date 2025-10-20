@@ -25,6 +25,8 @@ const Payment = () => {
   const [lastSubmittedAmount, setLastSubmittedAmount] = useState(0);
   const [paymentError, setPaymentError] = useState('');
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [paymentFailureReason, setPaymentFailureReason] = useState('');
+  const [showFailureModal, setShowFailureModal] = useState(false);
   
   // Card details state
   const [cardNumber, setCardNumber] = useState('');
@@ -138,71 +140,28 @@ const Payment = () => {
         if (pendingPaymentIntentId) {
           sessionStorage.removeItem('pendingPaymentIntentId');
           
-          // Complete the payment after 3DS
-          try {
-            const completeResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/payments/complete-payment-manually`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: JSON.stringify({ paymentIntentId: pendingPaymentIntentId })
-            });
-            
-            const completeData = await completeResponse.json();
-            
-            if (completeData.success) {
-              console.log('Payment completed after 3DS:', completeData);
-              navigate('/Products/Invoices?payment=success');
-              return;
-            }
-          } catch (err) {
-            console.error('Error completing payment after 3DS:', err);
-          }
+          // For 3DS payments, webhook will handle completion
+          // Just redirect to success page
+          console.log('Returning from 3DS authentication - webhook will handle payment completion');
+          navigate('/Products/Invoices?payment=success');
+          return;
         }
 
         // Check if returning from GCash/e-wallet payment
         const urlParams = new URLSearchParams(location.search);
         const paymentStatus = urlParams.get('payment');
-        const sourceId = urlParams.get('source_id');
         
-        if (paymentStatus === 'success' && sourceId) {
-          console.log('Returning from GCash payment:', sourceId);
-          
-          // In development, manually complete the e-wallet payment
-          if (import.meta.env.DEV) {
-            try {
-              console.log('Development mode: Completing e-wallet payment...');
-              const completeResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/payments/complete-payment-manually`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({ paymentIntentId: sourceId })
-              });
-              
-              const completeData = await completeResponse.json();
-              
-              if (completeData.success) {
-                console.log('E-wallet payment completed:', completeData);
-                navigate('/Products/Invoices?payment=success');
-                return;
-              }
-            } catch (err) {
-              console.error('Error completing e-wallet payment:', err);
-            }
-          } else {
-            // In production, webhook will handle it
-            console.log('Production mode: Webhook will handle e-wallet payment');
-            navigate('/Products/Invoices?payment=success');
-            return;
-          }
+        if (paymentStatus === 'success') {
+          console.log('Returning from e-wallet payment - webhook will handle completion');
+          navigate('/products/invoices?payment=success');
+          return;
         }
         
         if (paymentStatus === 'failed') {
           console.log('E-wallet payment failed');
-          navigate('/Products/Invoices?payment=failed');
+          const failureReason = urlParams.get('reason') || 'Payment was declined or cancelled';
+          setPaymentFailureReason(failureReason);
+          setShowFailureModal(true);
           return;
         }
 
@@ -212,7 +171,7 @@ const Payment = () => {
         const foundInvoice = invoiceData.find(inv => inv.id === parseInt(invoiceId));
         
         if (!foundInvoice) {
-          navigate('/Products/Invoices');
+          navigate('/products/invoices');
           return;
         }
 
@@ -237,7 +196,7 @@ const Payment = () => {
         setPaymentAmount('');
       } catch (error) {
         console.error('Failed to load invoice:', error);
-        navigate('/Products/Invoices');
+        navigate('/products/invoices');
       } finally {
         setIsLoading(false);
       }
@@ -248,7 +207,7 @@ const Payment = () => {
 
 
   const handleBack = () => {
-    navigate('/Products/Invoices');
+    navigate('/products/invoices');
   };
 
   const handleBreadcrumbClick = (path) => {
@@ -257,7 +216,22 @@ const Payment = () => {
 
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
-    navigate('/Products/Invoices');
+    navigate('/products/invoices');
+  };
+
+  const handleFailureModalClose = () => {
+    setShowFailureModal(false);
+    setPaymentFailureReason('');
+    setPaymentError('');
+    setIsProcessing(false);
+  };
+
+  const handleRetryPayment = () => {
+    setShowFailureModal(false);
+    setPaymentFailureReason('');
+    setPaymentError('');
+    setIsProcessing(false);
+    // Keep the form data for retry
   };
 
   const validatePaymentAmount = () => {
@@ -319,7 +293,8 @@ const Payment = () => {
             setIsProcessing(false);
           } else if (status === 'failed') {
             clearInterval(pollInterval);
-            setPaymentError('Payment failed. Please try again.');
+            setPaymentFailureReason('Payment was declined by your bank or card issuer. Please check your card details and try again.');
+            setShowFailureModal(true);
             setIsProcessing(false);
           } else if (attempts >= maxAttempts) {
             clearInterval(pollInterval);
@@ -445,7 +420,9 @@ const Payment = () => {
                 setIsProcessing(false);
               }
         } else {
-          throw new Error('Unexpected payment status: ' + status);
+          setPaymentFailureReason(`Unexpected payment status: ${status}. Please try again or contact support.`);
+          setShowFailureModal(true);
+          setIsProcessing(false);
         }
         
       } else {
@@ -473,7 +450,8 @@ const Payment = () => {
 
     } catch (error) {
       console.error('Payment submission failed:', error);
-      setPaymentError(error.message || 'Payment submission failed. Please try again.');
+      setPaymentFailureReason(error.message || 'Payment submission failed. Please check your details and try again.');
+      setShowFailureModal(true);
       setIsProcessing(false);
     }
   };
@@ -963,6 +941,54 @@ const Payment = () => {
         autoClose={false}
         showCloseButton={true}
       />
+
+      {/* Failure Modal */}
+      {showFailureModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-8 w-8 text-red-500" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-semibold text-gray-900">Payment Failed</h3>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-3">
+                {paymentFailureReason}
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-xs text-red-700">
+                  <strong>Common reasons for payment failure:</strong>
+                </p>
+                <ul className="text-xs text-red-600 mt-1 space-y-1">
+                  <li>• Insufficient funds in your account</li>
+                  <li>• Incorrect card details or expired card</li>
+                  <li>• Bank security restrictions</li>
+                  <li>• Network connectivity issues</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={handleRetryPayment}
+                className="flex-1 bg-[#3182ce] text-white px-4 py-2 rounded-lg hover:bg-[#2c5282] transition-colors font-medium"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={handleFailureModalClose}
+                className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

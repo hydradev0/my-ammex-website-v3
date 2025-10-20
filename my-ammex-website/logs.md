@@ -1,88 +1,10 @@
-Failed to load payment methods: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
-loadPaymentMethods @ ManagePayMongoMethods.jsx:39
-await in loadPaymentMethods
-(anonymous) @ ManagePayMongoMethods.jsx:23
-react-stack-bottom-frame @ react-dom_client.js?v=03b64f52:17732
-runWithFiberInDEV @ react-dom_client.js?v=03b64f52:1540
-commitHookEffectListMount @ react-dom_client.js?v=03b64f52:8616
-commitHookPassiveMountEffects @ react-dom_client.js?v=03b64f52:8674
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10065
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=03b64f52:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=03b64f52:10077
-flushPassiveEffects @ react-dom_client.js?v=03b64f52:11498
-(anonymous) @ react-dom_client.js?v=03b64f52:11255
-performWorkUntilDeadline @ react-dom_client.js?v=03b64f52:36
-<ManagePayMongoMethods>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=03b64f52:256
-AppContent @ App.jsx:150
-react-stack-bottom-frame @ react-dom_client.js?v=03b64f52:17678
-renderWithHooksAgain @ react-dom_client.js?v=03b64f52:4396
-renderWithHooks @ react-dom_client.js?v=03b64f52:4332
-updateFunctionComponent @ react-dom_client.js?v=03b64f52:6759
-beginWork @ react-dom_client.js?v=03b64f52:7805
-runWithFiberInDEV @ react-dom_client.js?v=03b64f52:1540
-performUnitOfWork @ react-dom_client.js?v=03b64f52:11059
-workLoopConcurrentByScheduler @ react-dom_client.js?v=03b64f52:11055
-renderRootConcurrent @ react-dom_client.js?v=03b64f52:11035
-performWorkOnRoot @ react-dom_client.js?v=03b64f52:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=03b64f52:11825
-performWorkUntilDeadline @ react-dom_client.js?v=03b64f52:36
-<AppContent>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=03b64f52:256
-App @ App.jsx:293
-react-stack-bottom-frame @ react-dom_client.js?v=03b64f52:17678
-renderWithHooksAgain @ react-dom_client.js?v=03b64f52:4396
-renderWithHooks @ react-dom_client.js?v=03b64f52:4332
-updateFunctionComponent @ react-dom_client.js?v=03b64f52:6759
-beginWork @ react-dom_client.js?v=03b64f52:7805
-runWithFiberInDEV @ react-dom_client.js?v=03b64f52:1540
-performUnitOfWork @ react-dom_client.js?v=03b64f52:11059
-workLoopSync @ react-dom_client.js?v=03b64f52:10916
-renderRootSync @ react-dom_client.js?v=03b64f52:10898
-performWorkOnRoot @ react-dom_client.js?v=03b64f52:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=03b64f52:11825
-performWorkUntilDeadline @ react-dom_client.js?v=03b64f52:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=03b64f52:256
-(anonymous) @ main.jsx:17Understand this error
-ManagePayMongoMethods.jsx:39 Failed to load payment methods: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+Invoice.jsx:576 🖱️ Download button clicked for receipt: {id: 27, receiptNumber: 'RCP-2025-0027', paymentId: 112, invoiceId: 15, customerId: 26, …}
+Invoice.jsx:279 🖱️ Download button clicked for receipt ID: 27
+receiptService.js?t=1760923196421:32 🔄 Starting PDF download for receipt ID: 27
+receiptService.js?t=1760923196421:39 🔑 Token found: eyJhbGciOiJIUzI1NiIs...
+receiptService.js?t=1760923196421:42 📡 API URL: http://localhost:5000/api/payments/receipts/27/download
+receiptService.js?t=1760923196421:51 📥 Response status: 200
+receiptService.js?t=1760923196421:52 📥 Response headers: {content-length: '894287', content-type: 'application/pdf; charset=utf-8'}
+receiptService.js?t=1760923196421:77 📄 Downloading file as: Payment_Receipt.pdf
+receiptService.js?t=1760923196421:81 📦 Blob created, size: 894287 bytes
+receiptService.js?t=1760923196421:97 ✅ PDF download completed successfully

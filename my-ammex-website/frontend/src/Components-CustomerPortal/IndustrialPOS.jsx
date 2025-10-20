@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, CheckCircle, ShoppingCart } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import ProductGrid from './ProductGrid';
 import SearchFilters from './SearchFilters';
 import FiltersPanel from './FiltersPanel';
@@ -8,72 +9,23 @@ import ScrollLock from '../Components/ScrollLock';
 import ProductDetailsModal from './ProductDetailsModal';
 import { addToCart, getLocalCart, initializeCartFromDatabase, cleanCart } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-// Modern Toast Component - Improved for better visibility
-const Toast = ({ message, isVisible, onClose }) => {
-  React.useEffect(() => {
-    if (isVisible) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 5000); // Increased duration for better UX
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, onClose]);
-
-  if (!isVisible) return null;
-
-  return (
-    <div 
-      className="fixed bottom-6 right-6 z-[9999] animate-slide-up-bounce toast-mobile"
-      role="alert"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl px-6 py-4 min-w-[380px] max-w-[420px] backdrop-blur-sm transform transition-all duration-300 ease-out hover:shadow-3xl hover:scale-[1.02] toast-hover">
-        <div className="flex items-start space-x-4">
-          {/* Success Icon */}
-          <div className="flex-shrink-0 mt-0.5">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center ring-4 ring-green-50">
-              <Check className="w-5 h-5 text-green-600" strokeWidth={3} />
-            </div>
-          </div>
-          
-          {/* Message */}
-          <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-gray-900 leading-tight">{message}</p>
-            <p className="text-sm text-green-600 font-medium mt-1">Added to cart successfully</p>
-          </div>
-          
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all duration-200 hover:scale-110"
-            aria-label="Close notification"
-          >
-            <X className="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors duration-200" />
-          </button>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full animate-progress-shrink"></div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(12);
-  const [toast, setToast] = useState({ show: false, message: '' });
   const [priceRange, setPriceRange] = useState({ min: null, max: null });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showAddToCartNotification, setShowAddToCartNotification] = useState(false);
+  const [isAddToCartNotificationAnimating, setIsAddToCartNotificationAnimating] = useState(false);
+  const [addedProductName, setAddedProductName] = useState('');
 
   // Transform inventory items to product format
   const products = useMemo(() => {
@@ -180,18 +132,26 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
         console.log('🛒 [CART SERVICE] Item added successfully:', result.cart.length, 'items');
         setCart(result.cart);
         
-        // Show success toast
-        setToast({ 
-          show: true, 
-          message: `${product.modelNo} added to cart!` 
-        });
+        // Show success notification
+        setAddedProductName(product.modelNo);
+        setShowAddToCartNotification(true);
+        
+        // Start animation after a small delay
+        setTimeout(() => {
+          setIsAddToCartNotificationAnimating(true);
+        }, 50);
+        
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => {
+          setIsAddToCartNotificationAnimating(false);
+          setTimeout(() => {
+            setShowAddToCartNotification(false);
+          }, 300); // Match animation duration
+        }, 5000);
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      setToast({ 
-        show: true, 
-        message: 'Error adding item to cart' 
-      });
+      // You can add error notification here if needed
     }
   };
 
@@ -264,16 +224,63 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
     setSelectedProduct(null);
   };
 
+  const handleViewCart = () => {
+    // Navigate to cart page or show cart modal
+    // You can implement this based on your routing setup
+    navigate('/products/cart');
+  };
+
+  const handleCloseAddToCartNotification = () => {
+    setIsAddToCartNotificationAnimating(false);
+    setTimeout(() => {
+      setShowAddToCartNotification(false);
+    }, 300); // Match animation duration
+  };
+
   return (
     <>
       <ScrollLock active={showProductModal} />
       
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        isVisible={toast.show}
-        onClose={() => setToast({ show: false, message: '' })}
-      />
+      {/* Add to Cart Success Notification */}
+      {showAddToCartNotification && createPortal(
+        <div className={`fixed top-4 right-4 z-[9999] transition-all duration-300 ease-out ${
+          isAddToCartNotificationAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
+        }`}>
+          <div className="bg-white rounded-lg shadow-2xl border-l-4 border-green-500 p-4 max-w-md transform transition-all duration-300 ease-out hover:shadow-3xl hover:scale-[1.02]">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  Item Added to Cart!
+                </h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  <span className="font-medium">{addedProductName}</span> has been successfully added to your cart.
+                </p>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleViewCart}
+                    className="flex items-center cursor-pointer gap-1 bg-[#3182ce] text-white px-3 py-1.5 rounded-lg hover:bg-[#2c5282] transition-colors text-xs font-medium"
+                  >
+                    <ShoppingCart className="w-3 h-3" />
+                    View Cart ({cart.length})
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseAddToCartNotification}
+                className="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Product Details Modal */}
       <ProductDetailsModal

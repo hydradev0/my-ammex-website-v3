@@ -29,10 +29,63 @@ export const getPaymentReceiptDetails = async (receiptId) => {
 // Download payment receipt as PDF
 export const downloadPaymentReceipt = async (receiptId) => {
   try {
-    const response = await apiCall(`/payments/receipts/${receiptId}/download`, {
-      method: 'GET'
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/payments/receipts/${receiptId}/download`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    return response;
+
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        // Could not parse error response as JSON, use status text
+      }
+      throw new Error(errorMessage);
+    }
+
+    // Get the filename from the Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'Payment_Receipt.pdf';
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    // Fallback to receipt ID if no filename provided
+    if (filename === 'Payment_Receipt.pdf') {
+      filename = `Receipt_${receiptId}.pdf`;
+    }
+
+    // Create blob from response
+    const blob = await response.blob();
+    
+    if (blob.size === 0) {
+      throw new Error('Received empty file');
+    }
+    
+    // Create download link and trigger download
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    return { success: true, message: 'Receipt downloaded successfully' };
   } catch (error) {
     console.error('Error downloading payment receipt:', error);
     throw error;

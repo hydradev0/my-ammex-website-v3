@@ -36,6 +36,8 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 # ⚠️ IMPORTANT: Use LIVE keys for production, TEST keys for development
 PAYMONGO_SECRET_KEY=sk_test_YOUR_SECRET_KEY_HERE
 PAYMONGO_PUBLIC_KEY=pk_test_YOUR_PUBLIC_KEY_HERE
+<!-- PAYMONGO_SECRET_KEY=sk_live_YOUR_LIVE_SECRET_KEY_HERE
+PAYMONGO_PUBLIC_KEY=pk_live_YOUR_LIVE_PUBLIC_KEY_HERE -->
 PAYMONGO_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET_HERE
 ```
 
@@ -54,6 +56,7 @@ VITE_API_BASE_URL=https://your-backend-api.com/api
 # PayMongo Configuration
 # ⚠️ IMPORTANT: Use LIVE key for production, TEST key for development
 VITE_PAYMONGO_PUBLIC_KEY=pk_test_YOUR_PUBLIC_KEY_HERE
+<!-- VITE_PAYMONGO_PUBLIC_KEY=pk_live_YOUR_LIVE_PUBLIC_KEY_HERE -->
 
 # ⚠️ CRITICAL: Change this to your ACTUAL customer-facing domain
 # This is where PayMongo will redirect customers after payments

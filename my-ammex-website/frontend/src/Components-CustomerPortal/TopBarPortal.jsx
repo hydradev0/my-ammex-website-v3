@@ -238,7 +238,7 @@ function TopBarPortal() {
                                     Appeal
                                   </button>
                                   <button
-                                    onClick={() => navigate('/Products/Payment')}
+                                    onClick={() => navigate('/products/payment')}
                                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                                   >
                                     View Payment
@@ -262,7 +262,7 @@ function TopBarPortal() {
                                     Appeal
                                   </button>
                                   <button
-                                    onClick={() => navigate('/Products/Order')}
+                                    onClick={() => navigate('/products/orders')}
                                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                                   >
                                     View Order
@@ -322,7 +322,7 @@ function TopBarPortal() {
               className="w-full text-left px-5 py-3 cursor-pointer hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
-                navigate('/Products/Profile');
+                navigate('/products/profile');
               }}
             >
               My Profile
@@ -331,7 +331,7 @@ function TopBarPortal() {
               className="w-full text-left px-5 py-3 cursor-pointer hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
-                navigate('/Products/Orders');
+                navigate('/products/orders');
               }}
             >
               My Orders
@@ -340,7 +340,7 @@ function TopBarPortal() {
               className="w-full text-left px-5 py-3 cursor-pointer hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
               onClick={() => {
                 setShowProfileDropdown(false);
-                navigate('/Products/Invoices');
+                navigate('/products/invoices');
               }}
             >
               Invoices
@@ -350,7 +350,7 @@ function TopBarPortal() {
 
         {/* Cart Button */}
         <button
-          onClick={() => navigate('/Products/Cart')}
+          onClick={() => navigate('/products/cart')}
           className="relative text-white cursor-pointer py-2 rounded-full flex items-center gap-2 transition-colors"
         >
           <ShoppingCart size={22} />

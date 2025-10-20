@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
 import { getMyInvoices } from '../services/invoiceService';
-import { getMyPaymentReceipts, getPaymentReceiptDetails, printReceipt, formatPaymentMethod } from '../services/receiptService';
+import { getMyPaymentReceipts, getPaymentReceiptDetails, downloadPaymentReceipt, formatPaymentMethod } from '../services/receiptService';
 
 const Invoice = () => {
   const navigate = useNavigate();
@@ -30,6 +30,7 @@ const Invoice = () => {
   const [paymentReceipts, setPaymentReceipts] = useState([]);
   const [isLoadingReceipts, setIsLoadingReceipts] = useState(false);
   const [showPaymentSuccessNotification, setShowPaymentSuccessNotification] = useState(false);
+  const [downloadingReceipts, setDownloadingReceipts] = useState(new Set());
   const modalRef = useRef(null);
   const paymentReceiptsModalRef = useRef(null);
   const receiptDetailModalRef = useRef(null);
@@ -276,9 +277,20 @@ const Invoice = () => {
 
   const handleDownloadReceipt = async (receiptId) => {
     try {
-      await printReceipt(receiptId);
+      // Add receipt ID to downloading set
+      setDownloadingReceipts(prev => new Set([...prev, receiptId]));
+      
+      await downloadPaymentReceipt(receiptId);
     } catch (error) {
       console.error('Failed to download receipt:', error);
+      alert(`Failed to download receipt: ${error.message}`);
+    } finally {
+      // Remove receipt ID from downloading set
+      setDownloadingReceipts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(receiptId);
+        return newSet;
+      });
     }
   };
 
@@ -573,10 +585,24 @@ const Invoice = () => {
                           e.stopPropagation();
                           handleDownloadReceipt(receipt.id);
                         }}
-                        className="flex items-center gap-1 border border-gray-300 bg-gray-50 hover:bg-gray-100 cursor-pointer text-gray-600 px-2 py-1.5 rounded-lg text-sm transition-colors duration-200"
+                        disabled={downloadingReceipts.has(receipt.id)}
+                        className={`flex items-center gap-1 border border-gray-300 px-2 py-1.5 rounded-lg text-sm transition-colors duration-200 ${
+                          downloadingReceipts.has(receipt.id)
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-gray-50 hover:bg-gray-100 cursor-pointer text-gray-600'
+                        }`}
                       >
-                        <Download className="w-4 h-4" />
-                        Download PDF
+                        {downloadingReceipts.has(receipt.id) ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4" />
+                            Download PDF
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -906,10 +932,24 @@ const Invoice = () => {
                 </button>
                 <button
                   onClick={() => handleDownloadReceipt(selectedReceipt.id)}
-                  className="flex items-center cursor-pointer gap-1 px-2 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={downloadingReceipts.has(selectedReceipt.id)}
+                  className={`flex items-center gap-1 px-2 py-2 border border-gray-300 rounded-lg transition-colors ${
+                    downloadingReceipts.has(selectedReceipt.id)
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'cursor-pointer text-gray-600 hover:bg-gray-50'
+                  }`}
                 >
-                  <Download className="w-4 h-4" />
-                  Download PDF
+                  {downloadingReceipts.has(selectedReceipt.id) ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Download PDF
+                    </>
+                  )}
                 </button>
               </div>
             </div>
