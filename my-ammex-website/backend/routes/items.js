@@ -42,14 +42,7 @@ const validateItem = [
   }),
   check('quantity', 'Quantity must be a non-negative integer').isInt({ min: 0 }),
   check('minLevel', 'Minimum level must be a non-negative integer').isInt({ min: 0 }),
-  check('maxLevel', 'Maximum level must be a non-negative integer').optional().custom((value) => {
-    if (value === null || value === undefined || value === '') return true;
-    const num = parseInt(value);
-    if (isNaN(num) || num < 0) {
-      throw new Error('Maximum level must be a non-negative integer');
-    }
-    return true;
-  }),
+  check('maxLevel', 'Maximum level is required and must be a non-negative integer').isInt({ min: 0 }),
   check('description', 'Description must be a string').optional().custom((value) => {
     if (value === null || value === undefined || value === '') return true;
     if (typeof value !== 'string') {
