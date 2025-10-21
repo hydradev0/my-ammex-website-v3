@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { getPaymentNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../services/paymentService';
 import { getOrderNotifications, markOrderNotificationAsRead, markAllOrderNotificationsAsRead } from '../services/orderService';
+import { getAllNotifications, markNotificationAsRead as markUnifiedNotificationAsRead, markAllNotificationsAsRead as markAllUnifiedNotificationsAsRead } from '../services/notificationService';
 
 const NotificationContext = createContext();
 
@@ -19,47 +20,28 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch notifications from API (both payment and order notifications)
+  // Fetch notifications from unified API
   const fetchNotifications = async () => {
     if (!user?.id) return [];
     
     setIsLoading(true);
     try {
-      const [paymentResponse, orderResponse] = await Promise.all([
-        getPaymentNotifications().catch(e => {
-          console.error('❌ Payment notifications error:', e);
-          return { data: { notifications: [] } };
-        }),
-        getOrderNotifications().catch(e => {
-          console.error('❌ Order notifications error:', e);
-          return { data: { notifications: [] } };
-        })
-      ]);
+      // Use the new unified notification API
+      const response = await getAllNotifications();
       
-      const paymentNotifications = paymentResponse.data?.notifications || [];
-      const orderNotifications = orderResponse.data?.notifications || [];
+      // Backend responds with { success, data: { notifications, unreadCount } }
+      const payload = response?.data ?? response;
+      const allNotifications = Array.isArray(payload?.notifications) ? payload.notifications : [];
+      const unreadCount = typeof payload?.unreadCount === 'number' ? payload.unreadCount : 0;
       
-      // Combine and deduplicate by ID, then sort by creation date
-      const allNotificationsMap = new Map();
-      
-      // Add payment notifications
-      paymentNotifications.forEach(notif => {
-        allNotificationsMap.set(notif.id, notif);
-      });
-      
-      // Add order notifications (will overwrite if same ID exists)
-      orderNotifications.forEach(notif => {
-        allNotificationsMap.set(notif.id, notif);
-      });
-      
-      // Convert back to array and sort by creation date
-      const allNotifications = Array.from(allNotificationsMap.values()).sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-      );
+      setNotifications(allNotifications);
+      setUnreadCount(unreadCount);
       
       return allNotifications;
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error('❌ [FRONTEND] Error fetching notifications:', error);
+      setNotifications([]);
+      setUnreadCount(0);
       return [];
     } finally {
       setIsLoading(false);
@@ -104,18 +86,11 @@ export const NotificationProvider = ({ children }) => {
     return () => clearInterval(intervalId);
   }, [user?.id]);
 
-  // Mark notification as read (dynamic based on notification type)
+  // Mark notification as read using unified API
   const markAsRead = async (notificationId) => {
     try {
-      // Determine if it's an order notification based on type
-      const notification = notifications.find(n => n.id === notificationId);
-      const isOrderNotification = notification && ['order_rejected', 'order_appeal'].includes(notification.type);
-      
-      if (isOrderNotification) {
-        await markOrderNotificationAsRead(notificationId);
-      } else {
-        await markNotificationAsRead(notificationId);
-      }
+      // Use the unified notification API
+      await markUnifiedNotificationAsRead(notificationId);
       
       // Re-fetch from server to persist across reloads
       const fetchedNotifications = await fetchNotifications();
@@ -126,13 +101,10 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Mark all notifications as read (both payment and order notifications)
+  // Mark all notifications as read using unified API
   const markAllAsRead = async () => {
     try {
-      await Promise.all([
-        markAllNotificationsAsRead(),
-        markAllOrderNotificationsAsRead()
-      ]);
+      await markAllUnifiedNotificationsAsRead();
       const fetchedNotifications = await fetchNotifications();
       setNotifications(fetchedNotifications);
       setUnreadCount(computeUnreadCount(fetchedNotifications));

@@ -1102,14 +1102,14 @@ const initializeModels = (sequelize) => {
     customerId: {
       type: DataTypes.INTEGER,
       field: 'customer_id',
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'Customer',
         key: 'id'
       }
     },
     type: {
-      type: DataTypes.ENUM('payment_rejected', 'payment_approved', 'invoice_overdue', 'order_rejected', 'order_appeal', 'general'),
+      type: DataTypes.ENUM('invoice_overdue', 'order_rejected', 'order_appeal', 'order_approved', 'stock_low', 'stock_high', 'general'),
       allowNull: false
     },
     title: {

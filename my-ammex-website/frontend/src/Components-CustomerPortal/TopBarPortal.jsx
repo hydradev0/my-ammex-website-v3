@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, User, ShoppingCart, X, AlertCircle, CreditCard, ExternalLink, Package, AlertTriangle } from 'lucide-react';
+import { Bell, User, ShoppingCart, X, AlertCircle, ExternalLink, Package, AlertTriangle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { appealRejectedPayment } from '../services/paymentService';
 import { appealRejectedOrder } from '../services/orderService';
@@ -161,7 +161,7 @@ function TopBarPortal() {
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm cursor-pointer text-blue-600 hover:text-blue-800"
                     >
                       Mark all as read
                     </button>
@@ -188,18 +188,20 @@ function TopBarPortal() {
                         <div className="flex items-start justify-between">
                           <div className="flex items-start space-x-3 flex-1">
                             <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                              notification.type === 'payment_rejected' || notification.type === 'order_rejected'
+                              notification.type === 'order_rejected'
                                 ? 'bg-red-100 text-red-600' 
                                 : notification.type === 'order_appeal'
                                 ? 'bg-orange-100 text-orange-600'
+                                : notification.type === 'order_approved'
+                                ? 'bg-green-100 text-green-600'
                                 : 'bg-blue-100 text-blue-600'
                             }`}>
-                              {notification.type === 'payment_rejected' ? (
-                                <CreditCard className="w-4 h-4" />
-                              ) : notification.type === 'order_rejected' ? (
+                              {notification.type === 'order_rejected' ? (
                                 <Package className="w-4 h-4" />
                               ) : notification.type === 'order_appeal' ? (
                                 <AlertTriangle className="w-4 h-4" />
+                              ) : notification.type === 'order_approved' ? (
+                                <Package className="w-4 h-4" />
                               ) : (
                                 <AlertCircle className="w-4 h-4" />
                               )}
@@ -222,30 +224,6 @@ function TopBarPortal() {
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
-                              {notification.type === 'payment_rejected' && (
-                                <div className="mt-2 flex items-center gap-3">
-                                  <button
-                                    onClick={() => {
-                                      setAppealPaymentId(notification?.data?.paymentId);
-                                      setAppealOrderId(null);
-                                      setAppealType('payment');
-                                      setAppealNotificationId(notification.id);
-                                      setAppealReason('');
-                                      setIsAppealOpen(true);
-                                    }}
-                                    className="text-xs text-blue-600 hover:text-blue-800"
-                                  >
-                                    Appeal
-                                  </button>
-                                  <button
-                                    onClick={() => navigate('/products/payment')}
-                                    className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                                  >
-                                    View Payment
-                                    <ExternalLink className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              )}
                               {notification.type === 'order_rejected' && (
                                 <div className="mt-2 flex items-center gap-3">
                                   <button
@@ -257,31 +235,33 @@ function TopBarPortal() {
                                       setAppealReason('');
                                       setIsAppealOpen(true);
                                     }}
-                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800"
                                   >
                                     Appeal
                                   </button>
                                   <button
                                     onClick={() => navigate('/products/orders')}
-                                    className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                    className="text-xs cursor-pointer text-gray-500 hover:text-gray-700 flex items-center gap-1"
                                   >
                                     View Order
                                     <ExternalLink className="w-3 h-3" />
                                   </button>
                                 </div>
                               )}
+                              {notification.type === 'order_approved' && (
+                                <div className="mt-2 flex items-center gap-3">
+                                  <button
+                                    onClick={() => navigate('/products/invoices')}
+                                    className="text-xs cursor-pointer text-green-600 hover:text-green-800 flex items-center gap-1"
+                                  >
+                                    View Invoice
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeNotification(notification.id);
-                            }}
-                            className="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-600 ml-2"
-                            title="Dismiss"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          
                         </div>
                       </div>
                     ))}

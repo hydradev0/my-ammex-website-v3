@@ -15,7 +15,12 @@ const getAllOrders = async (req, res, next) => {
       };
     }
 
-    const orders = await Order.findAndCountAll({
+    // Get the count of orders separately to avoid counting items
+    const totalCount = await Order.count({
+      where: whereClause
+    });
+
+    const orders = await Order.findAll({
       where: whereClause,
       include: [
         {
@@ -30,11 +35,11 @@ const getAllOrders = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: orders.rows,
+      data: orders,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(orders.count / limit),
-        totalItems: orders.count,
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
         itemsPerPage: parseInt(limit)
       }
     });
@@ -261,9 +266,20 @@ const updateOrderStatus = async (req, res, next) => {
         // Deduct inventory quantities
         for (const orderItem of order.items) {
           const item = orderItem.item;
+          const previousQuantity = item.quantity;
           const newQuantity = item.quantity - orderItem.quantity;
           console.log(`Deducting inventory for ${item.itemName}: ${item.quantity} - ${orderItem.quantity} = ${newQuantity}`);
           await item.update({ quantity: newQuantity });
+          
+          // Check stock levels after deduction
+          try {
+            const NotificationService = require('../services/notificationService');
+            const updatedItem = await Item.findByPk(item.id);
+            await NotificationService.checkStockLevels(updatedItem, previousQuantity);
+          } catch (notificationError) {
+            console.error('Error checking stock levels after order approval:', notificationError);
+            // Don't fail the order update if notification fails
+          }
         }
         
         console.log('Inventory deduction completed successfully');
@@ -368,6 +384,33 @@ const updateOrderStatus = async (req, res, next) => {
       }
     }
 
+    // Create notification when order is approved
+    if (status === 'approved') {
+      try {
+        const { Notification, Customer } = getModels();
+        const customer = await Customer.findByPk(order.customerId);
+        
+        // Notify customer about order approval
+        await Notification.create({
+          customerId: order.customerId,
+          type: 'order_approved',
+          title: 'Order Approved',
+          message: `Your order <span class=\"font-semibold\">${order.orderNumber}</span> has been approved. You can view it in the Invoice section. ${order.discountAmount && parseFloat(order.discountAmount) > 0 ? `Discount applied: ₱${parseFloat(order.discountAmount).toFixed(2)}` : ''}`,
+          data: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            totalAmount: order.totalAmount,
+            finalAmount: order.finalAmount,
+            discountAmount: order.discountAmount,
+            discountPercent: order.discountPercent
+          }
+        });
+      } catch (notificationError) {
+        console.error('Failed to create approval notification:', notificationError);
+        // Don't fail the order update if notification fails
+      }
+    }
+
     // Automatically create invoice when order is approved
     let createdInvoice = null;
     if (status === 'approved') {
@@ -421,7 +464,12 @@ const getOrdersByStatus = async (req, res, next) => {
     const { status } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    const orders = await Order.findAndCountAll({
+    // Get the count of orders separately to avoid counting items
+    const totalCount = await Order.count({
+      where: { status }
+    });
+
+    const orders = await Order.findAll({
       where: { status },
       include: [
         { model: Customer, as: 'customer' },
@@ -445,7 +493,7 @@ const getOrdersByStatus = async (req, res, next) => {
     });
 
     // Process orders to extract rejection metadata for rejected orders
-    const processedOrders = orders.rows.map(order => {
+    const processedOrders = orders.map(order => {
       if (order.status === 'rejected' && order.notes) {
         const notes = String(order.notes);
         const rejectIndex = notes.indexOf('REJECT:');
@@ -465,8 +513,8 @@ const getOrdersByStatus = async (req, res, next) => {
       data: processedOrders,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(orders.count / limit),
-        totalItems: orders.count,
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
         itemsPerPage: parseInt(limit)
       }
     });
@@ -637,7 +685,7 @@ const getOrderNotifications = async (req, res, next) => {
     const { Notification } = getModels();
     const { role, customerId } = req.user;
 
-    // Admin and Sales Marketing: show order appeals and general order notifications
+    // Admin and Sales Marketing: show order appeals, approvals, and general order notifications
     if (role === 'Admin' || role === 'Sales Marketing') {
       const adminNotifications = await Notification.findAll({
         where: { 
@@ -661,7 +709,7 @@ const getOrderNotifications = async (req, res, next) => {
     const notifications = await Notification.findAll({
       where: { 
         customerId,
-        type: { [Op.in]: ['order_rejected', 'order_appeal'] }
+        type: { [Op.in]: ['order_rejected', 'order_approved', 'order_appeal'] }
       },
       order: [['createdAt', 'DESC']]
     });
@@ -757,7 +805,7 @@ const markAllOrderNotificationsAsRead = async (req, res, next) => {
         {
           where: { 
             customerId,
-            type: { [Op.in]: ['order_rejected', 'order_appeal'] },
+            type: { [Op.in]: ['order_rejected', 'order_approved', 'order_appeal'] },
             isRead: false
           }
         }
