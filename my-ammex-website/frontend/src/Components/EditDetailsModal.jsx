@@ -226,7 +226,13 @@ function EditDetailsModal({
         submissionData.maxLevel = submissionData.maxLevel === '' ? null : parseInt(submissionData.maxLevel);
       }
       
-      // Validate that max level is greater than min level if both are provided
+      // Validate that max level is provided and greater than min level
+      if (!submissionData.maxLevel || submissionData.maxLevel === '') {
+        setErrors({ maxLevel: 'Maximum level is required' });
+        setIsLoading(false);
+        return;
+      }
+      
       if (submissionData.maxLevel && submissionData.minLevel && 
           Number(submissionData.maxLevel) <= Number(submissionData.minLevel)) {
         setErrors({ maxLevel: 'Maximum level must be greater than minimum level' });

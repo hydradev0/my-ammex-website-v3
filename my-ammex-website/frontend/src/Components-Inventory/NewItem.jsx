@@ -192,15 +192,13 @@ function NewItem({
       newErrors.minLevel = 'Minimum level must be a positive number';
     }
 
-    // Maximum level is now optional - only validate if provided
-    if (formData.maxLevel && formData.maxLevel.trim()) {
-      if (isNaN(formData.maxLevel) || Number(formData.maxLevel) < 0) {
-        newErrors.maxLevel = 'Maximum level must be a positive number';
-      }
-      // Validate that max level is greater than min level (only if both are provided)
-      if (formData.minLevel && Number(formData.maxLevel) <= Number(formData.minLevel)) {
-        newErrors.maxLevel = 'Maximum level must be greater than minimum level';
-      }
+    // Validate maximum level - now required
+    if (!formData.maxLevel.trim()) {
+      newErrors.maxLevel = 'Maximum level is required';
+    } else if (isNaN(formData.maxLevel) || Number(formData.maxLevel) < 0) {
+      newErrors.maxLevel = 'Maximum level must be a positive number';
+    } else if (formData.minLevel && Number(formData.maxLevel) <= Number(formData.minLevel)) {
+      newErrors.maxLevel = 'Maximum level must be greater than minimum level';
     }
 
     // Images are now optional
@@ -617,7 +615,7 @@ function NewItem({
                 />
                 <FormField
                   id="maxLevel"
-                  label={<span>Maximum Level</span>}
+                  label={<span>Maximum Level <span className="text-red-500">*</span></span>}
                   type="number"
                   value={formData.maxLevel}
                   onChange={handleInputChange}

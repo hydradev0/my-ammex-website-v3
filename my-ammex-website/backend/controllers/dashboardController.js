@@ -202,65 +202,147 @@ class DashboardController {
     }
   }
 
-  // Get inventory alerts - items that need reordering
+  // Get inventory alerts - items with low stock or overstock
   async getInventoryAlerts(req, res) {
     try {
-      const { severity } = req.query; // optional filter: 'all', 'critical', 'high', 'medium'
+      const { severity, type } = req.query; // type: 'all', 'low_stock', 'overstock'; severity: 'all', 'critical', 'high', 'medium'
 
-      // Base query to get items with low stock
-      let severityCondition = '';
+      // Build severity condition for low stock alerts
+      let lowStockSeverityCondition = '';
       if (severity && severity !== 'all') {
         if (severity === 'critical') {
-          severityCondition = 'AND i.quantity = 0';
+          lowStockSeverityCondition = 'AND i.quantity = 0';
         } else if (severity === 'high') {
-          severityCondition = 'AND i.quantity > 0 AND i.quantity <= (i.min_level * 0.3)';
+          lowStockSeverityCondition = 'AND i.quantity > 0 AND i.quantity <= (i.min_level * 0.3)';
         } else if (severity === 'medium') {
-          severityCondition = 'AND i.quantity > (i.min_level * 0.3) AND i.quantity <= i.min_level';
+          lowStockSeverityCondition = 'AND i.quantity > (i.min_level * 0.3) AND i.quantity <= i.min_level';
         }
       }
 
-      const alerts = await getSequelize().query(`
-        SELECT 
-          i.id,
-          i.item_code as "itemCode",
-          i.model_no as "modelNo",
-          i.vendor,
-          i.quantity as "currentStock",
-          i.min_level as "minimumStockLevel",
-          i.max_level as "maximumStockLevel",
-          i.selling_price as "price",
-          c.name as "categoryName",
-          CASE 
-            WHEN i.quantity = 0 THEN 'critical'
-            WHEN i.quantity <= (i.min_level * 0.3) THEN 'high'
-            WHEN i.quantity <= (i.min_level * 0.5) THEN 'high'
-            WHEN i.quantity <= i.min_level THEN 'medium'
-            ELSE 'low'
-          END as severity,
-          'active' as status,
-          i.created_at as "createdAt",
-          i.updated_at as "updatedAt"
-        FROM "Item" i
-        LEFT JOIN "Category" c ON i.category_id = c.id
-        WHERE i.is_active = true 
-          AND i.quantity <= i.min_level
-          ${severityCondition}
-        ORDER BY 
-          CASE 
-            WHEN i.quantity = 0 THEN 1
-            WHEN i.quantity <= (i.min_level * 0.3) THEN 2
-            WHEN i.quantity <= (i.min_level * 0.5) THEN 3
-            ELSE 4
-          END,
-          i.quantity ASC
-      `, { 
-        type: QueryTypes.SELECT 
-      });
+      // Build severity condition for overstock alerts
+      let overstockSeverityCondition = '';
+      if (severity && severity !== 'all') {
+        if (severity === 'critical') {
+          overstockSeverityCondition = 'AND i.quantity >= (i.max_level * 1.5)';
+        } else if (severity === 'high') {
+          overstockSeverityCondition = 'AND i.quantity >= (i.max_level * 1.25) AND i.quantity < (i.max_level * 1.5)';
+        } else if (severity === 'medium') {
+          overstockSeverityCondition = 'AND i.quantity >= i.max_level AND i.quantity < (i.max_level * 1.25)';
+        }
+      }
+
+      let lowStockAlerts = [];
+      let overstockAlerts = [];
+
+      // Fetch low stock alerts if type is 'all' or 'low_stock'
+      if (!type || type === 'all' || type === 'low_stock') {
+        lowStockAlerts = await getSequelize().query(`
+          SELECT 
+            i.id,
+            i.item_code as "itemCode",
+            i.model_no as "modelNo",
+            i.vendor,
+            i.quantity as "currentStock",
+            i.min_level as "minimumStockLevel",
+            i.max_level as "maximumStockLevel",
+            i.selling_price as "price",
+            c.name as "categoryName",
+            u.name as "unitName",
+            CASE 
+              WHEN i.quantity = 0 THEN 'critical'
+              WHEN i.quantity <= (i.min_level * 0.3) THEN 'high'
+              WHEN i.quantity <= (i.min_level * 0.5) THEN 'high'
+              WHEN i.quantity <= i.min_level THEN 'medium'
+              ELSE 'low'
+            END as severity,
+            'low_stock' as "alertType",
+            CASE 
+              WHEN i.quantity = 0 THEN 'OUT OF STOCK: Immediate reordering required'
+              WHEN i.quantity <= (i.min_level * 0.3) THEN 'CRITICALLY LOW: Only ' || i.quantity || ' units remaining'
+              WHEN i.quantity <= (i.min_level * 0.5) THEN 'VERY LOW STOCK: ' || i.quantity || ' units remaining'
+              ELSE 'LOW STOCK: Below minimum level of ' || i.min_level || ' units'
+            END as message,
+            (i.min_level - i.quantity) as "reorderAmount",
+            'active' as status,
+            i.created_at as "createdAt",
+            i.updated_at as "updatedAt"
+          FROM "Item" i
+          LEFT JOIN "Category" c ON i.category_id = c.id
+          LEFT JOIN "Unit" u ON i.unit_id = u.id
+          WHERE i.is_active = true 
+            AND i.quantity <= i.min_level
+            ${lowStockSeverityCondition}
+          ORDER BY 
+            CASE 
+              WHEN i.quantity = 0 THEN 1
+              WHEN i.quantity <= (i.min_level * 0.3) THEN 2
+              WHEN i.quantity <= (i.min_level * 0.5) THEN 3
+              ELSE 4
+            END,
+            i.quantity ASC
+        `, { 
+          type: QueryTypes.SELECT 
+        });
+      }
+
+      // Fetch overstock alerts if type is 'all' or 'overstock'
+      if (!type || type === 'all' || type === 'overstock') {
+        overstockAlerts = await getSequelize().query(`
+          SELECT 
+            i.id,
+            i.item_code as "itemCode",
+            i.model_no as "modelNo",
+            i.vendor,
+            i.quantity as "currentStock",
+            i.min_level as "minimumStockLevel",
+            i.max_level as "maximumStockLevel",
+            i.selling_price as "price",
+            c.name as "categoryName",
+            u.name as "unitName",
+            CASE 
+              WHEN i.quantity >= (i.max_level * 1.5) THEN 'critical'
+              WHEN i.quantity >= (i.max_level * 1.25) THEN 'high'
+              WHEN i.quantity >= i.max_level THEN 'medium'
+              ELSE 'low'
+            END as severity,
+            'overstock' as "alertType",
+            CASE 
+              WHEN i.quantity >= (i.max_level * 1.5) THEN 'CRITICAL OVERSTOCK: ' || (i.quantity - i.max_level) || ' units over maximum'
+              WHEN i.quantity >= (i.max_level * 1.25) THEN 'HIGH OVERSTOCK: ' || (i.quantity - i.max_level) || ' units excess'
+              ELSE 'OVERSTOCK: At or above maximum level of ' || i.max_level || ' units'
+            END as message,
+            (i.quantity - i.max_level) as "excessAmount",
+            'active' as status,
+            i.created_at as "createdAt",
+            i.updated_at as "updatedAt"
+          FROM "Item" i
+          LEFT JOIN "Category" c ON i.category_id = c.id
+          LEFT JOIN "Unit" u ON i.unit_id = u.id
+          WHERE i.is_active = true 
+            AND i.max_level > 0
+            AND i.quantity >= i.max_level
+            ${overstockSeverityCondition}
+          ORDER BY 
+            CASE 
+              WHEN i.quantity >= (i.max_level * 1.5) THEN 1
+              WHEN i.quantity >= (i.max_level * 1.25) THEN 2
+              ELSE 3
+            END,
+            i.quantity DESC
+        `, { 
+          type: QueryTypes.SELECT 
+        });
+      }
 
       res.json({ 
         success: true, 
-        data: alerts,
-        count: alerts.length 
+        data: {
+          lowStock: lowStockAlerts,
+          overstock: overstockAlerts,
+          lowStockCount: lowStockAlerts.length,
+          overstockCount: overstockAlerts.length,
+          totalCount: lowStockAlerts.length + overstockAlerts.length
+        }
       });
     } catch (error) {
       console.error('Error fetching inventory alerts:', error);

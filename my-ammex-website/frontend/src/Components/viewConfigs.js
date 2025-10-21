@@ -214,6 +214,7 @@ export const editItemConfig = {
           width: 'w-1/3',
           type: 'number',
           min: '0',
+          required: true
         }
       ]
     },

@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter } from 'lucide-react';
+import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown } from 'lucide-react';
 import { getInventoryAlerts } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
 
 const InventoryAlerts = () => {
   const { user } = useAuth();
-  const [alerts, setAlerts] = useState([]);
+  const [lowStockAlerts, setLowStockAlerts] = useState([]);
+  const [overstockAlerts, setOverstockAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('lowStock'); // 'lowStock' or 'overstock'
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const severityDropdownRef = useRef(null);
 
@@ -25,12 +27,20 @@ const InventoryAlerts = () => {
       try {
         setLoading(true);
         setError(null);
-        const alertsData = await getInventoryAlerts();
-        setAlerts(alertsData);
+        const response = await getInventoryAlerts();
+        // Handle new response structure with separate arrays
+        if (response && response.lowStock && response.overstock) {
+          setLowStockAlerts(response.lowStock);
+          setOverstockAlerts(response.overstock);
+        } else {
+          setLowStockAlerts([]);
+          setOverstockAlerts([]);
+        }
       } catch (err) {
         console.error('Error fetching inventory alerts:', err);
         setError(err.message);
-        setAlerts([]);
+        setLowStockAlerts([]);
+        setOverstockAlerts([]);
       } finally {
         setLoading(false);
       }
@@ -64,7 +74,17 @@ const InventoryAlerts = () => {
     return 'In Stock';
   };
 
-  const filteredAlerts = alerts.filter(alert => {
+  const getOverstockStatus = (current, maximumStockLevel) => {
+    if (current >= maximumStockLevel * 1.5) return 'Critical Overstock';
+    if (current >= maximumStockLevel * 1.25) return 'High Overstock';
+    if (current >= maximumStockLevel) return 'Overstock';
+    return 'Normal';
+  };
+
+  // Filter alerts based on active tab
+  const currentAlerts = activeTab === 'lowStock' ? lowStockAlerts : overstockAlerts;
+  
+  const filteredAlerts = currentAlerts.filter(alert => {
     // Skip alerts with missing required properties
     if (!alert.modelNo || !alert.categoryName) {
       return false;
@@ -73,7 +93,7 @@ const InventoryAlerts = () => {
     const matchesSeverity = filterSeverity === 'all' || alert.severity === filterSeverity;
     const matchesSearch = alert.modelNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          alert.categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (alert.modelNo && alert.modelNo.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (alert.vendor && alert.vendor.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSeverity && matchesSearch;
   });
 
@@ -135,6 +155,47 @@ const InventoryAlerts = () => {
         <div className='border-b border-gray-300'>
           <h2 className="text-2xl font-semibold px-6 py-3">Inventory Alerts</h2>
         </div>
+        
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 px-6">
+          <button
+            className={`flex items-center cursor-pointer gap-2 px-6 py-3 font-medium transition-colors ${
+              activeTab === 'lowStock'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+            onClick={() => setActiveTab('lowStock')}
+          >
+            <TrendingDown className="w-5 h-5" />
+            Low Stock Alerts
+            {lowStockAlerts.length > 0 && (
+              <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                activeTab === 'lowStock' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+              }`}>
+                {lowStockAlerts.length}
+              </span>
+            )}
+          </button>
+          <button
+            className={`flex items-center cursor-pointer gap-2 px-6 py-3 font-medium transition-colors ${
+              activeTab === 'overstock'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+            onClick={() => setActiveTab('overstock')}
+          >
+            <TrendingUp className="w-5 h-5" />
+            Overstock Alerts
+            {overstockAlerts.length > 0 && (
+              <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                activeTab === 'overstock' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+              }`}>
+                {overstockAlerts.length}
+              </span>
+            )}
+          </button>
+        </div>
+
         <div className="p-6">
           {/* Search and Filters */}
           <div className="flex gap-4 mb-4">
@@ -194,33 +255,86 @@ const InventoryAlerts = () => {
                       </span>
                     </div>
                     
+                    {/* Alert Message */}
+                    {alert.message && (
+                      <div className='py-3'>
+                      <span className={`p-2 rounded-lg text-sm font-medium ${
+                        alert.severity === 'critical' ? 'bg-red-50 text-red-800' :
+                        alert.severity === 'high' ? 'bg-orange-50 text-orange-800' :
+                        'bg-yellow-50 text-yellow-800'
+                      }`}>
+                        {alert.message}
+                      </span>
+                      </div>
+                    )}
+                    
                     <h3 className="text-sm text-gray-500 mb-1">
                       Model: <span className="font-semibold text-gray-900">{alert.modelNo || 'Unknown Item'}</span>
                     </h3>
-                    <p className="text-sm text-gray-500 mb-2">Category: <span className="font-semibold text-gray-900">{alert.categoryName || 'N/A'}</span></p>
+                    <p className="text-sm text-gray-500 mb-2">
+                      Category: <span className="font-semibold text-gray-900">{alert.categoryName || 'N/A'}</span>
+                      {alert.vendor && (
+                        <> | Vendor: <span className="font-semibold text-gray-900">{alert.vendor}</span></>
+                      )}
+                    </p>
                     
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Current Stock:</span>
-                        <span className={`ml-2 font-semibold text-lg ${(alert.currentStock || 0) < (alert.minimumStockLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
-                          {alert.currentStock || 0} units
-                        </span>
+                    {activeTab === 'lowStock' ? (
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Current Stock:</span>
+                          <span className={`ml-2 font-semibold text-lg ${(alert.currentStock || 0) < (alert.minimumStockLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
+                            {alert.currentStock || 0} {alert.unitName || 'units'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Minimum Level:</span>
+                          <span className="ml-2 font-semibold text-lg text-gray-900">{alert.minimumStockLevel || 0} {alert.unitName || 'units'}</span>
+                        </div>
+                        {/* {alert.reorderAmount > 0 && (
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Suggested Reorder:</span>
+                            <span className="ml-2 font-semibold text-lg text-blue-600">{alert.reorderAmount} {alert.unitName || 'units'}</span>
+                          </div>
+                        )} */}
                       </div>
-                      <div>
-                        <span className="text-gray-500">Minimum Stock Level:</span>
-                        <span className="ml-2 font-semibold text-lg text-gray-900">{alert.minimumStockLevel || 0} units</span>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Current Stock:</span>
+                          <span className={`ml-2 font-semibold text-lg ${(alert.currentStock || 0) > (alert.maximumStockLevel || 0) ? 'text-orange-600' : 'text-gray-900'}`}>
+                            {alert.currentStock || 0} {alert.unitName || 'units'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Maximum Level:</span>
+                          <span className="ml-2 font-semibold text-lg text-gray-900">{alert.maximumStockLevel || 0} {alert.unitName || 'units'}</span>
+                        </div>
+                        {alert.excessAmount > 0 && (
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Excess Stock:</span>
+                            <span className="ml-2 font-semibold text-lg text-orange-600">{alert.excessAmount} {alert.unitName || 'units'} over maximum</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
                     
-                    <div className="mt-3 flex items-center gap-4">
+                    {/* <div className="mt-3 flex items-center gap-4">
                       <span className={`text-sm font-medium ${
-                        (alert.currentStock || 0) === 0 ? 'text-red-600' : 
-                        (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.3 ? 'text-red-500' :
-                        (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.5 ? 'text-orange-500' : 'text-yellow-600'
+                        activeTab === 'lowStock' ? (
+                          (alert.currentStock || 0) === 0 ? 'text-red-600' : 
+                          (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.3 ? 'text-red-500' :
+                          (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.5 ? 'text-orange-500' : 'text-yellow-600'
+                        ) : (
+                          (alert.currentStock || 0) >= (alert.maximumStockLevel || 0) * 1.5 ? 'text-red-600' :
+                          (alert.currentStock || 0) >= (alert.maximumStockLevel || 0) * 1.25 ? 'text-orange-500' : 'text-yellow-600'
+                        )
                       }`}>
-                        {getStockStatus(alert.currentStock || 0, alert.minimumStockLevel || 0)}
+                        {activeTab === 'lowStock' 
+                          ? getStockStatus(alert.currentStock || 0, alert.minimumStockLevel || 0)
+                          : getOverstockStatus(alert.currentStock || 0, alert.maximumStockLevel || 0)
+                        }
                       </span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -230,8 +344,15 @@ const InventoryAlerts = () => {
           {filteredAlerts.length === 0 && (
             <div className="p-8 text-center">
               <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts found</h3>
-              <p className="text-gray-600">Try adjusting your filters or search terms.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {activeTab === 'lowStock' ? 'No low stock alerts' : 'No overstock alerts'}
+              </h3>
+              <p className="text-gray-600">
+                {currentAlerts.length === 0 
+                  ? `All items are ${activeTab === 'lowStock' ? 'above minimum levels' : 'below maximum levels'}.`
+                  : 'Try adjusting your filters or search terms.'
+                }
+              </p>
             </div>
           )}
         </div>

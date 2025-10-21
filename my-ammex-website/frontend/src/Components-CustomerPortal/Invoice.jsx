@@ -4,8 +4,8 @@ import { ArrowLeft, ChevronRight, Eye, FileText, Clock, CheckCircle, X, XCircle,
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
+import PaymentReceiptsModal from './PaymentReceiptsModal';
 import { getMyInvoices } from '../services/invoiceService';
-import { getMyPaymentReceipts, getPaymentReceiptDetails, downloadPaymentReceipt, formatPaymentMethod } from '../services/receiptService';
 
 const Invoice = () => {
   const navigate = useNavigate();
@@ -19,21 +19,15 @@ const Invoice = () => {
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
   
+  // Tab state
+  const [activeTab, setActiveTab] = useState('open');
+  
   // Modal state
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPaymentReceiptsModal, setShowPaymentReceiptsModal] = useState(false);
-  const [isPaymentReceiptsModalAnimating, setIsPaymentReceiptsModalAnimating] = useState(false);
-  const [showReceiptDetailModal, setShowReceiptDetailModal] = useState(false);
-  const [isReceiptDetailModalAnimating, setIsReceiptDetailModalAnimating] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const [paymentReceipts, setPaymentReceipts] = useState([]);
-  const [isLoadingReceipts, setIsLoadingReceipts] = useState(false);
   const [showPaymentSuccessNotification, setShowPaymentSuccessNotification] = useState(false);
-  const [downloadingReceipts, setDownloadingReceipts] = useState(new Set());
   const modalRef = useRef(null);
-  const paymentReceiptsModalRef = useRef(null);
-  const receiptDetailModalRef = useRef(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -122,40 +116,14 @@ const Invoice = () => {
       if (showInvoiceModal && modalRef.current && event.target === modalRef.current) {
         closeInvoiceModal();
       }
-      if (showPaymentReceiptsModal && paymentReceiptsModalRef.current && event.target === paymentReceiptsModalRef.current) {
-        closePaymentReceiptsModal();
-      }
-      if (showReceiptDetailModal && receiptDetailModalRef.current && event.target === receiptDetailModalRef.current) {
-        closeReceiptDetailModal();
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showInvoiceModal, showPaymentReceiptsModal, showReceiptDetailModal]);
+  }, [showInvoiceModal]);
 
-  // Handle payment receipts modal animation
-  useEffect(() => {
-    if (showPaymentReceiptsModal) {
-      // Small delay to ensure the modal is rendered before animation starts
-      const timer = setTimeout(() => {
-        setIsPaymentReceiptsModalAnimating(true);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [showPaymentReceiptsModal]);
-
-  // Handle receipt detail modal animation
-  useEffect(() => {
-    if (showReceiptDetailModal) {
-      const timer = setTimeout(() => {
-        setIsReceiptDetailModalAnimating(true);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [showReceiptDetailModal]);
 
   const handleBack = () => {
     navigate('/Products');
@@ -232,66 +200,13 @@ const Invoice = () => {
     setSelectedInvoice(null);
   };
 
-  const handleViewPaymentReceipts = async () => {
-    setIsLoadingReceipts(true);
+  const handleViewPaymentReceipts = () => {
     setShowPaymentReceiptsModal(true);
-    setIsPaymentReceiptsModalAnimating(true);
     setShowPaymentSuccessNotification(false); // Close the success notification
-
-    try {
-      const response = await getMyPaymentReceipts();
-      setPaymentReceipts(response.data || []);
-    } catch (error) {
-      console.error('Failed to load payment receipts:', error);
-      setPaymentReceipts([]);
-    } finally {
-      setIsLoadingReceipts(false);
-    }
   };
 
   const closePaymentReceiptsModal = () => {
-    setIsPaymentReceiptsModalAnimating(false);
-    setTimeout(() => {
-      setShowPaymentReceiptsModal(false);
-    }, 500); // Match the animation duration
-  };
-
-  const handleViewReceiptDetail = async (receiptId) => {
-    try {
-      const response = await getPaymentReceiptDetails(receiptId);
-      setSelectedReceipt(response.data);
-      setShowReceiptDetailModal(true);
-      setIsReceiptDetailModalAnimating(true);
-    } catch (error) {
-      console.error('Failed to load receipt details:', error);
-    }
-  };
-
-  const closeReceiptDetailModal = () => {
-    setIsReceiptDetailModalAnimating(false);
-    setTimeout(() => {
-      setShowReceiptDetailModal(false);
-      setSelectedReceipt(null);
-    }, 500);
-  };
-
-  const handleDownloadReceipt = async (receiptId) => {
-    try {
-      // Add receipt ID to downloading set
-      setDownloadingReceipts(prev => new Set([...prev, receiptId]));
-      
-      await downloadPaymentReceipt(receiptId);
-    } catch (error) {
-      console.error('Failed to download receipt:', error);
-      alert(`Failed to download receipt: ${error.message}`);
-    } finally {
-      // Remove receipt ID from downloading set
-      setDownloadingReceipts(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(receiptId);
-        return newSet;
-      });
-    }
+    setShowPaymentReceiptsModal(false);
   };
 
   // Sorting function
@@ -392,12 +307,18 @@ const Invoice = () => {
     return `₱${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Sort and paginate invoices
-  const sortedInvoices = sortInvoices(invoices);
+  // Split invoices by status
+  const openInvoices = invoices.filter(inv => inv.paymentStatus !== 'completed');
+  const completedInvoices = invoices.filter(inv => inv.paymentStatus === 'completed');
 
-  // Pagination logic
+  // Sort invoices per tab
+  const sortedOpenInvoices = sortInvoices(openInvoices);
+  const sortedCompletedInvoices = sortInvoices(completedInvoices);
+
+  // Pagination logic per tab
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedInvoices = sortedInvoices.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedOpenInvoices = sortedOpenInvoices.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedCompletedInvoices = sortedCompletedInvoices.slice(startIndex, startIndex + itemsPerPage);
 
   // Invoice Details Modal
   const invoiceModalContent = showInvoiceModal && selectedInvoice ? (
@@ -489,139 +410,6 @@ const Invoice = () => {
     </div>
   ) : null;
 
-  // Payment Receipts Modal
-  const paymentReceiptsModalContent = showPaymentReceiptsModal ? (
-    <div 
-      ref={paymentReceiptsModalRef}
-      className={`fixed inset-0 bg-black/30 flex items-end sm:items-center justify-end z-50 p-0 sm:p-0 transition-opacity duration-300 ${
-        isPaymentReceiptsModalAnimating ? 'opacity-100' : 'opacity-0'
-      }`}
-    >
-      <div 
-        className={`bg-white rounded-t-2xl sm:rounded-l-2xl sm:rounded-r-none shadow-2xl w-full sm:w-[85vw] sm:max-w-xl h-[100vh] sm:h-[100vh] flex flex-col transform transition-all duration-500 ease-in-out ${
-          isPaymentReceiptsModalAnimating ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">   
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Payment Receipts</h2>
-              <p className="text-sm text-gray-600 mt-1">Your payment history and receipts</p>
-            </div>
-            <button
-              onClick={closePaymentReceiptsModal}
-              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer transition-colors duration-200"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-        
-        <div className="p-3 sm:p-4 overflow-y-auto flex-1">
-          {isLoadingReceipts ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading receipts...</p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                {paymentReceipts.map((receipt) => (
-                  <div 
-                    key={receipt.id} 
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
-                  >
-                    {/* Header Row */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText className="w-5 h-5 text-blue-600" />
-                          <h3 className="text-base font-bold text-gray-900">{receipt.receiptNumber}</h3>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          {receipt.invoice?.invoiceNumber || 'N/A'} • {formatDate(receipt.paymentDate)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 mb-1">Payment Amount</p>
-                        <p className="text-lg font-bold text-green-600">{formatCurrency(receipt.amount)}</p>
-                      </div>
-                    </div>
-
-                    {/* Payment Info */}
-                    <div className="bg-gray-50 rounded-md p-3 mb-3">
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <span className="text-gray-500 text-xs">Payment Method</span>
-                          <p className="font-semibold text-gray-900">{formatPaymentMethod(receipt.paymentMethod)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500 text-xs">Balance After Payment</span>
-                          <p className={`font-semibold ${Number(receipt.remainingAmount) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                            {formatCurrency(receipt.remainingAmount)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Reference Info */}
-                    {receipt.paymentReference && (
-                      <div className="text-xs text-gray-500 mb-3 font-mono bg-gray-50 px-2 py-1 rounded border border-gray-200">
-                        <span className="font-normal">Ref: </span>{receipt.paymentReference}
-                      </div>
-                    )}
-                    
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 justify-end border-t border-gray-200 pt-3">
-                      <button 
-                        onClick={() => handleViewReceiptDetail(receipt.id)}
-                        className="flex items-center gap-1 border border-gray-300 bg-gray-50 hover:bg-gray-100 cursor-pointer text-gray-600 px-2 py-1.5 rounded-lg text-sm transition-colors duration-200"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View Details
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadReceipt(receipt.id);
-                        }}
-                        disabled={downloadingReceipts.has(receipt.id)}
-                        className={`flex items-center gap-1 border border-gray-300 px-2 py-1.5 rounded-lg text-sm transition-colors duration-200 ${
-                          downloadingReceipts.has(receipt.id)
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-50 hover:bg-gray-100 cursor-pointer text-gray-600'
-                        }`}
-                      >
-                        {downloadingReceipts.has(receipt.id) ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-4 h-4" />
-                            Download PDF
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {paymentReceipts.length === 0 && !isLoadingReceipts && (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Payment Receipts</h3>
-                  <p className="text-gray-500">Payment receipts will appear here once payments are processed.</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  ) : null;
 
   return (
     <>
@@ -658,310 +446,301 @@ const Invoice = () => {
           </button>
         </div>
 
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your invoices...</h3>
-            <p className="text-gray-600">Please wait while we fetch your invoices</p>
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => { setActiveTab('open'); setCurrentPage(1); }}
+                className={`py-3 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+                  activeTab === 'open'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Clock className="w-5 h-5" />
+                Open Invoices
+                <span className="bg-blue-100 text-blue-600 py-1 px-2.5 rounded-full text-xs font-medium">
+                  {openInvoices.length}
+                </span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('completed'); setCurrentPage(1); }}
+                className={`py-3 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+                  activeTab === 'completed'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <CheckCircle className="w-5 h-5" />
+                Completed
+                <span className="bg-green-100 text-green-600 py-1 px-2.5 rounded-full text-xs font-medium">
+                  {completedInvoices.length}
+                </span>
+              </button>
+            </nav>
           </div>
-            ) : paginatedInvoices.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Invoices Yet</h3>
-            <p className="text-gray-500 mb-6">Invoices will appear here once your orders are completed and processed.</p>
-            <button
-              onClick={handleBack}
-              className="bg-[#3182ce] cursor-pointer text-white px-6 py-2 rounded-3xl hover:bg-[#2c5282] transition-colors"
-            >
-              View Products
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                  <tr>
-                    <th 
-                      className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleSort('invoiceNumber')}
-                    >
-                      Invoice #
-                      {sortField === 'invoiceNumber' && (
-                        sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
-                      )}
-                    </th>
-                    <th 
-                      className="hidden sm:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleSort('invoiceDate')}
-                    >
-                      Date
-                      {sortField === 'invoiceDate' && (
-                        sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
-                      )}
-                    </th>
-                    <th 
-                      className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleSort('dueDate')}
-                    >
-                      Due Date
-                      {sortField === 'dueDate' && (
-                        sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
-                      )}
-                    </th>
-                    <th 
-                      className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleSort('totalAmount')}
-                    >
-                      Amount
-                      {sortField === 'totalAmount' && (
-                        sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
-                      )}
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
-                      Balance
-                    </th>
-                    <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                        {invoice.invoiceNumber}
-                      </td>
-                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(invoice.invoiceDate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDate(invoice.dueDate)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {formatCurrency(invoice.totalAmount)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
-                        <span className={invoice.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}>
-                          {formatCurrency(invoice.remainingAmount)}
-                        </span>
-                      </td>
-                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(invoice.paymentStatus)}`}>
-                          {getPaymentStatusIcon(invoice.paymentStatus)}
-                          <span className="ml-1 capitalize">{invoice.paymentStatus}</span>
-                        </span>
-                      </td>
-                      <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleViewInvoice(invoice)}
-                          className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'open' && (
+          <>
+            {/* Loading State */}
+            {isLoading ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your invoices...</h3>
+                <p className="text-gray-600">Please wait while we fetch your invoices</p>
+              </div>
+            ) : paginatedOpenInvoices.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Open Invoices</h3>
+                <p className="text-gray-500 mb-6">Open invoices will appear here once your orders are invoiced.</p>
+                <button
+                  onClick={handleBack}
+                  className="bg-[#3182ce] cursor-pointer text-white px-6 py-2 rounded-3xl hover:bg-[#2c5282] transition-colors"
+                >
+                  View Products
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('invoiceNumber')}
                         >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-                        {invoice.remainingAmount > 0 && (
-                          <button
-                            onClick={() => handlePayInvoice(invoice)}
-                            className="text-green-600 cursor-pointer hover:text-green-800 transition-colors flex items-center gap-1 ml-4"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            Pay
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                          Invoice #
+                          {sortField === 'invoiceNumber' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="hidden sm:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('invoiceDate')}
+                        >
+                          Date
+                          {sortField === 'invoiceDate' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('dueDate')}
+                        >
+                          Due Date
+                          {sortField === 'dueDate' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('totalAmount')}
+                        >
+                          Amount
+                          {sortField === 'totalAmount' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Balance
+                        </th>
+                        <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedOpenInvoices.map((invoice) => (
+                        <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {invoice.invoiceNumber}
+                          </td>
+                          <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(invoice.invoiceDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {formatDate(invoice.dueDate)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {formatCurrency(invoice.totalAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                            <span className={invoice.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {formatCurrency(invoice.remainingAmount)}
+                            </span>
+                          </td>
+                          <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(invoice.paymentStatus)}`}>
+                              {getPaymentStatusIcon(invoice.paymentStatus)}
+                              <span className="ml-1 capitalize">{invoice.paymentStatus}</span>
+                            </span>
+                          </td>
+                          <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleViewInvoice(invoice)}
+                              className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View
+                            </button>
+                            {invoice.remainingAmount > 0 && (
+                              <button
+                                onClick={() => handlePayInvoice(invoice)}
+                                className="text-green-600 cursor-pointer hover:text-green-800 transition-colors flex items-center gap-1 ml-4"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                                Pay
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'completed' && (
+          <>
+            {/* Loading State */}
+            {isLoading ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading your invoices...</h3>
+                <p className="text-gray-600">Please wait while we fetch your invoices</p>
+              </div>
+            ) : paginatedCompletedInvoices.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Completed Invoices</h3>
+                <p className="text-gray-500">You have no completed invoices yet.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('invoiceNumber')}
+                        >
+                          Invoice #
+                          {sortField === 'invoiceNumber' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="hidden sm:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('invoiceDate')}
+                        >
+                          Date
+                          {sortField === 'invoiceDate' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('dueDate')}
+                        >
+                          Due Date
+                          {sortField === 'dueDate' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => handleSort('totalAmount')}
+                        >
+                          Amount
+                          {sortField === 'totalAmount' && (
+                            sortDirection === 'asc' ? <ChevronUp className="inline ml-1 w-4 h-4" /> : <ChevronDown className="inline ml-1 w-4 h-4" />
+                          )}
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Balance
+                        </th>
+                        <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedCompletedInvoices.map((invoice) => (
+                        <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {invoice.invoiceNumber}
+                          </td>
+                          <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(invoice.invoiceDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {formatDate(invoice.dueDate)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {formatCurrency(invoice.totalAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                            <span className={invoice.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {formatCurrency(invoice.remainingAmount)}
+                            </span>
+                          </td>
+                          <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(invoice.paymentStatus)}`}>
+                              {getPaymentStatusIcon(invoice.paymentStatus)}
+                              <span className="ml-1 capitalize">{invoice.paymentStatus}</span>
+                            </span>
+                          </td>
+                          <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleViewInvoice(invoice)}
+                              className="text-[#3182ce] cursor-pointer hover:text-[#2c5282] transition-colors flex items-center gap-1 ml-auto"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Receipt Detail Modal (Nested) */}
-      {showReceiptDetailModal && selectedReceipt && createPortal(
-        <div 
-          ref={receiptDetailModalRef}
-          className={`fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 transition-opacity duration-300 ${
-            isReceiptDetailModalAnimating ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <div 
-            className={`bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform transition-all duration-300 ${
-              isReceiptDetailModalAnimating ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-            }`}
-          >
-            <div className="p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">   
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Receipt Details</h2>
-                  <p className="text-sm text-gray-600 mt-1">{selectedReceipt.receiptNumber}</p>
-                </div>
-                <button
-                  onClick={closeReceiptDetailModal}
-                  className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer transition-colors duration-200"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-white">
-              {/* Receipt Header */}
-              <div className="border-b-2 border-gray-900 pb-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Payment Receipt</p>
-                    <h2 className="text-3xl font-bold text-gray-900">{selectedReceipt.receiptNumber}</h2>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Amount Paid</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedReceipt.amount)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Payment Confirmed</span>
-                </div>
-              </div>
-
-              {/* Main Content */}
-              <div className="space-y-6">
-                {/* Payment Information Card */}
-                <div className="border border-gray-200 rounded-lg p-5">
-                  <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-4 border-b border-gray-200 pb-2">Payment Details</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date & Time</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatDate(selectedReceipt.paymentDate)}</p>
-                      <p className="text-xs text-gray-500">{new Date(selectedReceipt.paymentDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Payment Method</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatPaymentMethod(selectedReceipt.paymentMethod)}</p>
-                    </div>
-                    {selectedReceipt.paymentReference && (
-                      <div className="sm:col-span-2 space-y-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Transaction Reference</p>
-                        <p className="text-sm font-mono bg-gray-50 px-3 py-2 rounded border border-gray-200 text-gray-900">{selectedReceipt.paymentReference}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Invoice Information Card */}
-                <div className="border border-gray-200 rounded-lg p-5">
-                  <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-4 border-b border-gray-200 pb-2">Invoice Details</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Invoice Number</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedReceipt.invoice?.invoiceNumber || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Invoice Date</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedReceipt.invoice?.invoiceDate ? formatDate(selectedReceipt.invoice.invoiceDate) : 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Customer Information Card */}
-                {selectedReceipt.customer && (
-                  <div className="border border-gray-200 rounded-lg p-5">
-                    <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-4 border-b border-gray-200 pb-2">Customer Information</h3>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Customer Name</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedReceipt.customer.customerName || selectedReceipt.customer.contactName || 'N/A'}</p>
-                      </div>
-                      {selectedReceipt.customer.email1 && (
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
-                          <p className="text-sm text-gray-900">{selectedReceipt.customer.email1}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Payment Breakdown */}
-                <div className="border-2 border-gray-900 rounded-lg p-5 bg-gray-50">
-                  <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-4">Payment Summary</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm text-gray-700">Invoice Total</span>
-                      <span className="text-sm font-semibold text-gray-900">{formatCurrency(selectedReceipt.totalAmount)}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-t border-gray-300">
-                      <span className="text-sm text-gray-700">This Payment</span>
-                      <span className="text-sm font-semibold text-gray-900">- {formatCurrency(selectedReceipt.amount)}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-3 border-t-2 border-gray-900 pt-3">
-                      <span className="text-base font-bold text-gray-900">Balance Remaining</span>
-                      <span className="text-xl font-bold text-gray-900">
-                        {formatCurrency(selectedReceipt.remainingAmount)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Note */}
-                <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                  <p className="text-xs text-gray-600 text-center">
-                    This receipt serves as proof of payment. For any inquiries, please contact our support team with your receipt number.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="p-4 sm:p-6 border-t border-gray-200 sticky bottom-0 bg-white z-10 rounded-b-lg">
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={closeReceiptDetailModal}
-                  className="px-3 py-2 border cursor-pointer border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => handleDownloadReceipt(selectedReceipt.id)}
-                  disabled={downloadingReceipts.has(selectedReceipt.id)}
-                  className={`flex items-center gap-1 px-2 py-2 border border-gray-300 rounded-lg transition-colors ${
-                    downloadingReceipts.has(selectedReceipt.id)
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'cursor-pointer text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {downloadingReceipts.has(selectedReceipt.id) ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      Download PDF
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Invoice Details Modal */}
-      <ScrollLock active={showInvoiceModal || showPaymentReceiptsModal || showReceiptDetailModal} />
+      <ScrollLock active={showInvoiceModal} />
       {createPortal(invoiceModalContent, document.body)}
-      {createPortal(paymentReceiptsModalContent, document.body)}
+
+      {/* Payment Receipts Modal */}
+      <PaymentReceiptsModal
+        isOpen={showPaymentReceiptsModal}
+        onClose={closePaymentReceiptsModal}
+      />
 
       {/* Payment Success Notification */}
       {showPaymentSuccessNotification && createPortal(
@@ -979,7 +758,7 @@ const Invoice = () => {
                   Your payment has been processed successfully. Your receipt has been generated and is available below.
                 </p>
                 <button
-                  onClick={() => handleViewPaymentReceipts()}
+                  onClick={handleViewPaymentReceipts}
                   className="text-sm font-medium text-blue-600 hover:text-blue-700 underline"
                 >
                   View Payment Receipts
