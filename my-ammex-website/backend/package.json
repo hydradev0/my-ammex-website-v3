@@ -14,7 +14,7 @@
     "test:cart": "node scripts/testCartAPI.js",
     "create:cart-tables": "node scripts/createCartTables.js",
     "remove-phone": "node scripts/removePhoneNumberColumn.js",
-    "postinstall": "npx puppeteer browsers install chrome && echo 'Backend dependencies and Chrome installed successfully'",
+    "postinstall": "npx puppeteer browsers install chrome || echo 'Chrome installation failed, will use fallback PDF generation'",
     "prestart": "echo 'Starting Ammex Backend Server...'"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
     "pg": "^8.11.3",
     "pg-hstore": "^2.3.4",
     "puppeteer": "^24.25.0",
+    "html-pdf-node": "^1.0.8",
     "send": "0.18.0",
     "sequelize": "^6.35.2"
   },

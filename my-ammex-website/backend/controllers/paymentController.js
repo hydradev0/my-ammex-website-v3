@@ -2,6 +2,7 @@ const { getModels } = require('../config/db');
 const { updateInvoicePayment } = require('../utils/invoiceUtils');
 const paymongoService = require('../services/paymongoService');
 const puppeteer = require('puppeteer');
+const htmlPdf = require('html-pdf-node');
 
 // Generate unique payment number
 function generatePaymentNumber() {
@@ -1973,6 +1974,31 @@ const getPaymentReceiptDetails = async (req, res, next) => {
   }
 };
 
+// Fallback PDF generation using html-pdf-node
+const generatePDFFallback = async (htmlContent, receiptNumber) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      format: 'A4',
+      margin: {
+        top: '1cm',
+        right: '1cm',
+        bottom: '1cm',
+        left: '1cm'
+      },
+      printBackground: true,
+      displayHeaderFooter: false
+    };
+
+    htmlPdf.generatePdf({ content: htmlContent }, options)
+      .then(pdfBuffer => {
+        resolve(pdfBuffer);
+      })
+      .catch(error => {
+        reject(error);
+      });
+  });
+};
+
 // Customer: Download payment receipt as PDF
 const downloadPaymentReceipt = async (req, res, next) => {
   let browser = null;
@@ -2032,46 +2058,45 @@ const downloadPaymentReceipt = async (req, res, next) => {
 
     // Generate HTML for the receipt
     const htmlContent = generateReceiptHTML(receipt);
+    let pdfBuffer;
 
-    // Launch Puppeteer browser with production-safe settings
-    const launchOptions = {
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--single-process',
-        '--no-zygote',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding'
-      ]
-    };
-
-    // Add executable path for production if needed
-    if (process.env.NODE_ENV === 'production') {
-      // Try to use the installed Chrome from puppeteer
-      try {
-        const { executablePath } = require('puppeteer');
-        launchOptions.executablePath = executablePath();
-      } catch (error) {
-        console.log('Using system Chrome or default executable path');
-      }
-    }
-
-    browser = await puppeteer.launch(launchOptions);
-
-    const page = await browser.newPage();
-    
     try {
+      // Try Puppeteer first
+      const launchOptions = {
+        headless: 'new',
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--single-process',
+          '--no-zygote',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ]
+      };
+
+      // Add executable path for production if needed
+      if (process.env.NODE_ENV === 'production') {
+        try {
+          const { executablePath } = require('puppeteer');
+          launchOptions.executablePath = executablePath();
+        } catch (error) {
+          console.log('Using system Chrome or default executable path');
+        }
+      }
+
+      browser = await puppeteer.launch(launchOptions);
+      const page = await browser.newPage();
+      
       // Set the HTML content
       await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
       // Generate PDF with optimized settings
-      const pdfBuffer = await page.pdf({
+      pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
         margin: {
@@ -2084,26 +2109,45 @@ const downloadPaymentReceipt = async (req, res, next) => {
         displayHeaderFooter: false
       });
 
-      // Set response headers for PDF download
-      const fileName = `${receipt.receiptNumber}.pdf`;
-      
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', pdfBuffer.length);
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Content-Transfer-Encoding', 'binary');
+      // Close browser
+      await page.close();
+      await browser.close();
+      browser = null;
 
-      // Send PDF buffer as binary
-      res.end(pdfBuffer);
+    } catch (puppeteerError) {
+      console.log('Puppeteer failed, trying fallback PDF generation:', puppeteerError.message);
       
-    } finally {
-      // Ensure page is closed
+      // Clean up browser if it was created
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (closeError) {
+          // Browser close error - non-critical
+        }
+        browser = null;
+      }
+
+      // Use fallback PDF generation
       try {
-        await page.close();
-      } catch (pageCloseError) {
-        // Page close error - non-critical
+        pdfBuffer = await generatePDFFallback(htmlContent, receipt.receiptNumber);
+        console.log('Fallback PDF generation successful');
+      } catch (fallbackError) {
+        console.error('Both Puppeteer and fallback PDF generation failed:', fallbackError);
+        throw new Error('PDF generation failed: ' + fallbackError.message);
       }
     }
+
+    // Set response headers for PDF download
+    const fileName = `${receipt.receiptNumber}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Transfer-Encoding', 'binary');
+
+    // Send PDF buffer as binary
+    res.end(pdfBuffer);
 
   } catch (error) {
     console.error('Error downloading payment receipt:', error);
@@ -2117,22 +2161,12 @@ const downloadPaymentReceipt = async (req, res, next) => {
       }
     }
     
-    // Check if it's a Chrome/Puppeteer specific error
-    if (error.message.includes('Could not find Chrome') || error.message.includes('Chrome')) {
-      console.error('Chrome/Puppeteer installation issue detected');
-      res.status(500).json({
-        success: false,
-        message: 'PDF generation service temporarily unavailable. Please try again later or contact support.',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'PDF service unavailable'
-      });
-    } else {
-      // Send error response
-      res.status(500).json({
-        success: false,
-        message: 'Failed to generate PDF receipt',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-      });
-    }
+    // Send error response
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate PDF receipt',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 };
 

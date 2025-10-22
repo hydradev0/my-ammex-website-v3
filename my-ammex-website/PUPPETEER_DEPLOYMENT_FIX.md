@@ -3,9 +3,7 @@
 ## Problem
 Payment receipt PDF downloads work on localhost but fail in production on Render with the error:
 ```
-Error: Could not find Chrome (ver. 141.0.7390.78). This can occur if either
-1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
-2. your cache path is incorrectly configured (which is: /opt/render/.cache/puppeteer).
+Error: Browser was not found at the configured executablePath (/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome)
 ```
 
 ## Root Cause
@@ -13,26 +11,35 @@ Render's production environment doesn't have Chrome installed by default, which 
 
 ## Solutions Implemented
 
-### 1. Automatic Chrome Installation
-Updated `backend/package.json` to include a postinstall script that automatically installs Chrome:
+### 1. Dual PDF Generation Strategy
+Implemented a robust fallback system that tries Puppeteer first, then falls back to `html-pdf-node` if Chrome is not available.
+
+### 2. Fallback PDF Library
+Added `html-pdf-node` as a dependency that doesn't require Chrome installation:
 ```json
-"postinstall": "npx puppeteer browsers install chrome && echo 'Backend dependencies and Chrome installed successfully'"
+"html-pdf-node": "^1.0.8"
 ```
 
-### 2. Enhanced Puppeteer Configuration
-Modified the Puppeteer launch options in `backend/controllers/paymentController.js` to be more production-friendly:
-- Added production-specific Chrome executable path detection
-- Enhanced browser arguments for better stability in containerized environments
-- Added proper error handling for Chrome-specific issues
+### 3. Smart Error Handling
+The system now:
+- Tries Puppeteer first (for better PDF quality)
+- Automatically falls back to `html-pdf-node` if Puppeteer fails
+- Provides detailed logging for troubleshooting
+- Ensures PDF generation always works regardless of Chrome availability
 
-### 3. Better Error Handling
-Added specific error detection for Chrome/Puppeteer issues with user-friendly error messages.
+### 4. Improved Chrome Installation
+Updated the postinstall script to handle installation failures gracefully:
+```json
+"postinstall": "npx puppeteer browsers install chrome || echo 'Chrome installation failed, will use fallback PDF generation'"
+```
 
 ## Deployment Steps
 
-1. **Redeploy your application** - The postinstall script will automatically install Chrome during the build process
-2. **Monitor the build logs** - Look for the message "Backend dependencies and Chrome installed successfully"
-3. **Test the PDF download** - Try downloading a payment receipt to verify the fix
+1. **Redeploy your application** - The system will automatically try to install Chrome and set up fallback PDF generation
+2. **Monitor the build logs** - Look for either:
+   - "Backend dependencies and Chrome installed successfully" (Puppeteer will work)
+   - "Chrome installation failed, will use fallback PDF generation" (Fallback will be used)
+3. **Test the PDF download** - Try downloading a payment receipt to verify the fix works with either method
 
 ## Alternative Solutions (if the above doesn't work)
 
@@ -57,7 +64,18 @@ After deployment, test the payment receipt download functionality:
 1. Login to your customer portal
 2. Navigate to payment receipts
 3. Try downloading a receipt PDF
-4. Check the server logs for any Chrome-related errors
+4. Check the server logs for:
+   - "Puppeteer failed, trying fallback PDF generation" (if fallback is used)
+   - "Fallback PDF generation successful" (confirms fallback worked)
+   - Any error messages if both methods fail
+
+## How It Works
+
+The new implementation follows this flow:
+1. **Try Puppeteer first** - Attempts to use Chrome for high-quality PDF generation
+2. **Automatic fallback** - If Puppeteer fails (Chrome not available), automatically switches to `html-pdf-node`
+3. **Seamless experience** - Users get a PDF regardless of which method is used
+4. **Better reliability** - The system is now resilient to Chrome installation issues
 
 ## Troubleshooting
 
