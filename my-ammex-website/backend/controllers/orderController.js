@@ -370,7 +370,7 @@ const updateOrderStatus = async (req, res, next) => {
           customerId: order.customerId,
           type: 'order_rejected',
           title: 'Order Rejected',
-          message: `Your order <span class=\"font-semibold\">${order.orderNumber}</span> has been rejected. ${rejectionReason ? `Reason: <span class="font-medium text-red-500">${rejectionReason}</span>` : ''}`,
+          message: `Your order <span class=\"font-bold\">${order.orderNumber}</span> has been rejected. ${rejectionReason ? `Reason: <span class="font-medium text-red-500">${rejectionReason}</span>` : ''}`,
           data: {
             orderId: order.id,
             orderNumber: order.orderNumber,
@@ -395,7 +395,7 @@ const updateOrderStatus = async (req, res, next) => {
           customerId: order.customerId,
           type: 'order_approved',
           title: 'Order Approved',
-          message: `Your order <span class=\"font-semibold\">${order.orderNumber}</span> has been approved. You can view it in the Invoice section. ${order.discountAmount && parseFloat(order.discountAmount) > 0 ? `Discount applied: ₱${parseFloat(order.discountAmount).toFixed(2)}` : ''}`,
+          message: `Your order <span class=\"font-bold\">${order.orderNumber}</span> has been approved. You can view it in the Invoice section. ${order.discountAmount && parseFloat(order.discountAmount) > 0 ? `Discount applied: ₱${parseFloat(order.discountAmount).toFixed(2)}` : ''}`,
           data: {
             orderId: order.id,
             orderNumber: order.orderNumber,
@@ -663,7 +663,7 @@ const appealRejectedOrder = async (req, res, next) => {
       customerId: order.customerId,
       type: 'order_appeal',
       title: 'Order Appeal Submitted',
-      message: `Customer <span class=\"font-semibold\">${customer.customerName || 'Unknown Customer'}</span> appealed order <span class=\"font-semibold\">${order.orderNumber}</span>. Reason: <span class=\"font-medium text-red-500\">${appealReason}</span>`,
+      message: `Customer <span class=\"font-bold\">${customer.customerName || 'Unknown Customer'}</span> appealed order <span class=\"font-bold\">${order.orderNumber}</span>. Reason: <span class=\"font-medium text-red-500\">${appealReason}</span>`,
       data: {
         orderId: order.id,
         orderNumber: order.orderNumber,

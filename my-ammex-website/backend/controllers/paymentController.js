@@ -2033,16 +2033,36 @@ const downloadPaymentReceipt = async (req, res, next) => {
     // Generate HTML for the receipt
     const htmlContent = generateReceiptHTML(receipt);
 
-    // Launch Puppeteer browser with safe settings
-    browser = await puppeteer.launch({
+    // Launch Puppeteer browser with production-safe settings
+    const launchOptions = {
       headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--single-process',
+        '--no-zygote',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding'
       ]
-    });
+    };
+
+    // Add executable path for production if needed
+    if (process.env.NODE_ENV === 'production') {
+      // Try to use the installed Chrome from puppeteer
+      try {
+        const { executablePath } = require('puppeteer');
+        launchOptions.executablePath = executablePath();
+      } catch (error) {
+        console.log('Using system Chrome or default executable path');
+      }
+    }
+
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     
@@ -2097,12 +2117,22 @@ const downloadPaymentReceipt = async (req, res, next) => {
       }
     }
     
-    // Send error response
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate PDF receipt',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+    // Check if it's a Chrome/Puppeteer specific error
+    if (error.message.includes('Could not find Chrome') || error.message.includes('Chrome')) {
+      console.error('Chrome/Puppeteer installation issue detected');
+      res.status(500).json({
+        success: false,
+        message: 'PDF generation service temporarily unavailable. Please try again later or contact support.',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'PDF service unavailable'
+      });
+    } else {
+      // Send error response
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate PDF receipt',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
   }
 };
 

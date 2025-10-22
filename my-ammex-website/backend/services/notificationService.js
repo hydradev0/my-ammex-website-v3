@@ -43,11 +43,11 @@ class NotificationService {
                       item.quantity <= (item.minLevel * 0.3) ? 'HIGH' : 'MEDIUM';
       
       const message = item.quantity === 0 
-        ? `OUT OF STOCK: <span class="font-semibold">${item.itemName}</span> (${item.modelNo}) is completely out of stock. Immediate reordering required.`
-        : `LOW STOCK ALERT: <span class="font-semibold">${item.itemName}</span> (${item.modelNo}) has only <span class="font-medium text-red-500">${item.quantity}</span> units remaining. Minimum level: ${item.minLevel}`;
+        ? `OUT OF STOCK: <span class="font-bold text-black">${item.modelNo}</span> is completely out of stock. Immediate reordering required.`
+        : `LOW STOCK ALERT: <span class="font-bold text-black">${item.modelNo}</span> has only <span class="font-medium text-red-500">${item.quantity}</span> units remaining. Minimum level: ${item.minLevel}`;
       
       await Notification.create({
-        customerId: 1, // Use a default customer ID for system notifications
+        customerId: null, // Stock notifications are system-wide, not customer-specific
         type: 'stock_low',
         title: `Stock Alert - ${severity}`,
         message: message,
@@ -62,7 +62,7 @@ class NotificationService {
         }
       });
       
-      console.log(`Low stock notification created for item: ${item.itemName}`);
+      console.log(`Low stock notification created for item: ${item.modelNo} ${item.itemName || ''}`);
     } catch (error) {
       console.error('Error creating low stock notification:', error);
     }
@@ -77,10 +77,10 @@ class NotificationService {
       const { Notification } = getModels();
       
       await Notification.create({
-        customerId: 1, // Use a default customer ID for system notifications
+        customerId: null, // Stock notifications are system-wide, not customer-specific
         type: 'stock_high',
         title: 'Overstock Alert',
-        message: `OVERSTOCK ALERT: <span class="font-semibold">${item.itemName}</span> (${item.modelNo}) has reached maximum level of <span class="font-medium text-orange-500">${item.quantity}</span> units. Consider reducing stock or adjusting maximum level.`,
+        message: `OVERSTOCK ALERT: <span class="font-bold text-black">${item.modelNo}</span> has reached maximum level of ${item.maxLevel} Quantity: <span class="font-medium text-orange-500">${item.quantity}</span> units. Consider reducing stock or adjusting maximum level.`,
         data: {
           itemId: item.id,
           itemName: item.itemName,
@@ -91,7 +91,7 @@ class NotificationService {
         }
       });
       
-      console.log(`High stock notification created for item: ${item.itemName}`);
+      console.log(`High stock notification created for item: ${item.modelNo} ${item.itemName || ''}`);
     } catch (error) {
       console.error('Error creating high stock notification:', error);
     }

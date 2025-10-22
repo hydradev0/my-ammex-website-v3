@@ -1,15 +1,14 @@
-react-dom_client.js?v=02ba3817:18244 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
-NotificationContext.jsx:27 🔔 [FRONTEND] Fetching notifications for user: 21 role: Client
-NotificationContext.jsx:32 🔔 [FRONTEND] Raw API response: {success: true, data: {…}}
-NotificationContext.jsx:39 🔔 [FRONTEND] Parsed notifications: 4
-NotificationContext.jsx:40 🔔 [FRONTEND] Unread count: 3
-NotificationContext.jsx:41 🔔 [FRONTEND] Notification types: (4) ['order_approved', 'order_approved', 'order_appeal', 'order_rejected']
-NotificationContext.jsx:42 🔔 [FRONTEND] Order approved notifications: (2) [{…}, {…}]
-IndustrialPOS.jsx:184 🛒 [CART SERVICE] Fallback to localStorage
-IndustrialPOS.jsx:184 🛒 [CART SERVICE] Fallback to localStorage
-NotificationContext.jsx:27 🔔 [FRONTEND] Fetching notifications for user: 21 role: Client
-NotificationContext.jsx:32 🔔 [FRONTEND] Raw API response: {success: true, data: {…}}
-NotificationContext.jsx:39 🔔 [FRONTEND] Parsed notifications: 4
-NotificationContext.jsx:40 🔔 [FRONTEND] Unread count: 3
-NotificationContext.jsx:41 🔔 [FRONTEND] Notification types: (4) ['order_approved', 'order_approved', 'order_appeal', 'order_rejected']
-NotificationContext.jsx:42 🔔 [FRONTEND] Order approved notifications: (2) [{…}, {…}]
+2025-10-22T01:20:48.445247895Z 127.0.0.1 - - [22/Oct/2025:01:20:48 +0000] "GET /api/notifications HTTP/1.1" 304 - "https://www.ammexmachinetools.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+2025-10-22T01:20:50.371719381Z 127.0.0.1 - - [22/Oct/2025:01:20:50 +0000] "GET /api/customers/me HTTP/1.1" 304 - "https://www.ammexmachinetools.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+2025-10-22T01:20:50.530540078Z 127.0.0.1 - - [22/Oct/2025:01:20:50 +0000] "GET /api/invoices/my HTTP/1.1" 304 - "https://www.ammexmachinetools.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+2025-10-22T01:20:58.981343958Z 127.0.0.1 - - [22/Oct/2025:01:20:58 +0000] "GET /api/payments/receipts/my HTTP/1.1" 304 - "https://www.ammexmachinetools.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+2025-10-22T01:21:01.07847631Z 127.0.0.1 - - [22/Oct/2025:01:21:01 +0000] "GET /api/notifications HTTP/1.1" 304 - "https://www.ammexmachinetools.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+2025-10-22T01:21:02.217205878Z Error downloading payment receipt: Error: Could not find Chrome (ver. 141.0.7390.78). This can occur if either
+2025-10-22T01:21:02.217224729Z  1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
+2025-10-22T01:21:02.2172294Z  2. your cache path is incorrectly configured (which is: /opt/render/.cache/puppeteer).
+2025-10-22T01:21:02.2172348Z For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.
+2025-10-22T01:21:02.217241921Z     at ChromeLauncher.resolveExecutablePath (/opt/render/project/src/my-ammex-website/backend/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserLauncher.js:327:27)
+2025-10-22T01:21:02.217248001Z     at ChromeLauncher.computeLaunchArguments (/opt/render/project/src/my-ammex-website/backend/node_modules/puppeteer-core/lib/cjs/puppeteer/node/ChromeLauncher.js:93:24)
+2025-10-22T01:21:02.217254072Z     at async ChromeLauncher.launch (/opt/render/project/src/my-ammex-website/backend/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserLauncher.js:84:28)
+2025-10-22T01:21:02.217259802Z     at async downloadPaymentReceipt (/opt/render/project/src/my-ammex-website/backend/controllers/paymentController.js:2037:15)
+2025-10-22T01:21:02.217728357Z 127.0.0.1 - - [22/Oct/2025:01:21:02 +0000] "GET /api/payments/receipts/29/download HTTP/1.1" 500 92 "https://www.ammexmachinetools.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"

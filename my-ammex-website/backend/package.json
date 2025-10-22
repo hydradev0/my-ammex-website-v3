@@ -14,7 +14,7 @@
     "test:cart": "node scripts/testCartAPI.js",
     "create:cart-tables": "node scripts/createCartTables.js",
     "remove-phone": "node scripts/removePhoneNumberColumn.js",
-    "postinstall": "echo 'Backend dependencies installed successfully'",
+    "postinstall": "npx puppeteer browsers install chrome && echo 'Backend dependencies and Chrome installed successfully'",
     "prestart": "echo 'Starting Ammex Backend Server...'"
   },
   "dependencies": {

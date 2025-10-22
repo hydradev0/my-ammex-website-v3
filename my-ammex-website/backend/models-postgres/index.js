@@ -224,6 +224,19 @@ const initializeModels = (sequelize) => {
             Number(item.maxLevel) <= Number(item.minLevel)) {
           throw new Error('Maximum level must be greater than minimum level');
         }
+        },
+      afterUpdate: async (item, options) => {
+        // Check if quantity was changed and trigger stock notifications
+        if (item.changed('quantity')) {
+          try {
+            const NotificationService = require('../services/notificationService');
+            const previousQuantity = item.previous('quantity');
+            await NotificationService.checkStockLevels(item, previousQuantity);
+          } catch (error) {
+            console.error('Error checking stock levels after item update:', error);
+            // Don't throw error to avoid breaking the update
+          }
+        }
       }
     }
   });

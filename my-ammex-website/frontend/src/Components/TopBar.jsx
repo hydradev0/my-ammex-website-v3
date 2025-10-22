@@ -76,7 +76,7 @@ function TopBar() {
             )}
           </button>
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
               <div className="p-3 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
