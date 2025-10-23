@@ -384,7 +384,18 @@ const updateOrderStatus = async (req, res, next) => {
       }
     }
 
-    // Create notification when order is approved
+    // Automatically create invoice when order is approved
+    let createdInvoice = null;
+    if (status === 'approved') {
+      try {
+        createdInvoice = await createInvoiceFromOrder(order.id, userId);
+      } catch (invoiceError) {
+        // Log the error but don't fail the order update
+        console.error('Failed to create invoice for approved order:', invoiceError.message);
+      }
+    }
+
+    // Create notification when order is approved (after invoice creation)
     if (status === 'approved') {
       try {
         const { Notification, Customer } = getModels();
@@ -395,7 +406,7 @@ const updateOrderStatus = async (req, res, next) => {
           customerId: order.customerId,
           type: 'order_approved',
           title: 'Order Approved',
-          message: `Your order <span class=\"font-bold\">${order.orderNumber}</span> has been approved. You can view it in the Invoice section. ${order.discountAmount && parseFloat(order.discountAmount) > 0 ? `Discount applied: ₱${parseFloat(order.discountAmount).toFixed(2)}` : ''}`,
+          message: `Your order <span class=\"font-bold\">${order.orderNumber}</span> has been approved. You can view it in the Invoice section with an invoice of <span class=\"font-bold\">${createdInvoice?.invoiceNumber || ''}</span>. ${order.discountAmount && parseFloat(order.discountAmount) > 0 ? `Discount applied: ₱${parseFloat(order.discountAmount).toFixed(2)}` : ''}`,
           data: {
             orderId: order.id,
             orderNumber: order.orderNumber,
@@ -408,17 +419,6 @@ const updateOrderStatus = async (req, res, next) => {
       } catch (notificationError) {
         console.error('Failed to create approval notification:', notificationError);
         // Don't fail the order update if notification fails
-      }
-    }
-
-    // Automatically create invoice when order is approved
-    let createdInvoice = null;
-    if (status === 'approved') {
-      try {
-        createdInvoice = await createInvoiceFromOrder(order.id, userId);
-      } catch (invoiceError) {
-        // Log the error but don't fail the order update
-        console.error('Failed to create invoice for approved order:', invoiceError.message);
       }
     }
 

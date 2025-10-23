@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
 import PaymentReceiptsModal from './PaymentReceiptsModal';
-import { getMyInvoices } from '../services/invoiceService';
+import { getMyInvoices, downloadInvoicePdf } from '../services/invoiceService';
 
 const Invoice = () => {
   const navigate = useNavigate();
@@ -27,6 +27,7 @@ const Invoice = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showPaymentReceiptsModal, setShowPaymentReceiptsModal] = useState(false);
   const [showPaymentSuccessNotification, setShowPaymentSuccessNotification] = useState(false);
+  const [isDownloadingInvoicePdf, setIsDownloadingInvoicePdf] = useState(false);
   const modalRef = useRef(null);
   
   // Pagination state
@@ -80,11 +81,11 @@ const Invoice = () => {
           paymentTerms: invoice.paymentTerms,
           items: (invoice.items || []).map(item => {
             const transformedItem = {
-              name: item.name || item.itemName || 'Unknown Item',
+              name: item.name || '',
+              modelNo: item.modelNo || '',
               quantity: Number(item.quantity) || 0,
               price: Number(item.unitPrice) || 0, 
               total: Number(item.total) || 0, 
-              description: item.description || '',
               unit: item.unit || 'pcs'
             };
             return transformedItem;
@@ -165,11 +166,11 @@ const Invoice = () => {
           paymentTerms: invoice.paymentTerms,
           items: (invoice.items || []).map(item => {
             const transformedItem = {
-              name: item.name || item.itemName || 'Unknown Item',
+              name: item.name || '',
+              modelNo: item.modelNo || '',
               quantity: Number(item.quantity) || 0,
               price: Number(item.unitPrice) || 0, 
               total: Number(item.total) || 0, 
-              description: item.description || '',
               unit: item.unit || 'pcs'
             };
             return transformedItem;
@@ -327,12 +328,12 @@ const Invoice = () => {
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[120vh] sm:max-h-[120vh] flex flex-col"
-        style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+        className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] flex flex-col"
+        style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}
       >
-        <div className="p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">   
+        <div className="p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-sm">   
           <div className="flex justify-between items-center">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Invoice Details</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Invoice</h2>
             <button
               onClick={closeInvoiceModal}
               className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer transition-colors duration-200"
@@ -342,70 +343,195 @@ const Invoice = () => {
           </div>
         </div>
         
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Invoice Number</h3>
-              <p className="text-xs sm:text-sm text-gray-900 break-all">{selectedInvoice.invoiceNumber}</p>
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Invoice Date</h3>
-              <p className="text-xs sm:text-sm text-gray-900">{formatDate(selectedInvoice.invoiceDate)}</p>
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Due Date</h3>
-              <p className="text-xs sm:text-sm text-gray-900">{formatDate(selectedInvoice.dueDate)}</p>
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Payment Status</h3>
-              <span className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(selectedInvoice.paymentStatus)}`}>
-                {getPaymentStatusIcon(selectedInvoice.paymentStatus)}
-                <span className="ml-1 capitalize">{selectedInvoice.paymentStatus}</span>
-              </span>
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Total Amount</h3>
-              <p className="text-xs sm:text-sm font-semibold text-gray-900">{formatCurrency(selectedInvoice.totalAmount)}</p>
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Remaining Balance</h3>
-              <p className="text-xs sm:text-sm font-semibold text-red-600">{formatCurrency(selectedInvoice.remainingAmount)}</p>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-4 sm:pt-6">
-            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Invoice Items</h3>
-            <div className="max-h-60 overflow-y-auto pr-2 space-y-2 sm:space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              {selectedInvoice.items.map((item, index) => (
-                <div key={index} className="flex justify-between items-start sm:items-center p-2 sm:p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">{item.name}</h4>
-                    <p className="text-xs sm:text-sm text-gray-500">Qty: {item.quantity} × {formatCurrency(item.price)}</p>
+        <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+          {/* Invoice Header */}
+          <div className="mb-8 ">
+            <div className="flex justify-between items-start mb-6">
+              {/* Company Info */}
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">AMMEX</h1>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p>123 Business Street</p>
+                  <p>Makati City, Metro Manila 1234</p>
+                  <p>Philippines</p>
+                  <p className="mt-2">Phone: +63 2 1234 5678</p>
+                  <p>Email: info@ammex.com</p>
+                </div>
+              </div>
+              
+              {/* Invoice Details */}
+              <div className="text-right ">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">INVOICE</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <span className="font-medium text-gray-600">Invoice #:</span>
+                    <span className="font-semibold text-gray-900">{selectedInvoice.invoiceNumber}</span>
                   </div>
-                  <div className="text-right ml-2">
-                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{formatCurrency(item.total)}</p>
+                  <div className="flex justify-between gap-4">
+                    <span className="font-medium text-gray-600">Date:</span>
+                    <span className="text-gray-900">{formatDate(selectedInvoice.invoiceDate)}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="font-medium text-gray-600">Due Date:</span>
+                    <span className="text-gray-900">{formatDate(selectedInvoice.dueDate)}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="font-medium text-gray-600">Status:</span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(selectedInvoice.paymentStatus)}`}>
+                      {getPaymentStatusIcon(selectedInvoice.paymentStatus)}
+                      <span className="ml-1 capitalize">{selectedInvoice.paymentStatus}</span>
+                    </span>
                   </div>
                 </div>
-              ))}
+              </div>
+            </div>
+
+            {/* Bill To Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Bill To:</h3>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p className="font-medium text-gray-900">{selectedInvoice.customer.name}</p>
+                  <p>{selectedInvoice.customer.email}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Terms:</h3>
+                <p className="text-sm text-gray-600">{selectedInvoice.paymentTerms}</p>
+              </div>
             </div>
           </div>
 
-      {/*Payment Modal */}
+          {/* Invoice Items Table */}
+          <div className="mb-8">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Item Name</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Model No.</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900">Qty</th>
+                    <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">Unit Price</th>
+                    <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedInvoice.items.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                        <p className="font-medium">{item.name}</p>
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-center text-sm text-gray-900">
+                        {item.modelNo}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-center text-sm text-gray-900">
+                        {item.quantity} {item.unit}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-900">
+                        {formatCurrency(item.price)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                        {formatCurrency(item.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Invoice Summary */}
+          <div className="flex justify-end">
+            <div className="w-full max-w-sm">
+              <div className="space-y-2">
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm font-medium text-gray-600">Subtotal:</span>
+                  <span className="text-sm text-gray-900">{formatCurrency(selectedInvoice.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm font-medium text-gray-600">Tax:</span>
+                  <span className="text-sm text-gray-900">₱0.00</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm font-medium text-gray-600">Total Amount:</span>
+                  <span className="text-sm font-semibold text-gray-900">{formatCurrency(selectedInvoice.totalAmount)}</span>
+                </div>
+                {selectedInvoice.paidAmount > 0 && (
+                  <div className="flex justify-between py-2 border-b border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Paid Amount:</span>
+                    <span className="text-sm text-green-600">{formatCurrency(selectedInvoice.paidAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-3 bg-gray-50 px-3 rounded">
+                  <span className="text-base font-semibold text-gray-900">Balance Due:</span>
+                  <span className={`text-base font-bold ${selectedInvoice.remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(selectedInvoice.remainingAmount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Note */}
+          <div className="mt-8 pt-6 border-t border-gray-200 ">
+            <p className="text-xs text-gray-500 text-center">
+              This invoice serves as proof of purchase. For any inquiries, please contact our support team with your invoice number.
+            </p>
+          </div>
         </div>
-        {selectedInvoice.remainingAmount > 0 && (
-          <div className="p-4 sm:p-6 border-t border-gray-200 sticky bottom-0 bg-white z-10">
+
+        {/* Action Buttons */}
+        <div className="p-4 sm:p-6 border-t flex justify-end border-gray-200 sticky bottom-0 bg-white z-10 rounded-sm">
+          <div className="flex gap-3">
+            <button
+              onClick={closeInvoiceModal}
+              className="flex justify-center cursor-pointer items-center border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg transition-colors gap-2"
+            >
+              Close
+            </button>
             <button
               onClick={() => {
-                closeInvoiceModal();
-                handlePayInvoice(selectedInvoice);
+                (async () => {
+                  try {
+                    setIsDownloadingInvoicePdf(true);
+                    const blob = await downloadInvoicePdf(selectedInvoice.id);
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Invoice-${selectedInvoice.invoiceNumber}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                  } catch (err) {
+                    console.error('Failed to download invoice PDF:', err);
+                    alert('Failed to download invoice PDF. Please try again later.');
+                  } finally {
+                    setIsDownloadingInvoicePdf(false);
+                  }
+                })();
               }}
-              className="w-full bg-[#3182ce] text-white px-4 py-3 rounded-lg hover:bg-[#2c5282] transition-colors flex items-center justify-center gap-2"
+              disabled={isDownloadingInvoicePdf}
+              className={`flex justify-center items-center border border-gray-300 px-4 py-2.5 rounded-lg transition-colors gap-2 ${
+                isDownloadingInvoicePdf
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'cursor-pointer text-gray-700 hover:bg-gray-50'
+              }`}
             >
-              <CreditCard className="w-5 h-5" />
-              Make Payment
+              {isDownloadingInvoicePdf ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  Download PDF
+                </>
+              )}
             </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   ) : null;
@@ -438,18 +564,13 @@ const Invoice = () => {
             </button>
             <h1 className="text-2xl font-bold text-gray-800 lg:ml-12">Invoices</h1>
           </div>
-          <button
-            onClick={handleViewPaymentReceipts}
-            className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-sm md:mr-16 lg:mr-36"
-          >
-            <span>View Payment Receipts</span>
-          </button>
         </div>
 
         {/* Tab Navigation */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
+            <nav className="-mb-px- flex space-x-8 justify-between">
+              <div className="flex items-center gap-2">
               <button
                 onClick={() => { setActiveTab('open'); setCurrentPage(1); }}
                 className={`py-3 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
@@ -466,18 +587,24 @@ const Invoice = () => {
               </button>
               <button
                 onClick={() => { setActiveTab('completed'); setCurrentPage(1); }}
-                className={`py-3 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+                className={`py-3.5 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
                   activeTab === 'completed'
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <CheckCircle className="w-5 h-5" />
-                Completed
-                <span className="bg-green-100 text-green-600 py-1 px-2.5 rounded-full text-xs font-medium">
-                  {completedInvoices.length}
-                </span>
+                Invoice History
               </button>
+              </div>
+              <div className="flex -mr-36 items-center gap-2">
+                <button
+                  onClick={handleViewPaymentReceipts}
+                  className="inline-flex items-center gap-2 cursor-pointer border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-sm md:mr-16 lg:mr-36"
+                >
+                  <span>View Payment Receipts</span>
+                </button>
+              </div>
             </nav>
           </div>
         </div>
@@ -674,9 +801,6 @@ const Invoice = () => {
                         <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
                           Balance
                         </th>
-                        <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
-                          Status
-                        </th>
                         <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">
                           Actions
                         </th>
@@ -705,12 +829,6 @@ const Invoice = () => {
                               {formatCurrency(invoice.remainingAmount)}
                             </span>
                           </td>
-                          <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(invoice.paymentStatus)}`}>
-                              {getPaymentStatusIcon(invoice.paymentStatus)}
-                              <span className="ml-1 capitalize">{invoice.paymentStatus}</span>
-                            </span>
-                          </td>
                           <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
                               onClick={() => handleViewInvoice(invoice)}
@@ -732,7 +850,6 @@ const Invoice = () => {
       </div>
 
 
-      {/* Invoice Details Modal */}
       <ScrollLock active={showInvoiceModal} />
       {createPortal(invoiceModalContent, document.body)}
 

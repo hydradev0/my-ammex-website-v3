@@ -11,7 +11,8 @@ const {
   updateInvoiceStatus,
   createInvoice,
   getInvoicePaymentHistory,
-  getAllInvoicesWithPayments
+  getAllInvoicesWithPayments,
+  downloadInvoicePdf
 } = require('../controllers/invoiceController');
 
 // Validation middleware
@@ -59,6 +60,11 @@ router.patch('/:id/status', protect, authorize('Admin', 'Sales Marketing'), vali
 // @desc    Get payment history for an invoice
 // @access  Private (Client)
 router.get('/:id/payment-history', protect, authorize('Client'), getInvoicePaymentHistory);
+
+// @route   GET /api/invoices/:id/download
+// @desc    Download invoice as PDF
+// @access  Private (Client)
+router.get('/:id/download', protect, authorize('Client'), downloadInvoicePdf);
 
 // @route   GET /api/invoices/with-payments
 // @desc    Get all invoices with payment details

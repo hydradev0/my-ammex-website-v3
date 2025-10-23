@@ -186,11 +186,16 @@ const InvoiceDetailsModal = ({
                        {formatCurrency(invoice.items.reduce((sum, item) => sum + item.total, 0))}
                      </span>
                    </div>
-                   {invoice.discountAmount && invoice.discountAmount > 0 && (
+                   {invoice.discountAmount && invoice.discountAmount > 0 ? (
                      <div className="flex justify-between text-sm">
                        <span className="text-gray-600">Discount ({invoice.discountPercent}%):</span>
                        <span className="font-medium text-red-600">-{formatCurrency(invoice.discountAmount)}</span>
                      </div>
+                   ):(
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount:</span>
+                      <span className="font-medium text-gray-900">0</span>
+                    </div>
                    )}
                    <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2">
                      <span className="text-gray-900">Total Amount:</span>

@@ -1,5 +1,6 @@
 const { getModels } = require('../config/db');
 const { Op } = require('sequelize');
+const htmlPdf = require('html-pdf-node');
 
 // Generate invoice number similar to order number format
 function generateInvoiceNumber() {
@@ -10,6 +11,169 @@ function generateInvoiceNumber() {
   const random = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
   return `INV-${yyyy}${mm}${dd}-${random}`;
 }
+
+// Helper: Generate Invoice HTML for PDF
+function generateInvoiceHTML(invoice) {
+  const formatCurrency = (amount) => `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const itemsRows = (invoice.items || []).map((it) => `
+      <tr>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;">${it.item?.itemName || ''}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;">${it.item?.modelNo || ''}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:center;">${Number(it.quantity)}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:right;">${formatCurrency(it.unitPrice)}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:right;">${formatCurrency(it.totalPrice)}</td>
+      </tr>
+  `).join('');
+
+  const customer = invoice.customer || {};
+
+  return `<!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Invoice ${invoice.invoiceNumber}</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; color:#111827; margin: 32px; }
+        .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #111827; padding-bottom:16px; margin-bottom:24px; }
+        .company h1 { margin:0 0 6px 0; font-size:24px; }
+        .label { font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+        .value { font-size:14px; font-weight:600; color:#111827; }
+        .title { font-size:28px; font-weight:800; margin:0 0 8px 0; }
+        .grid { display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-bottom:24px; }
+        table { width:100%; border-collapse:collapse; }
+        th { background:#f9fafb; border:1px solid #e5e7eb; padding:10px 12px; text-align:left; font-size:12px; color:#374151; }
+        tfoot td { padding:8px 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company">
+          <h1>AMMEX</h1>
+          <div class="label">Address</div>
+          <div class="value">123 Business Street, Makati City, Metro Manila 1234, Philippines</div>
+          <div class="label" style="margin-top:8px">Contact</div>
+          <div class="value">+63 2 1234 5678 • info@ammex.com</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="title">INVOICE</div>
+          <div><span class="label">Invoice #</span><div class="value">${invoice.invoiceNumber}</div></div>
+          <div style="margin-top:8px"><span class="label">Date</span><div class="value">${formatDate(invoice.invoiceDate)}</div></div>
+          <div style="margin-top:8px"><span class="label">Due Date</span><div class="value">${formatDate(invoice.dueDate)}</div></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="label">Bill To</div>
+          <div class="value">${customer.customerName || ''}</div>
+          <div>${customer.email1 || ''}</div>
+          <div>${[customer.street, customer.city, customer.country].filter(Boolean).join(', ')}</div>
+        </div>
+        <div>
+          <div class="label">Payment Terms</div>
+          <div class="value">${invoice.paymentTerms || '30 days'}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Model No.</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Unit Price</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows}
+        </tbody>
+      </table>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+        <table style="width:320px;">
+          <tbody>
+            <tr>
+              <td class="label">Subtotal</td>
+              <td style="text-align:right" class="value">${formatCurrency(invoice.totalAmount)}</td>
+            </tr>
+            <tr>
+              <td class="label">Tax</td>
+              <td style="text-align:right">₱0.00</td>
+            </tr>
+            <tr>
+              <td class="label">Total Amount</td>
+              <td style="text-align:right" class="value">${formatCurrency(invoice.totalAmount)}</td>
+            </tr>
+            <tr>
+              <td class="label">Paid Amount</td>
+              <td style="text-align:right">${formatCurrency(invoice.paidAmount || 0)}</td>
+            </tr>
+            <tr>
+              <td class="label">Balance Due</td>
+              <td style="text-align:right" class="value">${formatCurrency(invoice.remainingBalance ?? invoice.totalAmount)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:32px; border-top:1px solid #e5e7eb; padding-top:16px; text-align:center; color:#6b7280; font-size:12px;">
+        This invoice serves as proof of purchase. For any inquiries, please contact our support team with your invoice number.
+      </div>
+    </body>
+  </html>`;
+}
+
+// Customer: Download invoice as PDF
+const downloadInvoicePdf = async (req, res, next) => {
+  try {
+    const { Invoice, InvoiceItem, Customer, Item } = getModels();
+    const { id } = req.params;
+    let customerId = req.user.customerId;
+
+    if (!customerId && req.user && req.user.role === 'Client') {
+      const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+      if (linkedCustomer) customerId = linkedCustomer.id;
+    }
+
+    if (!customerId) {
+      return res.status(401).json({ success: false, message: 'Customer authentication required' });
+    }
+
+    const invoice = await Invoice.findOne({
+      where: { id, customerId },
+      include: [
+        { model: InvoiceItem, as: 'items', include: [{ model: Item, as: 'item' }] },
+        { model: Customer, as: 'customer' }
+      ]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    const htmlContent = generateInvoiceHTML(invoice);
+
+    const options = {
+      format: 'A4',
+      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
+      printBackground: true,
+      displayHeaderFooter: false
+    };
+
+    htmlPdf.generatePdf({ content: htmlContent }, options)
+      .then((pdfBuffer) => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Invoice-${invoice.invoiceNumber}.pdf`);
+        return res.end(pdfBuffer);
+      })
+      .catch((error) => next(error));
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Create invoice automatically from approved order
 const createInvoiceFromOrder = async (orderId, userId) => {
@@ -348,8 +512,8 @@ const getMyInvoices = async (req, res, next) => {
         paymentStatus: paymentStatus,
         paymentTerms: invoice.paymentTerms,
         items: (invoice.items || []).map((item) => ({
-          name: item.item?.itemName || 'Unknown Item',
-          description: item.item?.description || '',
+          name: item.item?.itemName || '',
+          modelNo: item.item?.modelNo || '',
           quantity: Number(item.quantity),
           unit: item.item?.unit?.name || 'pcs',
           unitPrice: Number(item.unitPrice),
@@ -583,5 +747,6 @@ module.exports = {
   createInvoice,
   createInvoiceFromOrder,
   getInvoicePaymentHistory,
-  getAllInvoicesWithPayments
+  getAllInvoicesWithPayments,
+  downloadInvoicePdf
 };

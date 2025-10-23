@@ -103,3 +103,19 @@ export const updateInvoiceStatus = async (invoiceId, status) => {
   if (!res.ok) throw new Error(data.message || 'Failed to update invoice status');
   return data; // { success, data: Invoice }
 };
+
+// Download invoice PDF (Client)
+export const downloadInvoicePdf = async (invoiceId) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/download`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to download invoice PDF');
+  }
+  const blob = await res.blob();
+  return blob;
+};
