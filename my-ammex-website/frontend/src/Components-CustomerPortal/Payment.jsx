@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, ChevronRight, DollarSign, CreditCard, Wallet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
-import SuccessModal from '../Components/SuccessModal';
+import ScrollLock from '../Components/ScrollLock';
 import { getMyInvoices } from '../services/invoiceService';
 import { 
   createPaymentIntent, 
@@ -21,8 +22,6 @@ const Payment = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('card');
   const [validationErrors, setValidationErrors] = useState({});
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [lastSubmittedAmount, setLastSubmittedAmount] = useState(0);
   const [paymentError, setPaymentError] = useState('');
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [paymentFailureReason, setPaymentFailureReason] = useState('');
@@ -214,10 +213,6 @@ const Payment = () => {
     navigate(path);
   };
 
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    navigate('/products/invoices');
-  };
 
   const handleFailureModalClose = () => {
     setShowFailureModal(false);
@@ -287,10 +282,10 @@ const Payment = () => {
           
           if (status === 'succeeded') {
             clearInterval(pollInterval);
-            console.log('✅ Payment succeeded! Showing success modal...');
-            setLastSubmittedAmount(parseFloat(paymentAmount));
-            setShowSuccessModal(true);
+            console.log('✅ Payment succeeded! Redirecting to invoices with success notification...');
             setIsProcessing(false);
+            // Redirect to invoices page with success parameter to show notification
+            navigate('/Products/Invoices?payment=success');
           } else if (status === 'failed') {
             clearInterval(pollInterval);
             setPaymentFailureReason('Payment was declined by your bank or card issuer. Please check your card details and try again.');
@@ -406,19 +401,10 @@ const Payment = () => {
           // Store payment intent ID for completion after redirect
           sessionStorage.setItem('pendingPaymentIntentId', paymentIntentId);
           window.location.href = nextAction.redirect.url;
-            } else if (status === 'processing' || status === 'succeeded') {
-              // Payment is processing or succeeded
-              
-              if (status === 'processing') {
-                // Start polling for payment completion
-                startPaymentPolling(paymentIntentId);
-              } else {
-                // Payment already succeeded
-                console.log('✅ Payment already succeeded! Showing success modal...');
-                setLastSubmittedAmount(amount);
-                setShowSuccessModal(true);
-                setIsProcessing(false);
-              }
+        } else if (status === 'processing' || status === 'succeeded') {
+          // Payment is processing or succeeded - ALWAYS wait for webhook confirmation
+          console.log(`Payment status: ${status} - Waiting for webhook confirmation...`);
+          startPaymentPolling(paymentIntentId);
         } else {
           setPaymentFailureReason(`Unexpected payment status: ${status}. Please try again or contact support.`);
           setShowFailureModal(true);
@@ -912,82 +898,88 @@ const Payment = () => {
             <div className="flex justify-end">
               <button
                 onClick={handlePaymentSubmit}
-                disabled={isProcessing || !paymentAmount}
+                disabled={!paymentAmount}
                 className="flex items-center cursor-pointer px-8 py-3 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <DollarSign className="w-5 h-5 mr-2" />
-                    Pay {paymentAmount ? formatCurrency(parseFloat(paymentAmount)) : 'Now'}
-                  </>
-                )}
+                <DollarSign className="w-5 h-5 mr-2" />
+                Pay {paymentAmount ? formatCurrency(parseFloat(paymentAmount)) : 'Now'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Success Modal */}
-      <SuccessModal
-        isOpen={showSuccessModal}
-        onClose={handleSuccessModalClose}
-        title="Payment Submitted Successfully!"
-        message={`Your payment of ${formatCurrency(lastSubmittedAmount)} has been submitted for processing. You will receive a payment receipt once the transaction is confirmed. Check your invoices page to view your payment receipts.`}
-        autoClose={false}
-        showCloseButton={true}
-      />
-
-      {/* Failure Modal */}
-      {showFailureModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <AlertCircle className="h-8 w-8 text-red-500" />
+      {/* Loading Modal */}
+      {isProcessing && createPortal(
+        <>
+          <ScrollLock active={isProcessing} />
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl"
+            style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Processing Payment</h3>
+                <p className="text-gray-600">Please wait while we process your payment securely...</p>
               </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-semibold text-gray-900">Payment Failed</h3>
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-3">
-                {paymentFailureReason}
-              </p>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-xs text-red-700">
-                  <strong>Common reasons for payment failure:</strong>
-                </p>
-                <ul className="text-xs text-red-600 mt-1 space-y-1">
-                  <li>• Insufficient funds in your account</li>
-                  <li>• Incorrect card details or expired card</li>
-                  <li>• Bank security restrictions</li>
-                  <li>• Network connectivity issues</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={handleRetryPayment}
-                className="flex-1 bg-[#3182ce] text-white px-4 py-2 rounded-lg hover:bg-[#2c5282] transition-colors font-medium"
-              >
-                Try Again
-              </button>
-              <button
-                onClick={handleFailureModalClose}
-                className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium"
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
+        </>,
+        document.body
+      )}
+
+      {/* Failure Modal */}
+      {showFailureModal && createPortal(
+        <>
+          <ScrollLock active={showFailureModal} />
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Failed</h3>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-3">
+                  {paymentFailureReason}
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-xs text-red-700">
+                    <strong>Common reasons for payment failure:</strong>
+                  </p>
+                  <ul className="text-xs text-red-600 mt-1 space-y-1">
+                    <li>• Insufficient funds in your account</li>
+                    <li>• Incorrect card details or expired card</li>
+                    <li>• Bank security restrictions</li>
+                    <li>• Network connectivity issues</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleFailureModalClose}
+                  className="flex-1 cursor-pointer bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleRetryPayment}
+                  className="flex-1 cursor-pointer bg-[#3182ce] text-white px-4 py-2 rounded-lg hover:bg-[#2c5282] transition-colors font-medium"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
       )}
     </>
   );
