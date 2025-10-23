@@ -883,7 +883,7 @@ const Invoice = () => {
               </div>
               <button
                 onClick={() => setShowPaymentSuccessNotification(false)}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                className="flex-shrink-0 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

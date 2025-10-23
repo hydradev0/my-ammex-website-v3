@@ -147,6 +147,16 @@ router.get('/webhook/test', (req, res) => {
   });
 });
 
+// @route   GET /api/payments/webhook/health
+// @desc    Webhook health check endpoint
+// @access  Public
+router.get('/webhook/health', ctrl.webhookHealthCheck);
+
+// @route   GET /api/payments/webhook/stats
+// @desc    Webhook statistics for monitoring
+// @access  Public
+router.get('/webhook/stats', ctrl.getWebhookStats);
+
 // @route   GET /api/payments/status/:paymentIntentId
 // @desc    Get payment status from PayMongo
 // @access  Private (Client)

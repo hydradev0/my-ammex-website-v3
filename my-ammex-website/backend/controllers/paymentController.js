@@ -1432,49 +1432,68 @@ const createPaymentSource = async (req, res, next) => {
   }
 };
 
-// PayMongo: Webhook Handler
+// PayMongo: Webhook Handler (Improved for Reliability)
 const handlePayMongoWebhook = async (req, res, next) => {
   try {
-    console.log('========================================');
-    console.log('🔔 WEBHOOK RECEIVED');
-    console.log('Time:', new Date().toISOString());
-    console.log('Method:', req.method);
-    console.log('URL:', req.originalUrl);
-    console.log('Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('Body:', JSON.stringify(req.body, null, 2));
-    console.log('========================================');
+    // Log webhook receipt (minimal logging for speed)
+    console.log(`🔔 WEBHOOK RECEIVED: ${req.method} ${req.originalUrl} at ${new Date().toISOString()}`);
     
-    const { Payment, Invoice, Notification, PaymentHistory } = getModels();
+    // IMMEDIATE RESPONSE - Critical for preventing webhook disconnections
+    // Always return 200 OK immediately to prevent PayMongo from marking as failed
+    res.json({ success: true, received: true, timestamp: new Date().toISOString() });
     
-    // Verify webhook signature (skip in development if testing locally)
-    const signature = req.headers['paymongo-signature'];
-    const rawBody = JSON.stringify(req.body);
-    
-    console.log('Signature:', signature);
-    console.log('Has Signature:', !!signature);
-    
-    // TEMPORARY: Skip signature verification for debugging
-    // TODO: Re-enable this in production after fixing signature
-    /*
-    if (signature && !paymongoService.verifyWebhookSignature(rawBody, signature)) {
-      console.error('❌ Invalid webhook signature');
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid webhook signature'
-      });
-    }
-    */
-    
-    console.log('✅ Signature verification skipped (for debugging)');
+    // Process webhook in background (non-blocking)
+    setImmediate(async () => {
+      try {
+        await processWebhookInBackground(req);
+      } catch (error) {
+        console.error('❌ Background webhook processing error:', error);
+        // Log error but don't throw - webhook already responded
+      }
+    });
 
-    // Parse webhook event
-    const event = paymongoService.parseWebhookEvent(req.body);
-    
-    console.log('📦 Event Type:', event.type);
-    console.log('📦 Event ID:', event.id);
-    console.log('📦 Event Data:', JSON.stringify(event.data, null, 2));
+  } catch (error) {
+    console.error('❌ Error in webhook handler:', error);
+    // Even on error, return 200 OK to prevent webhook disconnection
+    res.json({ success: false, error: 'Internal processing error', timestamp: new Date().toISOString() });
+  }
+};
 
-    // Handle different event types
+// Background webhook processing (separated for reliability)
+const processWebhookInBackground = async (req) => {
+  const { Payment, Invoice, Notification, PaymentHistory } = getModels();
+  
+  console.log('🔄 Processing webhook in background...');
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  
+  // Verify webhook signature
+  const signature = req.headers['paymongo-signature'];
+  const rawBody = JSON.stringify(req.body);
+  
+  console.log('Signature:', signature);
+  console.log('Has Signature:', !!signature);
+  
+  // TEMPORARY: Skip signature verification for debugging
+  // TODO: Re-enable this in production after fixing signature
+  /*
+  if (signature && !paymongoService.verifyWebhookSignature(rawBody, signature)) {
+    console.error('❌ Invalid webhook signature');
+    return;
+  }
+  */
+  
+  console.log('✅ Signature verification skipped (for debugging)');
+
+  // Parse webhook event
+  const event = paymongoService.parseWebhookEvent(req.body);
+  
+  console.log('📦 Event Type:', event.type);
+  console.log('📦 Event ID:', event.id);
+  console.log('📦 Event Data:', JSON.stringify(event.data, null, 2));
+
+  // Handle different event types with error handling
+  try {
     switch (event.type) {
       case 'payment.paid':
         console.log('▶️ Processing payment.paid event...');
@@ -1504,16 +1523,86 @@ const handlePayMongoWebhook = async (req, res, next) => {
         console.log('⚠️ Unhandled webhook event type:', event.type);
     }
 
-    console.log('✅ Webhook processed successfully');
-    console.log('========================================\n');
+    console.log('✅ Background webhook processing completed');
     
-    res.json({ success: true, received: true });
+  } catch (processingError) {
+    console.error('❌ Error in background webhook processing:', processingError);
+    console.error('Stack trace:', processingError.stack);
+    
+    // TODO: Implement retry mechanism or dead letter queue
+    // For now, just log the error
+  }
+};
 
+// Webhook Health Check Endpoint
+const webhookHealthCheck = async (req, res, next) => {
+  try {
+    res.json({
+      success: true,
+      message: 'Webhook endpoint is accessible',
+      timestamp: new Date().toISOString(),
+      url: '/api/payments/webhook/health',
+      status: 'healthy'
+    });
   } catch (error) {
-    console.error('❌ Error handling PayMongo webhook:', error);
-    console.error('Stack trace:', error.stack);
-    console.log('========================================\n');
-    next(error);
+    console.error('❌ Webhook health check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Webhook health check failed',
+      error: error.message
+    });
+  }
+};
+
+// Webhook Statistics Endpoint (for monitoring)
+const getWebhookStats = async (req, res, next) => {
+  try {
+    const { Payment } = getModels();
+    
+    // Get webhook-related statistics
+    const totalPayments = await Payment.count();
+    const successfulPayments = await Payment.count({
+      where: { status: 'succeeded' }
+    });
+    const failedPayments = await Payment.count({
+      where: { status: 'failed' }
+    });
+    const pendingPayments = await Payment.count({
+      where: { status: 'pending_payment' }
+    });
+    
+    // Get recent webhook activity (last 24 hours)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const recentPayments = await Payment.count({
+      where: {
+        createdAt: {
+          [Op.gte]: yesterday
+        }
+      }
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        totalPayments,
+        successfulPayments,
+        failedPayments,
+        pendingPayments,
+        recentPayments24h: recentPayments,
+        webhookEndpoint: '/api/payments/webhook',
+        healthEndpoint: '/api/payments/webhook/health',
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('❌ Webhook stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get webhook statistics',
+      error: error.message
+    });
   }
 };
 
@@ -2232,6 +2321,8 @@ module.exports = {
   attachPaymentToIntent,
   createPaymentSource,
   handlePayMongoWebhook,
+  webhookHealthCheck,
+  getWebhookStats,
   getPaymentStatus,
   getFailedPayments,
   getAvailablePaymentMethods,
