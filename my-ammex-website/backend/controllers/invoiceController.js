@@ -2,6 +2,55 @@ const { getModels } = require('../config/db');
 const { Op } = require('sequelize');
 const htmlPdf = require('html-pdf-node');
 
+// Tax calculation helper functions
+function calculateTaxAmounts(finalAmount) {
+  // Formula: 
+  // If final amount is 714 (selling price with markup), then:
+  // Amount without VAT = 714 / 1.12 = 637
+  // Tax = 637 x 0.12 = 76
+  // Verification: 637 + 76 = 713 (should equal final amount)
+  
+  const finalAmountNum = Number(finalAmount);
+  
+  // Step 1: Calculate amount without VAT (final amount / 1.12)
+  const amountWithoutVAT = finalAmountNum / 1.12;
+  
+  // Step 2: Calculate tax amount (amount without VAT * 0.12)
+  const taxAmount = amountWithoutVAT * 0.12;
+  
+  return {
+    amountWithoutVAT: Math.round(amountWithoutVAT * 100) / 100,
+    taxAmount: Math.round(taxAmount * 100) / 100,
+    totalAmountWithTax: Math.round((amountWithoutVAT + taxAmount) * 100) / 100
+  };
+}
+
+// Calculate tax for invoice total
+function calculateInvoiceTax(invoiceTotal) {
+  const taxCalculation = calculateTaxAmounts(invoiceTotal);
+  return {
+    subtotal: taxCalculation.amountWithoutVAT,
+    taxAmount: taxCalculation.taxAmount,
+    total: taxCalculation.totalAmountWithTax
+  };
+}
+
+// Helper function to add tax information to invoice data
+function addTaxInfoToInvoice(invoice) {
+  if (!invoice) return invoice;
+  
+  const taxCalculation = calculateInvoiceTax(invoice.totalAmount);
+  return {
+    ...invoice.toJSON ? invoice.toJSON() : invoice,
+    taxInfo: {
+      subtotal: taxCalculation.subtotal,
+      taxAmount: taxCalculation.taxAmount,
+      totalWithTax: taxCalculation.total,
+      taxRate: 12 // 12% VAT
+    }
+  };
+}
+
 // Generate invoice number similar to order number format
 function generateInvoiceNumber() {
   const date = new Date();
@@ -16,6 +65,9 @@ function generateInvoiceNumber() {
 function generateInvoiceHTML(invoice) {
   const formatCurrency = (amount) => `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  // Calculate tax amounts
+  const taxCalculation = calculateInvoiceTax(invoice.totalAmount);
 
   const itemsRows = (invoice.items || []).map((it) => `
       <tr>
@@ -97,15 +149,18 @@ function generateInvoiceHTML(invoice) {
           <tbody>
             <tr>
               <td class="label">Subtotal</td>
-              <td style="text-align:right" class="value">${formatCurrency(invoice.totalAmount)}</td>
+              <td style="text-align:right" class="value">${formatCurrency(taxCalculation.subtotal)}</td>
             </tr>
             <tr>
-              <td class="label">Tax</td>
-              <td style="text-align:right">₱0.00</td>
+              <td class="label">Tax (12% VAT)</td>
+              <td style="text-align:right">${formatCurrency(taxCalculation.taxAmount)}</td>
             </tr>
             <tr>
               <td class="label">Total Amount</td>
-              <td style="text-align:right" class="value">${formatCurrency(invoice.totalAmount)}</td>
+              <td style="text-align:right" class="value">${formatCurrency(taxCalculation.total)}</td>
+            </tr>
+            <tr style="height:16px;">
+              <td colspan="2"></td>
             </tr>
             <tr>
               <td class="label">Paid Amount</td>
@@ -113,7 +168,7 @@ function generateInvoiceHTML(invoice) {
             </tr>
             <tr>
               <td class="label">Balance Due</td>
-              <td style="text-align:right" class="value">${formatCurrency(invoice.remainingBalance ?? invoice.totalAmount)}</td>
+              <td style="text-align:right" class="value">${formatCurrency(invoice.remainingBalance ?? taxCalculation.total)}</td>
             </tr>
           </tbody>
         </table>
@@ -126,24 +181,33 @@ function generateInvoiceHTML(invoice) {
   </html>`;
 }
 
-// Customer: Download invoice as PDF
+// Download invoice as PDF (Client, Admin, Sales Marketing)
 const downloadInvoicePdf = async (req, res, next) => {
   try {
     const { Invoice, InvoiceItem, Customer, Item } = getModels();
     const { id } = req.params;
-    let customerId = req.user.customerId;
-
-    if (!customerId && req.user && req.user.role === 'Client') {
-      const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
-      if (linkedCustomer) customerId = linkedCustomer.id;
+    
+    let whereClause = { id };
+    
+    // For Client users, restrict to their own invoices
+    if (req.user.role === 'Client') {
+      let customerId = req.user.customerId;
+      
+      if (!customerId) {
+        const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+        if (linkedCustomer) customerId = linkedCustomer.id;
+      }
+      
+      if (!customerId) {
+        return res.status(401).json({ success: false, message: 'Customer authentication required' });
+      }
+      
+      whereClause.customerId = customerId;
     }
-
-    if (!customerId) {
-      return res.status(401).json({ success: false, message: 'Customer authentication required' });
-    }
+    // For Admin and Sales Marketing, no customer restriction
 
     const invoice = await Invoice.findOne({
-      where: { id, customerId },
+      where: whereClause,
       include: [
         { model: InvoiceItem, as: 'items', include: [{ model: Item, as: 'item' }] },
         { model: Customer, as: 'customer' }
@@ -174,6 +238,7 @@ const downloadInvoicePdf = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // Create invoice automatically from approved order
 const createInvoiceFromOrder = async (orderId, userId) => {
@@ -209,6 +274,9 @@ const createInvoiceFromOrder = async (orderId, userId) => {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30);
 
+    // Use the order total as the final amount (it already includes markup and VAT)
+    const orderTotal = order.finalAmount || order.totalAmount;
+
     // Create invoice
     const invoice = await Invoice.create({
       invoiceNumber: generateInvoiceNumber(),
@@ -216,9 +284,9 @@ const createInvoiceFromOrder = async (orderId, userId) => {
       customerId: order.customerId,
       invoiceDate: new Date(),
       dueDate,
-      totalAmount: order.finalAmount || order.totalAmount, // Use finalAmount if available (with discount), otherwise totalAmount
+      totalAmount: orderTotal, // Use the order total as is (already includes markup and VAT)
       paidAmount: 0.00,
-      remainingBalance: order.finalAmount || order.totalAmount, // Use finalAmount if available (with discount), otherwise totalAmount
+      remainingBalance: orderTotal, // Balance is the same as total amount
       status: 'awaiting payment',
       paymentTerms: '30 days',
       createdBy: userId
@@ -305,9 +373,12 @@ const getAllInvoices = async (req, res, next) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Add tax information to all invoices
+    const invoicesWithTax = invoices.rows.map(invoice => addTaxInfoToInvoice(invoice));
+
     res.json({
       success: true,
-      data: invoices.rows,
+      data: invoicesWithTax,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(invoices.count / limit),
@@ -356,9 +427,12 @@ const getInvoicesByStatus = async (req, res, next) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Add tax information to all invoices
+    const invoicesWithTax = invoices.rows.map(invoice => addTaxInfoToInvoice(invoice));
+
     res.json({
       success: true,
-      data: invoices.rows,
+      data: invoicesWithTax,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(invoices.count / limit),
@@ -409,9 +483,12 @@ const getInvoiceById = async (req, res, next) => {
       });
     }
 
+    // Add tax information to the invoice
+    const invoiceWithTax = addTaxInfoToInvoice(invoice);
+
     res.json({
       success: true,
-      data: invoice
+      data: invoiceWithTax
     });
   } catch (error) {
     next(error);
@@ -466,6 +543,9 @@ const getMyInvoices = async (req, res, next) => {
       const today = new Date();
       const isOverdue = dueDate < today;
       
+      // Calculate tax amounts for this invoice
+      const taxCalculation = calculateInvoiceTax(invoice.totalAmount);
+      
       // Use database columns for payment amounts
       const paidAmount = Number(invoice.paidAmount || 0);
       const remainingAmount = invoice.remainingBalance !== null && invoice.remainingBalance !== undefined 
@@ -506,6 +586,8 @@ const getMyInvoices = async (req, res, next) => {
         customerAddress: `${customer.street || ''}, ${customer.city || ''}, ${customer.country || ''}`.trim(),
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
+        subtotal: taxCalculation.subtotal,
+        taxAmount: taxCalculation.taxAmount,
         totalAmount: Number(invoice.totalAmount),
         paidAmount: paidAmount,
         remainingAmount: remainingAmount,
@@ -515,7 +597,7 @@ const getMyInvoices = async (req, res, next) => {
           name: item.item?.itemName || '',
           modelNo: item.item?.modelNo || '',
           quantity: Number(item.quantity),
-          unit: item.item?.unit?.name || 'pcs',
+          unit: item.item?.unit?.name || '',
           unitPrice: Number(item.unitPrice),
           total: Number(item.totalPrice)
         })),
@@ -738,6 +820,31 @@ const getAllInvoicesWithPayments = async (req, res, next) => {
   }
 };
 
+// Test function to verify tax calculations (for development/testing purposes)
+const testTaxCalculation = (req, res, next) => {
+  try {
+    const { amount } = req.query;
+    const testAmount = amount ? Number(amount) : 714; // Default to 714 as final amount
+    
+    const result = calculateTaxAmounts(testAmount);
+    
+    res.json({
+      success: true,
+      data: {
+        inputAmount: testAmount,
+        calculation: result,
+        formula: {
+          step1: `${testAmount} / 1.12 = ${result.amountWithoutVAT} (Amount without VAT)`,
+          step2: `${result.amountWithoutVAT} x 0.12 = ${result.taxAmount} (TAX)`,
+          verification: `${result.amountWithoutVAT} + ${result.taxAmount} = ${result.totalAmountWithTax} (Should equal ${testAmount})`
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoicesByStatus,
@@ -748,5 +855,6 @@ module.exports = {
   createInvoiceFromOrder,
   getInvoicePaymentHistory,
   getAllInvoicesWithPayments,
-  downloadInvoicePdf
+  downloadInvoicePdf,
+  testTaxCalculation
 };

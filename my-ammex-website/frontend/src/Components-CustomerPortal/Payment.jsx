@@ -185,6 +185,9 @@ const Payment = () => {
           remainingAmount: Number(foundInvoice.remainingAmount) || Number(foundInvoice.totalAmount) || 0,
           paymentStatus: foundInvoice.paymentStatus,
           paymentTerms: foundInvoice.paymentTerms,
+          // Add tax information from backend
+          subtotal: Number(foundInvoice.subtotal) || 0,
+          taxAmount: Number(foundInvoice.taxAmount) || 0,
           customer: {
             name: foundInvoice.customerName || 'Unknown Customer',
             email: foundInvoice.customerEmail || ''
@@ -531,6 +534,22 @@ const Payment = () => {
               <p className="text-sm text-gray-600">Outstanding Balance</p>
               <p className="font-semibold text-red-600 text-lg">{formatCurrency(invoice.remainingAmount)}</p>
             </div>
+            {invoice.taxAmount > 0 && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-600">Subtotal</p>
+                  <p className="font-medium text-gray-900">{formatCurrency(invoice.subtotal || invoice.totalAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Tax (12% VAT)</p>
+                  <p className="font-medium text-gray-900">{formatCurrency(invoice.taxAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Amount</p>
+                  <p className="font-semibold text-gray-900">{formatCurrency(invoice.totalAmount)}</p>
+                </div>
+              </>
+            )}
             <div>
               <p className="text-sm text-gray-600">Due Date</p>
               <p className="font-medium text-gray-900">{new Date(invoice.dueDate).toLocaleDateString()}</p>

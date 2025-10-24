@@ -1,33 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Clock, Receipt } from 'lucide-react';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
-import InvoiceTable from './InvoiceTable';
 import InvoiceDetailsModal from './InvoiceDetailsModal';
 import InvoiceActionsModal from './InvoiceActionsModal';
 import InvoiceHistoryTab from './InvoiceHistoryTab';
-import { getInvoicesByStatus, updateInvoiceStatus } from '../services/invoiceService';
+import { getInvoicesByStatus, downloadInvoicePdf } from '../services/invoiceService';
 
 const ProcessedInvoices = () => {
-  // Tab state
-  const [activeTab, setActiveTab] = useState('current'); // 'current' or 'history'
-  
-  // State for invoices - initialize as empty array
+  // State for all invoices - merged from different statuses
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [completedInvoices, setCompletedInvoices] = useState([]);
   
-  // Search and filter states for current invoices
+  // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  
-  // Search and filter states for history tab
-  const [historySearchTerm, setHistorySearchTerm] = useState('');
-  const [historyDateRange, setHistoryDateRange] = useState({ start: '', end: '' });
-  const [filteredCompletedInvoices, setFilteredCompletedInvoices] = useState([]);
 
   
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Modal states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -35,18 +26,31 @@ const ProcessedInvoices = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [actionType, setActionType] = useState(''); // 'mark_paid', 'send_reminder'
 
-  // Load invoices from API
+  // Load all invoices from API
   useEffect(() => {
     const loadInvoices = async () => {
       setIsLoading(true);
       try {
-        // Load pending invoices (current) - using 'awaiting payment' status
-        const pendingResponse = await getInvoicesByStatus('awaiting payment');
-        const pendingInvoices = pendingResponse.data || [];
+        // Load all invoices with all statuses
+        const [awaitingResponse, partiallyPaidResponse, completedResponse, overdueResponse] = await Promise.all([
+          getInvoicesByStatus('awaiting payment'),
+          getInvoicesByStatus('partially paid'),
+          getInvoicesByStatus('completed'),
+          getInvoicesByStatus('overdue'),
+        ]);
         
-        // Load completed invoices (history)
-        const completedResponse = await getInvoicesByStatus('completed');
+        const awaitingInvoices = awaitingResponse.data || [];
+        const partiallyPaidInvoices = partiallyPaidResponse.data || [];
         const completedInvoices = completedResponse.data || [];
+        const overdueInvoices = overdueResponse.data || [];
+        
+        // Combine all invoices
+        const allInvoices = [
+          ...awaitingInvoices, 
+          ...partiallyPaidInvoices, 
+          ...completedInvoices, 
+          ...overdueInvoices
+        ];
 
         // Transform backend data to frontend format
         const transformInvoice = (invoice) => ({
@@ -76,20 +80,22 @@ const ProcessedInvoices = () => {
           status: invoice.status
         });
 
-        const transformedPending = pendingInvoices.map(transformInvoice);
-        const transformedCompleted = completedInvoices.map(transformInvoice);
+        const transformedInvoices = allInvoices.map(transformInvoice);
 
-        setInvoices(transformedPending);
-        setFilteredInvoices(transformedPending);
-        setCompletedInvoices(transformedCompleted);
-        setFilteredCompletedInvoices(transformedCompleted);
+        // Sort by invoice date (most recent first) - when the invoice was actually created/issued
+        const sortedInvoices = transformedInvoices.sort((a, b) => {
+          const dateA = new Date(a.invoiceDate);
+          const dateB = new Date(b.invoiceDate);
+          return dateB - dateA; // Most recent first
+        });
+
+        setInvoices(sortedInvoices);
+        setFilteredInvoices(sortedInvoices);
       } catch (error) {
         console.error('Failed to load invoices:', error);
         // Fallback to empty arrays on error
         setInvoices([]);
         setFilteredInvoices([]);
-        setCompletedInvoices([]);
-        setFilteredCompletedInvoices([]);
       } finally {
         setIsLoading(false);
       }
@@ -125,33 +131,6 @@ const ProcessedInvoices = () => {
     setFilteredInvoices(filtered);
   }, [invoices, searchTerm, dateRange]);
 
-  // Filter completed invoices based on search and filters
-  useEffect(() => {
-    let filtered = completedInvoices || [];
-
-    // Search filter
-    if (historySearchTerm) {
-      filtered = filtered.filter(invoice => 
-        invoice.customerName.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-        invoice.invoiceNumber.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-        invoice.orderId.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-        invoice.customerEmail.toLowerCase().includes(historySearchTerm.toLowerCase())
-      );
-    }
-
-    // Date range filter
-    if (historyDateRange.start && historyDateRange.end) {
-      filtered = filtered.filter(invoice => {
-        const invoiceDate = new Date(invoice.invoiceDate);
-        const startDate = new Date(historyDateRange.start);
-        const endDate = new Date(historyDateRange.end);
-        return invoiceDate >= startDate && invoiceDate <= endDate;
-      });
-    }
-
-    setFilteredCompletedInvoices(filtered);
-  }, [completedInvoices, historySearchTerm, historyDateRange]);
-
   // Invoice action handlers
   const handleViewInvoice = (invoice) => {
     setSelectedInvoice(invoice);
@@ -159,32 +138,31 @@ const ProcessedInvoices = () => {
   };
 
   const handleInvoiceAction = async (invoice, action) => {
-    if (action === 'mark_completed' && invoice) {
-      setIsLoading(true);
-      try {
-        await updateInvoiceStatus(invoice.id, 'completed');
-        
-        // Remove from current invoices and add to completed
-        setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-        setFilteredInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-        
-        const completedInvoice = { ...invoice, status: 'completed' };
-        setCompletedInvoices(prev => [completedInvoice, ...prev]);
-        setFilteredCompletedInvoices(prev => [completedInvoice, ...prev]);
-        
-        // Close any open modals
-        setShowActionsModal(false);
-        setSelectedInvoice(null);
-        setActionType('');
-      } catch (error) {
-        console.error('Failed to mark invoice as completed:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setSelectedInvoice(invoice);
-      setActionType(action);
-      setShowActionsModal(true);
+    setSelectedInvoice(invoice);
+    setActionType(action);
+    setShowActionsModal(true);
+  };
+
+  // Handle PDF download
+  const handleDownloadPdf = async (invoice) => {
+    try {
+      setIsDownloading(true);
+      const blob = await downloadInvoicePdf(invoice.id);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -229,96 +207,30 @@ const ProcessedInvoices = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('current')}
-                className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                  activeTab === 'current'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Receipt className="w-4 h-4" />
-                Current Invoices
-                <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs">
-                  {filteredInvoices.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                  activeTab === 'history'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                Invoice History
-              </button>
-            </nav>
-          </div>
-        </div>
+        {/* Search and Filters */}
+        <ModernSearchFilter
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          searchPlaceholder="Search invoices, customers, order IDs..."
+          dropdownFilters={dropdownFilters}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          showDateRange={true}
+          filteredCount={filteredInvoices.length}
+          totalCount={invoices.length}
+          itemLabel="invoices"
+        />
 
-        {/* Current Invoices Tab Content */}
-        {activeTab === 'current' && (
-          <>
-            {/* Search and Filters */}
-            <ModernSearchFilter
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              searchPlaceholder="Search invoices, customers, order IDs..."
-              dropdownFilters={dropdownFilters}
-              dateRange={dateRange}
-              setDateRange={setDateRange}
-              showDateRange={true}
-              filteredCount={filteredInvoices.length}
-              totalCount={invoices.length}
-              itemLabel="invoices"
-            />
-
-            {/* Invoices Table */}
-            <InvoiceTable
-              invoices={filteredInvoices}
-              onViewInvoice={handleViewInvoice}
-              onInvoiceAction={handleInvoiceAction}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-              isloading={isLoading}
-            />
-          </>
-        )}
-
-        {/* History Tab Content */}
-        {activeTab === 'history' && (
-          <>
-            {/* Search and Filters for History */}
-            <ModernSearchFilter
-              searchTerm={historySearchTerm}
-              setSearchTerm={setHistorySearchTerm}
-              searchPlaceholder="Search completed invoices..."
-              dropdownFilters={dropdownFilters}
-              dateRange={historyDateRange}
-              setDateRange={setHistoryDateRange}
-              showDateRange={true}
-              filteredCount={filteredCompletedInvoices.length}
-              totalCount={completedInvoices.length}
-              itemLabel="completed invoices"
-            />
-
-            {/* Completed Invoices Table */}
-            <InvoiceHistoryTab
-              invoices={filteredCompletedInvoices}
-              onViewInvoice={handleViewInvoice}
-              onInvoiceAction={handleInvoiceAction}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-              isloading={isLoading}
-            />
-          </>
-        )}
+        {/* Invoices Table */}
+        <InvoiceHistoryTab
+          invoices={filteredInvoices}
+          onViewInvoice={handleViewInvoice}
+          onInvoiceAction={handleInvoiceAction}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          isloading={isLoading}
+          onDownloadPdf={handleDownloadPdf}
+        />
       </div>
 
       {/* Modals */}
@@ -328,7 +240,7 @@ const ProcessedInvoices = () => {
         onClose={closeDetailsModal}
         formatCurrency={formatCurrency}
         formatDate={formatDate}
-        action
+        onDownloadPdf={handleDownloadPdf}
       />
       
       <InvoiceActionsModal

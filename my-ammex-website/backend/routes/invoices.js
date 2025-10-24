@@ -12,7 +12,8 @@ const {
   createInvoice,
   getInvoicePaymentHistory,
   getAllInvoicesWithPayments,
-  downloadInvoicePdf
+  downloadInvoicePdf,
+  testTaxCalculation
 } = require('../controllers/invoiceController');
 
 // Validation middleware
@@ -63,12 +64,17 @@ router.get('/:id/payment-history', protect, authorize('Client'), getInvoicePayme
 
 // @route   GET /api/invoices/:id/download
 // @desc    Download invoice as PDF
-// @access  Private (Client)
-router.get('/:id/download', protect, authorize('Client'), downloadInvoicePdf);
+// @access  Private (Client, Admin, Sales Marketing)
+router.get('/:id/download', protect, authorize('Client', 'Admin', 'Sales Marketing'), downloadInvoicePdf);
 
 // @route   GET /api/invoices/with-payments
 // @desc    Get all invoices with payment details
 // @access  Private (Admin, Sales Marketing)
 router.get('/with-payments', protect, authorize('Admin', 'Sales Marketing'), getAllInvoicesWithPayments);
+
+// @route   GET /api/invoices/test/tax-calculation
+// @desc    Test tax calculation with provided amount
+// @access  Private (Admin, Sales Marketing) - for testing purposes
+router.get('/test/tax-calculation', protect, authorize('Admin', 'Sales Marketing'), testTaxCalculation);
 
 module.exports = router;

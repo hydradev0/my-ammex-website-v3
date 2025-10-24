@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, User, Mail, FileText, Package, DollarSign } from 'lucide-react';
+import { X, Calendar, User, Mail, FileText, Package, DollarSign, Download } from 'lucide-react';
 import ScrollLock from '../Components/ScrollLock';
 
 const InvoiceDetailsModal = ({
@@ -8,9 +8,16 @@ const InvoiceDetailsModal = ({
   isOpen,
   onClose,
   formatCurrency,
-  formatDate
+  formatDate,
+  onDownloadPdf
 }) => {
   if (!isOpen || !invoice) return null;
+
+  const handleDownloadPdf = async () => {
+    if (onDownloadPdf) {
+      await onDownloadPdf(invoice);
+    }
+  };
 
 
 
@@ -53,7 +60,7 @@ const InvoiceDetailsModal = ({
                     {invoice.items.length} item{invoice.items.length !== 1 ? 's' : ''}
                   </p>
                 </div>
-                <DollarSign className="w-8 h-8 text-blue-400" />
+                
               </div>
             </div>
 
@@ -208,12 +215,19 @@ const InvoiceDetailsModal = ({
            </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-end p-6 border-t gap-2 border-gray-200 bg-gray-50">
             <button
               onClick={onClose}
-              className="px-4 py-2 cursor-pointer text-sm font-medium text-white bg-blue-600 border border-gray-300 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="px-4 py-2 cursor-pointer text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               Close
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center cursor-pointer space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download PDF</span>
             </button>
           </div>
         </div>

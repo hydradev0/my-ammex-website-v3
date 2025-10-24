@@ -23,7 +23,7 @@ export const getAllInvoices = async (page = 1, limit = 10, status = null, startD
 };
 
 // Get invoices by status (Admin/Sales Marketing)
-export const getInvoicesByStatus = async (status, page = 1, limit = 10) => {
+export const getInvoicesByStatus = async (status, page = 1, limit = 100) => {
   const token = localStorage.getItem('token');
   const url = new URL(`${API_BASE_URL}/invoices/status/${status}`);
   url.searchParams.set('page', String(page));
@@ -104,7 +104,7 @@ export const updateInvoiceStatus = async (invoiceId, status) => {
   return data; // { success, data: Invoice }
 };
 
-// Download invoice PDF (Client)
+// Download invoice PDF (Client, Admin, Sales Marketing)
 export const downloadInvoicePdf = async (invoiceId) => {
   const token = localStorage.getItem('token');
   const res = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/download`, {
