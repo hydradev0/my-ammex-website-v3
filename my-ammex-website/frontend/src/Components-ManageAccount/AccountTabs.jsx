@@ -34,7 +34,7 @@ export const TabNavigation = ({ activeTab, setActiveTab }) => {
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          Client Services
+          Client Accounts
         </button>
       </nav>
     </div>
@@ -121,7 +121,7 @@ export const ClientServicesTab = ({
     <>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Client Services</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Client Accounts</h1>
           <p className="mt-1 text-sm text-gray-500">Manage client user accounts.</p>
         </div>
         <button

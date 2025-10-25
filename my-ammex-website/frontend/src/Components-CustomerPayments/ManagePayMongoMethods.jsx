@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Settings, ToggleLeft, ToggleRight, Edit2, Save, X, GripVertical } from 'lucide-react';
+import { Settings, ToggleLeft, ToggleRight, Edit2, Save, X, GripVertical } from 'lucide-react';
 import ScrollLock from '../Components/ScrollLock';
-import RoleBasedLayout from '../Components/RoleBasedLayout';
 
 const ManagePayMongoMethods = () => {
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -33,7 +32,12 @@ const ManagePayMongoMethods = () => {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Payment methods loaded:', data);
         setPaymentMethods(data.data || []);
+      } else {
+        console.error('Failed to load payment methods:', response.status, response.statusText);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
       }
     } catch (error) {
       console.error('Failed to load payment methods:', error);
@@ -128,50 +132,45 @@ const ManagePayMongoMethods = () => {
 
   if (isLoading) {
     return (
-      <>
-        <RoleBasedLayout />
-        <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Payment Methods...</h3>
-            <p className="text-gray-500">Please wait while we fetch the payment configuration.</p>
-          </div>
-        </div>
-      </>
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Loading Payment Methods...</h3>
+        <p className="text-gray-500">Please wait while we fetch the payment configuration.</p>
+      </div>
     );
   }
 
   return (
-    <>
-      <RoleBasedLayout />
-      <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
-        
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3 mb-4">
-              <button
-                onClick={() => window.history.back()}
-                className="flex items-center justify-center cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg gap-2 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </button>
-              <div className="flex items-center gap-2">
-                <Settings className="w-6 h-6 text-blue-600" />
-                <h1 className="text-2xl font-bold text-gray-900">PayMongo Payment Methods</h1>
-              </div>
-            </div>
-            <p className="text-gray-600">
-              Manage which PayMongo payment methods are available to customers. 
-              Disabled methods will not appear in the payment form.
-            </p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">PayMongo Payment Methods</h3>
+        <p className="text-gray-600 text-sm">
+          Manage which PayMongo payment methods are available to customers. 
+          Disabled methods will not appear in the payment form.
+        </p>
+      </div>
 
-        {/* Payment Methods List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6">
+      {/* Payment Methods List */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6">
+          {paymentMethods.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-4">
+                <Settings className="w-16 h-16 mx-auto" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Payment Methods Found</h3>
+              <p className="text-gray-500 mb-4">
+                No PayMongo payment methods are configured yet. Please check your backend setup.
+              </p>
+              <button
+                onClick={loadPaymentMethods}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Retry Loading
+              </button>
+            </div>
+          ) : (
             <div className="space-y-4">
               {paymentMethods.map((method) => (
                 <div
@@ -262,7 +261,7 @@ const ManagePayMongoMethods = () => {
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -397,7 +396,7 @@ const ManagePayMongoMethods = () => {
           )}
         </>
       )}
-    </>
+    </div>
   );
 };
 

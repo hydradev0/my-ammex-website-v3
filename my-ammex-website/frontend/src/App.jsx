@@ -42,6 +42,8 @@ import SalesTrend from './Components-Analytics/SalesTrend';
 import CustomerPurchase from './Components-Analytics/CustomerPurchase';
 import WebsiteData from './Components-Analytics/WebsiteData';
 
+import Settings from './Components/Settings';
+
 function AppContent() {
   const location = useLocation();
   const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/landingpage';
@@ -206,6 +208,17 @@ function AppContent() {
         {/* Administration */}
         <Route path="admin/accountmanagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
         <Route path="admin/importdata" element={<ProtectedRoute requiredRole="Admin"><ImportData /></ProtectedRoute>} />
+        
+        {/* Settings */}
+        <Route 
+          path="settings" 
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor", "Client"]}>
+              <Settings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="admin/settings" element={<ProtectedRoute requiredRole="Admin"><Settings /></ProtectedRoute>} />
         
         {/* Customer Portal - Client role only */}
         <Route

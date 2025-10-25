@@ -1650,6 +1650,57 @@ const initializeModels = (sequelize) => {
     as: 'customer'
   });
 
+  // Settings Model
+  const Settings = sequelize.define('Settings', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    settingKey: {
+      type: DataTypes.STRING,
+      field: 'setting_key',
+      allowNull: false,
+      unique: true,
+      validate: {
+        notEmpty: { msg: 'Setting key is required' }
+      }
+    },
+    settingValue: {
+      type: DataTypes.TEXT,
+      field: 'setting_value',
+      allowNull: true
+    },
+    settingType: {
+      type: DataTypes.ENUM('string', 'number', 'boolean', 'text', 'json'),
+      field: 'setting_type',
+      allowNull: false,
+      defaultValue: 'string'
+    },
+    category: {
+      type: DataTypes.ENUM('company', 'tax', 'payments', 'invoice', 'system'),
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Category is required' }
+      }
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      field: 'is_active',
+      allowNull: false,
+      defaultValue: true
+    }
+  }, {
+    tableName: 'settings',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+  });
+
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
@@ -1675,7 +1726,8 @@ const initializeModels = (sequelize) => {
     PaymentHistory,
     PaymentReceipt,
     Notification,
-    PriceHistory
+    PriceHistory,
+    Settings
   };
 };
 

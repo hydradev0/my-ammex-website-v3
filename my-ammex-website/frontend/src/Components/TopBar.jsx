@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, X, Upload } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, X, Upload, UserCog } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
@@ -147,44 +147,36 @@ function TopBar() {
             </button>
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded-md shadow-lg ring-1 ring-black/5 py-1">
-                <button
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
-                >
-                  <User size={16} /> Profile
-                </button>
-
                 {user.role === 'Admin' && (<button
                   onClick={() => navigate('/Admin/AccountManagement')}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                  className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
-                  <Settings size={16} /> Manage Accounts
+                  <UserCog size={16} /> Manage Accounts
                 </button>
                 )}
                 {user.role === 'Admin' && (<button
                   onClick={() => navigate('/Admin/ImportData')}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                  className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Upload size={16} /> Import Data
                 </button>
                 )}
-                {(user.role === 'Sales Marketing' || user.role === 'Admin') && (<button
-                  onClick={() => navigate('/Sales/ManagePaymentMethods')}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
-                > 
-                  <CreditCard size={16} />Payment Methods
-                </button>
-                )}
-
                 <button
                   onClick={() => { setMenuOpen(false); setArchiveOpen(true); }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                  className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Archive size={16} /> Archive
+                </button>
+                <button
+                  onClick={() => navigate('/Settings')}
+                  className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Settings size={16} /> Settings
                 </button>
                 <div className="my-1 border-t border-gray-200" />
                 <button
                   onClick={() => { setMenuOpen(false); logout(); }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
+                  className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
                 >
                   <LogOut size={16} /> Logout
                 </button>

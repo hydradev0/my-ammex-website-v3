@@ -107,6 +107,7 @@ const initializeServer = async () => {
       app.use('/api/dashboard', require('./routes/dashboard'));
       app.use('/api/import', require('./routes/import'));
       app.use('/api/notifications', require('./routes/notifications'));
+      app.use('/api/settings', require('./routes/settings'));
     } else {
       // Development without database - mock routes
       app.get('/api/auth/me', (req, res) => {

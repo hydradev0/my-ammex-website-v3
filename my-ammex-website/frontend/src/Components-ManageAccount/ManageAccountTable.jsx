@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { apiCall } from '../utils/apiConfig';
-import { Search, Filter, X, ChevronDown } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { TabNavigation, SalesDepartmentTab, WarehouseDepartmentTab, ClientServicesTab } from './AccountTabs';
 import { AccountModal, PasswordChangeModal } from './AccountModals';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
@@ -53,35 +53,9 @@ const ManageAccountTable = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Search and filter state
+  // Search state
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState('');
-  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
 
-  // Dropdown state and refs for filters
-  const [roleFilterDropdownOpen, setRoleFilterDropdownOpen] = useState(false);
-  const [departmentFilterDropdownOpen, setDepartmentFilterDropdownOpen] = useState(false);
-  const roleFilterDropdownRef = useRef(null);
-  const departmentFilterDropdownRef = useRef(null);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (roleFilterDropdownRef.current && !roleFilterDropdownRef.current.contains(event.target)) {
-        setRoleFilterDropdownOpen(false);
-      }
-      if (departmentFilterDropdownRef.current && !departmentFilterDropdownRef.current.contains(event.target)) {
-        setDepartmentFilterDropdownOpen(false);
-      }
-    };
-    if (roleFilterDropdownOpen || departmentFilterDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [roleFilterDropdownOpen, departmentFilterDropdownOpen]);
 
   // Fetch users, roles, and departments on component mount
   useEffect(() => {
@@ -131,7 +105,7 @@ const ManageAccountTable = () => {
     }
   };
 
-  // Filtered data based on search and filters
+  // Filtered data based on search only
   const filteredData = useMemo(() => {
     let currentData = [];
     if (activeTab === 'sales') {
@@ -143,30 +117,22 @@ const ManageAccountTable = () => {
     }
     
     return currentData.filter(user => {
-      // Search filter
+      // Search filter only
       const matchesSearch = searchTerm === '' || 
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Role filter
-      const matchesRole = selectedRoleFilter === '' || user.role === selectedRoleFilter;
-      
-      // Department filter
-      const matchesDepartment = selectedDepartmentFilter === '' || user.department === selectedDepartmentFilter;
-      
-      return matchesSearch && matchesRole && matchesDepartment;
+      return matchesSearch;
     });
-  }, [activeTab, salesAccounts, warehouseAccounts, clientAccounts, searchTerm, selectedRoleFilter, selectedDepartmentFilter]);
+  }, [activeTab, salesAccounts, warehouseAccounts, clientAccounts, searchTerm]);
 
-  // Clear all filters
-  const clearFilters = () => {
+  // Clear search
+  const clearSearch = () => {
     setSearchTerm('');
-    setSelectedRoleFilter('');
-    setSelectedDepartmentFilter('');
   };
 
-  // Check if any filters are active
-  const hasActiveFilters = searchTerm || selectedRoleFilter || selectedDepartmentFilter;
+  // Check if search is active
+  const hasActiveSearch = searchTerm;
 
   const handleCreateSalesAccount = () => {
     setOpen(true);
@@ -508,7 +474,7 @@ const ManageAccountTable = () => {
         </div>
       )}
 
-      {/* Search and Filters Section */}
+      {/* Search Section */}
       <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Bar */}
@@ -520,140 +486,33 @@ const ManageAccountTable = () => {
                 placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
-          {/* Filter Toggle Button */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-              showFilters 
-                ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-            {hasActiveFilters && (
-              <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-1">
-                {[searchTerm, selectedRoleFilter, selectedDepartmentFilter].filter(Boolean).length}
-              </span>
-            )}
-          </button>
-
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
+          {/* Clear Search Button */}
+          {hasActiveSearch && (
             <button
-              onClick={clearFilters}
+              onClick={clearSearch}
               className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <X className="h-4 w-4" />
               Clear
             </button>
           )}
-        </div>
 
-        {/* Filters Panel */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Role Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
-                <div className="relative w-full" ref={roleFilterDropdownRef}>
-                  <button
-                    type="button"
-                    className="cursor-pointer w-full text-sm pl-3 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center"
-                    onClick={() => setRoleFilterDropdownOpen((open) => !open)}
-                    disabled={isLoading}
-                  >
-                    <span>{selectedRoleFilter || 'All Roles'}</span>
-                    <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${roleFilterDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {roleFilterDropdownOpen && !isLoading && (
-                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      <li
-                        className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 hover:text-black"
-                        onClick={() => {
-                          setSelectedRoleFilter('');
-                          setRoleFilterDropdownOpen(false);
-                        }}
-                      >
-                        All Roles
-                      </li>
-                      {availableRoles.map((role) => (
-                        <li
-                          key={role.value}
-                          className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 hover:text-black ${selectedRoleFilter === role.value ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
-                          onClick={() => {
-                            setSelectedRoleFilter(role.value);
-                            setRoleFilterDropdownOpen(false);
-                          }}
-                        >
-                          {role.label}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              {/* Department Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Department</label>
-                <div className="relative w-full" ref={departmentFilterDropdownRef}>
-                  <button
-                    type="button"
-                    className="cursor-pointer w-full text-sm pl-3 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center"
-                    onClick={() => setDepartmentFilterDropdownOpen((open) => !open)}
-                    disabled={isLoading}
-                  >
-                    <span>{selectedDepartmentFilter || 'All Departments'}</span>
-                    <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${departmentFilterDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {departmentFilterDropdownOpen && !isLoading && (
-                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      <li
-                        className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 hover:text-black"
-                        onClick={() => {
-                          setSelectedDepartmentFilter('');
-                          setDepartmentFilterDropdownOpen(false);
-                        }}
-                      >
-                        All Departments
-                      </li>
-                      {availableDepartments.map((dept) => (
-                        <li
-                          key={dept.value}
-                          className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 hover:text-black ${selectedDepartmentFilter === dept.value ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
-                          onClick={() => {
-                            setSelectedDepartmentFilter(dept.value);
-                            setDepartmentFilterDropdownOpen(false);
-                          }}
-                        >
-                          {dept.label}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              {/* Results Count */}
-              <div className="flex justify-end items-center">
-                <div className="text-sm text-gray-600">
-                  Showing {filteredData.length} of {
-                    activeTab === 'sales' ? salesAccounts.length :
-                    activeTab === 'warehouse' ? warehouseAccounts.length :
-                    clientAccounts.length
-                  } accounts
-                </div>
-              </div>
+          {/* Results Count */}
+          <div className="flex justify-end items-center">
+            <div className="text-sm text-gray-600">
+              Showing {filteredData.length} of {
+                activeTab === 'sales' ? salesAccounts.length :
+                activeTab === 'warehouse' ? warehouseAccounts.length :
+                clientAccounts.length
+              } accounts
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Sales Department Tab */}

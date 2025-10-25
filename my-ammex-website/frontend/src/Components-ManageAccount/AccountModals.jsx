@@ -180,29 +180,6 @@ export const AccountModal = ({
               </div>
             )}
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Role</label>
-              <input
-                type="text"
-                name="role"
-                value={formData.role}
-                readOnly
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm text-gray-700 cursor-not-allowed"
-                placeholder="Role will be set based on department"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Department</label>
-              <input
-                type="text"
-                name="department"
-                value={formData.department}
-                readOnly
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm text-gray-700 cursor-not-allowed"
-                placeholder="Department will be set based on tab"
-              />
-            </div>
             
             <div className="mt-6 flex items-center justify-end gap-3">
               <button

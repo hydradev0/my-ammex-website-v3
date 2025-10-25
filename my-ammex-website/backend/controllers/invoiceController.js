@@ -62,9 +62,20 @@ function generateInvoiceNumber() {
 }
 
 // Helper: Generate Invoice HTML for PDF
-function generateInvoiceHTML(invoice) {
+async function generateInvoiceHTML(invoice) {
   const formatCurrency = (amount) => `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  // Get company settings
+  const { Settings } = getModels();
+  const companySettings = await Settings.findAll({
+    where: { category: 'company', isActive: true }
+  });
+  
+  const companyInfo = {};
+  companySettings.forEach(setting => {
+    companyInfo[setting.settingKey] = setting.settingValue;
+  });
   
   // Calculate tax amounts
   const taxCalculation = calculateInvoiceTax(invoice.totalAmount);
@@ -80,7 +91,7 @@ function generateInvoiceHTML(invoice) {
   `).join('');
 
   const customer = invoice.customer || {};
-
+ {/* HTML Invoice Template */}
   return `<!DOCTYPE html>
   <html>
     <head>
@@ -102,11 +113,11 @@ function generateInvoiceHTML(invoice) {
     <body>
       <div class="header">
         <div class="company">
-          <h1>AMMEX</h1>
+          <h1>${companyInfo.company_name || 'Ammex Machine Tools Phils. Inc.'}</h1>
           <div class="label">Address</div>
-          <div class="value">123 Business Street, Makati City, Metro Manila 1234, Philippines</div>
+          <div class="value">${companyInfo.company_address || ''}</div>
           <div class="label" style="margin-top:8px">Contact</div>
-          <div class="value">+63 2 1234 5678 • info@ammex.com</div>
+          <div class="value">${companyInfo.company_phone || ''} • ${companyInfo.company_email || ''}</div>
         </div>
         <div style="text-align:right;">
           <div class="title">INVOICE</div>
@@ -218,7 +229,7 @@ const downloadInvoicePdf = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    const htmlContent = generateInvoiceHTML(invoice);
+    const htmlContent = await generateInvoiceHTML(invoice);
 
     const options = {
       format: 'A4',

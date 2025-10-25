@@ -36,6 +36,8 @@ function NewItem({
   const [errors, setErrors] = useState({});
   // State for loading
   const [isLoading, setIsLoading] = useState(false);
+  // State for markup settings
+  const [markupRate, setMarkupRate] = useState(30); // Default to 30%
   
   // Use suppliers data for vendor dropdown
   const vendors = suppliers.length > 0 
@@ -63,6 +65,31 @@ function NewItem({
       setErrors(backendErrors);
     }
   }, [backendErrors]);
+
+  // Fetch markup settings on component mount
+  useEffect(() => {
+    const fetchMarkupSettings = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/settings/markup`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.markup_rate) {
+            setMarkupRate(data.data.markup_rate);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch markup settings:', error);
+        // Keep default 30% if fetch fails
+      }
+    };
+
+    fetchMarkupSettings();
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -124,12 +151,17 @@ function NewItem({
     // Auto-calculate selling price when supplier price changes
     if (id === 'supplierPrice' && value && !isNaN(value)) {
       const supplierPrice = parseFloat(value);
-      const sellingPrice = supplierPrice * 1.30; // 30% markup
+      const sellingPrice = supplierPrice * (1 + markupRate / 100); // Dynamic markup rate
       updatedFormData.sellingPrice = sellingPrice.toFixed(2);
     }
     
     setFormData(updatedFormData);
-    
+
+    {/* Clear selling price field when supplier price is empty */}
+    if (value === '') {
+      updatedFormData.sellingPrice = '';
+    }
+
     // Clear error when field is edited
     if (errors[id]) {
       setErrors({ ...errors, [id]: null });
@@ -564,18 +596,16 @@ function NewItem({
                   onChange={handleInputChange}
                   error={errors.supplierPrice}
                   prefix="₱"
-                  step="0.01"
                   min="0"
                 />
                 <FormField
                   id="sellingPrice"
-                  label={<span>Selling Price <span className="text-red-500">*</span> <span className="text-xs text-gray-500">(Auto-calculated: Supplier Price + 30%)</span></span>}
+                  label={<span>Selling Price <span className="text-red-500">*</span> <span className="text-xs text-gray-500">(Auto-calculated: Supplier Price + {markupRate}%)</span></span>}
                   type="number"
                   value={formData.sellingPrice}
                   onChange={handleInputChange}
                   error={errors.sellingPrice}
                   prefix="₱"
-                  step="0.01"
                   min="0"
                   disabled={formData.supplierPrice && !isNaN(formData.supplierPrice)}
                 />
