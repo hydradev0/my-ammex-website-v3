@@ -287,7 +287,7 @@ async function main() {
    node importAmmexSalesData.js <cleaned_csv_file>
 
 📝 EXAMPLES:
-   node importAmmexSalesData.js ammex_sales_2022_cleaned.csv
+   node importAmmexSalesData.js ammex_sales_2023_cleaned.csv
    node importAmmexSalesData.js "C:\\path\\to\\cleaned_sales_data.csv"
 
 🔧 WHAT THIS SCRIPT DOES:
@@ -298,7 +298,7 @@ async function main() {
 
 📋 EXPECTED CSV FORMAT:
    - Headers: month_start,total_revenue,total_orders,total_units,avg_order_value,new_customers
-   - Data: 2022-01-01,1389024.19,0,0,0,0
+   - Data: 2023-01-01,1389024.19,0,0,0,0
         `);
         process.exit(1);
     }

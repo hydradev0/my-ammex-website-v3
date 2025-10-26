@@ -104,6 +104,7 @@ const initializeServer = async () => {
       app.use('/api/payments', require('./routes/payments'));
       app.use('/api/paymongo-payment-methods', require('./routes/paymongoPaymentMethods'));
       app.use('/api/analytics', require('./routes/analytics'));
+      app.use('/api/monthly-reports', require('./routes/monthlyReports'));
       app.use('/api/dashboard', require('./routes/dashboard'));
       app.use('/api/import', require('./routes/import'));
       app.use('/api/notifications', require('./routes/notifications'));

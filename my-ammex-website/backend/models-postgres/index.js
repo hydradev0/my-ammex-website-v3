@@ -816,6 +816,24 @@ const initializeModels = (sequelize) => {
       validate: {
         min: { args: [0], msg: 'Total price must be a positive number' }
       }
+    },
+    categoryId: {
+      type: DataTypes.INTEGER,
+      field: 'category_id',
+      allowNull: true,
+      references: {
+        model: 'Category',
+        key: 'id'
+      }
+    },
+    subcategoryId: {
+      type: DataTypes.INTEGER,
+      field: 'subcategory_id',
+      allowNull: true,
+      references: {
+        model: 'Category',
+        key: 'id'
+      }
     }
   }, {
     timestamps: true

@@ -3,7 +3,7 @@ const path = require('path');
 
 // cd my-ammex-website/backend
 // node scripts/cleanAmmexSalesData.js 
-// "C:/Users/Mike/Downloads/AMMEX FILE.xlsx - SALES 2022.csv" ammex_sales_2022_cleaned_corrected.csv
+// "C:/Users/Mike/Downloads/AMMEX FILE.xlsx - SALES 2023.csv" ammex_sales_2023_cleaned_corrected.csv
 
 class AmmexSalesDataCleaner {
     constructor() {
@@ -491,11 +491,11 @@ async function main() {
    node cleanAmmexSalesData.js <input_csv_file> [output_csv_file]
 
 📝 EXAMPLES:
-   node cleanAmmexSalesData.js "AMMEX FILE.xlsx - SALES 2022.csv"
-   node cleanAmmexSalesData.js "AMMEX FILE.xlsx - SALES 2022.csv" cleaned_sales_data.csv
+   node cleanAmmexSalesData.js "AMMEX FILE.xlsx - SALES 2023.csv"
+   node cleanAmmexSalesData.js "AMMEX FILE.xlsx - SALES 2023.csv" cleaned_sales_data.csv
 
 📋 EXPECTED CSV FORMAT:
-   - First line: "MONTH OF JANUARY 2022" (month/year detection)
+   - First line: "MONTH OF JANUARY 2023" (month/year detection)
    - Second line: Column headers including "DATE" and "TOTAL AMOUNT"
    - Data rows: Day numbers in DATE column, amounts in TOTAL AMOUNT column
    

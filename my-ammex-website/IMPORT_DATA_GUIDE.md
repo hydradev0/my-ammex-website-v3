@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS customer_bulk_monthly (
 Your data files:
 
 1. **Sales Data** (multiple years):
-   - `ammex_sales_2022_cleaned_corrected.csv`
+   - `ammex_sales_2023_cleaned_corrected.csv`
    - `ammex_sales_2024_cleaned_corrected.csv`
    - `ammex_sales_2025_cleaned_corrected.csv`
    - Import Type: **Monthly Sales Data**

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
-import { Loader } from 'lucide-react';
+import { Loader, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Import new components
@@ -122,7 +122,7 @@ const Analytics = () => {
       <>
         <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex flex-col items-center justify-center">
-          <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
           <div className="text-gray-600 text-lg">Loading Analytics Data...</div>
         </div>
       </>

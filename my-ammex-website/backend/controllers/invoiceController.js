@@ -305,13 +305,18 @@ const createInvoiceFromOrder = async (orderId, userId) => {
 
     // Create invoice items from order items
     if (order.items && order.items.length > 0) {
-      const invoiceItems = order.items.map(orderItem => ({
-        invoiceId: invoice.id,
-        itemId: orderItem.itemId,
-        quantity: orderItem.quantity,
-        unitPrice: orderItem.unitPrice,
-        totalPrice: orderItem.totalPrice
-      }));
+      const invoiceItems = order.items.map(orderItem => {
+        const item = orderItem.item; // Item is already included in the query above
+        return {
+          invoiceId: invoice.id,
+          itemId: orderItem.itemId,
+          quantity: orderItem.quantity,
+          unitPrice: orderItem.unitPrice,
+          totalPrice: orderItem.totalPrice,
+          categoryId: item?.categoryId || null,
+          subcategoryId: item?.subcategoryId || null
+        };
+      });
       
       await InvoiceItem.bulkCreate(invoiceItems);
     }

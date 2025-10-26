@@ -26,7 +26,7 @@ class AnalyticsController {
                 total_units,
                 avg_order_value,
                 new_customers
-              FROM sales_fact_monthly 
+              FROM u_sales_fact_monthly 
               ${whereClause}
               ORDER BY month_start
             `, { type: QueryTypes.SELECT });
@@ -70,8 +70,8 @@ class AnalyticsController {
           COALESCE(sf.new_customers, 0) AS new_customers,
           cf.bulk_orders_count,
           cf.bulk_orders_amount
-        FROM customer_bulk_monthly cf
-        LEFT JOIN sales_fact_monthly sf ON sf.month_start = cf.month_start
+        FROM u_customer_bulk_monthly cf
+        LEFT JOIN u_sales_fact_monthly sf ON sf.month_start = cf.month_start
         WHERE cf.month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '${months} months'
         AND cf.month_start < date_trunc('month', CURRENT_DATE)
         ORDER BY cf.month_start
@@ -134,7 +134,7 @@ class AnalyticsController {
               category_id,
               subcategory_id,
               order_count
-            FROM sales_fact_monthly_by_product 
+            FROM u_sales_fact_monthly_by_product 
             WHERE ${monthCondition}
             ORDER BY order_count DESC
             LIMIT ${parseInt(limit)}
@@ -155,7 +155,7 @@ class AnalyticsController {
           category_id,
           subcategory_id,
           order_count
-        FROM sales_fact_monthly_by_product 
+        FROM u_sales_fact_monthly_by_product 
         WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
         AND month_start < date_trunc('month', CURRENT_DATE)
         ORDER BY month_start DESC, order_count DESC
@@ -175,7 +175,7 @@ class AnalyticsController {
             category_id,
             subcategory_id,
             order_count
-          FROM sales_fact_monthly_by_product 
+          FROM u_sales_fact_monthly_by_product 
           WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '6 months'
           AND month_start < date_trunc('month', CURRENT_DATE)
           ORDER BY month_start DESC, order_count DESC
@@ -274,12 +274,12 @@ class AnalyticsController {
               bulk_orders_count,
               bulk_orders_amount,
               average_bulk_order_value,
-              ranking
-            FROM customer_bulk_monthly_by_name 
+              ROW_NUMBER() OVER (PARTITION BY month_start ORDER BY bulk_orders_amount DESC) as ranking
+            FROM u_customer_bulk_monthly_by_name 
             WHERE ${monthCondition}
-            AND ranking <= ${parseInt(limit)}
-            ORDER BY ranking ASC
-          `, { type: QueryTypes.SELECT });
+          `, { type: QueryTypes.SELECT }).then(results => 
+            results.filter(r => r.ranking <= parseInt(limit))
+          );
           
           sameMonthsData.push(...yearData);
         }
@@ -295,14 +295,13 @@ class AnalyticsController {
           bulk_orders_count,
           bulk_orders_amount,
           average_bulk_order_value,
-          ranking
-        FROM customer_bulk_monthly_by_name 
+          ROW_NUMBER() OVER (PARTITION BY month_start ORDER BY bulk_orders_amount DESC) as ranking
+        FROM u_customer_bulk_monthly_by_name 
         WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
         AND month_start < date_trunc('month', CURRENT_DATE)
-        AND ranking <= ${parseInt(limit)}
-        ORDER BY month_start DESC, ranking ASC
-        LIMIT ${parseInt(limit) * 12}
-      `, { type: QueryTypes.SELECT });
+      `, { type: QueryTypes.SELECT }).then(results => 
+        results.filter(r => r.ranking <= parseInt(limit)).slice(0, parseInt(limit) * 12)
+      );
       
       console.log(`📈 Secondary data: Found ${recentData.length} records from recent 12 months`);
       
@@ -316,14 +315,13 @@ class AnalyticsController {
             bulk_orders_count,
             bulk_orders_amount,
             average_bulk_order_value,
-            ranking
-          FROM customer_bulk_monthly_by_name 
+            ROW_NUMBER() OVER (PARTITION BY month_start ORDER BY bulk_orders_amount DESC) as ranking
+          FROM u_customer_bulk_monthly_by_name 
           WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '6 months'
           AND month_start < date_trunc('month', CURRENT_DATE)
-          AND ranking <= ${parseInt(limit)}
-          ORDER BY month_start DESC, ranking ASC
-          LIMIT ${parseInt(limit) * 6}
-        `, { type: QueryTypes.SELECT });
+        `, { type: QueryTypes.SELECT }).then(results => 
+          results.filter(r => r.ranking <= parseInt(limit)).slice(0, parseInt(limit) * 6)
+        );
         
         console.log(`🔄 Fallback data: Found ${fallbackData.length} records from last 6 months`);
       }
@@ -408,7 +406,7 @@ class AnalyticsController {
           total_units,
           avg_order_value,
           new_customers
-        FROM sales_fact_monthly 
+        FROM u_sales_fact_monthly 
         ORDER BY month_start
       `, { type: QueryTypes.SELECT });
       
@@ -449,7 +447,7 @@ class AnalyticsController {
           model_no,
           category_name,
           order_count
-        FROM sales_fact_monthly_by_product 
+        FROM u_sales_fact_monthly_by_product 
         WHERE (${monthConditions})
         ORDER BY month_start DESC, order_count DESC
         LIMIT 25
@@ -474,7 +472,7 @@ class AnalyticsController {
             model_no,
             category_name,
             order_count
-          FROM sales_fact_monthly_by_product 
+          FROM u_sales_fact_monthly_by_product 
           WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
           ORDER BY month_start DESC, order_count DESC
           LIMIT 30
@@ -652,7 +650,7 @@ Based on the top products data provided, predict which products will likely cont
           'X-Title': 'Ammex Sales Forecasting'
         },
         body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet',
+            model: 'qwen/qwen2.5-vl-32b-instruct:free',
           messages: [
             { 
               role: 'system', 
@@ -863,7 +861,7 @@ Based on the top products data provided, predict which products will likely cont
           month_start,
           bulk_orders_count,
           bulk_orders_amount
-        FROM customer_bulk_monthly 
+        FROM u_customer_bulk_monthly 
         ORDER BY month_start
       `, { type: QueryTypes.SELECT });
 
@@ -895,7 +893,7 @@ Based on the top products data provided, predict which products will likely cont
       
       let topBulkCustomersData = await getSequelize().query(`
         SELECT month_start, customer_name, bulk_orders_amount, model_no
-        FROM customer_bulk_monthly_by_name
+        FROM u_customer_bulk_monthly_by_name
         WHERE (${monthConditions})
         ORDER BY month_start DESC, bulk_orders_amount DESC
         LIMIT 5
@@ -910,7 +908,7 @@ Based on the top products data provided, predict which products will likely cont
       if (missingMonths.length > 0) {
         const fallbackData = await getSequelize().query(`
           SELECT month_start, customer_name, bulk_orders_amount, model_no
-          FROM customer_bulk_monthly_by_name
+          FROM u_customer_bulk_monthly_by_name
           WHERE month_start >= date_trunc('month', CURRENT_DATE) - INTERVAL '12 months'
           ORDER BY month_start DESC, bulk_orders_amount DESC
           LIMIT 15
@@ -1052,7 +1050,7 @@ Return this exact JSON structure:
           'X-Title': 'Ammex Customer Bulk Forecast'
         },
         body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet',
+            model: 'qwen/qwen2.5-vl-32b-instruct:free',
           messages: [
             { role: 'system', content: `You are a professional business analyst specializing in forecasting. Always return valid JSON. TODAY'S DATE IS ${currentYear}-${currentMonth.toString().padStart(2, '0')}-01. Generate forecasts for NEXT months only.` },
             { role: 'user', content: prompt }
@@ -1206,7 +1204,7 @@ Return this exact JSON structure:
           total_units,
           avg_order_value,
           new_customers
-        FROM sales_fact_monthly 
+        FROM u_sales_fact_monthly 
         WHERE month_start >= CURRENT_DATE - INTERVAL '12 months'
         ORDER BY month_start DESC
         LIMIT 12
@@ -1263,7 +1261,7 @@ Return this exact JSON structure:
 
       const currentYTDSales = await sequelize.query(`
         SELECT COALESCE(SUM(total_revenue), 0) as ytd_sales
-        FROM sales_fact_monthly 
+        FROM u_sales_fact_monthly 
         WHERE EXTRACT(YEAR FROM month_start) = ${currentYear}
         AND EXTRACT(MONTH FROM month_start) <= ${currentMonth}
       `, { type: QueryTypes.SELECT });
@@ -1272,7 +1270,7 @@ Return this exact JSON structure:
       const previousYear = currentYear - 1;
       const previousYTDSales = await sequelize.query(`
         SELECT COALESCE(SUM(total_revenue), 0) as ytd_sales
-        FROM sales_fact_monthly 
+        FROM u_sales_fact_monthly 
         WHERE EXTRACT(YEAR FROM month_start) = ${previousYear}
         AND EXTRACT(MONTH FROM month_start) <= ${currentMonth}
       `, { type: QueryTypes.SELECT });

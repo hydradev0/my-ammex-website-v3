@@ -28,7 +28,7 @@ SELECT
 FROM "Invoice" i
 LEFT JOIN "InvoiceItem" ii ON i.id = ii.invoice_id
 LEFT JOIN "Customer" c ON i.customer_id = c.id
-WHERE i.invoice_date >= '2022-01-01'  -- 3 years back
+WHERE i.invoice_date >= '2023-01-01'  -- 3 years back
 GROUP BY date_trunc('month', i.invoice_date)
 ORDER BY month_start;
 

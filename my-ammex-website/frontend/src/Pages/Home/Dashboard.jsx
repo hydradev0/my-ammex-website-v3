@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
-import { Loader } from 'lucide-react';
+import { Loader, Loader2 } from 'lucide-react';
 import { getDailyDashboardMetrics } from '../../services/dashboardService';
 import MetricsCard from '../../Components-Dashboard/MetricsCard';
 import InventoryAlerts from '../../Components-Dashboard/InventoryAlerts';
@@ -149,7 +149,7 @@ const Dashboard = () => {
       <>
         <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex flex-col items-center justify-center">
-          <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
           <div className="text-gray-600 text-lg">Loading Dashboard Data...</div>
         </div>
       </>
