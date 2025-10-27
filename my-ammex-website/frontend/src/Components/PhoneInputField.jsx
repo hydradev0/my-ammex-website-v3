@@ -4,10 +4,12 @@ import 'react-international-phone/style.css';
 import PropTypes from 'prop-types';
 
 function PhoneInputField({ id, label, value, onChange, error, required = false, width = 'w-full', disabled = false }) {
+  // Initialize with the value prop directly
   const [phone, setPhone] = useState(value || '');
 
   // Sync with external value changes
   useEffect(() => {
+    // Always update phone state when value prop changes
     setPhone(value || '');
   }, [value]);
 
@@ -24,7 +26,7 @@ function PhoneInputField({ id, label, value, onChange, error, required = false, 
     const syntheticEvent = {
       target: {
         id: id,
-        name: id, // Add name property for form handling
+        name: id,
         value: valueToSend
       }
     };
@@ -74,4 +76,3 @@ PhoneInputField.propTypes = {
 };
 
 export default PhoneInputField;
-

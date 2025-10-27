@@ -66,43 +66,53 @@ function EditDetailsModal({
   const dropdownRefs = useRef({});
 
   // Initialize form data when data changes
-  useEffect(() => {
-    if (data && config) {
-      const initialFormData = {};
-      config.sections.forEach(section => {
-        section.fields.forEach(field => {
-          if (field.key) {
-            // Handle nested objects for dropdown fields (category, subcategory, unit)
+ // In EditDetailsModal, update the useEffect:
+useEffect(() => {
+  if (data && config) {
+    console.log('🔍 Initializing form with data:', data);
+    console.log('🔍 Config sections:', config.sections);
+    
+    const initialFormData = {};
+    config.sections.forEach(section => {
+      section.fields.forEach(field => {
+        if (field.key) {
+          console.log(`📝 Processing field: ${field.key}, type: ${field.type}, value:`, data[field.key]);
+          
+          // Handle nested objects for dropdown fields (category, subcategory, unit) - only for items
+          if (config.title && config.title.includes('Item')) {
             if (field.type === 'dropdown' && field.key === 'category' && data[field.key] && typeof data[field.key] === 'object') {
               initialFormData[field.key] = data[field.key].name || '';
               initialFormData[`${field.key}Id`] = data[field.key].id || '';
             } else if (field.type === 'dropdown' && field.key === 'subcategory' && data[field.key] && typeof data[field.key] === 'object') {
               initialFormData[field.key] = data[field.key].name || '';
               initialFormData[`${field.key}Id`] = data[field.key].id || '';
-              // If we have subcategory data, we also need to set the categoryId from the subcategory's parentId
               if (data[field.key].parentId) {
                 initialFormData.categoryId = data[field.key].parentId;
-                initialFormData.category = data.category?.name || ''; // Also set the category name for display
+                initialFormData.category = data.category?.name || '';
               }
             } else if (field.type === 'dropdown' && field.key === 'unit' && data[field.key] && typeof data[field.key] === 'object') {
               initialFormData[field.key] = data[field.key].name || '';
               initialFormData[`${field.key}Id`] = data[field.key].id || '';
-            } else {
-              initialFormData[field.key] = data[field.key] || '';
             }
           }
-        });
+
+          // Handle other field types (including phoneInput for all entities)
+          if (!initialFormData[field.key]) {
+            initialFormData[field.key] = data[field.key] || '';
+          }
+        }
       });
-      
-      // Keep existing sellingPrice from backend; do not auto-override on load
-      
-      setFormData(initialFormData);
-      setInitialData(initialFormData);
-      setImages(data.images || []);
-      setErrors({});
-      setSuccessMessage('');
-    }
-  }, [data, config]);
+    });
+    
+    console.log('✅ Final initialFormData:', initialFormData);
+    
+    setFormData(initialFormData);
+    setInitialData(initialFormData);
+    setImages(data.images || []);
+    setErrors({});
+    setSuccessMessage('');
+  }
+}, [data, config]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -182,34 +192,36 @@ function EditDetailsModal({
       // Prepare data for submission - use IDs for category and unit
       const submissionData = { ...formData };
       
-      // Add images to submission data
-      if (images.length > 0) {
+      // Add images to submission data (only for items)
+      if (config.includeImages && images.length > 0) {
         submissionData.images = images;
       }
       
-      // Convert category, subcategory, and unit names back to IDs for backend
-      // Handle categoryId - convert to integer or null
-      if (submissionData.categoryId) {
-        submissionData.categoryId = parseInt(submissionData.categoryId) || null;
-      } else {
-        submissionData.categoryId = null;
+      // Convert category, subcategory, and unit names back to IDs for backend (only for items)
+      if (config.title && config.title.includes('Item')) {
+        // Handle categoryId - convert to integer or null
+        if (submissionData.categoryId) {
+          submissionData.categoryId = parseInt(submissionData.categoryId) || null;
+        } else {
+          submissionData.categoryId = null;
+        }
+
+        // Handle subcategoryId - convert to integer or null
+        if (submissionData.subcategoryId) {
+          submissionData.subcategoryId = parseInt(submissionData.subcategoryId) || null;
+        } else {
+          submissionData.subcategoryId = null;
+        }
+
+        // Handle unitId - convert to integer or null
+        if (submissionData.unitId) {
+          submissionData.unitId = parseInt(submissionData.unitId) || null;
+        } else {
+          submissionData.unitId = null;
+        }
       }
       
-      // Handle subcategoryId - convert to integer or null
-      if (submissionData.subcategoryId) {
-        submissionData.subcategoryId = parseInt(submissionData.subcategoryId) || null;
-      } else {
-        submissionData.subcategoryId = null;
-      }
-      
-      // Handle unitId - convert to integer or null
-      if (submissionData.unitId) {
-        submissionData.unitId = parseInt(submissionData.unitId) || null;
-      } else {
-        submissionData.unitId = null;
-      }
-      
-      // Handle other numeric fields that might be empty strings
+      // Handle other numeric fields that might be empty strings - only process fields that exist in the config
       if (submissionData.price !== undefined) {
         submissionData.price = submissionData.price === '' ? null : parseFloat(submissionData.price);
       }
@@ -219,31 +231,38 @@ function EditDetailsModal({
       if (submissionData.quantity !== undefined) {
         submissionData.quantity = submissionData.quantity === '' ? null : parseInt(submissionData.quantity);
       }
-      if (submissionData.minLevel !== undefined) {
-        submissionData.minLevel = submissionData.minLevel === '' ? null : parseInt(submissionData.minLevel);
-      }
-      if (submissionData.maxLevel !== undefined) {
-        submissionData.maxLevel = submissionData.maxLevel === '' ? null : parseInt(submissionData.maxLevel);
-      }
-      
-      // Validate that max level is provided and greater than min level
-      if (!submissionData.maxLevel || submissionData.maxLevel === '') {
-        setErrors({ maxLevel: 'Maximum level is required' });
-        setIsLoading(false);
-        return;
+      // Only process inventory-related fields for items
+      if (config.title && config.title.includes('Item')) {
+        if (submissionData.minLevel !== undefined) {
+          submissionData.minLevel = submissionData.minLevel === '' ? null : parseInt(submissionData.minLevel);
+        }
+        if (submissionData.maxLevel !== undefined) {
+          submissionData.maxLevel = submissionData.maxLevel === '' ? null : parseInt(submissionData.maxLevel);
+        }
       }
       
-      if (submissionData.maxLevel && submissionData.minLevel && 
-          Number(submissionData.maxLevel) <= Number(submissionData.minLevel)) {
-        setErrors({ maxLevel: 'Maximum level must be greater than minimum level' });
-        setIsLoading(false);
-        return;
+      // Validate max level only for items, not for customers or suppliers
+      if (config.title && config.title.includes('Item')) {
+        if (!submissionData.maxLevel || submissionData.maxLevel === '') {
+          setErrors({ maxLevel: 'Maximum level is required' });
+          setIsLoading(false);
+          return;
+        }
+
+        if (submissionData.maxLevel && submissionData.minLevel &&
+            Number(submissionData.maxLevel) <= Number(submissionData.minLevel)) {
+          setErrors({ maxLevel: 'Maximum level must be greater than minimum level' });
+          setIsLoading(false);
+          return;
+        }
       }
       
-      // Remove the name fields as they're not needed for the backend
-      delete submissionData.category;
-      delete submissionData.subcategory;
-      delete submissionData.unit;
+      // Remove the name fields as they're not needed for the backend (only for items)
+      if (config.title && config.title.includes('Item')) {
+        delete submissionData.category;
+        delete submissionData.subcategory;
+        delete submissionData.unit;
+      }
 
       // Use the provided update service
       const response = await updateService(data.id, submissionData);
@@ -271,48 +290,56 @@ function EditDetailsModal({
 
   // Get dropdown options based on field type
   const getDropdownOptions = (field) => {
+    // Handle item-specific dropdowns - only for items
+    if (config.title && config.title.includes('Item')) {
+      if (field.key === 'category') {
+        return categories;
+      } else if (field.key === 'subcategory') {
+        // Filter subcategories based on selected category
+        const selectedCategoryId = formData.categoryId;
+
+        // If no category is selected, return all subcategories (for initial load)
+        if (!selectedCategoryId) {
+          return subcategories;
+        }
+
+        // Filter subcategories by the selected category
+        const filtered = subcategories.filter(sub => sub.parentId === selectedCategoryId);
+        return filtered;
+      } else if (field.key === 'unit') {
+        return units;
+      }
+    }
+
+    // Handle other dropdowns (like vendor) for all entity types
     if (field.key === 'vendor') {
       return vendors;
-    } else if (field.key === 'category') {
-      return categories;
-    } else if (field.key === 'subcategory') {
-      // Filter subcategories based on selected category
-      const selectedCategoryId = formData.categoryId;
-      
-      // If no category is selected, return all subcategories (for initial load)
-      if (!selectedCategoryId) {
-        return subcategories;
-      }
-      
-      // Filter subcategories by the selected category
-      const filtered = subcategories.filter(sub => sub.parentId === selectedCategoryId);
-      return filtered;
-    } else if (field.key === 'unit') {
-      return units;
     }
+
     return field.options || [];
   };
 
   // Handle dropdown selection
   const handleDropdownSelect = (field, value, option) => {
-    // Store the name for display and ID for submission
-    if (field === 'category' || field === 'subcategory' || field === 'unit') {
+    // Handle item-specific dropdowns (category, subcategory, unit) - only for items
+    if (config.title && config.title.includes('Item') && (field === 'category' || field === 'subcategory' || field === 'unit')) {
       setFormData(prev => {
         const newData = {
           ...prev,
           [field]: value, // Store the name for display
           [`${field}Id`]: option.id // Store the ID for submission
         };
-        
+
         // If category is changed, clear the subcategory
         if (field === 'category') {
           newData.subcategory = '';
           newData.subcategoryId = '';
         }
-        
+
         return newData;
       });
     } else {
+      // Handle other dropdowns (like vendor) for all entity types
       setFormData(prev => ({
         ...prev,
         [field]: value
@@ -337,6 +364,13 @@ function EditDetailsModal({
     const value = formData[key] || '';
     const error = errors[key];
     const isRequired = required ? ' *' : '';
+
+    if (type === 'phoneInput') {
+      console.log(`🎯 Rendering phoneInput field: ${key}`);
+      console.log(`   - formData[${key}]:`, formData[key]);
+      console.log(`   - value being passed:`, value);
+      console.log(`   - entire formData:`, formData);
+    }
 
     if (type === 'dropdown') {
       const dropdownOptions = getDropdownOptions(field);
@@ -461,10 +495,11 @@ function EditDetailsModal({
     if (type === 'phoneInput') {
       return (
         <PhoneInputField
-          id={key}
-          label={label + isRequired}
-          value={value}
-          onChange={handleInputChange}
+        key={`${key}-${data?.id}`}
+        id={key}
+        label={label + isRequired}
+        value={formData[key] || data?.[key] || ''}  // Use || instead of ternary
+        onChange={handleInputChange}
           error={error}
           width={width}
           disabled={disabled}
@@ -588,7 +623,7 @@ function EditDetailsModal({
                   <h3 className="text-xl font-bold text-gray-800 mb-2">{section.title}</h3>
                 </div>
               )}
-              
+
               {/* Section Container - removed borders and shadows */}
               <div className={`grid ${section.gridCols || 'grid-cols-1'} gap-6 ${section.bgColor || 'bg-white'} rounded-xl p-4`}>
                 {section.fields.map((field, fieldIndex) => (

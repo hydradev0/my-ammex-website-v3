@@ -147,7 +147,7 @@ class MonthlyReportController {
         topProducts: topProducts.map(p => ({
           modelNo: p.model_no,
           category: p.category_name,
-          units: parseInt(p.order_count || 0),
+          orderCount: parseInt(p.order_count || 0),
           sales: parseFloat(p.total_sales || 0)
         })),
         

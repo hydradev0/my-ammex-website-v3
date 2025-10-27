@@ -289,11 +289,11 @@ export default function MonthlyReport() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model No.</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Units Sold</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
-                  </tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model No.</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">No. of Orders</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {reportData.topProducts && reportData.topProducts.length > 0 ? (
@@ -301,7 +301,7 @@ export default function MonthlyReport() {
                       <tr key={idx} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.modelNo}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{product.units?.toLocaleString() || '0'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{product.orderCount?.toLocaleString() || '0'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">
                           ₱{product.sales?.toLocaleString() || '0'}
                         </td>
