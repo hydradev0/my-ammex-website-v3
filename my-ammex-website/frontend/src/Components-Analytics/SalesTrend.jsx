@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHistoricalSales, postForecast, getTopProducts, getYTDSalesGrowth } from '../services/analytics';
+import * as XLSX from 'xlsx';
 import {
   LineChart,
   Line,
@@ -389,47 +390,107 @@ const SalesTrend = () => {
   };
 
   const exportHistoricalData = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Month,Sales\n"
-      + historicalSalesData.map(row => `${row.month},${row.sales}`).join("\n");
+    const allData = [];
     
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `historical_sales_${historicalPeriod}months.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Header
+    allData.push(['SALES TREND REPORT']);
+    allData.push(['']);
+    allData.push([`Historical Period: ${historicalPeriod === 'current' ? 'Current Month' : historicalPeriod === '1' ? 'Last Month' : `Last ${historicalPeriod} Months`}`]);
+    allData.push(['']);
+    
+    // Historical Sales Data
+    allData.push(['HISTORICAL SALES DATA']);
+    allData.push(['']);
+    allData.push(['Month', 'Sales']);
+    
+    historicalSalesData.forEach(row => {
+      allData.push([row.month, row.sales]);
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 25 }, // Month
+      { wch: 20 }  // Sales
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Historical Sales');
+    
+    const filename = `sales_trend_${historicalPeriod}months.xlsx`;
+    XLSX.writeFile(wb, filename);
   };
 
   const exportPredictionData = () => {
     if (!predictions || predictions.error || !predictions.monthlyBreakdown) return;
 
-    let csvRows = ["Month,Predicted Sales,MoM Change"];
-
+    const allData = [];
+    
+    // Header
+    allData.push(['SALES FORECAST REPORT']);
+    allData.push(['']);
+    allData.push([`Forecast Period: ${predictions.period}`]);
+    allData.push(['']);
+    
+    // Summary Section
+    allData.push(['FORECAST SUMMARY']);
+    allData.push(['']);
+    allData.push(['Metric', 'Value']);
+    const totalPredicted = predictions.monthlyBreakdown.reduce((sum, m) => sum + (m.predicted || 0), 0);
+    const avgMonthly = predictions.monthlyBreakdown.length ? Math.round(totalPredicted / predictions.monthlyBreakdown.length) : 0;
+    allData.push(['Total Predicted Sales', `₱${totalPredicted.toLocaleString()}`]);
+    allData.push(['Average Monthly Sales', `₱${avgMonthly.toLocaleString()}`]);
+    allData.push(['Total Growth', `${predictions.totalGrowth > 0 ? '+' : ''}${predictions.totalGrowth}%`]);
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Monthly Breakdown
+    allData.push(['MONTHLY BREAKDOWN']);
+    allData.push(['']);
+    allData.push(['Month', 'Predicted Sales', 'MoM Change']);
+    
     predictions.monthlyBreakdown.forEach(row => {
-      csvRows.push(`${row.month},${row.predicted},${row.momChange}%`);
+      allData.push([row.month, row.predicted, `${row.momChange}%`]);
     });
 
-    // Add top products section if available
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Top Products section if available
     const allTopProducts = predictions.monthlyBreakdown.flatMap(item => item.topProducts || []);
     if (allTopProducts.length > 0) {
-      csvRows.push("");
-      csvRows.push("Top Products Forecast");
-      csvRows.push("Rank,Product Name,Category,Expected Orders");
-      allTopProducts.slice(0, 6).forEach((product, index) => {
-        csvRows.push(`${index + 1},"${product.name}",${product.category},${product.expectedOrders}`);
+      allData.push(['TOP PRODUCTS FORECAST']);
+      allData.push(['']);
+      allData.push(['Rank', 'Product Name', 'Category', 'Expected Orders']);
+      
+      allTopProducts.slice(0, 10).forEach((product, index) => {
+        allData.push([index + 1, product.name, product.category, product.expectedOrders]);
       });
     }
 
-    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `sales_forecast_${predictions.period.replace(' ', '_')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 30 }, // First column
+      { wch: 25 }, // Second column
+      { wch: 20 }, // Third column
+      { wch: 20 }  // Fourth column
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales Forecast');
+    
+    const filename = `sales_forecast_${predictions.period.replace(' ', '_')}.xlsx`;
+    XLSX.writeFile(wb, filename);
   };
 
   const formatCurrency = (value) => {

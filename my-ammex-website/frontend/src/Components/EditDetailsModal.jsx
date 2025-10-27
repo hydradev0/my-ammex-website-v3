@@ -66,18 +66,12 @@ function EditDetailsModal({
   const dropdownRefs = useRef({});
 
   // Initialize form data when data changes
- // In EditDetailsModal, update the useEffect:
 useEffect(() => {
   if (data && config) {
-    console.log('🔍 Initializing form with data:', data);
-    console.log('🔍 Config sections:', config.sections);
-    
     const initialFormData = {};
     config.sections.forEach(section => {
       section.fields.forEach(field => {
         if (field.key) {
-          console.log(`📝 Processing field: ${field.key}, type: ${field.type}, value:`, data[field.key]);
-          
           // Handle nested objects for dropdown fields (category, subcategory, unit) - only for items
           if (config.title && config.title.includes('Item')) {
             if (field.type === 'dropdown' && field.key === 'category' && data[field.key] && typeof data[field.key] === 'object') {
@@ -103,9 +97,7 @@ useEffect(() => {
         }
       });
     });
-    
-    console.log('✅ Final initialFormData:', initialFormData);
-    
+
     setFormData(initialFormData);
     setInitialData(initialFormData);
     setImages(data.images || []);
@@ -364,13 +356,6 @@ useEffect(() => {
     const value = formData[key] || '';
     const error = errors[key];
     const isRequired = required ? ' *' : '';
-
-    if (type === 'phoneInput') {
-      console.log(`🎯 Rendering phoneInput field: ${key}`);
-      console.log(`   - formData[${key}]:`, formData[key]);
-      console.log(`   - value being passed:`, value);
-      console.log(`   - entire formData:`, formData);
-    }
 
     if (type === 'dropdown') {
       const dropdownOptions = getDropdownOptions(field);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, ChevronDown, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ChevronDown, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import { getMonthlyReport, getAvailableYears, getAvailableMonths } from '../../services/monthlyReportsService';
+import * as XLSX from 'xlsx';
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -106,6 +107,100 @@ export default function MonthlyReport() {
     return Math.ceil(data.length / itemsPerPage);
   };
 
+  // Excel export function
+  const exportToExcel = () => {
+    if (!reportData) return;
+
+    // Helper function to format currency
+    const formatCurrency = (value) => {
+      return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 0
+      }).format(value);
+    };
+
+    // Build all data in one sheet with proper spacing
+    const allData = [];
+    
+    // Header
+    allData.push(['MONTHLY SALES REPORT']);
+    allData.push(['']);
+    allData.push([`Report Period: ${selectedMonth} ${selectedYear}`]);
+    allData.push(['']);
+    
+    // Overall Performance Section
+    allData.push(['OVERALL PERFORMANCE']);
+    allData.push(['']);
+    allData.push(['Metric', 'Value']);
+    allData.push(['Total Revenue', `₱${reportData.totalRevenue?.toLocaleString() || '0'}`]);
+    allData.push(['Number of Orders', reportData.numberOfOrders?.toLocaleString() || '0']);
+    allData.push(['Average Order Value', `₱${reportData.avgOrderValue?.toLocaleString() || '0'}`]);
+    allData.push(['Total Bulk Orders', reportData.totalBulkOrders?.toLocaleString() || '0']);
+    allData.push(['Total Bulk Amount', `₱${reportData.totalBulkAmount?.toLocaleString() || '0'}`]);
+    allData.push(['Average Bulk Amount', `₱${reportData.avgBulkAmount?.toLocaleString() || '0'}`]);
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Top Products Section
+    allData.push(['TOP PRODUCTS OF THE MONTH']);
+    allData.push(['']);
+    allData.push(['Model No.', 'Category', 'No. of Orders', 'Sales']);
+    
+    if (reportData.topProducts && reportData.topProducts.length > 0) {
+      reportData.topProducts.forEach(product => {
+        allData.push([
+          product.modelNo || '',
+          product.category || '',
+          product.orderCount || 0,
+          product.sales || 0
+        ]);
+      });
+    }
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Top Customers Section
+    allData.push(['TOP CUSTOMERS OF THE MONTH']);
+    allData.push(['']);
+    allData.push(['Customer', 'Bulk Count', 'Bulk Amount', 'Avg Bulk Amount', 'Model No.']);
+    
+    if (reportData.topCustomers && reportData.topCustomers.length > 0) {
+      reportData.topCustomers.forEach(customer => {
+        allData.push([
+          customer.customer || '',
+          customer.bulkCount || 0,
+          customer.bulkAmount || 0,
+          customer.avgBulkAmount || 0,
+          customer.modelNo || ''
+        ]);
+      });
+    }
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths for better readability
+    ws['!cols'] = [
+      { wch: 35 }, // First column (Labels and headers)
+      { wch: 30 }, // Second column (Values, Category, etc.)
+      { wch: 20 }, // Third column (Numbers)
+      { wch: 20 }, // Fourth column (Sales, Avg Bulk Amount, etc.)
+      { wch: 20 }  // Fifth column (Model No.)
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `Monthly Report ${selectedMonth} ${selectedYear}`);
+    
+    const filename = `Monthly_Report_${selectedMonth}_${selectedYear}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
+
   if (isLoading && !reportData) {
     return (
       <>
@@ -162,7 +257,7 @@ export default function MonthlyReport() {
                     setMonthDropdownOpen(false);
                   }}
                   disabled={isLoading}
-                  className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>{selectedYear}</span>
                   {isLoading ? (
@@ -180,7 +275,7 @@ export default function MonthlyReport() {
                           setSelectedYear(year);
                           setYearDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                        className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
                           selectedYear === year ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                         }`}
                       >
@@ -199,7 +294,7 @@ export default function MonthlyReport() {
                     setYearDropdownOpen(false);
                   }}
                   disabled={isLoading}
-                  className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>{selectedMonth}</span>
                   {isLoading ? (
@@ -217,7 +312,7 @@ export default function MonthlyReport() {
                           setSelectedMonth(month);
                           setMonthDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                        className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
                           selectedMonth === month ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                         }`}
                       >
@@ -229,16 +324,17 @@ export default function MonthlyReport() {
               </div>
               
               <button 
-                disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={exportToExcel}
+                disabled={isLoading || !reportData}
+                className="flex items-center cursor-pointer gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Download className="w-4 h-4" />
+                  <FileSpreadsheet className="w-4 h-4" />
                 )}
                 <span className="text-sm font-medium">
-                  {isLoading ? 'Loading...' : 'Download PDF'}
+                  {isLoading ? 'Loading...' : 'Export Excel'}
                 </span>
               </button>
             </div>

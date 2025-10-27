@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHistoricalCustomerData, postCustomerBulkForecast } from '../services/analytics';
+import * as XLSX from 'xlsx';
 import {
   LineChart,
   Line,
@@ -321,46 +322,115 @@ const CustomerPurchaseForecast = () => {
   };
 
   const exportHistoricalData = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Month,New Customers,Bulk Orders Count,Bulk Orders Amount\n"
-      + historicalCustomerData.map(row => 
-          `${row.month},${row.newCustomers},${row.bulkOrdersCount},${row.bulkOrdersAmount}`
-        ).join("\n");
+    const allData = [];
     
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `customer_data_${historicalPeriod}months.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Header
+    allData.push(['CUSTOMER PURCHASE TREND REPORT']);
+    allData.push(['']);
+    allData.push([`Historical Period: ${historicalPeriod === 'current' ? 'Current Month' : historicalPeriod === '1' ? 'Last Month' : `Last ${historicalPeriod} Months`}`]);
+    allData.push(['']);
+    
+    // Historical Customer Data
+    allData.push(['HISTORICAL CUSTOMER DATA']);
+    allData.push(['']);
+    allData.push(['Month', 'New Customers', 'Bulk Orders Count', 'Bulk Orders Amount']);
+    
+    historicalCustomerData.forEach(row => {
+      allData.push([row.month, row.newCustomers, row.bulkOrdersCount, row.bulkOrdersAmount]);
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 25 }, // Month
+      { wch: 20 }, // New Customers
+      { wch: 25 }, // Bulk Orders Count
+      { wch: 25 }  // Bulk Orders Amount
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Customer Data');
+    
+    const filename = `customer_data_${historicalPeriod}months.xlsx`;
+    XLSX.writeFile(wb, filename);
   };
 
   const exportPredictionData = () => {
-    if (!predictions) return;
+    if (!predictions || !predictions.monthlyBreakdown) return;
     
-    let csvRows = ["Month,Bulk Orders Count,Bulk Orders Amount,Avg Order Size,MoM Change,Customer Name,Model No,Expected Amount"];
-
+    const allData = [];
+    
+    // Header
+    allData.push(['CUSTOMER PURCHASE FORECAST REPORT']);
+    allData.push(['']);
+    allData.push([`Forecast Period: ${predictions.period}`]);
+    allData.push(['']);
+    
+    // Summary Section
+    allData.push(['FORECAST SUMMARY']);
+    allData.push(['']);
+    allData.push(['Metric', 'Value']);
+    const totalAmount = predictions.monthlyBreakdown.reduce((sum, m) => sum + (m.bulkOrdersAmount || 0), 0);
+    const avgAmount = predictions.monthlyBreakdown.length ? Math.round(totalAmount / predictions.monthlyBreakdown.length) : 0;
+    allData.push(['Total Predicted Amount', `₱${totalAmount.toLocaleString()}`]);
+    allData.push(['Average Monthly Amount', `₱${avgAmount.toLocaleString()}`]);
+    allData.push(['Total Growth', `${predictions.totalGrowth > 0 ? '+' : ''}${predictions.totalGrowth}%`]);
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Monthly Breakdown
+    allData.push(['MONTHLY BREAKDOWN']);
+    allData.push(['']);
+    allData.push(['Month', 'Bulk Orders Count', 'Bulk Orders Amount', 'Avg Order Size', 'MoM Change']);
+    
     predictions.monthlyBreakdown.forEach(row => {
       const avgSize = row.bulkOrdersCount ? Math.round(row.bulkOrdersAmount / row.bulkOrdersCount) : 0;
+      allData.push([row.month, row.bulkOrdersCount, row.bulkOrdersAmount, avgSize, `${row.momChange}%`]);
+    });
 
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Top Customers by Month
+    allData.push(['TOP CUSTOMERS BY MONTH']);
+    allData.push(['']);
+    
+    predictions.monthlyBreakdown.forEach((row, monthIndex) => {
       if (row.topCustomers && row.topCustomers.length > 0) {
-        row.topCustomers.forEach(customer => {
-          csvRows.push(`${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize},${row.momChange}%,"${customer.name}",${customer.modelNo},${customer.expectedAmount}`);
+        allData.push(['']);
+        allData.push([`${row.month} - Top Customers`]);
+        allData.push(['Rank', 'Customer Name', 'Model No.', 'Expected Amount']);
+        
+        row.topCustomers.forEach((customer, index) => {
+          allData.push([index + 1, customer.name, customer.modelNo, customer.expectedAmount]);
         });
-      } else {
-        csvRows.push(`${row.month},${row.bulkOrdersCount},${row.bulkOrdersAmount},${avgSize},${row.momChange}%,,,`);
       }
     });
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
     
-    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `customer_forecast_${predictions.period.replace(' ', '_')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 30 }, // First column
+      { wch: 25 }, // Second column
+      { wch: 25 }, // Third column
+      { wch: 25 }, // Fourth column
+      { wch: 20 }  // Fifth column
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Customer Forecast');
+    
+    const filename = `customer_forecast_${predictions.period.replace(' ', '_')}.xlsx`;
+    XLSX.writeFile(wb, filename);
   };
 
   const formatNumber = (value) => {
