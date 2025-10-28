@@ -404,7 +404,6 @@ const getLowStockItems = async (req, res, next) => {
 const updateItemStock = async (req, res, next) => {
   try {
     const { Item, Category, Unit } = getModels();
-    const NotificationService = require('../services/notificationService');
     const { id } = req.params;
     const { quantity } = req.body;
 
@@ -421,9 +420,6 @@ const updateItemStock = async (req, res, next) => {
       });
     }
 
-    // Store previous quantity for stock level monitoring
-    const previousQuantity = item.quantity;
-
     await item.update({ quantity });
     
     // Fetch the updated item with related data
@@ -435,13 +431,8 @@ const updateItemStock = async (req, res, next) => {
       ]
     });
 
-    // Check stock levels and create notifications if needed
-    try {
-      await NotificationService.checkStockLevels(updatedItem, previousQuantity);
-    } catch (notificationError) {
-      console.error('Error checking stock levels:', notificationError);
-      // Don't fail the stock update if notification fails
-    }
+    // Note: Stock level checking is handled automatically by Sequelize afterUpdate hook
+    // No need to manually call NotificationService.checkStockLevels here
 
     res.json({
       success: true,

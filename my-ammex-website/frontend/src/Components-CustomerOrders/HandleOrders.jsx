@@ -8,6 +8,7 @@ import ModernSearchFilter from '../Components/ModernSearchFilter';
 import { getPendingOrdersForSales, getRejectedOrdersForSales, updateOrderStatus } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import ErrorModal from '../Components/ErrorModal';
+import SuccessModal from '../Components/SuccessModal';
 //test
 function HandleOrders() {
   // Tab state
@@ -41,6 +42,8 @@ function HandleOrders() {
   const [discountPercent, setDiscountPercent] = useState('');
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successModalMessage, setSuccessModalMessage] = useState('');
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -245,15 +248,20 @@ function HandleOrders() {
       setPendingOrders(prev => prev.filter(o => o.id !== orderId));
       setFilteredPendingOrders(prev => prev.filter(o => o.id !== orderId));
       setTotalPendingCount(c => Math.max(0, c - 1));
+      
+      // Show success modal
+      setSuccessModalMessage(`Order ${orderId} has been successfully approved. You can now view the order in the invoice section.`);
+      setSuccessModalOpen(true);
+      handleCloseProcessModal();
     } catch (e) {
       console.error('Failed to process order:', e);
       // Check if it's an insufficient inventory error
       const msg = e?.message || 'Failed to process order. Please try again.';
       setErrorModalMessage(msg);
       setErrorModalOpen(true);
+      handleCloseProcessModal();
     } finally {
       setProcessingOrderId(null);
-      handleCloseProcessModal();
     }
   };
 
@@ -797,6 +805,16 @@ function HandleOrders() {
         onClose={() => setErrorModalOpen(false)}
         title="Failed to process order"
         message={errorModalMessage}
+      />
+      <SuccessModal
+        isOpen={successModalOpen}
+        onClose={() => setSuccessModalOpen(false)}
+        title="Order Approved!"
+        message={successModalMessage}
+        redirectPath="/sales/invoices"
+        redirectLabel="View Invoices"
+        autoClose={true}
+        autoCloseDelay={7000}
       />
     </div>
   );

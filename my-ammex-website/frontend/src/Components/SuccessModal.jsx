@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { CheckCircle, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import ScrollLock from './ScrollLock';
 
 function SuccessModal({ 
@@ -8,10 +9,13 @@ function SuccessModal({
   onClose, 
   title = "Success!", 
   message = "Operation completed successfully.", 
+  redirectPath = null,
+  redirectLabel = "Go to Page",
   autoClose = true,
-  autoCloseDelay = 5000,
+  autoCloseDelay = 7000,
   showCloseButton = true 
 }) {
+  const navigate = useNavigate();
   
   // Auto-close functionality
   useEffect(() => {
@@ -77,15 +81,27 @@ function SuccessModal({
           </div>
           
           {/* Action Buttons */}
-          <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-            <div className="flex justify-center">
+          <div className="p-6 rounded-b-2xl">
+            <div className={`flex justify-center gap-3 ${redirectPath ? 'flex-col sm:flex-row' : ''}`}>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-xl hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-4 focus:ring-green-200 shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                Continue
+                className={`px-6 py-3 cursor-pointer bg-gray-50 text-gray-700 border-2 border-gray-300 font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 shadow-lg hover:bg-gray-100 transition-all duration-200 ${redirectPath ? 'w-full sm:w-auto' : ''}`}
+                >
+                Close
               </button>
+                {redirectPath && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      navigate(redirectPath);
+                    }}
+                    className="px-6 py-3 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 border-2 border-blue-500 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    {redirectLabel}
+                  </button>
+                )}
             </div>
           </div>
         </div>

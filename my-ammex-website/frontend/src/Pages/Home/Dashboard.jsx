@@ -65,7 +65,7 @@ const Dashboard = () => {
             title={title}
             value={metrics.sales?.total || 0}
             valuePrefix="₱"
-            subtitle={`Average order value: ₱${(metrics.sales?.averageOrderValue || 0).toLocaleString()}`}
+            subtitle={`Average order value: ₱${(metrics.sales?.averageOrderValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             statusIndicator={formatGrowth(metrics.sales?.growth)}
           />
         );

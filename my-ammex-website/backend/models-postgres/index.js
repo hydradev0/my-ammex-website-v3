@@ -230,7 +230,8 @@ const initializeModels = (sequelize) => {
         if (item.changed('quantity')) {
           try {
             const NotificationService = require('../services/notificationService');
-            const previousQuantity = item.previous('quantity');
+            // Get previous quantity from _previousDataValues (more reliable in afterUpdate hook)
+            const previousQuantity = item._previousDataValues?.quantity ?? item.previous('quantity') ?? null;
             await NotificationService.checkStockLevels(item, previousQuantity);
           } catch (error) {
             console.error('Error checking stock levels after item update:', error);

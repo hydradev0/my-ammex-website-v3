@@ -266,20 +266,12 @@ const updateOrderStatus = async (req, res, next) => {
         // Deduct inventory quantities
         for (const orderItem of order.items) {
           const item = orderItem.item;
-          const previousQuantity = item.quantity;
           const newQuantity = item.quantity - orderItem.quantity;
           console.log(`Deducting inventory for ${item.itemName}: ${item.quantity} - ${orderItem.quantity} = ${newQuantity}`);
           await item.update({ quantity: newQuantity });
           
-          // Check stock levels after deduction
-          try {
-            const NotificationService = require('../services/notificationService');
-            const updatedItem = await Item.findByPk(item.id);
-            await NotificationService.checkStockLevels(updatedItem, previousQuantity);
-          } catch (notificationError) {
-            console.error('Error checking stock levels after order approval:', notificationError);
-            // Don't fail the order update if notification fails
-          }
+          // Note: Stock level checking is handled automatically by Sequelize afterUpdate hook
+          // No need to manually call NotificationService.checkStockLevels here
         }
         
         console.log('Inventory deduction completed successfully');

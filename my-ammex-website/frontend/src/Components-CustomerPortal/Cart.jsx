@@ -219,7 +219,7 @@ const Cart = () => {
     const handleClickOutside = (event) => {
       if (showSuccessToast && successModalRef.current && event.target === successModalRef.current) {
         setShowSuccessToast(false);
-        navigate('/products');
+        navigate('/products/orders');
       }
     };
 
@@ -286,7 +286,7 @@ const Cart = () => {
     if (showSuccessToast) {
       const timer = setTimeout(() => {
         setShowSuccessToast(false);
-        navigate('/products');
+        navigate('/products/orders');
       }, 3000);
       return () => clearTimeout(timer);
     }

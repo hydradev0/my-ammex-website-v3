@@ -45,7 +45,7 @@ function TopBar() {
       <div className="flex justify-between w-full max-w-7xl">
         <div className="pl-16">
           <button 
-            onClick={() => navigate('/Homepage/index.html')} 
+            onClick={() => navigate('/home/dashboard')} 
             className="text-3xl font-bold bg-transparent border-none text-white cursor-pointer"
           >
             Ammex

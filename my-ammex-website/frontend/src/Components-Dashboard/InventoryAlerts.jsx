@@ -269,7 +269,10 @@ const InventoryAlerts = () => {
                     )}
                     
                     <h3 className="text-sm text-gray-500 mb-1">
-                      Model: <span className="font-semibold text-gray-900">{alert.modelNo || 'Unknown Item'}</span>
+                      Model: <span className="font-semibold text-gray-900">{alert.modelNo || 'Unknown Model'}</span>
+                      {alert.itemName && (
+                        <> | Item Name: <span className="font-semibold text-gray-900">{alert.itemName}</span></>
+                      )}
                     </h3>
                     <p className="text-sm text-gray-500 mb-2">
                       Category: <span className="font-semibold text-gray-900">{alert.categoryName || 'N/A'}</span>
