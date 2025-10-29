@@ -65,10 +65,10 @@ export const getLowStockItems = async () => {
   return await apiCall('/items/low-stock');
 };
 
-export const updateItemStock = async (id, quantity) => {
+export const updateItemStock = async (id, { quantity, adjustmentType }) => {
   return await apiCall(`/items/${id}/stock`, {
     method: 'PATCH',
-    body: JSON.stringify({ quantity }),
+    body: JSON.stringify({ quantity, adjustmentType }),
   });
 };
 
@@ -81,6 +81,10 @@ export const updateItemPrice = async (id, { sellingPrice, supplierPrice, markupP
 
 export const getPriceHistory = async (itemId) => {
   return await apiCall(`/items/${itemId}/price-history`);
+};
+
+export const getStockHistory = async (itemId) => {
+  return await apiCall(`/items/${itemId}/stock-history`);
 };
 
 // ==================== CATEGORIES API ====================

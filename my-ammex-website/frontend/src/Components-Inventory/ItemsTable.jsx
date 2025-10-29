@@ -10,6 +10,7 @@ import SuccessModal from '../Components/SuccessModal';
 import StockAdjustmentModal from './StockAdjustmentModal';
 import PriceAdjustmentModal from './PriceAdjustmentModal';
 import PriceHistoryModal from './PriceHistoryModal';
+import StockHistoryModal from './StockHistoryModal';
 import { itemViewConfig, editItemConfig } from '../Components/viewConfigs';
 import { itemsDropdownActions } from '../Components/dropdownActions';
 import { getItems, createItem, updateItem, deleteItem, updateItemStock, updateItemPrice } from '../services/inventoryService';
@@ -101,6 +102,12 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
 
   // State for price history modal
   const [priceHistoryModal, setPriceHistoryModal] = useState({
+    isOpen: false,
+    item: null
+  });
+
+  // State for stock history modal
+  const [stockHistoryModal, setStockHistoryModal] = useState({
     isOpen: false,
     item: null
   });
@@ -466,32 +473,32 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       setAdjustingStock(true);
       setError(null);
       
-      const { type, quantity, reason } = adjustmentData;
       const itemId = stockAdjustmentModal.item.id;
       
-      // Calculate new quantity
-      const currentQuantity = stockAdjustmentModal.item.quantity;
-      const newQuantity = type === 'add' 
-        ? currentQuantity + quantity
-        : Math.max(0, currentQuantity - quantity);
-      
-      // Update stock via API
-      const response = await updateItemStock(itemId, newQuantity);
+      // Update stock via API with new structure
+      const response = await updateItemStock(itemId, adjustmentData);
       
       if (response.success) {
-        // Update local state
+        const updatedItem = response.data || {};
+
+        // Update list items with full payload from backend (keeps all fields in sync)
         setItems(items.map(item => 
           item.id === itemId 
-            ? { ...item, quantity: newQuantity }
+            ? { ...item, ...updatedItem }
             : item
         ));
+
+        // If a details modal is open for this item, sync it too
+        if (selectedItem && selectedItem.id === itemId) {
+          setSelectedItem(prev => ({ ...prev, ...updatedItem }));
+        }
         
         // Close modal and show success message
         setStockAdjustmentModal({ isOpen: false, item: null });
         setSuccessModal({
           isOpen: true,
           title: 'Stock Updated Successfully!',
-          message: `Stock has been ${type === 'add' ? 'added to' : 'removed from'} "${stockAdjustmentModal.item.itemName}". New quantity: ${newQuantity.toLocaleString()}`
+          message: response.message || `Stock has been updated for "${stockAdjustmentModal.item.itemName}".`
         });
       } else {
         setError(response.message || 'Failed to update stock');
@@ -553,6 +560,11 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
     setPriceHistoryModal({ isOpen: true, item });
   };
 
+  // Handle view stock history
+  const handleViewStockHistory = (item) => {
+    setStockHistoryModal({ isOpen: true, item });
+  };
+
   // Handle close view modal
   const handleCloseViewModal = () => {
     setIsViewModalOpen(false);
@@ -561,7 +573,6 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
 
   // Row click handler
   const handleRowClick = (item) => {
-    console.log('Item selected:', item);
     // Add navigation or details view here if needed
   };
 
@@ -722,6 +733,16 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
             onDataUpdated={handleItemUpdated}
             config={editItemConfig}
             updateService={updateItem}
+            onOpenAdjustPrice={(item) => {
+              setIsEditModalOpen(false);
+              setSelectedItem(null);
+              setPriceAdjustmentModal({ isOpen: true, item });
+            }}
+            onOpenAdjustStock={(item) => {
+              setIsEditModalOpen(false);
+              setSelectedItem(null);
+              setStockAdjustmentModal({ isOpen: true, item });
+            }}
           />
         )}
 
@@ -744,7 +765,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
           title={successModal.title}
           message={successModal.message}
           autoClose={true}
-          autoCloseDelay={4000}
+          autoCloseDelay={5000}
         />
 
         {/* Stock Adjustment Modal (disabled in read-only mode) */}
@@ -755,6 +776,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
             onSubmit={handleStockAdjustment}
             item={stockAdjustmentModal.item}
             isLoading={adjustingStock}
+            onViewHistory={handleViewStockHistory}
           />
         )}
 
@@ -775,6 +797,13 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
           isOpen={priceHistoryModal.isOpen}
           onClose={() => setPriceHistoryModal({ isOpen: false, item: null })}
           item={priceHistoryModal.item}
+        />
+
+        {/* Stock History Modal */}
+        <StockHistoryModal
+          isOpen={stockHistoryModal.isOpen}
+          onClose={() => setStockHistoryModal({ isOpen: false, item: null })}
+          item={stockHistoryModal.item}
         />
         
       </div>

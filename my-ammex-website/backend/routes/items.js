@@ -14,7 +14,8 @@ const {
   getLowStockItems,
   updateItemStock,
   updateItemPrice,
-  getPriceHistory
+  getPriceHistory,
+  getStockHistory
 } = require('../controllers/itemController');
 
 // Validation middleware
@@ -123,6 +124,11 @@ router.patch('/:id/price', protect, authorize('Admin', 'Warehouse Supervisor'), 
 // @desc    Get price history for an item
 // @access  Private (Admin, Warehouse Supervisor, Sales Marketing)
 router.get('/:id/price-history', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getPriceHistory);
+
+// @route   GET /api/items/:id/stock-history
+// @desc    Get stock history for an item
+// @access  Private (Admin, Warehouse Supervisor, Sales Marketing)
+router.get('/:id/stock-history', protect, authorize('Admin', 'Warehouse Supervisor', 'Sales Marketing'), getStockHistory);
 
 // @route   DELETE /api/items/:id
 // @desc    Delete item

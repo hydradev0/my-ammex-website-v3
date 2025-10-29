@@ -403,9 +403,9 @@ const getLowStockItems = async (req, res, next) => {
 // Update item stock
 const updateItemStock = async (req, res, next) => {
   try {
-    const { Item, Category, Unit } = getModels();
+    const { Item, Category, Unit, StockHistory } = getModels();
     const { id } = req.params;
-    const { quantity } = req.body;
+    const { quantity, adjustmentType } = req.body;
 
     const item = await Item.findByPk(id, {
       include: [
@@ -420,7 +420,57 @@ const updateItemStock = async (req, res, next) => {
       });
     }
 
-    await item.update({ quantity });
+    // Store old quantity for history
+    const oldQuantity = item.quantity;
+    const newQuantity = parseInt(quantity);
+
+    // Validate quantity
+    if (isNaN(newQuantity) || newQuantity < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quantity must be a non-negative number'
+      });
+    }
+
+    // Calculate adjustment amount based on type
+    let adjustmentAmount = 0;
+    let calculatedNewQuantity = newQuantity;
+
+    if (adjustmentType === 'add') {
+      adjustmentAmount = newQuantity;
+      calculatedNewQuantity = oldQuantity + newQuantity;
+    } else if (adjustmentType === 'subtract') {
+      adjustmentAmount = newQuantity;
+      calculatedNewQuantity = Math.max(0, oldQuantity - newQuantity);
+    } else if (adjustmentType === 'set') {
+      adjustmentAmount = newQuantity - oldQuantity;
+      calculatedNewQuantity = newQuantity;
+    } else {
+      // Default behavior: direct quantity setting
+      adjustmentAmount = newQuantity - oldQuantity;
+      calculatedNewQuantity = newQuantity;
+    }
+
+    // Validate adjustment doesn't result in negative stock
+    if (calculatedNewQuantity < 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot adjust stock below zero. Current stock: ${oldQuantity.toLocaleString()}`
+      });
+    }
+
+    // Update item quantity
+    await item.update({ quantity: calculatedNewQuantity });
+
+    // Create stock history record for manual adjustments
+    await StockHistory.create({
+      itemId: id,
+      oldQuantity: oldQuantity,
+      newQuantity: calculatedNewQuantity,
+      adjustmentType: adjustmentType || 'set',
+      adjustmentAmount: adjustmentAmount,
+      changedBy: req.user.id
+    });
     
     // Fetch the updated item with related data
     const updatedItem = await Item.findByPk(id, {
@@ -436,7 +486,8 @@ const updateItemStock = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: updatedItem
+      data: updatedItem,
+      message: `Stock updated successfully. ${oldQuantity.toLocaleString()} → ${calculatedNewQuantity.toLocaleString()} (${adjustmentAmount >= 0 ? '+' : ''}${adjustmentAmount.toLocaleString()})`
     });
   } catch (error) {
     next(error);
@@ -570,6 +621,33 @@ const getPriceHistory = async (req, res, next) => {
   }
 };
 
+// Get stock history for an item
+const getStockHistory = async (req, res, next) => {
+  try {
+    const { StockHistory, User } = getModels();
+    const { id } = req.params;
+
+    const history = await StockHistory.findAll({
+      where: { itemId: id },
+      include: [
+        {
+          model: User,
+          as: 'changer',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: history
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllItems,
   getItemById,
@@ -581,5 +659,6 @@ module.exports = {
   getLowStockItems,
   updateItemStock,
   updateItemPrice,
-  getPriceHistory
+  getPriceHistory,
+  getStockHistory
 }; 

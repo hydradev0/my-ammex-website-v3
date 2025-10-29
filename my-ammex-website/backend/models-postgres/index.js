@@ -1250,6 +1250,58 @@ const initializeModels = (sequelize) => {
     updatedAt: false
   });
 
+  // StockHistory Model (for tracking stock adjustments)
+  const StockHistory = sequelize.define('StockHistory', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    itemId: {
+      type: DataTypes.INTEGER,
+      field: 'item_id',
+      allowNull: false,
+      references: {
+        model: 'Item',
+        key: 'id'
+      }
+    },
+    oldQuantity: {
+      type: DataTypes.INTEGER,
+      field: 'old_quantity',
+      allowNull: false
+    },
+    newQuantity: {
+      type: DataTypes.INTEGER,
+      field: 'new_quantity',
+      allowNull: false
+    },
+    adjustmentType: {
+      type: DataTypes.ENUM('add', 'subtract', 'set'),
+      field: 'adjustment_type',
+      allowNull: false
+    },
+    adjustmentAmount: {
+      type: DataTypes.INTEGER,
+      field: 'adjustment_amount',
+      allowNull: false
+    },
+    changedBy: {
+      type: DataTypes.INTEGER,
+      field: 'changed_by',
+      allowNull: false,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
+    }
+  }, {
+    tableName: 'StockHistory',
+    timestamps: true,
+    createdAt: 'createdAt',
+    updatedAt: false
+  });
+
   // PayMongoPaymentMethod Model (for managing PayMongo payment method settings)
   const PayMongoPaymentMethod = require('./PayMongoPaymentMethod')(sequelize);
 
@@ -1638,6 +1690,27 @@ const initializeModels = (sequelize) => {
     as: 'changer'
   });
 
+  // StockHistory relationships
+  Item.hasMany(StockHistory, {
+    foreignKey: 'itemId',
+    as: 'stockHistory'
+  });
+
+  StockHistory.belongsTo(Item, {
+    foreignKey: 'itemId',
+    as: 'item'
+  });
+
+  User.hasMany(StockHistory, {
+    foreignKey: 'changedBy',
+    as: 'stockChanges'
+  });
+
+  StockHistory.belongsTo(User, {
+    foreignKey: 'changedBy',
+    as: 'changer'
+  });
+
   // PaymentReceipt relationships
   Payment.hasOne(PaymentReceipt, {
     foreignKey: 'paymentId',
@@ -1746,6 +1819,7 @@ const initializeModels = (sequelize) => {
     PaymentReceipt,
     Notification,
     PriceHistory,
+    StockHistory,
     Settings
   };
 };

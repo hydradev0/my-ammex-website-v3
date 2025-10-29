@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, ChevronRight, Boxes, DollarSign, Info, User, MapPin, Shield, Mail, Image as ImageIcon } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, Boxes, DollarSign, Info, User, MapPin, Shield, Mail, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 
@@ -49,7 +49,9 @@ function EditDetailsModal({
   onDataUpdated,
   config,
   updateService,
-  vendors = []
+  vendors = [],
+  onOpenAdjustPrice,
+  onOpenAdjustStock
 }) {
   // State for form fields
   const [formData, setFormData] = useState({});
@@ -352,7 +354,7 @@ useEffect(() => {
 
   // Render form field based on configuration
   const renderFormField = (field) => {
-    const { key, label, type, width, required, disabled, prefix, step, min, isTextArea, options } = field;
+    const { key, label, type, width, required, disabled, prefix, step, min, isTextArea,  } = field;
     const value = formData[key] || '';
     const error = errors[key];
     const isRequired = required ? ' *' : '';
@@ -509,23 +511,61 @@ useEffect(() => {
       );
     }
 
+    // Check if this is the Supplier Price field for items and we have the callback
+    const isSupplierPriceField = key === 'supplierPrice' && config.title && config.title.includes('Item') && onOpenAdjustPrice;
+    
+    // Check if this is the Quantity field for items and we have the callback
+    const isQuantityField = key === 'quantity' && config.title && config.title.includes('Item') && onOpenAdjustStock;
+
     return (
-      <FormField
-        id={key}
-        name={key}
-        label={label + isRequired}
-        type={type || 'text'}
-        value={value}
-        onChange={handleInputChange}
-        error={error}
-        prefix={prefix}
-        step={step}
-        min={min}
-        width={width}
-        disabled={disabled}
-        helperText={field.helperText}
-        data-supplier={config.title === 'Edit Supplier' ? 'true' : 'false'}
-      />
+      <div>
+        <FormField
+          id={key}
+          name={key}
+          label={label + isRequired}
+          type={type || 'text'}
+          value={value}
+          onChange={handleInputChange}
+          error={error}
+          prefix={prefix}
+          step={step}
+          min={min}
+          width={width}
+          disabled={disabled || isQuantityField}
+          helperText={field.helperText || (isQuantityField ? 'Editable via Adjust Stock only' : undefined)}
+          data-supplier={config.title === 'Edit Supplier' ? 'true' : 'false'}
+        />
+        {isSupplierPriceField && (
+          <div className="ml-4 mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                onOpenAdjustPrice(data);
+                onClose();
+              }}
+              className="text-blue-600 cursor-pointer hover:text-blue-800 text-sm font-medium flex items-center gap-1 transition-colors duration-200"
+            >
+              <span>Adjust Pricing</span>
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        {isQuantityField && (
+          <div className="ml-4 mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                onOpenAdjustStock(data);
+                onClose();
+              }}
+              className="text-blue-600 cursor-pointer hover:text-blue-800 text-sm font-medium flex items-center gap-1 transition-colors duration-200"
+            >
+              <span>Adjust Stock</span>
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -681,8 +721,8 @@ useEffect(() => {
   return createPortal(modalContent, document.body);
 }
 
-// Form Field Component
-function FormField({ id, name, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, helperText, ...props }) {
+// Form Field Component 
+function FormField({ id, name, label, type, value, onChange, error, prefix, width = 'w-full', disabled = false, guideLink, helperText, ...props }) {
   // Handle country field with default Philippines value only for customers, not suppliers
   const isCountryField = name === 'country';
   const isSupplierForm = props['data-supplier'] === 'true';
@@ -699,7 +739,7 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
           <textarea
             id={id}
             name={name}
-            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${fieldDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'bo   rder-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${fieldDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={fieldValue}
             onChange={onChange}
             disabled={fieldDisabled}
@@ -732,7 +772,7 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
       {helperText && !error && (
         <p className="text-gray-500 text-sm mt-1">{helperText}</p>
       )}
-
+      
     </div>
   );
 }
@@ -747,7 +787,9 @@ EditDetailsModal.propTypes = {
   vendors: PropTypes.array,
   onDataUpdated: PropTypes.func,
   config: PropTypes.object,
-  updateService: PropTypes.func
+  updateService: PropTypes.func,
+  onOpenAdjustPrice: PropTypes.func,
+  onOpenAdjustStock: PropTypes.func
 };
 
 export default EditDetailsModal;

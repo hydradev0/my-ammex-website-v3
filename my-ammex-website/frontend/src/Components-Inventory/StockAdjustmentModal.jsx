@@ -1,30 +1,50 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Package } from 'lucide-react';
+import { X, Plus, Minus, Package, History } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
+import { getStockHistory } from '../services/inventoryService';
 
 function StockAdjustmentModal({ 
   isOpen = false, 
   onClose, 
   onSubmit, 
   item = null,
-  isLoading = false
+  isLoading = false,
+  onViewHistory
 }) {
   const [adjustmentType, setAdjustmentType] = useState('add'); // 'add' or 'subtract'
   const [quantity, setQuantity] = useState('');
-  const [reason, setReason] = useState('');
   const [errors, setErrors] = useState({});
+  const [recentHistory, setRecentHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Reset form when modal opens/closes or item changes
   useEffect(() => {
     if (isOpen && item) {
       setQuantity('');
-      setReason('');
       setErrors({});
       setAdjustmentType('add');
+      fetchRecentHistory();
     }
   }, [isOpen, item]);
+
+  // Fetch recent stock history (last 3 changes)
+  const fetchRecentHistory = async () => {
+    if (!item?.id) return;
+    
+    try {
+      setLoadingHistory(true);
+      const response = await getStockHistory(item.id);
+      if (response.success) {
+        setRecentHistory(response.data.slice(0, 3));
+      }
+    } catch (error) {
+      console.error('Error fetching stock history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -44,10 +64,6 @@ function StockAdjustmentModal({
       }
     }
 
-    if (!reason.trim()) {
-      newErrors.reason = 'Reason is required';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,13 +71,8 @@ function StockAdjustmentModal({
   const handleSubmit = () => {
     if (validateForm()) {
       const adjustmentData = {
-        type: adjustmentType,
         quantity: Number(quantity),
-        reason: reason.trim(),
-        currentStock: item.quantity,
-        newStock: adjustmentType === 'add' 
-          ? item.quantity + Number(quantity)
-          : item.quantity - Number(quantity)
+        adjustmentType: adjustmentType
       };
       
       onSubmit(adjustmentData);
@@ -75,11 +86,9 @@ function StockAdjustmentModal({
     }
   };
 
-  const handleReasonChange = (value) => {
-    setReason(value);
-    if (errors.reason) {
-      setErrors(prev => ({ ...prev, reason: '' }));
-    }
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const getNewStockDisplay = () => {
@@ -205,22 +214,49 @@ function StockAdjustmentModal({
             )}
           </div>
 
-          {/* Reason Input */}
+          {/* Recent Stock History */}
           <div className="mb-6">
-            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-              Reason for Adjustment *
-            </label>
-            <textarea
-              id="reason"
-              value={reason}
-              onChange={(e) => handleReasonChange(e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[80px] resize-none ${
-                errors.reason ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="e.g., Received shipment, Customer return, Damaged goods, etc."
-            />
-            {errors.reason && (
-              <p className="text-red-500 text-sm mt-1">{errors.reason}</p>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-700">Recent Stock Changes</h4>
+              {onViewHistory && (
+                <button
+                  type="button"
+                  onClick={() => onViewHistory(item)}
+                  className="text-sm cursor-pointer text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                >
+                  <History className="h-4 w-4" />
+                  View Full History
+                </button>
+              )}
+            </div>
+            
+            {loadingHistory ? (
+              <div className="p-4 bg-gray-50 rounded-lg text-center text-sm text-gray-500">
+                Loading history...
+              </div>
+            ) : recentHistory.length > 0 ? (
+              <div className="space-y-2">
+                {recentHistory.map((history) => (
+                  <div key={history.id} className="p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-xs text-gray-500">{formatDate(history.createdAt)}</span>
+                      <span className="text-xs text-gray-600 font-medium">
+                        {history.changer?.name || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="text-gray-700">
+                      <span className="font-medium">Stock:</span> {Number(history.oldQuantity).toLocaleString()} → {Number(history.newQuantity).toLocaleString()}
+                      <span className="ml-3 text-gray-600">
+                        <span className="font-medium">Change:</span> {history.adjustmentAmount >= 0 ? '+' : ''}{Number(history.adjustmentAmount).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg text-center text-sm text-gray-500">
+                No stock adjustment history available
+              </div>
             )}
           </div>
         </div>
@@ -272,7 +308,8 @@ StockAdjustmentModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   item: PropTypes.object,
-  isLoading: PropTypes.bool
+  isLoading: PropTypes.bool,
+  onViewHistory: PropTypes.func
 };
 
 export default StockAdjustmentModal;
