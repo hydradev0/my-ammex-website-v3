@@ -20,12 +20,21 @@ const registerUser = async (req, res, next) => {
     const { User, Customer } = getModels();
     const { name, email, password, role, department } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
+    // Check if user exists by email
+    const existingUserByEmail = await User.findOne({ where: { email } });
+    if (existingUserByEmail) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists'
+        message: 'Email already exists'
+      });
+    }
+    
+    // Check if user exists by name
+    const existingUserByName = await User.findOne({ where: { name } });
+    if (existingUserByName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name already exists'
       });
     }
 
@@ -257,6 +266,22 @@ const updateUser = async (req, res, next) => {
         }
       }
       
+      // Check if name is being changed and if it already exists
+      if (filteredData.name && filteredData.name !== user.name) {
+        const existingUser = await User.findOne({ 
+          where: { 
+            name: filteredData.name,
+            id: { [Op.ne]: targetUserId }
+          } 
+        });
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'Name already exists'
+          });
+        }
+      }
+      
       // Update user record
       await user.update(filteredData);
       
@@ -296,6 +321,22 @@ const updateUser = async (req, res, next) => {
           return res.status(400).json({
             success: false,
             message: 'Email already exists'
+          });
+        }
+      }
+      
+      // Check if name is being changed and if it already exists
+      if (updateData.name && updateData.name !== user.name) {
+        const existingUser = await User.findOne({ 
+          where: { 
+            name: updateData.name,
+            id: { [Op.ne]: targetUserId }
+          } 
+        });
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'Name already exists'
           });
         }
       }

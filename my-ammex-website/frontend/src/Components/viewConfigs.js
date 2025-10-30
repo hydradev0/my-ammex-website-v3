@@ -134,6 +134,7 @@ export const editItemConfig = {
           key: 'itemName',
           width: 'w-2/3',
           type: 'text',
+          required: true
         },
         {
           label: 'Category',
@@ -616,7 +617,8 @@ export const editSupplierConfig = {
           label: 'Contact Name',
           key: 'contactName',
           width: 'w-1/2',
-          type: 'text'
+          type: 'text',
+          required: true
         }
       ]
     },
@@ -628,13 +630,15 @@ export const editSupplierConfig = {
           label: 'Street',
           key: 'street',
           width: 'w-full',
-          type: 'text'
+          type: 'text',
+          required: true
         },
         {
           label: 'City',
           key: 'city',
           width: 'w-1/2',
-          type: 'text'
+          type: 'text',
+          required: true
         },
         {
           label: 'Postal Code',
@@ -646,7 +650,8 @@ export const editSupplierConfig = {
           label: 'Country',
           key: 'country',
           width: 'w-1/2',
-          type: 'text'
+          type: 'text',
+          required: true
           
         }
       ]
@@ -660,6 +665,7 @@ export const editSupplierConfig = {
           key: 'telephone1',
           width: 'w-2/3',
           type: 'phoneInput',
+          required: true
         },
         {
           label: 'Telephone 2',

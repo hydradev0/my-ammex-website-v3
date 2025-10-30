@@ -51,7 +51,8 @@ function EditDetailsModal({
   updateService,
   vendors = [],
   onOpenAdjustPrice,
-  onOpenAdjustStock
+  onOpenAdjustStock,
+  existingSuppliers = [],
 }) {
   // State for form fields
   const [formData, setFormData] = useState({});
@@ -167,6 +168,45 @@ useEffect(() => {
       });
     }
     
+    // Only do uniqueness check for supplier edit
+    if (config && config.title && config.title.toLowerCase().includes('supplier')
+      && Array.isArray(existingSuppliers) && data && (data.id || data._id || data.supplierId)
+    ) {
+      // Collect all possible unique keys for self
+      const currentSupplier = data;
+      const selfIds = new Set([
+        currentSupplier.id,
+        currentSupplier._id,
+        currentSupplier.supplierId,
+        (currentSupplier.companyName || '').trim().toLowerCase(),
+        (currentSupplier.email1 || '').trim().toLowerCase(),
+      ].map(x => (x != null ? String(x) : undefined)).filter(Boolean));
+
+      const isSelf = (s) =>
+        [s.id, s._id, s.supplierId].map(x => x != null ? String(x) : undefined).some(id => selfIds.has(id)) ||
+        ((s.companyName || '').trim().toLowerCase() && selfIds.has((s.companyName || '').trim().toLowerCase())) ||
+        ((s.email1 || '').trim().toLowerCase() && selfIds.has((s.email1 || '').trim().toLowerCase()));
+
+      const companyLower = (formData.companyName || '').trim().toLowerCase();
+      const emailLower = (formData.email1 || '').trim().toLowerCase();
+      if (companyLower) {
+        const duplicateName = existingSuppliers.some(
+          s => (s.companyName || '').trim().toLowerCase() === companyLower && !isSelf(s)
+        );
+        if (!newErrors.companyName && duplicateName) {
+          newErrors.companyName = 'Company name already exists';
+        }
+      }
+      if (emailLower) {
+        const duplicateEmail = existingSuppliers.some(
+          s => (s.email1 || '').trim().toLowerCase() === emailLower && !isSelf(s)
+        );
+        if (!newErrors.email1 && duplicateEmail) {
+          newErrors.email1 = 'Email already exists';
+        }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -357,7 +397,7 @@ useEffect(() => {
     const { key, label, type, width, required, disabled, prefix, step, min, isTextArea,  } = field;
     const value = formData[key] || '';
     const error = errors[key];
-    const isRequired = required ? ' *' : '';
+    const isRequired = !!required;
 
     if (type === 'dropdown') {
       const dropdownOptions = getDropdownOptions(field);
@@ -371,7 +411,10 @@ useEffect(() => {
           <FormField
             id={key}
             name={key}
-            label={label + isRequired}
+            label={<>
+              {label}
+              {isRequired && <span className="text-red-500"> *</span>}
+            </>}
             type="text"
             value={value}
             onChange={handleInputChange}
@@ -386,7 +429,7 @@ useEffect(() => {
       return (
         <div className="m-4">
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {label}{isRequired}
+            {label}{isRequired && <span className="text-red-500"> *</span>}
           </label>
           <div className={`relative ${width || 'w-full'}`} ref={el => dropdownRefs.current[key] = el}>
             <button
@@ -399,7 +442,27 @@ useEffect(() => {
             </button>
             {isOpen && (
               <ul className="absolute z-10 mt-1 w-full bg-gray-50 border border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
-                {dropdownOptions.map((option) => {
+                {(() => {
+                  // De-duplicate by display value, then sort case-insensitively
+                  const displayValue = (opt) => (
+                    typeof opt === 'string' 
+                      ? opt 
+                      : (opt?.companyName || opt?.name || opt?.supplierId || '')
+                  );
+                  const uniqueMap = new Map();
+                  for (const opt of [...dropdownOptions]) {
+                    const val = displayValue(opt) || '';
+                    const keyLower = val.toLowerCase();
+                    if (!uniqueMap.has(keyLower)) {
+                      uniqueMap.set(keyLower, opt);
+                    }
+                  }
+                  const sorted = [...uniqueMap.values()].sort((a, b) => {
+                    const aVal = displayValue(a);
+                    const bVal = displayValue(b);
+                    return aVal.localeCompare(bVal, 'en', { sensitivity: 'base' });
+                  });
+                  return sorted.map((option) => {
                   // Handle different option formats
                   let optionValue, optionKey;
                   if (typeof option === 'string') {
@@ -423,7 +486,8 @@ useEffect(() => {
                       {optionValue}
                     </li>
                   );
-                })}
+                  });
+                })()}
               </ul>
             )}
           </div>
@@ -441,7 +505,7 @@ useEffect(() => {
       return (
         <div className="m-4">
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {label}{isRequired}
+            {label}{isRequired && <span className="text-red-500"> *</span>}
           </label>
           <div className={`relative ${width || 'w-full'}`} ref={el => dropdownRefs.current[key] = el}>
             <button
@@ -484,7 +548,10 @@ useEffect(() => {
         <PhoneInputField
         key={`${key}-${data?.id}`}
         id={key}
-        label={label + isRequired}
+        label={<>
+          {label}
+          {isRequired && <span className="text-red-500"> *</span>}
+        </>}
         value={formData[key] || data?.[key] || ''}  // Use || instead of ternary
         onChange={handleInputChange}
           error={error}
@@ -499,7 +566,10 @@ useEffect(() => {
         <FormField
           id={key}
           name={key}
-          label={label + isRequired}
+          label={<>
+            {label}
+            {isRequired && <span className="text-red-500"> *</span>}
+          </>}
           type="textarea"
           value={value}
           onChange={handleInputChange}
@@ -522,7 +592,10 @@ useEffect(() => {
         <FormField
           id={key}
           name={key}
-          label={label + isRequired}
+          label={<>
+            {label}
+            {isRequired && <span className="text-red-500"> *</span>}
+          </>}
           type={type || 'text'}
           value={value}
           onChange={handleInputChange}
@@ -601,7 +674,7 @@ useEffect(() => {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">!</span>
+                  <span className="text-white text-sm font-bold mb-1">!</span>
                 </div>
                 <h3 className="text-lg font-semibold text-red-800">Please fix the following errors:</h3>
               </div>
@@ -739,7 +812,7 @@ function FormField({ id, name, label, type, value, onChange, error, prefix, widt
           <textarea
             id={id}
             name={name}
-            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'bo   rder-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${fieldDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            className={`px-4 py-1 ${width} text-lg border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[100px] bg-white ${fieldDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={fieldValue}
             onChange={onChange}
             disabled={fieldDisabled}
@@ -789,7 +862,8 @@ EditDetailsModal.propTypes = {
   config: PropTypes.object,
   updateService: PropTypes.func,
   onOpenAdjustPrice: PropTypes.func,
-  onOpenAdjustStock: PropTypes.func
+  onOpenAdjustStock: PropTypes.func,
+  existingSuppliers: PropTypes.array
 };
 
 export default EditDetailsModal;

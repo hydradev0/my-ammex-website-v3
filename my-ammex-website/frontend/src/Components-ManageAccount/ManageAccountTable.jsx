@@ -13,6 +13,7 @@ const ManageAccountTable = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('sales'); // 'sales', 'warehouse', or 'clients'
 
+  const [allUsers, setAllUsers] = useState([]); // Store all users for duplicate checking
   const [salesAccounts, setSalesAccounts] = useState([]);
   const [warehouseAccounts, setWarehouseAccounts] = useState([]);
   const [clientAccounts, setClientAccounts] = useState([]);
@@ -83,16 +84,19 @@ const ManageAccountTable = () => {
   const fetchAllUsers = async () => {
     try {
       const response = await apiCall('/auth/users');
-      const allUsers = response.data;
+      const users = response.data;
+      
+      // Store all users for duplicate checking
+      setAllUsers(users);
       
       // Filter users by department/role, excluding Admin
-      const salesUsers = allUsers.filter(user => 
+      const salesUsers = users.filter(user => 
         user.department === 'Sales' && user.role !== 'Admin'
       );
-      const warehouseUsers = allUsers.filter(user => 
+      const warehouseUsers = users.filter(user => 
         user.department === 'Warehouse' && user.role !== 'Admin'
       );
-      const clientUsers = allUsers.filter(user => 
+      const clientUsers = users.filter(user => 
         user.role === 'Client' || user.department === 'Client Services'
       );
       
@@ -271,6 +275,52 @@ const ManageAccountTable = () => {
       errors.email = 'Please enter a valid email address';
     }
     
+    // Check for duplicate email
+    if (formData.email.trim()) {
+      const duplicateEmail = allUsers.find(user => {
+        const userEmail = user.email.toLowerCase().trim();
+        const inputEmail = formData.email.toLowerCase().trim();
+        
+        if (editMode) {
+          // When editing, exclude the current user being edited
+          return userEmail === inputEmail && 
+                 user.id !== (selectedEmployee?.id || selectedEmployee?._id || selectedEmployee?.userId);
+        } else {
+          // When creating, check all users
+          return userEmail === inputEmail;
+        }
+      });
+      
+      if (duplicateEmail) {
+        errors.email = 'This email is already in use by another account';
+      }
+    }
+    
+    // Check for duplicate name
+    if (formData.name.trim()) {
+      const duplicateName = allUsers.find(user => {
+        const userName = user.name.toLowerCase().trim();
+        const inputName = formData.name.toLowerCase().trim();
+        
+        if (editMode) {
+          // When editing, exclude the current user being edited
+          return userName === inputName && 
+                 user.id !== (selectedEmployee?.id || selectedEmployee?._id || selectedEmployee?.userId);
+        } else {
+          // When creating, check all users
+          return userName === inputName;
+        }
+      });
+
+      if (duplicateName) {
+        if (formData.role === 'Client') {
+            errors.name = 'Company name already exists';
+        } else {
+            errors.name = 'Name already exists';
+        }
+    }
+    }
+    
     // Password validation (only for create mode)
     if (!editMode) {
       if (!formData.password) {
@@ -333,7 +383,19 @@ const ManageAccountTable = () => {
       // Refresh all user lists
       fetchAllUsers();
     } catch (err) {
-      setError(err.response?.data?.message || 'Operation failed');
+      const errorMessage = err.response?.data?.message || 'Operation failed';
+      
+      // Check if error is about email or name duplication
+      if (errorMessage.toLowerCase().includes('email already exists')) {
+        setFieldErrors({ email: 'This email is already in use by another account' });
+      } else if (errorMessage.toLowerCase().includes('name already exists')) {
+        setFieldErrors({ name: 'This name is already in use by another account' });
+      } else if (errorMessage.toLowerCase().includes('user already exists')) {
+        // Generic fallback for old error messages
+        setFieldErrors({ email: 'This email is already in use by another account' });
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -595,7 +657,7 @@ const ManageAccountTable = () => {
         title={successTitle}
         message={successMessage}
         autoClose={true}
-        autoCloseDelay={4000}
+        autoCloseDelay={5000}
       />
     </div>
   );

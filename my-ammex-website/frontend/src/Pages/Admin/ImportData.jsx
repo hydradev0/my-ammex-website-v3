@@ -25,18 +25,18 @@ const getRequiredColumns = (type) => {
 };
 
 // Function to get optional columns for each import type
-const getOptionalColumns = (type) => {
-  switch (type) {
-    case 'sales':
-      return ['total_orders', 'total_units', 'avg_order_value', 'new_customers'];
-    case 'sales_by_product':
-      return [];
-    case 'bulk':
-      return [];
-    default:
-      return [];
-  }
-};
+// const getOptionalColumns = (type) => {
+//   switch (type) {
+//     case 'sales':
+//       return ['total_orders', 'total_units', 'avg_order_value', 'new_customers'];
+//     case 'sales_by_product':
+//       return [];
+//     case 'bulk':
+//       return [];
+//     default:
+//       return [];
+//   }
+// };
 
 function ImportData() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -173,7 +173,7 @@ function ImportData() {
                           </span>
                         ))}
                       </div>
-                      {getOptionalColumns(type.value).length > 0 && (
+                      {/* {getOptionalColumns(type.value).length > 0 && (
                         <>
                           <p className="text-xs font-medium text-gray-600 mb-2 mt-2">Optional columns:</p>
                           <div className="flex flex-wrap gap-1">
@@ -187,7 +187,7 @@ function ImportData() {
                             ))}
                           </div>
                         </>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>

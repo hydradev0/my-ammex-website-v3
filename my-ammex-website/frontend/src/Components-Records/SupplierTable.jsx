@@ -405,6 +405,7 @@ function SupplierTable() {
           onSubmit={handleAddSupplier}
           title="Supplier"
           buttonText="Add Supplier"
+          existingSuppliers={suppliers}
         />
 
         {/* View Supplier Modal */}
@@ -427,6 +428,7 @@ function SupplierTable() {
           onDataUpdated={handleSupplierUpdated}
           config={editSupplierConfig}
           updateService={updateSupplier}
+          existingSuppliers={suppliers} // provide for duplicate checks
         />
 
         <ConfirmDeleteModal

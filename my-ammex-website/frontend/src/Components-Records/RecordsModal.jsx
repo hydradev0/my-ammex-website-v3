@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import PhoneInputField from "../Components/PhoneInputField";
 
-function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
+function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, existingSuppliers = [] }) {
   // State for form fields
   const initialFormData = {
     companyName: '',
@@ -53,6 +53,25 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
       newErrors.companyName = 'Company name is required';
     }
 
+    if (!formData.contactName.trim()) {
+      newErrors.contactName = 'Contact name is required';
+    }
+
+    if (!formData.street.trim()) {
+      newErrors.street = 'Street is required';
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+
+    if (!formData.country.trim()) {
+      newErrors.country = 'Country is required';
+    }
+
+    if (!formData.telephone1 || !formData.telephone1.trim()) {
+      newErrors.telephone1 = 'Telephone 1 is required';
+    }
     
     if (!formData.email1.trim()) {
       newErrors.email1 = 'Email 1 is required';
@@ -62,6 +81,22 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
     
     if (formData.email2 && !/\S+@\S+\.\S+/.test(formData.email2)) {
       newErrors.email2 = 'Email 2 is invalid';
+    }
+    
+    // Duplicate checks for Supplier (companyName and email1)
+    if (title === 'Supplier' && existingSuppliers && Array.isArray(existingSuppliers)) {
+      const companyLower = formData.companyName.trim().toLowerCase();
+      const emailLower = formData.email1.trim().toLowerCase();
+      
+      const duplicateName = existingSuppliers.some(s => (s.companyName || '').trim().toLowerCase() === companyLower);
+      if (!newErrors.companyName && duplicateName) {
+        newErrors.companyName = 'Company name already exists';
+      }
+      
+      const duplicateEmail = existingSuppliers.some(s => (s.email1 || '').trim().toLowerCase() === emailLower);
+      if (!newErrors.email1 && duplicateEmail) {
+        newErrors.email1 = 'Email already exists';
+      }
     }
     
     
@@ -182,6 +217,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
                   value={formData.contactName}
                   onChange={handleInputChange}
                   error={errors.contactName}
+                  required
                 />
               </div>
             </div>
@@ -197,33 +233,6 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
               {/* Section Container */}
               <div className="grid grid-cols-2 gap-6 rounded-xl p-4">
                 <FormField
-                  id="country"
-                  label="Country"
-                  type="text"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  error={errors.country}
-                  width="w-1/2"
-                />
-                  <FormField
-                    id="city"
-                    label="City"
-                    type="text"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    error={errors.city}
-                    width="w-1/2"
-                  />
-                  <FormField
-                    id="postalCode"
-                    label="Postal Code"
-                    type="text"
-                    value={formData.postalCode}
-                    onChange={handleInputChange}
-                    error={errors.postalCode}
-                    width="w-0.5/2"
-                  />
-                <FormField
                   id="street"
                   label="Street"
                   type="text"
@@ -231,6 +240,36 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
                   onChange={handleInputChange}
                   error={errors.street}
                   width="w-full"
+                  required
+                />
+                <FormField
+                  id="city"
+                  label="City"
+                  type="text"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  error={errors.city}
+                  width="w-1/2"
+                  required
+                />
+                <FormField
+                  id="postalCode"
+                  label="Postal Code"
+                  type="text"
+                  value={formData.postalCode}
+                  onChange={handleInputChange}
+                  error={errors.postalCode}
+                  width="w-0.5/2"
+                />
+                <FormField
+                  id="country"
+                  label="Country"
+                  type="text"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  error={errors.country}
+                  width="w-1/2"
+                  required
                 />
               </div>
             </div>
@@ -252,6 +291,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText }) {
                   onChange={handleInputChange}
                   error={errors.telephone1}
                   width="w-2/3"
+                  required
                 />
                 <PhoneInputField
                   id="telephone2"

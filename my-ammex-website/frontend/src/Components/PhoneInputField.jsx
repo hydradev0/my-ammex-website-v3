@@ -37,7 +37,14 @@ function PhoneInputField({ id, label, value, onChange, error, required = false, 
   return (
     <div className="m-4">
       <label htmlFor={id} className="block text-lg font-medium text-gray-700 mb-2">
-        {label}{required ? ' *' : ''}
+        {typeof label === 'string' ? (
+          <>
+            {label}
+            {required && <span className="text-red-500"> *</span>}
+          </>
+        ) : (
+          label
+        )}
       </label>
       <div className={`relative ${error ? 'mb-1' : ''}`}>
         <PhoneInput
@@ -66,7 +73,7 @@ function PhoneInputField({ id, label, value, onChange, error, required = false, 
 
 PhoneInputField.propTypes = {
   id: PropTypes.string.isRequired,
-  label: PropTypes.string.isRequired,
+  label: PropTypes.oneOfType([PropTypes.string, PropTypes.node]).isRequired,
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   error: PropTypes.string,

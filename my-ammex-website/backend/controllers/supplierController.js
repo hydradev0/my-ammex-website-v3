@@ -85,6 +85,20 @@ const createSupplier = async (req, res, next) => {
     const { Supplier } = getModels();
     const supplierData = req.body;
 
+    // Uniqueness checks
+    if (supplierData.companyName) {
+      const existingByName = await Supplier.findOne({ where: { companyName: supplierData.companyName } });
+      if (existingByName) {
+        return res.status(400).json({ success: false, message: 'Company name already exists' });
+      }
+    }
+    if (supplierData.email1) {
+      const existingByEmail = await Supplier.findOne({ where: { email1: supplierData.email1 } });
+      if (existingByEmail) {
+        return res.status(400).json({ success: false, message: 'Email already exists' });
+      }
+    }
+
     const supplier = await Supplier.create(supplierData);
 
     res.status(201).json({
@@ -121,6 +135,32 @@ const updateSupplier = async (req, res, next) => {
           success: false,
           message: 'Supplier ID already exists'
         });
+      }
+    }
+
+    // Check if companyName is being updated and if it's unique
+    if (updateData.companyName && updateData.companyName !== supplier.companyName) {
+      const existingByName = await Supplier.findOne({
+        where: {
+          companyName: updateData.companyName,
+          id: { [Op.ne]: id }
+        }
+      });
+      if (existingByName) {
+        return res.status(400).json({ success: false, message: 'Company name already exists' });
+      }
+    }
+
+    // Check if email1 is being updated and if it's unique
+    if (updateData.email1 && updateData.email1 !== supplier.email1) {
+      const existingByEmail = await Supplier.findOne({
+        where: {
+          email1: updateData.email1,
+          id: { [Op.ne]: id }
+        }
+      });
+      if (existingByEmail) {
+        return res.status(400).json({ success: false, message: 'Email already exists' });
       }
     }
 

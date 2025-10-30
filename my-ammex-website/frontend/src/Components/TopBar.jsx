@@ -148,14 +148,14 @@ function TopBar() {
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded-md shadow-lg ring-1 ring-black/5 py-1">
                 {user.role === 'Admin' && (<button
-                  onClick={() => navigate('/Admin/AccountManagement')}
+                  onClick={() => navigate('/admin/account-management')}
                   className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <UserCog size={16} /> Manage Accounts
                 </button>
                 )}
                 {user.role === 'Admin' && (<button
-                  onClick={() => navigate('/Admin/ImportData')}
+                  onClick={() => navigate('/admin/import-data')}
                   className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Upload size={16} /> Import Data
@@ -168,7 +168,7 @@ function TopBar() {
                   <Archive size={16} /> Archive
                 </button>
                 <button
-                  onClick={() => navigate('/Settings')}
+                  onClick={() => navigate('/settings')}
                   className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Settings size={16} /> Settings

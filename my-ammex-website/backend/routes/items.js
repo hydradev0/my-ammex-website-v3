@@ -21,13 +21,7 @@ const {
 // Validation middleware
 const validateItem = [
   check('modelNo', 'Model number is required').not().isEmpty(),
-  check('itemName', 'Item name must be a string').optional().custom((value) => {
-    if (value === null || value === undefined || value === '') return true;
-    if (typeof value !== 'string') {
-      throw new Error('Item name must be a string');
-    }
-    return true;
-  }),
+  check('itemName', 'Item name is required').not().isEmpty().bail().isString().withMessage('Item name must be a string').trim(),
   check('vendor', 'Vendor is required').not().isEmpty(),
   check('sellingPrice', 'Selling price must be a positive number').isFloat({ min: 0 }),
   check('supplierPrice', 'Supplier price must be a positive number').isFloat({ min: 0 }),
@@ -101,7 +95,7 @@ router.post('/', protect, authorize('Admin', 'Warehouse Supervisor'), validateIt
 // @route   PUT /api/items/:id
 // @desc    Update item
 // @access  Private (Admin, Warehouse Supervisor)
-router.put('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), updateItem);
+router.put('/:id', protect, authorize('Admin', 'Warehouse Supervisor'), validateItem, handleValidationErrors, updateItem);
 
 // @route   PATCH /api/items/:id/stock
 // @desc    Update item stock

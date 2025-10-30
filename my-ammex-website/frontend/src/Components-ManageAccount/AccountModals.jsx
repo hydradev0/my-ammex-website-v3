@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { X, Eye, EyeOff } from 'lucide-react';
 import ScrollLock from '../Components/ScrollLock';
 
-// Account Creation/Editing Modal
 export const AccountModal = ({
   open,
   editMode,
@@ -22,7 +21,7 @@ export const AccountModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-
+  {/* Modal content for account creation/editing */}
   const modalContent = (
     <>
       <ScrollLock active={open} />

@@ -39,9 +39,17 @@ function NewItem({
   // State for markup settings
   const [markupRate, setMarkupRate] = useState(30); // Default to 30%
   
-  // Use suppliers data for vendor dropdown
+  // Use suppliers data for vendor dropdown (deduplicated and alphabetically sorted)
   const vendors = suppliers.length > 0 
-    ? suppliers.map(supplier => supplier.companyName)
+    ? Array.from(
+        // Deduplicate by lowercase display name while preserving original casing
+        new Map(
+          suppliers
+            .map(supplier => supplier.companyName || '')
+            .filter(name => name && name.trim() !== '')
+            .map(name => [name.toLowerCase(), name])
+        ).values()
+      ).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
     : ['No suppliers available'];
   
   // Dropdown open states and refs
@@ -184,6 +192,10 @@ function NewItem({
     
     if (!formData.modelNo.trim()) {
       newErrors.modelNo = 'Model number is required';
+    }
+
+    if (!formData.itemName.trim()) {
+      newErrors.itemName = 'Item name is required';
     }
 
     if (!formData.vendor.trim()) {
@@ -448,7 +460,7 @@ function NewItem({
                 {/* Item Name */}
                 <FormField
                   id="itemName"
-                  label={<span>Item Name</span>}
+                  label={<span>Item Name <span className="text-red-500">*</span></span>}
                   type="text"
                   value={formData.itemName}
                   onChange={handleInputChange}

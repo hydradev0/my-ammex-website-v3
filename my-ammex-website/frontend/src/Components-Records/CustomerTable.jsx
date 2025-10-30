@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
-import RecordsModal from './RecordsModal';
 import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
@@ -401,14 +400,7 @@ function CustomerTable() {
           dropdownActions={customCustomerDropdownActions}
         />
 
-        {/* New Customer Modal */}
-        <RecordsModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onSubmit={handleAddCustomer}
-          title="Customer"
-          buttonText="Add Customer"
-        />
+        {/* New Customer Modal removed: Customer creation handled via AccountModals */}
 
         {/* View Customer Modal */}
         <ViewDetailsModal

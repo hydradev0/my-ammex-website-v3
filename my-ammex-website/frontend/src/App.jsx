@@ -206,8 +206,8 @@ function AppContent() {
           }
         />
         {/* Administration */}
-        <Route path="admin/accountmanagement" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
-        <Route path="admin/importdata" element={<ProtectedRoute requiredRole="Admin"><ImportData /></ProtectedRoute>} />
+        <Route path="admin/account-management" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
+        <Route path="admin/import-data" element={<ProtectedRoute requiredRole="Admin"><ImportData /></ProtectedRoute>} />
         
         {/* Settings */}
         <Route 
