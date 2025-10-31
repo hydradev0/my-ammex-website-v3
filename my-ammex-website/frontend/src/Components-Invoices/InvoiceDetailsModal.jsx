@@ -138,7 +138,7 @@ const InvoiceDetailsModal = ({
                    <thead className="bg-gray-50 sticky top-0 z-10">
                      <tr>
                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                         Category
+                         Item Name
                        </th>
                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                          Model No.
@@ -161,7 +161,7 @@ const InvoiceDetailsModal = ({
                      {invoice.items.map((item, index) => (
                        <tr key={index} className="hover:bg-gray-50">
                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                           {item.subcategory || item.category}
+                           {item.itemName}
                          </td>
                          <td className="px-4 py-3 text-sm text-gray-600">
                            {item.modelNo}

@@ -146,7 +146,7 @@ function TopBarPortal() {
           >
             <Bell size={20} className="sm:w-6 sm:h-6" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 p-1.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -158,14 +158,6 @@ function TopBarPortal() {
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-sm cursor-pointer text-blue-600 hover:text-blue-800"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
                 </div>
               </div>
               
@@ -271,11 +263,16 @@ function TopBarPortal() {
               
               {notifications.length > 0 && (
                 <div className="p-3 border-t border-gray-200 bg-gray-50">
-                  <button
-                    className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  <div
+                    className="w-full text-center text-sm"
                   >
-                    
-                  </button>
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-sm cursor-pointer text-blue-600 hover:text-blue-800"
+                    >
+                      {unreadCount > 0 ? 'Mark all as read' : ''}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

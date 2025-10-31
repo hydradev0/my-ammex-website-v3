@@ -346,6 +346,10 @@ const initializeModels = (sequelize) => {
     finalAmount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false
+    },
+    paymentTerms: {
+      type: DataTypes.STRING,
+      defaultValue: '30 days'
     }
   }, {
     timestamps: true

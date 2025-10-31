@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, Trash2, Package, Check, ShoppingBag, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Trash2, Package, Check, ShoppingBag, ChevronRight, ChevronDown } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import ErrorModal from "../Components/ErrorModal";
@@ -33,6 +33,10 @@ const Cart = () => {
   const [errorModalMessage, setErrorModalMessage] = useState("");
   const [quantityErrors, setQuantityErrors] = useState({});
   const errorTimeouts = useRef({});
+  const [paymentTerms, setPaymentTerms] = useState('30 days');
+  const [showPaymentTermsDropdown, setShowPaymentTermsDropdown] = useState(false);
+  const paymentTermsOptions = ['30 days', '60 days', '90 days'];
+  const paymentTermsDropdownRef = useRef(null);
 
   const refreshCartData = async () => {
     try {
@@ -301,6 +305,28 @@ const Cart = () => {
     };
   }, []);
 
+  // Handle click outside payment terms dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (paymentTermsDropdownRef.current && !paymentTermsDropdownRef.current.contains(event.target)) {
+        setShowPaymentTermsDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Reset payment terms dropdown when modal closes
+  useEffect(() => {
+    if (!showPreviewModal) {
+      setShowPaymentTermsDropdown(false);
+      setPaymentTerms('30 days');
+    }
+  }, [showPreviewModal]);
+
   const updateQuantity = async (itemId, newQuantity) => {
     try {
       // Find the item to get its stock limit
@@ -488,11 +514,11 @@ const Cart = () => {
          return;
        }
  
-       const ids = selectedItems.map(i => i.id);
-       const result = await checkoutConfirm(user?.id, { itemIds: ids });
+      const ids = selectedItems.map(i => i.id);
+      const result = await checkoutConfirm(user?.id, { itemIds: ids, paymentTerms });
 
       // Prevent database sync for 2 seconds to avoid race conditions
-      preventDatabaseSync(2000);
+      preventDatabaseSync(4000);
 
       // Remove only the selected items locally using setLocalCart to ensure global state sync
       const remaining = cart.filter(item => !selectedIds.has(item.id));
@@ -530,7 +556,7 @@ const Cart = () => {
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full h-[100vh] flex flex-col"
+        className="bg-white rounded-lg shadow-xl max-w-3xl w-full h-[120vh] flex flex-col"
         style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
       >
         {/* Fixed Header */}
@@ -560,6 +586,41 @@ const Cart = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Order Number</h3>
               <p className="text-sm text-gray-900 break-all">{orderNumber}</p>
+              
+              {/* Payment Terms Dropdown */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Terms</label>
+                <div className="relative" ref={paymentTermsDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentTermsDropdown(!showPaymentTermsDropdown)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#3182ce] focus:border-[#3182ce] transition-colors"
+                  >
+                    <span className="text-gray-900">{paymentTerms}</span>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${showPaymentTermsDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {showPaymentTermsDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {paymentTermsOptions.map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => {
+                            setPaymentTerms(term);
+                            setShowPaymentTermsDropdown(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 hover:bg-gray-100 transition-colors ${
+                            paymentTerms === term ? 'bg-blue-50 text-[#3182ce]' : 'text-gray-900'
+                          }`}
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Order Date</h3>
@@ -589,10 +650,14 @@ const Cart = () => {
           );
         })()}
 
+        {/* Fixed Order Items Header */}
+        <div className="px-6 pt-6 pb-4 flex-shrink-0">
+          <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
+        </div>
+
         {/* Scrollable Items Section */}
         <div className="flex-1 overflow-y-auto mr-1.5 my-1.5">
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Order Items</h3>
+          <div className="px-3 pb-6">
             <div className="space-y-3">
               {getSelectedItems().map((item, index) => (
                 <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
@@ -613,7 +678,7 @@ const Cart = () => {
         {/* Fixed Footer */}
         <div className="p-6 border-t border-gray-200 flex-shrink-0">
           <div className="border-b border-gray-200 pb-4 mb-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
               <span className="text-xl font-bold text-gray-900">₱{getSelectedTotalPrice().toLocaleString()}</span>
             </div>
@@ -623,7 +688,7 @@ const Cart = () => {
           <div className="text-sm text-amber-700 mb-6 bg-amber-100 rounded-lg p-4 border border-amber-300">
             <p className="font-semibold">Disclaimer:</p>
             <p>• All orders are subject to approval.</p>
-            <p>• Confirming this order means it can no longer be canceled.</p>
+            <p>• Once the order is approved, it can no longer be canceled.</p>
           </div>
 
           <div className="flex gap-3">
@@ -974,7 +1039,7 @@ const Cart = () => {
                               <button
                                 onClick={() => handleRemoveItemClick(item.id)}
                                 disabled={removingItemId === item.id}
-                                className={`text-red-500 hover:text-red-700 transition-colors ${removingItemId === item.id ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                className={`text-red-500 cursor-pointer hover:text-red-700 transition-colors ${removingItemId === item.id ? 'opacity-60 cursor-not-allowed' : ''}`}
                               >
                                 {removingItemId === item.id ? (
                                   <span className="inline-flex items-center gap-2">
@@ -1020,7 +1085,7 @@ const Cart = () => {
                 <button
                   onClick={handleCheckout}
                   disabled={getSelectedItems().length === 0 || previewLoading || hasQuantityErrors()}
-                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 || previewLoading || hasQuantityErrors() ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#2c5282]'}`}
+                  className={`w-full cursor-pointer text-white py-3 rounded-3xl font-medium transition-colors ${getSelectedItems().length === 0 || previewLoading || hasQuantityErrors() ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#3182ce] hover:bg-[#4992d6]'}`}
                 >
                   {previewLoading ? (
                     <span className="inline-flex items-center gap-2">

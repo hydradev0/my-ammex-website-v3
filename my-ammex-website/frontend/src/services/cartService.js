@@ -457,7 +457,7 @@ export const checkoutPreview = async (customerId, { itemIds = [], cartItemIds = 
 };
 
 // Checkout confirm (creates order from selected items, removes only those from cart)
-export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = [], notes = '' } = {}) => {
+export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = [], notes = '', paymentTerms = '30 days' } = {}) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${API_BASE_URL}/checkout/${customerId}/confirm`, {
     method: 'POST',
@@ -465,7 +465,7 @@ export const checkoutConfirm = async (customerId, { itemIds = [], cartItemIds = 
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ itemIds, cartItemIds, notes })
+    body: JSON.stringify({ itemIds, cartItemIds, notes, paymentTerms })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || 'Failed to confirm checkout');

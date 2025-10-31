@@ -262,7 +262,8 @@ const Orders = () => {
               {selectedOrder.items.map((item, index) => (
                 <div key={index} className="flex justify-between items-start sm:items-center p-2 sm:p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 text-sm sm:text-base leading-tight">{item.name}</h4>
+                    <h4 className="font-medium text-gray-900 text-sm sm:text-base leading-tight mb-1">{item.name}</h4>
+                    <p className="font-medium text-gray-900 text-sm sm:text-base leading-tight mb-1">{item.model}</p>
                     <p className="text-xs sm:text-sm text-gray-500">Qty: {item.quantity} × ₱{item.price.toLocaleString()}</p>
                   </div>
                   <div className="text-right ml-2">

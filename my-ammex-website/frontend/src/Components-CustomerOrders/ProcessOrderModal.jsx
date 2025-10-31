@@ -143,6 +143,10 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
           </span>
         </div>
+        <div className="col-span-2">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Terms</h3>
+          <p className="text-lg font-semibold text-gray-900">{order.paymentTerms || '30 days'}</p>
+        </div>
       </div>
 
       {/* Order Items */}
@@ -152,7 +156,7 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model No.</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
@@ -164,7 +168,7 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
               {order.items?.map((item, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.subcategory || item.category}
+                    {item.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {item.modelNo}

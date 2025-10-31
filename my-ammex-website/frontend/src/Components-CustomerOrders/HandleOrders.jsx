@@ -80,7 +80,9 @@ function HandleOrders() {
           date: new Date(o.orderDate).toISOString().slice(0, 10),
           status: o.status,
           total: Number(o.totalAmount) || 0,
+          paymentTerms: o.paymentTerms || '30 days',
           items: (o.items || []).map((it) => ({
+            name: it.item?.itemName,
             modelNo: it.item?.modelNo,
             category: it.item?.category?.name,
             subcategory: it.item?.subcategory?.name,
@@ -126,9 +128,11 @@ function HandleOrders() {
           date: new Date(o.orderDate).toISOString().slice(0, 10),
           status: 'rejected',
           total: Number(o.totalAmount) || 0,
+          paymentTerms: o.paymentTerms || '30 days',
           rejectedDate: o.updatedAt ? new Date(o.updatedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
           rejectionReason: o.rejectionReason || 'Order rejected',
           items: (o.items || []).map((it) => ({
+            name: it.item?.itemName,
             modelNo: it.item?.modelNo,
             category: it.item?.category?.name,
             subcategory: it.item?.subcategory?.name,

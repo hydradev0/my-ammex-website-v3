@@ -1,35 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, Send, CheckCircle, FileText } from 'lucide-react';
-import ModernSearchFilter from '../Components/ModernSearchFilter';
-import PaginationTable from '../Components/PaginationTable';
-import AdvanceActionsDropdown from '../Components/AdvanceActionsDropdown';
+import React, { useState, useEffect } from "react";
+import { DollarSign, Send, CheckCircle, FileText, Download } from "lucide-react";
+import ModernSearchFilter from "../Components/ModernSearchFilter";
+import PaginationTable from "../Components/PaginationTable";
+import AdvanceActionsDropdown from "../Components/AdvanceActionsDropdown";
 
-
-const PaymentHistoryTab = ({ 
-  historyData = [], 
+const PaymentHistoryTab = ({
+  historyData = [],
   searchPlaceholder = "Search payment history...",
   itemLabel = "payment records",
   formatCurrency,
   formatDateTime,
-  onCustomAction
+  onCustomAction,
 }) => {
   // State management
   const [filteredHistory, setFilteredHistory] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAction, setSelectedAction] = useState('all');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedAction, setSelectedAction] = useState("all");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  
-
 
   // Default formatters if not provided
   const defaultFormatCurrency = (amount) => `₱${amount.toFixed(2)}`;
   const defaultFormatDateTime = (dateString) => {
     const date = new Date(dateString);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
   };
 
   // Use provided functions or defaults
@@ -39,16 +39,21 @@ const PaymentHistoryTab = ({
   // Action color function for payment history
   const getPaymentHistoryActionColor = (action) => {
     switch (action) {
-      case 'Payment Completed': return 'text-green-600 bg-green-100';
-      case 'Marked as Paid': return 'text-white bg-green-600';
-      default: return 'text-gray-600 bg-gray-100';
+      case "Payment Completed":
+        return "text-green-600 bg-green-100";
+      case "Marked as Paid":
+        return "text-white bg-green-600";
+      default:
+        return "text-gray-600 bg-gray-100";
     }
   };
 
   const actionColorFn = getPaymentHistoryActionColor;
 
   // Extract unique actions for filtering
-  const uniqueActions = [...new Set(historyData.map(item => item.action))].filter(Boolean);
+  const uniqueActions = [
+    ...new Set(historyData.map((item) => item.action)),
+  ].filter(Boolean);
 
   // Filter history data
   useEffect(() => {
@@ -56,30 +61,30 @@ const PaymentHistoryTab = ({
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         const searchFields = [
           item.customerName,
           item.invoiceNumber,
           item.action,
           item.description,
           item.details?.paymentMethod,
-          item.details?.reference
+          item.details?.reference,
         ].filter(Boolean);
 
-        return searchFields.some(field => 
+        return searchFields.some((field) =>
           field.toString().toLowerCase().includes(searchTerm.toLowerCase())
         );
       });
     }
 
     // Action filter
-    if (selectedAction !== 'all') {
-      filtered = filtered.filter(item => item.action === selectedAction);
+    if (selectedAction !== "all") {
+      filtered = filtered.filter((item) => item.action === selectedAction);
     }
 
     // Date range filter
     if (dateRange.start && dateRange.end) {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         const itemDate = new Date(item.timestamp);
         const startDate = new Date(dateRange.start);
         const endDate = new Date(dateRange.end);
@@ -96,21 +101,31 @@ const PaymentHistoryTab = ({
 
   // Configure dropdown filters
   const dropdownFilters = [
-    ...(uniqueActions.length > 0 ? [{
-      id: 'action',
-      value: selectedAction,
-      setValue: setSelectedAction,
-      options: [
-        { value: 'all', label: 'All Actions' },
-        ...uniqueActions.map(action => ({ value: action, label: action }))
-      ]
-    }] : [])
+    ...(uniqueActions.length > 0
+      ? [
+          {
+            id: "action",
+            value: selectedAction,
+            setValue: setSelectedAction,
+            options: [
+              { value: "all", label: "All Actions" },
+              ...uniqueActions.map((action) => ({
+                value: action,
+                label: action,
+              })),
+            ],
+          },
+        ]
+      : []),
   ];
 
   // Pagination logic
   const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedHistory = filteredHistory.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedHistory = filteredHistory.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -126,16 +141,18 @@ const PaymentHistoryTab = ({
     if (onCustomAction) {
       onCustomAction(item, action);
     } else {
-      console.log('Unknown action:', action, 'for item:', item);
+      console.log("Unknown action:", action, "for item:", item);
     }
   };
 
-  const getDropdownActions = () => [
+  const quickActions = [
     {
-      key: 'download_pdf',
-      label: 'Download PDF',
-      icon: FileText,
-    }
+      key: "download_pdf",
+      label: "Download PDF",
+      icon: Download,
+      title: "Download PDF",
+      className: "text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors",
+    },
   ];
 
   // Table headers for payment history
@@ -144,7 +161,7 @@ const PaymentHistoryTab = ({
       <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
         Customer & Status
       </th>
-      <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
+      <th className="px-6 py-4 text-center text-sm font-medium text-gray-700 uppercase tracking-wider">
         Details
       </th>
       <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">
@@ -162,51 +179,68 @@ const PaymentHistoryTab = ({
       {/* Customer & Status */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex flex-col">
-          <span className={`px-2 py-1 text-xs font-semibold rounded-full inline-flex w-fit mb-2 ${actionColorFn(item.action)}`}>
+          <span
+            className={`px-2 py-0.5 text-[11px] font-semibold rounded-full inline-flex w-fit mb-1 ring-1 ring-inset ${actionColorFn(
+              item.action
+            )}`}
+          >
             {item.action}
           </span>
-          <div className="text-sm font-medium text-blue-600">
-            {item.invoiceNumber}
-            <div className="text-xs text-gray-600 mt-1">{item.customerName}</div>
+          <div className="text-sm font-semibold text-gray-900">
+            <span className="text-blue-600">{item.invoiceNumber}</span>
+            <div className="text-xs text-gray-600 mt-0.5">
+              {item.customerName}
+            </div>
           </div>
         </div>
       </td>
 
       {/* Details */}
       <td className="px-6 py-4">
-        <div className="text-sm text-gray-600 space-y-1">
-          {item.description && (
-            <div className="text-sm text-gray-900 mb-2 max-w-xs">
-              {item.description}
-            </div>
-          )}
-          {item.details && (
-            <>
-              {item.details.amount && (
-                <div className="flex items-center">
-                  <span className="font-medium text-green-600">
-                    Amount: {currencyFn(item.details.amount)}
-                  </span>
-                </div>
-              )}
-              {item.details.paymentMethod && (
-                <div className="text-xs">Method: {item.details.paymentMethod}</div>
-              )}
-              {item.details.reference && (
-                <div className="text-xs">Ref: {item.details.reference}</div>
-              )}
-              {item.details.previousBalance && item.details.newBalance !== undefined && (
-                <div className="text-xs">
-                  Balance: {currencyFn(item.details.previousBalance)} → {currencyFn(item.details.newBalance)}
-                </div>
-              )}
-              {item.details.previousStatus && item.details.newStatus && (
-                <div className="text-xs">
-                  Status: {item.details.previousStatus} → {item.details.newStatus}
-                </div>
-              )}
-            </>
-          )}
+        <div className="space-y-2">
+          {/* Existing supplementary info */}
+          <div className="text-sm text-gray-600 space-y-1">
+            {item.details && (
+              <>
+                {item.details.paymentMethod && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm">Method</span>
+                    <span className="text-gray-900 text-base">
+                      {item.details.paymentMethod}
+                    </span>
+                  </div>
+                )}
+                {item.details.reference && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm">Ref</span>
+                    <span className="text-gray-900 text-base">
+                      {item.details.reference}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {/* Total Amount */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 text-sm">Total</span>
+            <span className="text-gray-900 text-base">{`₱${Number(
+              (item.details?.amount || 0) + (item.remainingAmount || 0) || 0
+            ).toLocaleString("en-PH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}</span>
+          </div>
+          {/* Remaining Amount */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 text-sm">Remaining</span>
+            <span className="font-semibold text-green-600 text-base">{`₱${Number(
+              item.remainingAmount || 0
+            ).toLocaleString("en-PH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}</span>
+          </div>
         </div>
       </td>
 
@@ -240,32 +274,39 @@ const PaymentHistoryTab = ({
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-bl from-gray-200 to-gray-300">
-              <tr>
-                {renderTableHeaders()}
-              </tr>
+              <tr>{renderTableHeaders()}</tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedHistory.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                  <td
+                    colSpan="4"
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
                     <div className="flex flex-col items-center">
                       <DollarSign className="w-12 h-12 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No {itemLabel} found</h3>
-                      <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No {itemLabel} found
+                      </h3>
+                      <p className="text-gray-500">
+                        Try adjusting your search or filter criteria.
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 paginatedHistory.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={item.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     {renderTableRow(item)}
-                    
+
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <AdvanceActionsDropdown
                         item={item}
-                        quickActions={[]}
-                        actions={getDropdownActions()}
+                        quickActions={quickActions}
                         onAction={handleAction}
                       />
                     </td>
@@ -290,8 +331,6 @@ const PaymentHistoryTab = ({
           className="mt-4"
         />
       )}
-
-
     </div>
   );
 };

@@ -1,30 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, DollarSign, Receipt, AlertTriangle } from 'lucide-react';
-import { createPortal } from 'react-dom';
-import ModernSearchFilter from '../Components/ModernSearchFilter';
+import { Settings, DollarSign, Receipt, AlertTriangle, Inbox } from 'lucide-react';
 import PaymentHistoryTab from './PaymentHistoryTab';
 import BalanceTab from './BalanceTab';
 import FailedPaymentsTab from './FailedPaymentsTab';
+import IncomingPaymentsTab from './IncomingPaymentsTab';
 import { 
   getBalanceHistory,
   getAllPaymentHistory,
   getFailedPayments
 } from '../services/paymentService';
+import { getInvoicesByStatus } from '../services/invoiceService';
 
 const PaymentReceiving = () => {
   const navigate = useNavigate();
   
   // Tab state
-  const [activeTab, setActiveTab] = useState('balance'); // 'balance', 'history', 'failures'
+  const [activeTab, setActiveTab] = useState('incoming'); // 'balance', 'incoming', 'history', 'failures'
   
-  // State for balance tracking, payment history, and failed payments
+  // State for balance tracking, incoming/unpaid, payment history, and failed payments
   const [balanceHistory, setBalanceHistory] = useState([]);
+  const [incomingPayments, setIncomingPayments] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [failedPayments, setFailedPayments] = useState([]);
 
   // Loading states
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [isLoadingIncoming, setIsLoadingIncoming] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingFailed, setIsLoadingFailed] = useState(false);
   
@@ -37,6 +39,7 @@ const PaymentReceiving = () => {
       try {
         // Set loading states
         setIsLoadingBalance(true);
+        setIsLoadingIncoming(true);
         setIsLoadingHistory(true);
         setIsLoadingFailed(true);
 
@@ -79,6 +82,48 @@ const PaymentReceiving = () => {
           console.error('Failed to load balance history:', error);
           // Fallback to empty array if API fails
           setBalanceHistory([]);
+        }
+
+        // Load incoming/unpaid invoices (awaiting payment, partially paid, overdue)
+        try {
+          const [awaitingRes, partialRes, overdueRes] = await Promise.all([
+            getInvoicesByStatus('awaiting payment', 1, 200),
+            getInvoicesByStatus('partially paid', 1, 200),
+            getInvoicesByStatus('overdue', 1, 200)
+          ]);
+          const flat = [
+            ...(awaitingRes?.data || []),
+            ...(partialRes?.data || []),
+            ...(overdueRes?.data || [])
+          ];
+          // Normalize and dedupe by invoice id
+          const normalized = flat.map(inv => ({
+            id: inv.id,
+            invoiceId: inv.id,
+            invoiceNumber: inv.invoiceNumber || inv.invoice_number || '',
+            customerName: inv.customer?.customerName || 'Unknown',
+            dueDate: inv.dueDate,
+            createdAt: inv.createdAt || inv.created_at,
+            totalAmount: Number(inv.totalAmount || 0),
+            paidAmount: Number(inv.paidAmount || 0),
+            remainingAmount: Number(
+              inv.remainingBalance != null ? inv.remainingBalance : (inv.totalAmount || 0) - (inv.paidAmount || 0)
+            ),
+            status: (inv.status || '').toLowerCase()
+          }));
+          const deduped = Object.values(
+            normalized.reduce((acc, cur) => {
+              const key = cur.invoiceId;
+              if (!acc[key]) acc[key] = cur;
+              return acc;
+            }, {})
+          );
+          setIncomingPayments(deduped);
+        } catch (error) {
+          console.error('Failed to load incoming payments:', error);
+          setIncomingPayments([]);
+        } finally {
+          setIsLoadingIncoming(false);
         }
 
         // Load payment history (completed payments only, deduplicated per invoice)
@@ -129,12 +174,14 @@ const PaymentReceiving = () => {
 
         // Clear loading states after all data is loaded
         setIsLoadingBalance(false);
+        // isLoadingIncoming is cleared in its finally
         setIsLoadingHistory(false);
         setIsLoadingFailed(false);
       } catch (error) {
         console.error('Failed to load payment data:', error);
         // Clear loading states on error as well
         setIsLoadingBalance(false);
+        setIsLoadingIncoming(false);
         setIsLoadingHistory(false);
         setIsLoadingFailed(false);
       }
@@ -210,13 +257,9 @@ const PaymentReceiving = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
             </div>
-            <button
-              onClick={handleManagePaymentMethods}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Manage Payment Methods
-            </button>
+            <div>
+             {/* Future feature */}
+            </div>
           </div>
         </div>
 
@@ -224,6 +267,20 @@ const PaymentReceiving = () => {
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('incoming')}
+                className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'incoming'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Inbox className="w-4 h-4" />
+                Incoming Payments
+                <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs">
+                  {incomingPayments.length}
+                </span>
+              </button>
               <button
                 onClick={() => setActiveTab('balance')}
                 className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
@@ -280,6 +337,18 @@ const PaymentReceiving = () => {
               onMarkAsPaid={handleMarkAsPaid}
             />
           )}
+
+        {/* Incoming Payments Tab Content */}
+        {activeTab === 'incoming' && (
+          <IncomingPaymentsTab
+            invoices={incomingPayments}
+            isLoading={isLoadingIncoming}
+            formatCurrency={formatCurrency}
+            formatDateTime={formatDateTime}
+            onSendReminder={handleSendReminder}
+            onMarkAsPaid={handleMarkAsPaid}
+          />
+        )}
 
         {/* Payment History Tab Content */}
         {activeTab === 'history' && (

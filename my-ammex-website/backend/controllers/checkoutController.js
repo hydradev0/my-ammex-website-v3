@@ -200,6 +200,7 @@ const confirmCheckout = async (req, res, next) => {
         email: customer.email1
       }),
       notes: req.body?.notes || null,
+      paymentTerms: req.body?.paymentTerms || '30 days',
       orderDate: new Date(),
       status: 'pending'
     }, { transaction: t });

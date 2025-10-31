@@ -44,6 +44,10 @@ function ViewOrderModal({ isOpen, onClose, order }) {
             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
           </span>
         </div>
+        <div className="col-span-2">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Terms</h3>
+          <p className="text-lg font-semibold text-gray-900">{order.paymentTerms || '30 days'}</p>
+        </div>
       </div>
 
       {/* Order Items */}
@@ -53,8 +57,8 @@ function ViewOrderModal({ isOpen, onClose, order }) {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model No.</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
@@ -63,8 +67,8 @@ function ViewOrderModal({ isOpen, onClose, order }) {
             <tbody className="bg-white divide-y divide-gray-200">
               {order.items?.map((item, index) => (
                 <tr key={index}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.modelNo}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.category}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.quantity}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₱{item.unitPrice.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₱{item.total.toFixed(2)}</td>

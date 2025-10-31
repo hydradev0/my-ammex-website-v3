@@ -64,11 +64,12 @@ const ProcessedInvoices = () => {
           dueDate: invoice.dueDate,
           totalAmount: Number(invoice.totalAmount),
           items: (invoice.items || []).map(item => ({
-            category: item.item?.category?.name || 'Unknown Category',
-            subcategory: item.item?.subcategory?.name || '',
+            // category: item.item?.category?.name || 'Unknown Category',
+            // subcategory: item.item?.subcategory?.name || '',
+            itemName: item.item?.itemName || '',
             modelNo: item.item?.modelNo || '',
             quantity: Number(item.quantity),
-            unit: item.item?.unit?.name || 'pcs',
+            unit: item.item?.unit?.name || '',
             unitPrice: Number(item.unitPrice),
             total: Number(item.totalPrice),
 

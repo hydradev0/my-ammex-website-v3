@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, X, Upload, UserCog } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
@@ -16,7 +16,7 @@ function TopBar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationsRef = useRef(null);
 
-  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, refreshNotifications } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const handleDataRestored = (dataType, restoredData) => {
     // Trigger a refresh for the specific data type without page reload
@@ -90,7 +90,11 @@ function TopBar() {
                 ) : (
                   <div className="divide-y divide-gray-200">
                     {notifications.map((n) => (
-                      <div key={n.id} className={`p-3 hover:bg-gray-50 ${!n.adminIsRead ? 'bg-blue-50' : ''}`}>
+                      <div
+                        key={n.id}
+                        className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${!n.adminIsRead ? 'bg-blue-50' : ''}`}
+                        onClick={() => markAsRead(n.id)}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${!n.adminIsRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</p>
@@ -100,21 +104,6 @@ function TopBar() {
                             />
                             <p className="text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                           </div>
-                          {!n.adminIsRead && (
-                            <button
-                              onClick={() => markAsRead(n.id)}
-                              className="text-[11px] cursor-pointer text-blue-600 hover:text-blue-800 flex-shrink-0"
-                            >
-                              Mark read
-                            </button>
-                          )}
-                          <button
-                            onClick={() => removeNotification(n.id)}
-                            className="text-gray-400 cursor-pointer hover:text-gray-600 text-sm flex-shrink-0"
-                            title="Dismiss"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
                         </div>
                       </div>
                     ))}
@@ -123,14 +112,12 @@ function TopBar() {
               </div>
               {notifications.length > 0 && (
                 <div className="p-3 border-t text-center border-gray-200 bg-gray-50">
-                  {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
                       className="text-sm cursor-pointer text-blue-600 hover:text-blue-800"
                     >
-                      Mark all as read
+                      {unreadCount > 0 ? 'Mark all as read' : ''}
                     </button>
-                  )}
                 </div>
               )}
             </div>

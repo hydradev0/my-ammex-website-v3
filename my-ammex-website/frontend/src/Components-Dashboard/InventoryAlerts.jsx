@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown } from 'lucide-react';
+import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown, CopyIcon } from 'lucide-react';
 import { getInventoryAlerts } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,6 +14,7 @@ const InventoryAlerts = () => {
   const [activeTab, setActiveTab] = useState('lowStock'); // 'lowStock' or 'overstock'
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const severityDropdownRef = useRef(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   const severityOptions = [
     { value: 'all', label: 'All Severities' },
@@ -258,28 +259,74 @@ const InventoryAlerts = () => {
                     {/* Alert Message */}
                     {alert.message && (
                       <div className='py-3'>
-                      <span className={`p-2 rounded-lg text-sm font-medium ${
-                        alert.severity === 'critical' ? 'bg-red-50 text-red-800' :
-                        alert.severity === 'high' ? 'bg-orange-50 text-orange-800' :
-                        'bg-yellow-50 text-yellow-800'
-                      }`}>
-                        {alert.message}
-                      </span>
+                        <span className={`p-2 rounded-lg text-sm font-medium ${
+                          alert.severity === 'critical' ? 'bg-red-50 text-red-800' :
+                          alert.severity === 'high' ? 'bg-orange-50 text-orange-800' :
+                          'bg-yellow-50 text-yellow-800'
+                        }`}>
+                          {alert.message}
+                        </span>
                       </div>
                     )}
-                    
-                    <h3 className="text-sm text-gray-500 mb-1">
-                      Model: <span className="font-semibold text-gray-900">{alert.modelNo || 'Unknown Model'}</span>
-                      {alert.itemName && (
-                        <> | Item Name: <span className="font-semibold text-gray-900">{alert.itemName}</span></>
-                      )}
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-2">
-                      Category: <span className="font-semibold text-gray-900">{alert.categoryName || 'N/A'}</span>
-                      {alert.vendor && (
-                        <> | Vendor: <span className="font-semibold text-gray-900">{alert.vendor}</span></>
-                      )}
-                    </p>
+
+                    {/* Item Code with copy */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-xs text-gray-500">
+                            Item Code: <span className="font-semibold text-gray-900">{alert.itemCode || alert.item_code || alert.item?.itemCode || '-'}</span>
+                          </p>
+                          {Boolean(alert.itemCode || alert.item_code || alert.item?.itemCode) && (
+                            <button
+                              type="button"
+                              className="text-xs cursor-pointer px-1 py-1 border-transparent rounded hover:bg-gray-100 text-gray-700"
+                              onClick={() => {
+                                const code = alert.itemCode || alert.item_code || alert.item?.itemCode;
+                                if (code) {
+                                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                                    navigator.clipboard.writeText(code);
+                                  } else {
+                                    const textarea = document.createElement('textarea');
+                                    textarea.value = code;
+                                    document.body.appendChild(textarea);
+                                    textarea.select();
+                                    try { document.execCommand('copy'); } catch (e) {}
+                                    document.body.removeChild(textarea);
+                                  }
+                                  setCopiedId(alert.id);
+                                  window.clearTimeout(window.__copyTimeout);
+                                  window.__copyTimeout = window.setTimeout(() => setCopiedId(null), 2000);
+                                }
+                              }}
+                              title="Copy item code"
+                            >
+                              <CopyIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                          {copiedId === alert.id && (
+                            <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">Copied!</span>
+                          )}
+                        </div>
+
+                    {/* Details split: left (model, category) | right (item name, vendor) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                      <div>
+                        <h3 className="text-sm text-gray-500">
+                          Model: <span className="font-semibold text-gray-900">{alert.modelNo || ''}</span>
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Item Name: <span className="font-semibold text-gray-900">{alert.itemName}</span>
+                        </p>
+                      </div>
+                      <div className="">
+                          <h3 className="text-sm text-gray-500">
+                            Category: <span className="font-semibold text-gray-900">{alert.categoryName || ''}</span>
+                          </h3>
+                        {alert.vendor && (
+                          <p className="text-sm text-gray-500">
+                            Vendor: <span className="font-semibold text-gray-900">{alert.vendor}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     
                     {activeTab === 'lowStock' ? (
                       <div className="grid grid-cols-2 gap-4 text-sm">

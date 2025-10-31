@@ -564,6 +564,7 @@ const getMyOrders = async (req, res, next) => {
           totalAmount: Number(o.totalAmount),
           items: (o.items || []).map((it) => ({
             name: it.item?.itemName,
+            model: it.item?.modelNo,
             quantity: Number(it.quantity),
             price: Number(it.unitPrice),
             total: Number(it.totalPrice)

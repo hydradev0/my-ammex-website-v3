@@ -281,9 +281,14 @@ const createInvoiceFromOrder = async (orderId, userId) => {
       throw new Error('Invoice already exists for this order');
     }
 
-    // Calculate due date (30 days from invoice date)
+    // Get payment terms from order or default to 30 days
+    const paymentTerms = order.paymentTerms || '30 days';
+    
+    // Calculate due date based on payment terms
     const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
+    const daysMatch = paymentTerms.match(/(\d+)/);
+    const days = daysMatch ? parseInt(daysMatch[1], 10) : 30;
+    dueDate.setDate(dueDate.getDate() + days);
 
     // Use the order total as the final amount (it already includes markup and VAT)
     const orderTotal = order.finalAmount || order.totalAmount;
@@ -299,7 +304,7 @@ const createInvoiceFromOrder = async (orderId, userId) => {
       paidAmount: 0.00,
       remainingBalance: orderTotal, // Balance is the same as total amount
       status: 'awaiting payment',
-      paymentTerms: '30 days',
+      paymentTerms: paymentTerms,
       createdBy: userId
     });
 
