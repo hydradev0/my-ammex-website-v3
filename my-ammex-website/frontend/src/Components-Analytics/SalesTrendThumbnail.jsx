@@ -16,7 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { getHistoricalSales } from '../services/analytics';
 
-const SalesPerformance = () => {
+const SalesTrendThumbnail = () => {
   const navigate = useNavigate();
 
   // State for API data (for quick stats)
@@ -233,4 +233,4 @@ const SalesPerformance = () => {
   );
 };
 
-export default SalesPerformance;
+export default SalesTrendThumbnail;

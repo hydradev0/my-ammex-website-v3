@@ -10,6 +10,7 @@ import ProductDetailsModal from './ProductDetailsModal';
 import { addToCart, getLocalCart, initializeCartFromDatabase, cleanCart } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { sendWebsiteEvent } from '../services/websiteAnalytics';
 
 
 const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
@@ -131,16 +132,42 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
       if (result.success) {
         console.log('🛒 [CART SERVICE] Item added successfully:', result.cart.length, 'items');
         setCart(result.cart);
-        
+
+        // Track add to cart event for analytics
+        try {
+          await sendWebsiteEvent({
+            event_type: 'add_to_cart',
+            product_id: product.id.toString(),
+            product_name: product.name,
+            model_no: product.modelNo,
+            category: product.category,
+            value_cents: Math.round(product.price * 100),
+            currency: 'PHP',
+            page_path: window.location.pathname,
+            session_id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            user_id: user?.id?.toString() || null,
+            properties: {
+              quantity: product.quantity || 1,
+              item_code: product.itemCode,
+              vendor: product.vendor,
+              total_cart_items: result.cart.length,
+              source: 'industrial_pos'
+            }
+          });
+        } catch (error) {
+          // Silently fail analytics tracking to avoid disrupting user experience
+          console.warn('Analytics tracking failed for add_to_cart:', error);
+        }
+
         // Show success notification
         setAddedProductName(product.modelNo);
         setShowAddToCartNotification(true);
-        
+
         // Start animation after a small delay
         setTimeout(() => {
           setIsAddToCartNotificationAnimating(true);
         }, 50);
-        
+
         // Auto-hide notification after 5 seconds
         setTimeout(() => {
           setIsAddToCartNotificationAnimating(false);
@@ -214,9 +241,33 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
     };
   }, [cart]);
 
-  const handleCardClick = (product) => {
+  const handleCardClick = async (product) => {
     setSelectedProduct(product);
     setShowProductModal(true);
+
+    // Track product click event for analytics
+    try {
+      await sendWebsiteEvent({
+        event_type: 'product_click',
+        product_id: product.id.toString(),
+        product_name: product.name,
+        model_no: product.modelNo,
+        category: product.category,
+        page_path: window.location.pathname,
+        referrer: document.referrer || null,
+        session_id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        user_id: user?.id?.toString() || null,
+        properties: {
+          item_code: product.itemCode,
+          vendor: product.vendor,
+          price_cents: Math.round(product.price * 100),
+          source: 'product_grid_click'
+        }
+      });
+    } catch (error) {
+      // Silently fail analytics tracking to avoid disrupting user experience
+      console.warn('Analytics tracking failed:', error);
+    }
   };
 
   const handleCloseProductModal = () => {

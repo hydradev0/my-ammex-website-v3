@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const analyticsController = require('../controllers/analyticsController');
+const websiteAnalyticsController = require('../controllers/websiteAnalyticsController');
 const { protect } = require('../middleware/auth');
 
 // AI Forecasting Routes
@@ -50,3 +51,16 @@ router.post('/refresh-facts', /* protect, */ analyticsController.refreshSalesFac
 
 
 module.exports = router; 
+// Website traffic analytics (monthly-friendly, aggregated)
+// @route   GET /api/analytics/website/category-traffic
+router.get('/website/category-traffic', /* protect, */ (req, res) => websiteAnalyticsController.getCategoryTraffic(req, res));
+// @route   GET /api/analytics/website/top-clicked-items
+router.get('/website/top-clicked-items', /* protect, */ (req, res) => websiteAnalyticsController.getTopClickedItems(req, res));
+// @route   GET /api/analytics/website/cart-additions
+router.get('/website/cart-additions', /* protect, */ (req, res) => websiteAnalyticsController.getCartAdditions(req, res));
+// @route   POST /api/analytics/website/refresh
+router.post('/website/refresh', /* protect, */ (req, res) => websiteAnalyticsController.refresh(req, res));
+// @route   POST /api/analytics/events
+router.post('/events', /* protect, */ (req, res) => websiteAnalyticsController.ingestEvent(req, res));
+// @route   POST /api/analytics/website/generate-insights
+router.post('/website/generate-insights', /* protect, */ (req, res) => websiteAnalyticsController.generateInsights(req, res));

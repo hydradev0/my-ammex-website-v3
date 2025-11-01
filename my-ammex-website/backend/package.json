@@ -15,7 +15,9 @@
     "create:cart-tables": "node scripts/createCartTables.js",
     "remove-phone": "node scripts/removePhoneNumberColumn.js",
     "postinstall": "npx puppeteer browsers install chrome || echo 'Chrome installation failed, will use fallback PDF generation'",
-    "prestart": "echo 'Starting Ammex Backend Server...'"
+    "prestart": "echo 'Starting Ammex Backend Server...'",
+    "setup:website-analytics": "node scripts/setupWebsiteAnalytics.js",
+    "refresh:website-analytics": "node scripts/refreshWebsiteAnalytics.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -47,3 +49,5 @@
     "sequelize-cli": "^6.6.2"
   }
 }
+
+

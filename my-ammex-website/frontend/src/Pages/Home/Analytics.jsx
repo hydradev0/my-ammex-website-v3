@@ -4,8 +4,9 @@ import { Loader, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Import new components
-import SalesPerformance from '../../Components-Analytics/SalesPerformance';
-import CustomerPerformance from '../../Components-Analytics/CustomerPerformance';
+import SalesTrendThumbnail from '../../Components-Analytics/SalesTrendThumbnail';
+import CustomerPurchaseThumbnail from '../../Components-Analytics/CustomerPurchaseThumbnail';
+import WebsiteDataThumbnail from '../../Components-Analytics/WebsiteDataThumbnail';
 
 import MetricsCard from '../../Components-Analytics/MetricsCard';
 import { getAnalyticsCardsForRole } from '../../utils/roleManager';
@@ -162,10 +163,13 @@ const Analytics = () => {
               {isAdmin && (
                 <div className="flex flex-col gap-6">
                   <div className="w-full">
-                    <SalesPerformance/>
+                    <SalesTrendThumbnail/>
                   </div>
                   <div className="w-full">
-                    <CustomerPerformance />
+                    <CustomerPurchaseThumbnail />
+                  </div>
+                  <div className="w-full">
+                    <WebsiteDataThumbnail />
                   </div>
                 </div>
               )}
@@ -177,7 +181,7 @@ const Analytics = () => {
                     <SalesPerformance />
                   </div>
                   <div className="w-full">
-                    <CustomerPerformance />
+                    <CustomerPurchaseThumbnail />
                   </div>
                 </div>
               )}
