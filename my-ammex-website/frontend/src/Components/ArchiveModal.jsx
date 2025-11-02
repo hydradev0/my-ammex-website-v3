@@ -6,7 +6,6 @@ import ScrollLock from './ScrollLock';
 import { useAuth } from '../contexts/AuthContext';
 import { getArchivedItems, restoreItem } from '../services/inventoryService';
 import { getCustomers, updateCustomer } from '../services/customerService';
-import { getArchivedAccounts, restoreAccount } from '../services/authService';
 import { getArchivedSuppliers, restoreSupplier } from '../services/supplierService';
 
 function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
@@ -17,16 +16,15 @@ function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
   const showItemsTab = role === 'Admin' || role === 'Warehouse Supervisor';
   const showCustomersTab = role === 'Admin' || role === 'Sales Marketing';
   const showSuppliersTab = role === 'Admin' || role === 'Warehouse Supervisor';
-  const showAccountsTab = role === 'Admin';
 
-  const defaultTab = showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : showSuppliersTab ? 'Suppliers' : 'Accounts';
+  const defaultTab = showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : 'Suppliers';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : showSuppliersTab ? 'Suppliers' : 'Accounts');
+      setActiveTab(showItemsTab ? 'Items' : showCustomersTab ? 'Customers' : 'Suppliers');
     }
-  }, [isOpen, showItemsTab, showCustomersTab, showSuppliersTab]);
+  }, [isOpen, showItemsTab, showCustomersTab]);
 
   // Items state (server-side pagination only)
   const [items, setItems] = useState([]);
@@ -205,65 +203,6 @@ function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
     }
   };
 
-  // Accounts state (server-side pagination only)
-  const [accounts, setAccounts] = useState([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [accountsError, setAccountsError] = useState('');
-  const [accountsPage, setAccountsPage] = useState(1);
-  const [accountsPerPage] = useState(10);
-  const [accountsTotalPages, setAccountsTotalPages] = useState(1);
-  const [accountsTotal, setAccountsTotal] = useState(0);
-  const [restoringAccounts, setRestoringAccounts] = useState(new Set());
-
-  const fetchArchivedAccountsData = async ({ page = accountsPage, limit = accountsPerPage } = {}) => {
-    try {
-      setAccountsLoading(true);
-      setAccountsError('');
-      const resp = await getArchivedAccounts({ page, limit });
-      if (resp?.success) {
-        setAccounts(resp.data || []);
-        setAccountsPage(resp.pagination?.currentPage || page);
-        setAccountsTotalPages(resp.pagination?.totalPages || 1);
-        setAccountsTotal(resp.pagination?.totalItems || 0);
-      } else {
-        setAccountsError(resp?.message || 'Failed to load archived accounts');
-      }
-    } catch (err) {
-      setAccountsError(err.message || 'Failed to load archived accounts');
-    } finally {
-      setAccountsLoading(false);
-    }
-  };
-
-  // Fetch accounts when modal opens or pagination changes
-  useEffect(() => {
-    if (!isOpen || activeTab !== 'Accounts' || !showAccountsTab) return;
-    fetchArchivedAccountsData({ page: accountsPage, limit: accountsPerPage });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, activeTab, accountsPage, accountsPerPage, showAccountsTab]);
-
-  const handleRestoreAccount = async (account) => {
-    try {
-      setRestoringAccounts(prev => new Set([...prev, account.id]));
-      const resp = await restoreAccount(account.id);
-      if (resp?.success) {
-        // Refresh current page
-        fetchArchivedAccountsData();
-        // Notify parent component that data was restored
-        if (onDataRestored) {
-          onDataRestored('account', account);
-        }
-      }
-    } catch (err) {
-      console.error('Restore account failed:', err);
-    } finally {
-      setRestoringAccounts(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(account.id);
-        return newSet;
-      });
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -309,14 +248,6 @@ function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
                 onClick={() => setActiveTab('Suppliers')}
               >
                 Suppliers
-              </button>
-            )}
-            {showAccountsTab && (
-              <button
-                className={`px-3 cursor-pointer py-2 -mb-px border-b-2 ${activeTab === 'Accounts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
-                onClick={() => setActiveTab('Accounts')}
-              >
-                Accounts
               </button>
             )}
           </div>
@@ -528,75 +459,6 @@ function ArchiveModal({ isOpen = false, onClose, onDataRestored }) {
             </div>
           )}
 
-          {activeTab === 'Accounts' && showAccountsTab && (
-            <div className="flex flex-col gap-4">
-              {/* Error */}
-              {accountsError && (
-                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">{accountsError}</div>
-              )}
-
-              {/* List */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="grid grid-cols-6 gap-2 px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700">
-                  <div>Name</div>
-                  <div>Email</div>
-                  <div>Role</div>
-                  <div>Department</div>
-                  <div>Deleted At</div>
-                  <div className="text-right">Action</div>
-                </div>
-                <div>
-                  {accountsLoading ? (
-                    <div className="p-6 text-center text-gray-600">Loading...</div>
-                  ) : accounts.length === 0 ? (
-                    <div className="p-6 text-center text-gray-600">No archived accounts</div>
-                  ) : (
-                    accounts.map((account, idx) => (
-                      <div key={account.id} className={`grid grid-cols-6 gap-2 px-4 py-3 text-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                        <div className="truncate" title={account.name}>{account.name}</div>
-                        <div className="truncate" title={account.email}>{account.email}</div>
-                        <div className="truncate" title={account.role}>{account.role}</div>
-                        <div className="truncate" title={account.department}>{account.department}</div>
-                        <div>{account.updatedAt ? new Date(account.updatedAt).toLocaleString() : '-'}</div>
-                        <div className="text-right">
-                          <button
-                            onClick={() => handleRestoreAccount(account)}
-                            disabled={restoringAccounts.has(account.id)}
-                            className="inline-flex cursor-pointer items-center gap-1 px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <RotateCcw className={`h-4 w-4 ${restoringAccounts.has(account.id) ? 'animate-spin' : ''}`} /> 
-                            {restoringAccounts.has(account.id) ? 'Restoring...' : 'Restore'}
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Simple Pagination */}
-              <div className="flex items-center justify-between text-sm text-gray-700">
-                <div>Total: {accountsTotal}</div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setAccountsPage(Math.max(1, accountsPage - 1))}
-                    disabled={accountsPage <= 1}
-                    className="px-3 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
-                  >
-                    Prev
-                  </button>
-                  <span>Page {accountsPage} of {accountsTotalPages}</span>
-                  <button
-                    onClick={() => setAccountsPage(Math.min(accountsTotalPages, accountsPage + 1))}
-                    disabled={accountsPage >= accountsTotalPages}
-                    className="px-3 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

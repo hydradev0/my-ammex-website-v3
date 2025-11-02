@@ -22,10 +22,12 @@ const CompanyProfile = () => {
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Load company profile data on component mount
   React.useEffect(() => {
     const fetchCompanyProfile = async () => {
+      setIsLoadingData(true);
       try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/settings/company`, {
           headers: {
@@ -48,6 +50,8 @@ const CompanyProfile = () => {
         }
       } catch (error) {
         console.error('Failed to fetch company profile:', error);
+      } finally {
+        setIsLoadingData(false);
       }
     };
 
@@ -102,102 +106,111 @@ const CompanyProfile = () => {
   return (
     <>
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Company Name *
-            </label>
-            <input
-              type="text"
-              name="companyName"
-              value={formData.companyName}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email *
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Website
-            </label>
-            <input
-              type="url"
-              name="website"
-              value={formData.website}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div> */}
+      {isLoadingData ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading company profile...</p>
         </div>
-        <div className="mt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Address
-          </label>
-          <textarea
-            name="address"
-            value={formData.address}
-            onChange={handleInputChange}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        {/* <div className="mt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Company Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div> */}
-      </div>
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={isLoading}
-          className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isLoading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save size={16} />
-              Save Changes
-            </>
-          )}
-        </button>
-      </div>
+      ) : (
+        <>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div> */}
+            </div>
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            {/* <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div> */}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleSave}
+              disabled={isLoading}
+              className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Save Changes
+                </>
+              )}
+            </button>
+          </div>
+        </>
+      )}
     </div>
     
     {/* Success Modal */}
@@ -220,6 +233,7 @@ const MarkupSettings = () => {
   });
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [markupError, setMarkupError] = useState('');
 
   // Load markup settings on component mount
   React.useEffect(() => {
@@ -238,6 +252,7 @@ const MarkupSettings = () => {
               markupRate: data.data.markup_rate || 30,
               markupType: data.data.markup_type || 'percentage'
             });
+            setMarkupError(''); // Clear any errors when loading settings
           }
         }
       } catch (error) {
@@ -250,6 +265,25 @@ const MarkupSettings = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'markupRate') {
+      // Validate markup percentage on change
+      const numValue = parseFloat(value);
+      if (value === '') {
+        // Clear error if field is empty
+        setMarkupError('');
+      } else if (!isNaN(numValue)) {
+        if (numValue < 0) {
+          setMarkupError('Markup percentage must be a non-negative number');
+        } else if (numValue > 150) {
+          setMarkupError('Markup percentage cannot exceed 150%');
+        } else {
+          // Valid range, clear error
+          setMarkupError('');
+        }
+      }
+    }
+    
     setMarkupSettings(prev => ({
       ...prev,
       [name]: value
@@ -257,6 +291,22 @@ const MarkupSettings = () => {
   };
 
   const handleSave = async () => {
+    // Validate before submitting
+    const markupValue = parseFloat(markupSettings.markupRate);
+    
+    if (isNaN(markupValue) || markupValue < 0) {
+      setMarkupError('Markup percentage must be a non-negative number');
+      return;
+    }
+    
+    if (markupValue > 150) {
+      setMarkupError('Markup percentage cannot exceed 150%');
+      return;
+    }
+    
+    // Clear any existing errors
+    setMarkupError('');
+    
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/settings/markup`, {
         method: 'PUT',
@@ -265,7 +315,7 @@ const MarkupSettings = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          markup_rate: parseFloat(markupSettings.markupRate),
+          markup_rate: markupValue,
           markup_type: markupSettings.markupType
         })
       });
@@ -315,13 +365,16 @@ const MarkupSettings = () => {
               value={markupSettings.markupRate}
               onChange={handleInputChange}
               min="0"
-              max="1000"
-              step="0.01"
-              className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
-              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              max="150"
+              className={`w-full max-w-xs px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
+              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+              ${markupError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             />
+            {markupError && (
+              <p className="text-red-500 text-sm mt-1">{markupError}</p>
+            )}
             <p className="text-sm text-gray-500 mt-1">
-              This percentage will be applied to all new products when creating items.
+              This percentage will be applied to all new products when creating items. Must be between 0 and 150%.
             </p>
           </div>
         </div>

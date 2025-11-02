@@ -344,6 +344,14 @@ const updateUser = async (req, res, next) => {
       // Update user record
       await user.update(updateData);
       
+      // If isActive status is being updated, also update linked customer
+      if (updateData.hasOwnProperty('isActive') && user.customer) {
+        await Customer.update(
+          { isActive: updateData.isActive },
+          { where: { userId: targetUserId } }
+        );
+      }
+      
       // If user has a linked customer and we're updating name/email, sync to customer
       if (user.customer && (updateData.name || updateData.email)) {
         const customerUpdateData = {};

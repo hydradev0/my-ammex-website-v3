@@ -22,31 +22,39 @@ DROP VIEW IF EXISTS u_customer_bulk_monthly_by_name CASCADE;
 
 -- Live View 1: Sales Monthly
 CREATE OR REPLACE VIEW v_sales_monthly_live AS
-SELECT 
-  date_trunc('month', i.invoice_date)::date AS month_start,
-  COALESCE(SUM(i.total_amount), 0) AS total_revenue,
-  COUNT(i.id) AS total_orders,
-  COALESCE(SUM(ii.quantity), 0) AS total_units,
-  COALESCE(AVG(i.total_amount), 0) AS avg_order_value,
-  COUNT(DISTINCT CASE 
-    WHEN DATE_TRUNC('month', c.created_at) = DATE_TRUNC('month', i.invoice_date) 
+WITH invoice_items_agg AS (
+  -- Aggregate invoice items separately to avoid duplicates
+  SELECT 
+    invoice_id,
+    COALESCE(SUM(quantity), 0) AS total_quantity
+  FROM "InvoiceItem"
+  GROUP BY invoice_id
+)
+WITH invoice_items_agg AS (
+  -- Aggregate invoice items separately to avoid duplicates
+  SELECT 
+    invoice_id,
+  COALESCE(SUM(iia.total_quantity), 0)::bigint AS total_units,y
+  FROM "InvoiceItem"
+  GROUP BY invoice_id
+)
     THEN c.id 
   END) AS new_customers
 FROM "Invoice" i
-LEFT JOIN "InvoiceItem" ii ON i.id = ii.invoice_id
-LEFT JOIN "Customer" c ON i.customer_id = c.id
+LEFT JOIN invoice_items_agg iia ON i.id = iia.invoice_id
+  COALESCE(SUM(iia.total_quantity), 0) AS total_units,
 WHERE i.invoice_date >= '2023-01-01'
 GROUP BY date_trunc('month', i.invoice_date);
 
-COMMENT ON VIEW v_sales_monthly_live IS 'Live view: sales aggregations from Invoice tables';
+COMMENT ON VIEW v_sales_monthly_live IS 'Live view: sales aggregations from Invoice tables (restructured to prevent duplicates)';
 
 -- Live View 2: Top Products Monthly (Top 10 per month)
-CREATE OR REPLACE VIEW v_top_products_monthly_live AS
+LEFT JOIN invoice_items_agg iia ON i.id = iia.invoice_id
 WITH ranked_products AS (
   SELECT 
     date_trunc('month', i.invoice_date)::date as month_start,
     item.id as item_id,
-    item.model_no,
+COMMENT ON VIEW v_sales_monthly_live IS 'Live view: sales aggregations from Invoice tables (restructured to prevent duplicates)';
     COALESCE(c.name, c_item.name) as category_name,
     COALESCE(ii.category_id, item.category_id) as category_id,
     COALESCE(ii.subcategory_id, item.subcategory_id) as subcategory_id,

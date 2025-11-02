@@ -6,9 +6,20 @@ import * as XLSX from 'xlsx';
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Helper function to get current month name
+const getCurrentMonth = () => {
+  const now = new Date();
+  return months[now.getMonth()];
+};
+
+// Helper function to get current year
+const getCurrentYear = () => {
+  return new Date().getFullYear().toString();
+};
+
 export default function MonthlyReport() {
-  const [selectedYear, setSelectedYear] = useState('2025');
-  const [selectedMonth, setSelectedMonth] = useState('October');
+  const [selectedYear, setSelectedYear] = useState(getCurrentYear());
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
   const yearDropdownRef = useRef(null);

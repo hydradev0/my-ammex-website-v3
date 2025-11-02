@@ -5,17 +5,28 @@ const AccountsTable = ({
   accounts, 
   onEdit, 
   onPasswordChange, 
-  onDelete, 
-  roleBadgeStyle = 'gray' 
+  onToggleStatus,
+  roleBadgeStyle = 'gray',
+  isLoading = false
 }) => {
   const getBadgeClasses = (style) => {
     switch (style) {
       case 'blue':
         return 'bg-blue-100 text-blue-700 ring-blue-200';
+      case 'green':
+        return 'bg-green-100 text-green-700 ring-green-200';
+      case 'orange':
+        return 'bg-orange-100 text-orange-700 ring-orange-200';
       case 'gray':
       default:
         return 'bg-gray-100 text-gray-700 ring-gray-200';
     }
+  };
+
+  const getStatusBadgeClasses = (isActive) => {
+    return isActive !== false
+      ? 'bg-green-100 text-green-800 ring-green-200'
+      : 'bg-red-100 text-red-800 ring-red-200';
   };
 
   return (
@@ -27,29 +38,47 @@ const AccountsTable = ({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {accounts.map((account) => (
-              <tr key={account.id} className="hover:bg-gray-50/70">
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{account.name}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{account.email}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${getBadgeClasses(roleBadgeStyle)}`}>
-                    {account.role}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm">
-                  <ActionButtons
-                    user={account}
-                    onEdit={onEdit}
-                    onPasswordChange={onPasswordChange}
-                    onDelete={onDelete}
-                  />
+            {accounts.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                  No accounts found
                 </td>
               </tr>
-            ))}
+            ) : (
+              accounts.map((account) => (
+                <tr 
+                  key={account.id} 
+                  className={`hover:bg-gray-50/70 ${account.isActive === false ? 'opacity-60' : ''}`}
+                >
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{account.name}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">{account.email}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${getBadgeClasses(roleBadgeStyle)}`}>
+                      {account.role}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClasses(account.isActive)}`}>
+                      {account.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <ActionButtons
+                      user={account}
+                      onEdit={onEdit}
+                      onPasswordChange={onPasswordChange}
+                      onToggleStatus={onToggleStatus}
+                      isLoading={isLoading}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

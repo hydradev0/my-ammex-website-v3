@@ -39,6 +39,38 @@ function NewItem({
   // State for markup settings
   const [markupRate, setMarkupRate] = useState(30); // Default to 30%
   
+  // Helper functions for number formatting with commas
+  const formatNumberWithCommas = (value) => {
+    if (!value || value === '') return '';
+    // Remove commas first, then ensure only digits and one decimal point remain
+    let numStr = value.toString().replace(/,/g, '').replace(/[^\d.]/g, '');
+    if (numStr === '' || numStr === '.') return numStr;
+    
+    // Handle multiple decimal points - keep only the first one
+    const firstDecimalIndex = numStr.indexOf('.');
+    if (firstDecimalIndex !== -1) {
+      const beforeDecimal = numStr.substring(0, firstDecimalIndex);
+      const afterDecimal = numStr.substring(firstDecimalIndex + 1).replace(/\./g, '');
+      numStr = beforeDecimal + '.' + afterDecimal;
+    }
+    
+    // Split into integer and decimal parts
+    const parts = numStr.split('.');
+    const integerPart = parts[0] || '';
+    const decimalPart = parts[1];
+    
+    // Add commas to integer part
+    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Combine with decimal part if it exists
+    return decimalPart !== undefined ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+  };
+  
+  const removeCommas = (value) => {
+    if (!value) return '';
+    return value.toString().replace(/,/g, '');
+  };
+  
   // Use suppliers data for vendor dropdown (deduplicated and alphabetically sorted)
   const vendors = suppliers.length > 0 
     ? Array.from(
@@ -154,21 +186,29 @@ function NewItem({
   // Handle form input changes
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    let updatedFormData = { ...formData, [id]: value };
+    let updatedFormData = { ...formData };
     
-    // Auto-calculate selling price when supplier price changes
-    if (id === 'supplierPrice' && value && !isNaN(value)) {
-      const supplierPrice = parseFloat(value);
-      const sellingPrice = supplierPrice * (1 + markupRate / 100); // Dynamic markup rate
-      updatedFormData.sellingPrice = sellingPrice.toFixed(2);
+    // Handle supplier price with comma formatting and auto-calculate selling price
+    if (id === 'supplierPrice') {
+      // Remove commas and store the raw numeric value
+      const numericValue = removeCommas(value);
+      updatedFormData.supplierPrice = numericValue;
+      
+      // Auto-calculate selling price when supplier price changes
+      if (numericValue && !isNaN(parseFloat(numericValue))) {
+        const supplierPrice = parseFloat(numericValue);
+        const sellingPrice = supplierPrice * (1 + markupRate / 100);
+        updatedFormData.sellingPrice = sellingPrice.toFixed(2);
+      } else {
+        // Clear selling price field when supplier price is empty
+        updatedFormData.sellingPrice = '';
+      }
+    } else {
+      // For other fields, store value as-is
+      updatedFormData[id] = value;
     }
     
     setFormData(updatedFormData);
-
-    {/* Clear selling price field when supplier price is empty */}
-    if (value === '') {
-      updatedFormData.sellingPrice = '';
-    }
 
     // Clear error when field is edited
     if (errors[id]) {
@@ -204,12 +244,20 @@ function NewItem({
 
     if (!formData.sellingPrice.trim()) {
       newErrors.sellingPrice = 'Selling price is required';
+    } else {
+      const sellingPriceNum = parseFloat(removeCommas(formData.sellingPrice));
+      if (isNaN(sellingPriceNum) || sellingPriceNum <= 0) {
+        newErrors.sellingPrice = 'Selling price must be a positive number';
+      }
     }
 
     if (!formData.supplierPrice.trim()) {
       newErrors.supplierPrice = 'Supplier price is required';
-    } else if (isNaN(formData.supplierPrice) || Number(formData.supplierPrice) < 0) {
-      newErrors.supplierPrice = 'Supplier price must be a positive number';
+    } else {
+      const supplierPriceNum = parseFloat(removeCommas(formData.supplierPrice));
+      if (isNaN(supplierPriceNum) || supplierPriceNum < 0) {
+        newErrors.supplierPrice = 'Supplier price must be a positive number';
+      }
     }
 
     if (!formData.unit.trim()) {
@@ -305,8 +353,8 @@ function NewItem({
           modelNo: formData.modelNo,
           vendor: formData.vendor,
           supplierId: selectedSupplier.id,
-          sellingPrice: Number(formData.sellingPrice),
-          supplierPrice: Number(formData.supplierPrice),
+          sellingPrice: Number(removeCommas(formData.sellingPrice)),
+          supplierPrice: Number(removeCommas(formData.supplierPrice)),
           unitId: selectedUnit.id,
           quantity: Number(formData.quantity),
           categoryId: selectedCategory.id,
@@ -603,23 +651,23 @@ function NewItem({
                 <FormField
                   id="supplierPrice"
                   label={<span>Supplier Price <span className="text-red-500">*</span></span>}
-                  type="number"
-                  value={formData.supplierPrice}
+                  type="text"
+                  value={formatNumberWithCommas(formData.supplierPrice)}
                   onChange={handleInputChange}
                   error={errors.supplierPrice}
                   prefix="₱"
-                  min="0"
+                  inputMode="decimal"
                 />
                 <FormField
                   id="sellingPrice"
                   label={<span>Selling Price <span className="text-red-500">*</span> <span className="text-xs text-gray-500">(Auto-calculated: Supplier Price + {markupRate}%)</span></span>}
-                  type="number"
-                  value={formData.sellingPrice}
-                  onChange={handleInputChange}
+                  type="text"
+                  value={formatNumberWithCommas(formData.sellingPrice)}
                   error={errors.sellingPrice}
                   prefix="₱"
-                  min="0"
-                  disabled={formData.supplierPrice && !isNaN(formData.supplierPrice)}
+                  inputMode="decimal"
+                  disabled={true}
+                  readOnly={true}
                 />
               </div>
             </div>
@@ -643,7 +691,6 @@ function NewItem({
                   onChange={handleInputChange}
                   error={errors.minLevel}
                   min="0"
-                  step="1"
                 />
                 <FormField
                   id="quantity"
@@ -653,7 +700,6 @@ function NewItem({
                   onChange={handleInputChange}
                   error={errors.quantity}
                   min="0"
-                  step="1"
                 />
                 <FormField
                   id="maxLevel"
@@ -663,7 +709,6 @@ function NewItem({
                   onChange={handleInputChange}
                   error={errors.maxLevel}
                   min="0"
-                  step="1"
                 />
               </div>
             </div>

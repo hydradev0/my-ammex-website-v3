@@ -1774,7 +1774,7 @@ const initializeModels = (sequelize) => {
       defaultValue: 'string'
     },
     category: {
-      type: DataTypes.ENUM('company', 'tax', 'payments', 'invoice', 'system'),
+      type: DataTypes.ENUM('company', 'tax', 'payments', 'invoice', 'system', 'markup'),
       allowNull: false,
       validate: {
         notEmpty: { msg: 'Category is required' }
@@ -1791,7 +1791,7 @@ const initializeModels = (sequelize) => {
       defaultValue: true
     }
   }, {
-    tableName: 'settings',
+    tableName: 'Settings',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'

@@ -3,7 +3,6 @@ import { apiCall } from '../utils/apiConfig';
 import { Search, X } from 'lucide-react';
 import { TabNavigation, SalesDepartmentTab, WarehouseDepartmentTab, ClientServicesTab } from './AccountTabs';
 import { AccountModal, PasswordChangeModal } from './AccountModals';
-import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import SuccessModal from '../Components/SuccessModal';
 
 const ManageAccountTable = () => {
@@ -49,11 +48,6 @@ const ManageAccountTable = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordFieldErrors, setPasswordFieldErrors] = useState({});
 
-  // Delete confirmation modal state
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -83,7 +77,8 @@ const ManageAccountTable = () => {
 
   const fetchAllUsers = async () => {
     try {
-      const response = await apiCall('/auth/users');
+      // Fetch all users including inactive
+      const response = await apiCall('/auth/users?includeInactive=true');
       const users = response.data;
       
       // Store all users for duplicate checking
@@ -199,58 +194,39 @@ const ManageAccountTable = () => {
     setOpen(true);
   };
 
-  const handleDelete = (user) => {
-    setUserToDelete(user);
-    setDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!userToDelete) {
-      setError('Error: No user selected for deletion.');
+  const handleToggleStatus = async (user) => {
+    if (!user) {
+      setError('Error: No user selected for status update.');
       return;
     }
     
     // Get the user ID - check for different possible ID field names
-    const userId = userToDelete.id || userToDelete._id || userToDelete.userId;
+    const userId = user.id || user._id || user.userId;
     
     if (!userId) {
-      setError('Error: User ID is missing. Cannot delete user.');
-      setDeleteModalOpen(false);
-      setUserToDelete(null);
+      setError('Error: User ID is missing. Cannot update status.');
       return;
     }
     
-    setIsDeleting(true);
+    // Toggle the isActive status
+    const newStatus = user.isActive === false ? true : false;
+    
     try {
       await apiCall(`/auth/users/${userId}`, {
-        method: 'DELETE'
+        method: 'PUT',
+        body: JSON.stringify({ isActive: newStatus })
       });
       
-      // Clear any existing errors
-      setError('');
-      setDeleteModalOpen(false);
-      
-      // Show success modal for deletion
-      setSuccessTitle('Account Deleted!');
-      setSuccessMessage(`${userToDelete.name}'s account has been successfully removed from the system.`);
+      // Show success modal for status change
+      setSuccessTitle('Status Updated!');
+      setSuccessMessage(`${user.name}'s account has been ${newStatus ? 'activated' : 'deactivated'} successfully.`);
       setShowSuccessModal(true);
-      setUserToDelete(null);
       
-      // Refresh data to get updated list (without inactive users)
+      // Refresh data to get updated list
       await fetchAllUsers();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete account');
-      setDeleteModalOpen(false);
-      setUserToDelete(null);
-    } finally {
-      setIsDeleting(false);
+      setError(err.response?.data?.message || 'Failed to update account status');
     }
-  };
-
-  const cancelDelete = () => {
-    setDeleteModalOpen(false);
-    setUserToDelete(null);
-    setIsDeleting(false);
   };
 
   const handleSubmit = async (e) => {
@@ -583,7 +559,7 @@ const ManageAccountTable = () => {
           accounts={filteredData}
           onEdit={handleEdit}
           onPasswordChange={openPasswordModal}
-          onDelete={handleDelete}
+          onToggleStatus={handleToggleStatus}
           onCreateNew={handleCreateSalesAccount}
         />
       )}
@@ -594,7 +570,7 @@ const ManageAccountTable = () => {
           accounts={filteredData}
           onEdit={handleEdit}
           onPasswordChange={openPasswordModal}
-          onDelete={handleDelete}
+          onToggleStatus={handleToggleStatus}
           onCreateNew={handleCreateWarehouseAccount}
         />
       )}
@@ -605,7 +581,7 @@ const ManageAccountTable = () => {
           accounts={filteredData}
           onEdit={handleEdit}
           onPasswordChange={openPasswordModal}
-          onDelete={handleDelete}
+          onToggleStatus={handleToggleStatus}
           onCreateNew={handleCreateClientAccount}
         />
       )}
@@ -635,19 +611,6 @@ const ManageAccountTable = () => {
         onClose={closePasswordModal}
         onSubmit={handlePasswordSubmit}
         onChange={handlePasswordChange}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={deleteModalOpen}
-        title="Delete Account"
-        entityName={userToDelete?.name}
-        description="Are you sure you want to delete this account? The account will be removed from the system."
-        confirmLabel="Delete Account"
-        cancelLabel="Cancel"
-        loading={isDeleting}
-        onCancel={cancelDelete}
-        onConfirm={confirmDelete}
       />
 
       {/* Success Modal */}

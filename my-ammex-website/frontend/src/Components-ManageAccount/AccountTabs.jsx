@@ -46,7 +46,7 @@ export const SalesDepartmentTab = ({
   accounts,
   onEdit,
   onPasswordChange,
-  onDelete,
+  onToggleStatus,
   onCreateNew
 }) => {
   return (
@@ -68,7 +68,7 @@ export const SalesDepartmentTab = ({
         accounts={accounts}
         onEdit={onEdit}
         onPasswordChange={onPasswordChange}
-        onDelete={onDelete}
+        onToggleStatus={onToggleStatus}
         roleBadgeStyle="green"
       />
     </>
@@ -80,7 +80,7 @@ export const WarehouseDepartmentTab = ({
   accounts,
   onEdit,
   onPasswordChange,
-  onDelete,
+  onToggleStatus,
   onCreateNew
 }) => {
   return (
@@ -102,7 +102,7 @@ export const WarehouseDepartmentTab = ({
         accounts={accounts}
         onEdit={onEdit}
         onPasswordChange={onPasswordChange}
-        onDelete={onDelete}
+        onToggleStatus={onToggleStatus}
         roleBadgeStyle="orange"
       />
     </>
@@ -114,7 +114,7 @@ export const ClientServicesTab = ({
   accounts,
   onEdit,
   onPasswordChange,
-  onDelete,
+  onToggleStatus,
   onCreateNew
 }) => {
   return (
@@ -136,7 +136,7 @@ export const ClientServicesTab = ({
         accounts={accounts}
         onEdit={onEdit}
         onPasswordChange={onPasswordChange}
-        onDelete={onDelete}
+        onToggleStatus={onToggleStatus}
         roleBadgeStyle="blue"
       />
     </>

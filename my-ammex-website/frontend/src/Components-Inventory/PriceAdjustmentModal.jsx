@@ -96,6 +96,8 @@ function PriceAdjustmentModal({
         newErrors.markupPercentage = 'Markup percentage is required';
       } else if (isNaN(markupPercentage) || parseFloat(markupPercentage) < 0) {
         newErrors.markupPercentage = 'Markup percentage must be a non-negative number';
+      } else if (parseFloat(markupPercentage) > 150) {
+        newErrors.markupPercentage = 'Markup percentage cannot exceed 150%';
       }
     } else if (adjustmentMode === 'price') {
       if (!newSellingPrice || newSellingPrice === '') {
@@ -145,8 +147,24 @@ function PriceAdjustmentModal({
 
   const handleMarkupChange = (value) => {
     setMarkupPercentage(value);
-    if (errors.markupPercentage) {
-      setErrors(prev => ({ ...prev, markupPercentage: '' }));
+    // Validate on change for immediate feedback
+    const numValue = parseFloat(value);
+    if (value === '') {
+      // Clear error if field is empty
+      if (errors.markupPercentage) {
+        setErrors(prev => ({ ...prev, markupPercentage: '' }));
+      }
+    } else if (!isNaN(numValue)) {
+      if (numValue < 0) {
+        setErrors(prev => ({ ...prev, markupPercentage: 'Markup percentage must be a non-negative number' }));
+      } else if (numValue > 150) {
+        setErrors(prev => ({ ...prev, markupPercentage: 'Markup percentage cannot exceed 150%' }));
+      } else {
+        // Valid range, clear error if exists
+        if (errors.markupPercentage) {
+          setErrors(prev => ({ ...prev, markupPercentage: '' }));
+        }
+      }
     }
   };
 
@@ -285,7 +303,7 @@ function PriceAdjustmentModal({
                   `}
                   placeholder="Enter markup percentage (e.g., 30)"
                   min="0"
-                  step="0.1"
+                  max="150"
                 />
                 <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
               </div>

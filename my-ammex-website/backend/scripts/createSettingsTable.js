@@ -16,9 +16,9 @@ async function createSettingsTable() {
     await sequelize.authenticate();
     console.log('✅ Database connection established');
 
-    // Create the settings table
+    // Create the Settings table (with capital S)
     await sequelize.query(`
-      CREATE TABLE IF NOT EXISTS settings (
+      CREATE TABLE IF NOT EXISTS "Settings" (
         id SERIAL PRIMARY KEY,
         setting_key VARCHAR(100) NOT NULL UNIQUE,
         setting_value TEXT,
@@ -31,29 +31,29 @@ async function createSettingsTable() {
       );
     `);
 
-    console.log('✅ Table settings created successfully');
+    console.log('✅ Table Settings created successfully');
 
     // Create indexes
     await sequelize.query(`
       CREATE INDEX IF NOT EXISTS idx_settings_category 
-      ON settings(category);
+      ON "Settings"(category);
     `);
 
     await sequelize.query(`
       CREATE INDEX IF NOT EXISTS idx_settings_setting_key 
-      ON settings(setting_key);
+      ON "Settings"(setting_key);
     `);
 
     await sequelize.query(`
       CREATE INDEX IF NOT EXISTS idx_settings_is_active 
-      ON settings(is_active);
+      ON "Settings"(is_active);
     `);
 
     console.log('✅ Indexes created successfully');
 
     // Check if any records exist
     const [existingRecords] = await sequelize.query(
-      'SELECT COUNT(*) as count FROM settings'
+      'SELECT COUNT(*) as count FROM "Settings"'
     );
 
     if (parseInt(existingRecords[0].count) === 0) {
@@ -61,7 +61,7 @@ async function createSettingsTable() {
       
       // Insert default company settings
       await sequelize.query(`
-        INSERT INTO settings (setting_key, setting_value, setting_type, category, description) VALUES
+        INSERT INTO "Settings" (setting_key, setting_value, setting_type, category, description) VALUES
         ('company_name', 'Ammex Corporation', 'string', 'company', 'Company name'),
         ('company_email', 'contact@ammex.com', 'string', 'company', 'Company email address'),
         ('company_phone', '+63 2 1234 5678', 'string', 'company', 'Company phone number'),
