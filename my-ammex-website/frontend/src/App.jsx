@@ -8,13 +8,9 @@ import Analytics from './Pages/Home/Analytics';
 import Customers from './Pages/BusinessPartners/Customers';
 import Suppliers from './Pages/BusinessPartners/Suppliers';
 
-import SalesQuotes from './Pages/Sales/SalesQuotes';
-import PurchaseQuotes from './Pages/Purchasing/PurchaseQuotes';
-import PurchaseOrder from './Pages/Purchasing/PurchaseOrder';
 import Inventory from './Pages/Inventory/Inventory';
 
-import SalesOrder from './Pages/Sales/SalesOrder';
-import SalesInvoice from './Pages/Sales/SalesInvoice';
+
 
 import AccountManagement from './Pages/Admin/AccountManagement';
 import ImportData from './Pages/Admin/ImportData';
