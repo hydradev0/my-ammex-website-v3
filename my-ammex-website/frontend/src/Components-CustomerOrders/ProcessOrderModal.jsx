@@ -239,15 +239,24 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
         <div className="space-y-2">
           <div className="flex justify-between text-gray-600">
             <span>Subtotal:</span>
-            <span>₱{order.total.toFixed(2)}</span>
+            <span>₱{order.total.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}</span>
           </div>
           <div className="flex justify-between text-red-600">
             <span>Discount ({discountPct}%):</span>
-            <span>-₱{discountAmount.toFixed(2)}</span>
+            <span>-₱{discountAmount.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}</span>
           </div>
           <div className="flex justify-between text-lg font-semibold">
             <span>Final Total:</span>
-            <span>₱{finalTotal.toFixed(2)}</span>
+            <span>₱{finalTotal.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}</span>
           </div>
         </div>
       </div>

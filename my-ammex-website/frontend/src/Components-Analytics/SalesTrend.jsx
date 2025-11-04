@@ -116,6 +116,11 @@ const SalesTrend = () => {
   const [ytdGrowthData, setYtdGrowthData] = useState(null);
   const [isLoadingYtdGrowth, setIsLoadingYtdGrowth] = useState(true);
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Filter historical data based on selected period
   const getHistoricalData = () => {
     if (historicalPeriod === 'current') {

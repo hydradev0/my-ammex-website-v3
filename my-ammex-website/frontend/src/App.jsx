@@ -154,30 +154,6 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="sales/salesquotes"
-          element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
-              <SalesQuotes />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="sales/salesorder"
-          element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
-              <SalesOrder />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="sales/salesinvoice"
-          element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
-              <SalesInvoice />
-            </ProtectedRoute>
-          }
-        />
         {/* Inventory - Admin, Warehouse Supervisor, Sales Marketing (read-only for Sales) */}
         <Route
           path="inventory/*"
@@ -188,23 +164,6 @@ function AppContent() {
           }
         />
 
-        {/* Purchasing - Admin and Sales Marketing */}
-        <Route
-          path="purchasing/purchasequotes"
-          element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
-              <PurchaseQuotes />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="purchasing/purchaseorder"
-          element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
-              <PurchaseOrder />
-            </ProtectedRoute>
-          }
-        />
         {/* Administration */}
         <Route path="admin/account-management" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
         <Route path="admin/import-data" element={<ProtectedRoute requiredRole="Admin"><ImportData /></ProtectedRoute>} />

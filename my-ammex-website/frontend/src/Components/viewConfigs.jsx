@@ -59,15 +59,24 @@ export const itemViewConfig = {
           label: 'Supplier Price',
           key: 'supplierPrice',
           width: 'w-1/3',
-          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
+          customRender: (value) => value ? `₱${Number(value).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}` : ''
         },
         {
           label: 'Selling Price',
           key: 'sellingPrice',
           width: 'w-1/3',
           customRender: (value, item) => {
-            const displayValue = value ? Number(value).toFixed(2) : '';
-            const supplierPrice = item?.supplierPrice ? Number(item.supplierPrice).toFixed(2) : '';
+            const displayValue = value ? Number(value).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) : '';
+            const supplierPrice = item?.supplierPrice ? Number(item.supplierPrice).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) : '';
             return (
               <div className="space-y-1">
                 <div>₱{displayValue}</div>

@@ -213,7 +213,10 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
     { 
       key: 'sellingPrice', 
       header: 'Selling Price',
-      render: (value) => `₱${Number(value).toFixed(2)}`,
+      render: (value) => `₱${Number(value).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`,
       width: 'w-40',
       cellClassName: 'w-40',
       truncate: true

@@ -197,7 +197,7 @@ const GenericTable = ({
                       
                       if (column.render) {
                         cellContent = column.render(item[column.key], item);
-                      } else if (column.key === 'balance' && typeof item[column.key] === 'number') {
+                      } else if ((column.key === 'balance' || column.key === 'sellingPrice' || column.key === 'supplierPrice') && typeof item[column.key] === 'number') {
                         cellContent = formatCurrency(item[column.key]);
                       } else {
                         cellContent = item[column.key];

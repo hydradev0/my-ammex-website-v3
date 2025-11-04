@@ -134,6 +134,11 @@ const WebsiteData = () => {
   // Ref for scrolling to insights
   const insightsRef = useRef(null);
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
 
   const startParam = useMemo(() => startDate.toISOString().slice(0,10), [startDate]);
@@ -778,7 +783,7 @@ const WebsiteData = () => {
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Generate AI Insights</h3>
                 <p className="text-gray-600 max-w-md">
-                  Click the "Generate AI Insights" button above to get actionable recommendations based on your analytics data.
+                  Click the "Generate AI Insights" button above to get insights and recommendations based on your website traffic data.
                 </p>
               </div>
             </div>

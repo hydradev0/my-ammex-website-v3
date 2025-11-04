@@ -215,10 +215,16 @@ function PriceAdjustmentModal({
                 <span className="font-medium">Category:</span> {item.category?.name || item.category}
               </div>
               <div>
-                <span className="font-medium">Supplier Price:</span> ₱{Number(newSupplierPrice !== '' ? newSupplierPrice : item.supplierPrice).toFixed(2)}
+                <span className="font-medium">Supplier Price:</span> ₱{Number(newSupplierPrice !== '' ? newSupplierPrice : item.supplierPrice).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
               </div>
               <div>
-                <span className="font-medium">Selling Price:</span> ₱{Number(item.sellingPrice).toFixed(2)}
+                <span className="font-medium">Selling Price:</span> ₱{Number(item.sellingPrice).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
               </div>
             </div>
             {/* Current Markup */}

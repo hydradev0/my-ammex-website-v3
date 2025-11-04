@@ -59,13 +59,19 @@ export const itemViewConfig = {
           label: 'Supplier Price',
           key: 'supplierPrice',
           width: 'w-1/3',
-          customRender: (value) => value ? `₱${Number(value).toFixed(2)}` : ''
+          customRender: (value) => value ? `₱${Number(value).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}` : ''
         },
         {
           label: 'Selling Price',
           key: 'sellingPrice',
           width: 'w-1/3',
-          getValue: (item) => item.sellingPrice ? `₱${Number(item.sellingPrice).toFixed(2)}` : ''
+          getValue: (item) => item.sellingPrice ? `₱${Number(item.sellingPrice).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}` : ''
         },
       ]
     },

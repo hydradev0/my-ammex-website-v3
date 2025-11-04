@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, History, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, History, TrendingUp, TrendingDown, ArrowRight, MoveRight } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
@@ -46,6 +46,14 @@ function PriceHistoryModal({
       year: 'numeric', 
       hour: '2-digit', 
       minute: '2-digit' 
+    });
+  };
+
+  const formatPrice = (value) => {
+    const num = Number(value);
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     });
   };
 
@@ -152,14 +160,14 @@ function PriceHistoryModal({
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <p className="text-xs text-gray-500 mb-1">Supplier Price</p>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700">₱{Number(record.oldSupplierPrice).toFixed(2)}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="text-sm font-semibold text-gray-900">₱{Number(record.newSupplierPrice).toFixed(2)}</span>
+                            <span className="text-sm text-gray-700">₱{formatPrice(record.oldSupplierPrice)}</span>
+                            <span className="text-gray-700"><MoveRight className="h-5 w-5" /></span>
+                            <span className="text-sm font-semibold text-gray-900">₱{formatPrice(record.newSupplierPrice)}</span>
                           </div>
                           {record.oldSupplierPrice !== record.newSupplierPrice && (
                             <p className="text-xs text-gray-500 mt-1">
-                              Change: {record.newSupplierPrice > record.oldSupplierPrice ? '+' : ''}
-                              ₱{Math.abs(record.newSupplierPrice - record.oldSupplierPrice).toFixed(2)}
+                              <span className="font-semibold text-gray-600">Changed by:</span> {record.newSupplierPrice > record.oldSupplierPrice ? '+' : ''}
+                              ₱{formatPrice(Math.abs(record.newSupplierPrice - record.oldSupplierPrice))}
                             </p>
                           )}
                         </div>
@@ -168,14 +176,14 @@ function PriceHistoryModal({
                         <div className="bg-blue-50 p-3 rounded-lg">
                           <p className="text-xs text-blue-700 mb-1">Selling Price</p>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700">₱{Number(record.oldSellingPrice).toFixed(2)}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="text-sm font-semibold text-blue-900">₱{Number(record.newSellingPrice).toFixed(2)}</span>
+                            <span className="text-sm text-gray-700">₱{formatPrice(record.oldSellingPrice)}</span>
+                            <span className="text-gray-700"><MoveRight className="h-5 w-5" /></span>
+                            <span className="text-sm font-semibold text-blue-900">₱{formatPrice(record.newSellingPrice)}</span>
                           </div>
                           {record.oldSellingPrice !== record.newSellingPrice && (
                             <p className="text-xs text-blue-600 mt-1">
-                              Change: {record.newSellingPrice > record.oldSellingPrice ? '+' : ''}
-                              ₱{Math.abs(record.newSellingPrice - record.oldSellingPrice).toFixed(2)}
+                              <span className="font-semibold text-blue-600">Changed by:</span> {record.newSellingPrice > record.oldSellingPrice ? '+' : ''}
+                              ₱{formatPrice(Math.abs(record.newSellingPrice - record.oldSellingPrice))}
                             </p>
                           )}
                         </div>
@@ -185,12 +193,12 @@ function PriceHistoryModal({
                           <p className="text-xs text-green-700 mb-1">Markup Percentage</p>
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-700">{Number(record.oldMarkup).toFixed(2)}%</span>
-                            <span className="text-gray-400">→</span>
+                            <span className="text-gray-700"><MoveRight className="h-5 w-5" /></span>
                             <span className="text-sm font-semibold text-green-900">{Number(record.newMarkup).toFixed(2)}%</span>
                           </div>
                           {record.oldMarkup !== record.newMarkup && (
                             <p className={`text-xs mt-1 ${getMarkupChangeColor(parseFloat(record.oldMarkup), parseFloat(record.newMarkup))}`}>
-                              Change: {record.newMarkup > record.oldMarkup ? '+' : ''}
+                              <span className="font-semibold text-green-600">Changed by:</span> {record.newMarkup > record.oldMarkup ? '+' : ''}
                               {Math.abs(record.newMarkup - record.oldMarkup).toFixed(2)}%
                             </p>
                           )}

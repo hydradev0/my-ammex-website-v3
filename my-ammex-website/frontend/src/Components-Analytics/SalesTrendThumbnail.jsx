@@ -97,10 +97,15 @@ const SalesTrendThumbnail = () => {
     }).format(value);
 };
 
+  const handleClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate('/home/analytics/sales-trend');
+  };
+
   return (
     <div 
       className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden"
-      onClick={() => navigate('/home/analytics/sales-trend')}
+      onClick={handleClick}
       title="Click to View Full Analysis"
     >
       {/* Gradient overlay for visual appeal */}
