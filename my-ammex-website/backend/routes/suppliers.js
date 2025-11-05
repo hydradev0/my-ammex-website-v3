@@ -21,10 +21,23 @@ const validateSupplier = [
   check('street', 'Street is required').not().isEmpty().trim(),
   check('city', 'City is required').not().isEmpty().trim(),
   check('country', 'Country is required').not().isEmpty().trim(),
+  check('postalCode').optional({ checkFalsy: true }).trim().custom((value) => {
+    // Allow empty, null, or undefined
+    if (!value || value === '' || value === null || value === undefined) {
+      return true;
+    }
+    // Validate format: 3-10 characters, letters, numbers, spaces, or hyphens
+    const postalCodeRegex = /^[A-Za-z0-9\s-]{3,10}$/;
+    if (!postalCodeRegex.test(value)) {
+      throw new Error('Postal code must be 3-10 characters and contain only letters, numbers, spaces, or hyphens');
+    }
+    return true;
+  }),
   check('email1', 'Email 1 is required and must be valid').isEmail(),
-  check('email2').optional().custom((value) => {
-    if (value === '' || value === null || value === undefined) {
-      return true; // Allow empty values
+  check('email2').optional({ checkFalsy: true }).trim().custom((value) => {
+    // Allow empty, null, or undefined
+    if (!value || value === '' || value === null || value === undefined) {
+      return true;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
@@ -40,11 +53,14 @@ const validateSupplier = [
     }
     return true;
   }),
-  check('telephone2').optional().custom((value) => {
-    if (value === '' || value === null || value === undefined) {
-      return true; // Allow empty values
+  check('telephone2').optional({ checkFalsy: true }).trim().custom((value) => {
+    // Allow empty, null, or undefined
+    if (!value || value === '' || value === null || value === undefined) {
+      return true;
     }
+    // Extract only digits
     const digits = String(value).replace(/[^0-9]/g, '');
+    // If there are any digits, require at least 7
     if (digits.length > 0 && digits.length < 7) {
       throw new Error('Telephone 2 must have at least 7 digits if provided');
     }

@@ -669,7 +669,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
             setFilterValue={setFilterValue}
             customerCount={filteredItems.length}
             filterOptions={['Filter by...', ...categories.map(category => category.name)]}
-            placeholder="Search items..."
+            placeholder="Search items by name, model, etc."
           />
           
           {/* New Item Button (hidden in read-only mode) */}

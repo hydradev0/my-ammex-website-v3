@@ -298,6 +298,32 @@ useEffect(() => {
         delete submissionData.unit;
       }
 
+      // Handle optional fields for suppliers and customers - convert empty/whitespace strings to null
+      if (config.title && (config.title.toLowerCase().includes('supplier') || config.title.toLowerCase().includes('customer'))) {
+        // Optional email2 field - convert empty/whitespace string to null
+        if (!submissionData.email2 || submissionData.email2.trim() === '') {
+          submissionData.email2 = null;
+        } else {
+          // Trim whitespace from email2
+          submissionData.email2 = submissionData.email2.trim();
+        }
+        // Optional telephone2 field - convert empty/whitespace string to null
+        if (!submissionData.telephone2 || submissionData.telephone2.trim() === '') {
+          submissionData.telephone2 = null;
+        } else {
+          // Trim whitespace from telephone2
+          submissionData.telephone2 = submissionData.telephone2.trim();
+        }
+        // Optional postalCode field - trim whitespace
+        if (submissionData.postalCode !== undefined && submissionData.postalCode !== null) {
+          if (submissionData.postalCode.trim() === '') {
+            submissionData.postalCode = null;
+          } else {
+            submissionData.postalCode = submissionData.postalCode.trim();
+          }
+        }
+      }
+
       // Use the provided update service
       const response = await updateService(data.id, submissionData);
       
@@ -316,7 +342,18 @@ useEffect(() => {
       }
     } catch (error) {
       console.error('Error updating:', error);
-      setErrors({ submit: error.message || 'An error occurred while updating' });
+      
+      // Handle validation errors from backend
+      if (error.errors && Array.isArray(error.errors)) {
+        const backendErrors = {};
+        error.errors.forEach(err => {
+          backendErrors[err.field] = err.message;
+        });
+        console.error('Backend validation errors:', backendErrors);
+        setErrors(backendErrors);
+      } else {
+        setErrors({ submit: error.message || 'An error occurred while updating' });
+      }
     } finally {
       setIsLoading(false);
     }

@@ -79,6 +79,7 @@ export const apiCall = async (endpoint, options = {}) => {
         const error = new Error(errorData.message || `HTTP error! status: ${response.status}`);
         error.status = response.status;
         error.statusText = response.statusText;
+        error.errors = errorData.errors; // Preserve validation errors array
         throw error;
       }
 
@@ -95,6 +96,7 @@ export const apiCall = async (endpoint, options = {}) => {
           status: error.status,
           isTimeout,
           isNetworkError,
+          ...(error.errors && { validationErrors: error.errors }),
         });
       }
       

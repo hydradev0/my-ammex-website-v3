@@ -57,7 +57,8 @@ function SupplierTable() {
       
       const params = {
         search: search || undefined,
-        isActive: filter === 'Active Accounts' ? true : filter === 'Inactive Accounts' ? false : undefined
+        isActive: filter === 'Active Accounts' ? true : filter === 'Inactive Accounts' ? false : undefined,
+        limit: 1000 // Request all suppliers instead of default 10
       };
       
       const response = await getSuppliers(params);
@@ -364,7 +365,7 @@ function SupplierTable() {
             setFilterValue={setFilterValue}
             customerCount={filteredSuppliers.length}
             filterOptions={['Filter by...', 'Active Accounts', 'Inactive Accounts']}
-            placeholder="Search suppliers..."
+            placeholder="Search suppliers by name, email, etc."
           />
           
           {/* New Supplier Button */}

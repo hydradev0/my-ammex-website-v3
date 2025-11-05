@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiCall } from '../utils/apiConfig';
+import { apiCall } from '../utils/apiConfig';
 
 // ==================== CUSTOMERS API ====================
 

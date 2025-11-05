@@ -366,7 +366,7 @@ function CustomerTable() {
             setFilterValue={setFilterValue}
             customerCount={filteredCustomers.length}
             filterOptions={['Filter by...', 'Active Accounts', 'Inactive Accounts']}
-            placeholder="Search customers..."
+            placeholder="Search customers by name, email, etc."
           />
           
           {/* New Customer Button */}

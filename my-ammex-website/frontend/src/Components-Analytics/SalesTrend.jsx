@@ -415,10 +415,10 @@ const SalesTrend = () => {
     // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(allData);
     
-    // Set column widths
+    // Set tight column widths for better cross-platform compatibility
     ws['!cols'] = [
-      { wch: 25 }, // Month
-      { wch: 20 }  // Sales
+      { wch: 15 }, // Month
+      { wch: 15 }  // Sales
     ];
 
     // Create workbook and write file
@@ -482,12 +482,12 @@ const SalesTrend = () => {
     // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(allData);
     
-    // Set column widths
+    // Set tight column widths for better cross-platform compatibility
     ws['!cols'] = [
-      { wch: 30 }, // First column
-      { wch: 25 }, // Second column
-      { wch: 20 }, // Third column
-      { wch: 20 }  // Fourth column
+      { wch: 18 }, // Month/Metric/Rank/Product Name
+      { wch: 18 }, // Sales/Category
+      { wch: 15 }, // MoM/Expected Orders
+      { wch: 15 }  // Fourth column (when used)
     ];
 
     // Create workbook and write file
@@ -1015,6 +1015,7 @@ const SalesTrend = () => {
                   </div>
                   <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
                     <h3 className="text-sm font-medium opacity-90">Total Growth</h3>
+                    <p className="text-sm text-gray-200">vs last {selectedPeriod} months (includes current month)</p>
                     <p className="text-2xl font-bold">
                       {predictions.totalGrowth > 0 ? `+${predictions.totalGrowth}%` : `${predictions.totalGrowth}%`}
                     </p>

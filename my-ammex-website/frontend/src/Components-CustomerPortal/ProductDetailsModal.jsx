@@ -9,7 +9,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
  }) => {
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [inputQuantity, setInputQuantity] = useState(1);
-  const [selectedVariation, setSelectedVariation] = useState(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [quantityError, setQuantityError] = useState(false);
   const [quantityErrorMessage, setQuantityErrorMessage] = useState('');
@@ -136,7 +135,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
     clearQuantityError();
     setTimeout(() => {
       setSelectedQuantity(1);
-      setSelectedVariation(null);
       onClose();
     }, 300); // Match the animation duration
   };
@@ -251,6 +249,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                   {/* Product Model and Category */}
                   <div>
                     <h1 className="text-lg lg:text-2xl font-bold text-gray-900 mb-1 lg:mb-2">{product.modelNo}</h1>
+                    <span className="text-md lg:text-lg text-gray-900 font-bold">{product.name}</span>
                     <p className="text-xs lg:text-sm text-gray-500 mb-2">{product.category}</p>
                     <p className="text-xs lg:text-sm text-gray-500">{product.subcategory}</p>
                   </div>
@@ -269,7 +268,9 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                     <span className={`text-xs lg:text-sm font-medium ${product.stock > 10 ? 'text-green-600' : product.stock > 0 ? 'text-orange-600' : 'text-red-600'}`}>
                       {product.stock > 10 ? 'In Stock' : product.stock > 0 ? 'Low Stock' : 'Out of Stock'}
                     </span>
-                    <span className="text-xs lg:text-lg text-gray-500">({product.stock} available)</span>
+                    <span className="text-xs lg:text-lg text-gray-500">
+                      ({product.stock} {product.unit ? product.unit.toLowerCase() : 'units'} available)
+                    </span>
                   </div>
 
                   {/*Space*/}
@@ -277,7 +278,9 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
 
                   {/* Quantity Selector */}
                   <div className="space-y-1.5 lg:space-y-2">
-                    <label className="text-sm lg:text-lg font-medium text-gray-700">Quantity</label>
+                    <label className="text-sm lg:text-lg font-medium text-gray-700">
+                      Quantity <span className="text-md lg:text-lg text-gray-900 font-bold">{product.unit ? ` (${product.unit})` : ' units'}</span>
+                    </label>
                     <div className="flex items-center space-x-2 lg:space-x-3">
                       <button
                         onClick={() => handleQuantityChange(-1)}
@@ -316,9 +319,10 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                           }
                           if (parsed > availableQuantity) {
                             // Show error for exceeding available quantity
+                            const unitText = product.unit ? ` ${product.unit.toLowerCase()}` : '';
                             const errorMessage = currentCartQuantity > 0 
-                              ? `You have exceeded the maximum quantity. You already have ${currentCartQuantity} in cart, only ${availableQuantity} more available.`
-                              : `You have exceeded the maximum quantity of ${availableQuantity}`;
+                              ? `You have exceeded the maximum quantity. You already have ${currentCartQuantity}${unitText} in cart, only ${availableQuantity} more available.`
+                              : `You have exceeded the maximum quantity of ${availableQuantity}${unitText}`;
                             setQuantityErrorWithTimeout(true, errorMessage);
                             setInputQuantity(e.target.value); // Keep the invalid input visible
                             return;
@@ -357,12 +361,12 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                     )}
                     {!quantityError && selectedQuantity === product.stock && (
                       <p className="text-yellow-600 text-xs lg:text-sm mt-1">
-                        You have reached the maximun quantity of {product.stock}
+                        You have reached the maximum quantity of {product.stock} {product.unit ? product.unit.toLowerCase() : 'units'}
                       </p>
                     )}
                     {!quantityError && getCurrentCartQuantity() >= 0 && product.stock > 0 && (
                       <p className="text-blue-600 text-xs lg:text-sm mt-1">
-                        {getCurrentCartQuantity()} in the cart • {getAvailableQuantity()} more available
+                        {getCurrentCartQuantity()} {product.unit ? product.unit.toLowerCase() : 'units'} in the cart • {getAvailableQuantity()} more available
                       </p>
                     )}
                     {!quantityError && getAvailableQuantity() === 0 && getCurrentCartQuantity() === 0 && (

@@ -620,7 +620,6 @@ Return this exact JSON structure:
   "period": "${forecastPeriod} months",
   "totalPredicted": number,
   "avgMonthly": number,
-  "totalGrowth": number (percentage from 0-100, e.g., 15.5 for 15.5% growth),
   "monthlyBreakdown": [
     ${forecastPeriod >= 1 ? '{\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 2 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 3 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 4 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 5 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 6 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}
   ],
@@ -768,7 +767,7 @@ Based on the top products data provided, predict which products will likely cont
 
   // Validate and clean AI response
   validateForecastResponse(forecast, expectedPeriod, historicalData = []) {
-    const requiredFields = ['period', 'totalPredicted', 'avgMonthly', 'totalGrowth', 'monthlyBreakdown'];
+    const requiredFields = ['period', 'totalPredicted', 'avgMonthly', 'monthlyBreakdown'];
     
     for (const field of requiredFields) {
       if (!forecast[field]) {
@@ -786,26 +785,35 @@ Based on the top products data provided, predict which products will likely cont
     forecast.recommendations = forecast.recommendations || ['Continue monitoring sales trends'];
     forecast.riskFactors = forecast.riskFactors || ['Market volatility'];
 
-    // Validate and normalize totalGrowth to percentage
-    if (typeof forecast.totalGrowth === 'number') {
-      // If totalGrowth is > 100, assume it's an absolute value and convert to percentage
-      if (forecast.totalGrowth > 100 && historicalData.length > 0) {
-        const lastHistoricalValue = historicalData[historicalData.length - 1].sales;
-        const totalHistoricalValue = historicalData.reduce((sum, item) => sum + item.sales, 0);
-        const avgHistoricalValue = totalHistoricalValue / historicalData.length;
-        
-        // Calculate proper percentage growth
-        const baselineValue = lastHistoricalValue || avgHistoricalValue;
-        if (baselineValue > 0) {
-          forecast.totalGrowth = Math.round(((forecast.totalPredicted - (baselineValue * forecastPeriod)) / (baselineValue * forecastPeriod)) * 100);
-        }
-      }
+    // Calculate totalGrowth explicitly by comparing predicted total against equivalent historical period
+    // NOTE: This includes the current month if it exists in historical data (designed for end-of-month runs)
+    // This ensures consistency with MoM calculation which also uses the last historical month
+    if (historicalData.length > 0 && expectedPeriod > 0) {
+      // Get the last N months from historical data (where N = forecast period)
+      // Example: For 3-month forecast, compares against last 3 months (may include current month)
+      const comparisonPeriodData = historicalData.slice(-expectedPeriod);
       
-      // Ensure totalGrowth is within reasonable bounds (-100% to 1000%)
-      forecast.totalGrowth = Math.max(-100, Math.min(1000, forecast.totalGrowth));
+      if (comparisonPeriodData.length > 0) {
+        // Sum up sales from the comparison period (e.g., last 3 months including current if available)
+        const historicalTotal = comparisonPeriodData.reduce((sum, item) => sum + (item.sales || 0), 0);
+        
+        // Calculate growth percentage: ((Predicted - Historical) / Historical) * 100
+        if (historicalTotal > 0) {
+          forecast.totalGrowth = Math.round(((forecast.totalPredicted - historicalTotal) / historicalTotal) * 100);
+        } else {
+          forecast.totalGrowth = 0; // No growth if historical total is 0
+        }
+        
+        console.log(`📊 Growth Calculation: Predicted=${forecast.totalPredicted}, Historical=${historicalTotal}, Growth=${forecast.totalGrowth}%`);
+      } else {
+        forecast.totalGrowth = 0;
+      }
     } else {
       forecast.totalGrowth = 0;
     }
+    
+    // Ensure totalGrowth is within reasonable bounds (-100% to 1000%)
+    forecast.totalGrowth = Math.max(-100, Math.min(1000, forecast.totalGrowth));
 
     // First pass: generate dynamic month names and validate structure
     const currentDate = new Date();
@@ -1023,7 +1031,6 @@ You must generate EXACTLY ${forecastPeriod} objects in the "monthlyBreakdown" ar
 Return this exact JSON structure:
 {
   "period": "${forecastPeriod} months",
-  "totalGrowth": number,
   "monthlyBreakdown": [
     ${forecastPeriod >= 1 ? '{\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 2 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 3 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 4 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 5 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}${forecastPeriod >= 6 ? ',\n    {\n      "bulkOrdersCount": number,\n      "bulkOrdersAmount": number,\n      "topCustomers": [\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number},\n        {"name": "Customer Name", "modelNo": "model_no", "expectedAmount": number}\n      ]\n    }' : ''}
   ],
@@ -1124,27 +1131,38 @@ Return this exact JSON structure:
       throw new Error('Invalid bulk forecast response');
     }
 
-    // Validate and normalize totalGrowth to percentage
-    if (typeof forecast.totalGrowth === 'number') {
-      // If totalGrowth is > 100, assume it's an absolute value and convert to percentage
-      if (forecast.totalGrowth > 100 && historicalData.length > 0) {
-        const lastHistoricalValue = historicalData[historicalData.length - 1].bulkOrdersAmount;
-        const totalHistoricalValue = historicalData.reduce((sum, item) => sum + item.bulkOrdersAmount, 0);
-        const avgHistoricalValue = totalHistoricalValue / historicalData.length;
-        
-        // Calculate proper percentage growth
-        const baselineValue = lastHistoricalValue || avgHistoricalValue;
-        if (baselineValue > 0) {
-          const totalPredicted = forecast.monthlyBreakdown.reduce((sum, item) => sum + item.bulkOrdersAmount, 0);
-          forecast.totalGrowth = Math.round(((totalPredicted - (baselineValue * expectedPeriod)) / (baselineValue * expectedPeriod)) * 100);
-        }
-      }
+    // Calculate totalGrowth explicitly by comparing predicted total against equivalent historical period
+    // NOTE: This includes the current month if it exists in historical data (designed for end-of-month runs)
+    // This ensures consistency with MoM calculation which also uses the last historical month
+    if (historicalData.length > 0 && expectedPeriod > 0) {
+      // Get the last N months from historical data (where N = forecast period)
+      // Example: For 3-month forecast, compares against last 3 months (may include current month)
+      const comparisonPeriodData = historicalData.slice(-expectedPeriod);
       
-      // Ensure totalGrowth is within reasonable bounds (-100% to 1000%)
-      forecast.totalGrowth = Math.max(-100, Math.min(1000, forecast.totalGrowth));
+      if (comparisonPeriodData.length > 0) {
+        // Sum up bulk orders amount from the comparison period (e.g., last 3 months including current if available)
+        const historicalTotal = comparisonPeriodData.reduce((sum, item) => sum + (item.bulkOrdersAmount || 0), 0);
+        
+        // Calculate total predicted bulk orders amount
+        const totalPredicted = forecast.monthlyBreakdown.reduce((sum, item) => sum + (item.bulkOrdersAmount || 0), 0);
+        
+        // Calculate growth percentage: ((Predicted - Historical) / Historical) * 100
+        if (historicalTotal > 0) {
+          forecast.totalGrowth = Math.round(((totalPredicted - historicalTotal) / historicalTotal) * 100);
+        } else {
+          forecast.totalGrowth = 0; // No growth if historical total is 0
+        }
+        
+        console.log(`📊 Bulk Growth Calculation: Predicted=${totalPredicted}, Historical=${historicalTotal}, Growth=${forecast.totalGrowth}%`);
+      } else {
+        forecast.totalGrowth = 0;
+      }
     } else {
       forecast.totalGrowth = 0;
     }
+    
+    // Ensure totalGrowth is within reasonable bounds (-100% to 1000%)
+    forecast.totalGrowth = Math.max(-100, Math.min(1000, forecast.totalGrowth));
     // First pass: generate dynamic month names
     const currentDate = new Date();
     forecast.monthlyBreakdown = forecast.monthlyBreakdown.map((item, index) => {

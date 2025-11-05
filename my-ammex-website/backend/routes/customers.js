@@ -18,24 +18,40 @@ const {
 // Validation middleware
 const validateCustomer = [
   check('customerName', 'Customer name is required').not().isEmpty().trim(),
-  check('email2').optional().custom((value) => {
-    if (value === '' || value === null || value === undefined) {
-      return true; // Allow empty values
+  check('postalCode').optional({ checkFalsy: true }).trim().custom((value) => {
+    // Allow empty, null, or undefined
+    if (!value || value === '' || value === null || value === undefined) {
+      return true;
+    }
+    // Validate format: 3-10 characters, letters, numbers, spaces, or hyphens
+    const postalCodeRegex = /^[A-Za-z0-9\s-]{3,10}$/;
+    if (!postalCodeRegex.test(value)) {
+      throw new Error('Postal code must be 3-10 characters and contain only letters, numbers, spaces, or hyphens');
+    }
+    return true;
+  }),
+  check('email2').optional({ checkFalsy: true }).trim().custom((value) => {
+    // Allow empty, null, or undefined
+    if (!value || value === '' || value === null || value === undefined) {
+      return true;
     }
     // If value is provided, validate it's a valid email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
-      throw new Error('Please provide a valid email address');
+      throw new Error('Email 2 must be a valid email');
     }
     return true;
   }),
-  check('telephone2').optional().custom((value) => {
-    if (value === '' || value === null || value === undefined) {
-      return true; // Allow empty values
+  check('telephone2').optional({ checkFalsy: true }).trim().custom((value) => {
+    // Allow empty, null, or undefined
+    if (!value || value === '' || value === null || value === undefined) {
+      return true;
     }
-    // If value is provided, validate it's not empty
-    if (value.trim() === '') {
-      throw new Error('Telephone 2 cannot be empty if provided');
+    // Extract only digits
+    const digits = String(value).replace(/[^0-9]/g, '');
+    // If there are any digits, require at least 7
+    if (digits.length > 0 && digits.length < 7) {
+      throw new Error('Telephone 2 must have at least 7 digits if provided');
     }
     return true;
   })
@@ -93,7 +109,7 @@ router.post('/', protect, authorize('Admin', 'Sales Marketing'), validateCustome
 // @route   PUT /api/customers/:id
 // @desc    Update customer (Admins/Sales can update any; Clients only their own)
 // @access  Private
-router.put('/:id', protect, authorize('Admin', 'Sales Marketing', 'Client'), ensureOwnCustomerByParam, updateCustomer);
+router.put('/:id', protect, authorize('Admin', 'Sales Marketing', 'Client'), ensureOwnCustomerByParam, validateCustomer, handleValidationErrors, updateCustomer);
 
 // @route   DELETE /api/customers/:id
 // @desc    Delete customer
