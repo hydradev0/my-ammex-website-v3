@@ -42,6 +42,188 @@ function formatPaymentMethod(method) {
   return methodMap[method] || method;
 }
 
+// Helper: Generate Invoice Payment-format HTML (shows Paid and Balance under totals)
+function generateInvoicePaymentHTML(invoice) {
+  const formatCurrency = (amount) => `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const itemsRows = (invoice.items || []).map((it) => `
+      <tr>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;">${it.item?.itemName || ''}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;">${it.item?.modelNo || ''}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:center;">${Number(it.quantity)}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:right;">${formatCurrency(it.unitPrice)}</td>
+        <td style="border:1px solid #e5e7eb;padding:8px 12px;text-align:right;">${formatCurrency(it.totalPrice)}</td>
+      </tr>
+  `).join('');
+
+  const taxCalcSubtotal = Number(invoice.taxInfo?.subtotal ?? invoice.subtotal ?? (Number(invoice.totalAmount) / 1.12));
+  const taxCalcTax = Number(invoice.taxInfo?.taxAmount ?? invoice.taxAmount ?? (taxCalcSubtotal * 0.12));
+  const taxCalcTotal = Number(invoice.taxInfo?.totalWithTax ?? invoice.totalAmount ?? (taxCalcSubtotal + taxCalcTax));
+  const paidAmount = Number(invoice.paidAmount || 0);
+  const remainingBalance = Number(invoice.remainingBalance != null ? invoice.remainingBalance : (taxCalcTotal - paidAmount));
+
+  const customer = invoice.customer || {};
+
+  return `<!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Completed ${invoice.invoiceNumber}</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; color:#111827; margin: 32px; }
+        .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #111827; padding-bottom:16px; margin-bottom:24px; }
+        .company h1 { margin:0 0 6px 0; font-size:24px; }
+        .label { font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+        .value { font-size:14px; font-weight:600; color:#111827; }
+        .title { font-size:28px; font-weight:800; margin:0 0 8px 0; }
+        .grid { display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-bottom:24px; }
+        table { width:100%; border-collapse:collapse; }
+        th { background:#f9fafb; border:1px solid #e5e7eb; padding:10px 12px; text-align:left; font-size:12px; color:#374151; }
+        tfoot td { padding:8px 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company">
+          <h1>${invoice.companyInfo?.company_name || 'Ammex Machine Tools Phils. Inc.'}</h1>
+          <div class="label">Address</div>
+          <div class="value">${invoice.companyInfo?.company_address || ''}</div>
+          <div class="label" style="margin-top:8px">Contact</div>
+          <div class="value">${invoice.companyInfo?.company_phone || ''} • ${invoice.companyInfo?.company_email || ''}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="title">INVOICE</div>
+          <div><span class="label">Invoice #</span><div class="value">${invoice.invoiceNumber}</div></div>
+          <div style="margin-top:8px"><span class="label">Date</span><div class="value">${formatDate(invoice.invoiceDate)}</div></div>
+          <div style="margin-top:8px"><span class="label">Due Date</span><div class="value">${formatDate(invoice.dueDate)}</div></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="label">Bill To</div>
+          <div class="value">${customer.customerName || ''}</div>
+          <div>${customer.email1 || ''}</div>
+          <div>${[customer.street, customer.city, customer.country].filter(Boolean).join(', ')}</div>
+        </div>
+        <div>
+          <div class="label">Payment Terms</div>
+          <div class="value">${invoice.paymentTerms || '30 days'}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Model No.</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Unit Price</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows}
+        </tbody>
+      </table>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+        <table style="width:360px;">
+          <tbody>
+            <tr>
+              <td class="label">Subtotal</td>
+              <td style="text-align:right" class="value">${formatCurrency(taxCalcSubtotal)}</td>
+            </tr>
+            <tr>
+              <td class="label">Tax (12% VAT)</td>
+              <td style="text-align:right">${formatCurrency(taxCalcTax)}</td>
+            </tr>
+            <tr>
+              <td class="label">Total Amount</td>
+              <td style="text-align:right" class="value">${formatCurrency(taxCalcTotal)}</td>
+            </tr>
+            <tr style="height:16px;">
+              <td colspan="2"></td>
+            </tr>
+            <tr>
+              <td class="label">Paid Amount</td>
+              <td style="text-align:right" class="value">${formatCurrency(paidAmount)}</td>
+            </tr>
+            <tr>
+              <td class="label">Balance</td>
+              <td style="text-align:right" class="value">${formatCurrency(remainingBalance)}</td>
+            </tr>
+            <tr style="height:16px;">
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:32px; border-top:1px solid #e5e7eb; padding-top:16px; text-align:center; color:#6b7280; font-size:12px;">
+        This payment summary reflects the amount paid and outstanding balance for the invoice above.
+      </div>
+    </body>
+  </html>`;
+}
+
+// Download Invoice Payment-format PDF (Client, Admin, Sales Marketing)
+const downloadPaymentHistoryPdf = async (req, res, next) => {
+  try {
+    const { Invoice, InvoiceItem, Customer, Item, Settings } = getModels();
+    const { id } = req.params;
+
+    let whereClause = { id };
+    if (req.user.role === 'Client') {
+      let customerId = req.user.customerId;
+      if (!customerId) {
+        const linkedCustomer = await Customer.findOne({ where: { userId: req.user.id } });
+        if (linkedCustomer) customerId = linkedCustomer.id;
+      }
+      if (!customerId) {
+        return res.status(401).json({ success: false, message: 'Customer authentication required' });
+      }
+      whereClause.customerId = customerId;
+    }
+
+    const invoice = await Invoice.findOne({
+      where: whereClause,
+      include: [
+        { model: InvoiceItem, as: 'items', include: [{ model: Item, as: 'item' }] },
+        { model: Customer, as: 'customer' }
+      ]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    // Fetch company settings for header
+    const companySettings = await Settings.findAll({ where: { category: 'company', isActive: true } });
+    const companyInfo = {};
+    companySettings.forEach(s => { companyInfo[s.settingKey] = s.settingValue; });
+
+    const invoiceForTemplate = {
+      ...invoice.toJSON(),
+      companyInfo
+    };
+
+    const htmlContent = generateInvoicePaymentHTML(invoiceForTemplate);
+    const options = { format: 'A4', margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' }, printBackground: true, displayHeaderFooter: false };
+
+    htmlPdf.generatePdf({ content: htmlContent }, options)
+      .then((pdfBuffer) => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Payment-${invoice.invoiceNumber}.pdf`);
+        return res.end(pdfBuffer);
+      })
+      .catch((error) => next(error));
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Helper: Generate receipt HTML for PDF generation
 function generateReceiptHTML(receipt) {
   const formatCurrency = (amount) => {
@@ -2347,5 +2529,6 @@ module.exports = {
   // Payment Receipt endpoints
   getMyPaymentReceipts,
   getPaymentReceiptDetails,
-  downloadPaymentReceipt
+  downloadPaymentReceipt,
+  downloadPaymentHistoryPdf,
 };

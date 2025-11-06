@@ -176,3 +176,18 @@ export const getPaymentStatus = async (paymentIntentId) => {
 export const getFailedPayments = async () => {
   return apiRequest('/payments/failed');
 };
+
+// Download invoice payment-format PDF (includes Paid Amount & Balance)
+export const downloadPaymentHistoryPdf = async (invoiceId) => {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/payments/invoices/${invoiceId}/download-payment`, {
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` })
+    }
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to download payment PDF');
+  }
+  return await res.blob();
+};

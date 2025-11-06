@@ -319,17 +319,17 @@ const BalanceTab = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-bl from-gray-200 to-gray-300 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                   Customer & Status
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700 uppercase tracking-wider">
                   Balance
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                   Dates
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Actions
+                <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                  
                 </th>
               </tr>
             </thead>
@@ -456,7 +456,32 @@ const BalanceTab = ({
 
                       {/* Dates */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col space-y-1">
+                        <div className="flex flex-col space-y-2">
+                          {/* Recent Payment Info */}
+                          {paidAmount > 0 && item.details?.amount && (
+                            <div className="bg-blue-50 rounded-md px-2 py-1.5 border border-blue-200 mb-2">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-blue-700 text-xs font-medium">
+                                  Recent Payment
+                                </span>
+                                <span className="text-blue-900 text-xs font-semibold">
+                                  {currencyFn(Number(item.details.amount || 0))}
+                                </span>
+                              </div>
+                              {item.timestamp && (
+                                <div className="text-xs text-blue-600">
+                                  {new Date(item.timestamp).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Invoice Date */}
                           <div className="flex items-center text-xs text-gray-600">
                             <Calendar className="w-3 h-3 mr-1" />
@@ -512,12 +537,13 @@ const BalanceTab = ({
 
                       {/* Actions */}
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <AdvanceActionsDropdown
+                        {/* Temporarily disabled actions */}
+                        {/* <AdvanceActionsDropdown
                           item={item}
                           quickActions={getQuickActions()}
                           onAction={handleAction}
                           loadingActions={loadingActions}
-                        />
+                        /> */}
                       </td>
                     </tr>
                   );
@@ -543,14 +569,15 @@ const BalanceTab = ({
       )}
 
       {/* Payment Actions Modal */}
-      <PaymentActionsModal
+      {/* Temporarily disabled payment actions modal */}
+      {/* <PaymentActionsModal
         item={modalState.selectedItem}
         isOpen={modalState.isOpen}
         onClose={closeModal}
         actionType={modalState.actionType}
         onConfirm={handleModalConfirm}
         formatCurrency={currencyFn}
-      />
+      /> */}
     </div>
   );
 };

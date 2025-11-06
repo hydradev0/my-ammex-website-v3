@@ -328,7 +328,7 @@ const PaymentReceiving = () => {
         {activeTab === 'balance' && (
             <BalanceTab
               historyData={balanceHistory}
-              searchPlaceholder="Search balance history..."
+              searchPlaceholder="Search invoice number or customer name..."
               itemLabel="balance records"
               formatCurrency={formatCurrency}
               formatDateTime={formatDateTime}
@@ -354,7 +354,7 @@ const PaymentReceiving = () => {
         {activeTab === 'history' && (
           <PaymentHistoryTab
             historyData={paymentHistory}
-            searchPlaceholder="Search payment history..."
+            searchPlaceholder="Search invoice number or customer name..."
             itemLabel="payment records"
             formatCurrency={formatCurrency}
             formatDateTime={formatDateTime}

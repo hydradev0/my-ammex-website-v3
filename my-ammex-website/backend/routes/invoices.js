@@ -67,6 +67,7 @@ router.get('/:id/payment-history', protect, authorize('Client'), getInvoicePayme
 // @access  Private (Client, Admin, Sales Marketing)
 router.get('/:id/download', protect, authorize('Client', 'Admin', 'Sales Marketing'), downloadInvoicePdf);
 
+
 // @route   GET /api/invoices/with-payments
 // @desc    Get all invoices with payment details
 // @access  Private (Admin, Sales Marketing)

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Calendar, DollarSign, CheckCircle, Download } from 'lucide-react';
+import { Eye, Calendar, DollarSign, CheckCircle, Download, Loader2 } from 'lucide-react';
 import PaginationTable from '../Components/PaginationTable';
 import AdvanceActionsDropdown from '../Components/AdvanceActionsDropdown';
 
@@ -14,6 +14,7 @@ const InvoiceHistoryTab = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
 
   // Add safety check for invoices
   const safeInvoices = invoices || [];
@@ -29,12 +30,19 @@ const InvoiceHistoryTab = ({
     setCurrentPage(1);
   };
 
-  const handleAction = (invoice, action) => {
+  const handleAction = async (invoice, action) => {
     if (action === 'view_details') {
       onViewInvoice(invoice);
     } else if (action === 'download_pdf') {
       if (onDownloadPdf) {
-        onDownloadPdf(invoice);
+        try {
+          setDownloadingInvoiceId(invoice.id);
+          await onDownloadPdf(invoice);
+        } catch (error) {
+          console.error('Error downloading PDF:', error);
+        } finally {
+          setDownloadingInvoiceId(null);
+        }
       }
     } else {
       onInvoiceAction(invoice, action);
@@ -42,20 +50,29 @@ const InvoiceHistoryTab = ({
   };
 
   // Configure quick actions (buttons that appear outside dropdown)
-  const getQuickActions = () => [
-    {
-      key: 'view_details',
-      icon: Eye,
-      label: 'View Details',
-      title: 'View Details',
-      className: 'text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors'
-    }
-  ];
+  const getQuickActions = (invoice) => {
+    const isDownloading = downloadingInvoiceId === invoice.id;
+    
+    return [
+      {
+        key: 'view_details',
+        icon: Eye,
+        label: 'View Details',
+        title: 'View Details',
+        className: 'text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors'
+      },
+      {
+        key: 'download_pdf',
+        icon: isDownloading ? Loader2 : Download,
+        label: 'Download PDF',
+        title: isDownloading ? 'Downloading...' : 'Download PDF',
+        className: `text-blue-600 cursor-pointer hover:text-blue-900 p-1 rounded transition-colors ${isDownloading ? 'opacity-50 cursor-not-allowed' : ''}`,
+        isLoading: isDownloading
+      }
+    ];
+  };
 
-  // Configure dropdown actions
-  const getDropdownActions = () => [
-    { key: 'download_pdf', label: 'Download PDF', icon: Download },
-  ];
+
 
   return (
     <>
@@ -163,9 +180,9 @@ const InvoiceHistoryTab = ({
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <AdvanceActionsDropdown
                           item={invoice}
-                          quickActions={getQuickActions()}
-                          actions={getDropdownActions()}
+                          quickActions={getQuickActions(invoice)}
                           onAction={handleAction}
+                          loadingActions={downloadingInvoiceId === invoice.id ? ['download_pdf'] : []}
                         />
                       </td>
                     </tr>

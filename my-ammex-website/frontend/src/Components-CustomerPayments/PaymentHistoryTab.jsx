@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { DollarSign, Send, CheckCircle, FileText, Download } from "lucide-react";
+import { downloadPaymentHistoryPdf } from "../services/paymentService";
 import ModernSearchFilter from "../Components/ModernSearchFilter";
 import PaginationTable from "../Components/PaginationTable";
 import AdvanceActionsDropdown from "../Components/AdvanceActionsDropdown";
@@ -21,6 +22,9 @@ const PaymentHistoryTab = ({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  // Per-row loading state for downloads
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
 
   // Default formatters if not provided
   const defaultFormatCurrency = (amount) => `₱${amount.toFixed(2)}`;
@@ -136,8 +140,30 @@ const PaymentHistoryTab = ({
   };
 
   // Action handler
-  const handleAction = (item, action) => {
-    // Handle custom actions
+  const handleAction = async (item, action) => {
+    if (action === "download_pdf") {
+      try {
+        const targetInvoiceId = item.invoiceId || item.invoice?.id || item.id;
+        setDownloadingInvoiceId(targetInvoiceId);
+        const blob = await downloadPaymentHistoryPdf(targetInvoiceId);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const fileName = `Completed-${item.invoiceNumber || targetInvoiceId}.pdf`;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Failed to download PDF:", err);
+        alert("Failed to download PDF. Please try again later.");
+      } finally {
+        setDownloadingInvoiceId(null);
+      }
+      return;
+    }
+    // Fallback/custom actions
     if (onCustomAction) {
       onCustomAction(item, action);
     } else {
@@ -308,6 +334,7 @@ const PaymentHistoryTab = ({
                         item={item}
                         quickActions={quickActions}
                         onAction={handleAction}
+                        loadingActions={(downloadingInvoiceId === (item.invoiceId || item.invoice?.id || item.id)) ? ['download_pdf'] : []}
                       />
                     </td>
                   </tr>

@@ -173,14 +173,6 @@ async function generateInvoiceHTML(invoice) {
             <tr style="height:16px;">
               <td colspan="2"></td>
             </tr>
-            <tr>
-              <td class="label">Paid Amount</td>
-              <td style="text-align:right">${formatCurrency(invoice.paidAmount || 0)}</td>
-            </tr>
-            <tr>
-              <td class="label">Balance Due</td>
-              <td style="text-align:right" class="value">${formatCurrency(invoice.remainingBalance ?? taxCalculation.total)}</td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -191,6 +183,7 @@ async function generateInvoiceHTML(invoice) {
     </body>
   </html>`;
 }
+
 
 // Download invoice as PDF (Client, Admin, Sales Marketing)
 const downloadInvoicePdf = async (req, res, next) => {

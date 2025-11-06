@@ -3,11 +3,14 @@ import {
   Building2, 
   CreditCard,
   TrendingUp,
-  Save
+  Save,
+  DollarSign,
+  Search
 } from 'lucide-react';
 import RoleBasedLayout from './RoleBasedLayout';
 import ManagePayMongoMethods from '../Components-CustomerPayments/ManagePayMongoMethods';
 import SuccessModal from './SuccessModal';
+import { getInvoicesByStatus } from '../services/invoiceService';
 
 // Tab components
 const CompanyProfile = () => {
@@ -407,6 +410,372 @@ const PayMongoMethods = () => {
   return <ManagePayMongoMethods />;
 };
 
+// Over-the-Counter Payments component
+// const OverTheCounterPayments = () => {
+//   const [formData, setFormData] = useState({
+//     invoiceId: '',
+//     amount: '',
+//     paymentMethod: 'cash',
+//     reference: '',
+//     notes: ''
+//   });
+//   const [invoices, setInvoices] = useState([]);
+//   const [selectedInvoice, setSelectedInvoice] = useState(null);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+//   const [showSuccessModal, setShowSuccessModal] = useState(false);
+//   const [searchTerm, setSearchTerm] = useState('');
+//   const [error, setError] = useState('');
+
+//   // Load invoices on component mount
+//   React.useEffect(() => {
+//     const fetchInvoices = async () => {
+//       setIsLoadingInvoices(true);
+//       try {
+//         const [awaitingRes, partialRes, overdueRes] = await Promise.all([
+//           getInvoicesByStatus('awaiting payment', 1, 100),
+//           getInvoicesByStatus('partially paid', 1, 100),
+//           getInvoicesByStatus('overdue', 1, 100)
+//         ]);
+        
+//         const allInvoices = [
+//           ...(awaitingRes?.data || []),
+//           ...(partialRes?.data || []),
+//           ...(overdueRes?.data || [])
+//         ];
+
+//         // Transform and filter invoices with remaining balance
+//         const filteredInvoices = allInvoices
+//           .map(inv => ({
+//             id: inv.id,
+//             invoiceNumber: inv.invoiceNumber || inv.invoice_number || '',
+//             customerName: inv.customer?.customerName || 'Unknown',
+//             totalAmount: Number(inv.totalAmount || 0),
+//             paidAmount: Number(inv.paidAmount || 0),
+//             remainingAmount: Number(
+//               inv.remainingBalance != null 
+//                 ? inv.remainingBalance 
+//                 : (inv.totalAmount || 0) - (inv.paidAmount || 0)
+//             ),
+//             dueDate: inv.dueDate,
+//             status: inv.status
+//           }))
+//           .filter(inv => inv.remainingAmount > 0)
+//           .filter((inv, index, self) => 
+//             index === self.findIndex(i => i.id === inv.id)
+//           );
+
+//         setInvoices(filteredInvoices);
+//       } catch (error) {
+//         console.error('Failed to fetch invoices:', error);
+//         setError('Failed to load invoices. Please try again.');
+//       } finally {
+//         setIsLoadingInvoices(false);
+//       }
+//     };
+
+//     fetchInvoices();
+//   }, []);
+
+//   // Filter invoices based on search
+//   const filteredInvoices = invoices.filter(inv => {
+//     if (!searchTerm) return true;
+//     const term = searchTerm.toLowerCase();
+//     return (
+//       inv.invoiceNumber.toLowerCase().includes(term) ||
+//       inv.customerName.toLowerCase().includes(term)
+//     );
+//   });
+
+//   // Handle invoice selection
+//   const handleInvoiceSelect = (invoice) => {
+//     setSelectedInvoice(invoice);
+//     setFormData(prev => ({
+//       ...prev,
+//       invoiceId: invoice.id,
+//       amount: invoice.remainingAmount.toFixed(2)
+//     }));
+//     setSearchTerm('');
+//   };
+
+//   // Handle form input changes
+//   const handleInputChange = (e) => {
+//     const { name, value } = e.target;
+//     setFormData(prev => ({
+//       ...prev,
+//       [name]: value
+//     }));
+//     setError('');
+//   };
+
+//   // Validate form
+//   const validateForm = () => {
+//     if (!formData.invoiceId) {
+//       setError('Please select an invoice');
+//       return false;
+//     }
+//     if (!formData.amount || parseFloat(formData.amount) <= 0) {
+//       setError('Please enter a valid payment amount');
+//       return false;
+//     }
+//     if (selectedInvoice && parseFloat(formData.amount) > selectedInvoice.remainingAmount) {
+//       setError(`Payment amount cannot exceed remaining balance of ₱${selectedInvoice.remainingAmount.toFixed(2)}`);
+//       return false;
+//     }
+//     if (!formData.paymentMethod) {
+//       setError('Please select a payment method');
+//       return false;
+//     }
+//     return true;
+//   };
+
+//   // Handle form submission
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setError('');
+
+//     if (!validateForm()) {
+//       return;
+//     }
+
+//     setIsLoading(true);
+//     try {
+//       // TODO: Call API endpoint to record over-the-counter payment
+//       // const response = await recordOverTheCounterPayment(formData);
+      
+//       // For now, just show success (will be implemented when backend is ready)
+//       console.log('Recording payment:', formData);
+      
+//       // Simulate API call
+//       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+//       setShowSuccessModal(true);
+//       setFormData({
+//         invoiceId: '',
+//         amount: '',
+//         paymentMethod: 'cash',
+//         reference: '',
+//         notes: ''
+//       });
+//       setSelectedInvoice(null);
+//       setSearchTerm('');
+//     } catch (error) {
+//       console.error('Error recording payment:', error);
+//       setError(error.message || 'Failed to record payment. Please try again.');
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+//   const formatCurrency = (amount) => `₱${Number(amount).toFixed(2)}`;
+
+//   return (
+//     <div className="space-y-6">
+//       <div>
+//         <h3 className="text-lg font-semibold text-gray-900 mb-2">Record Over-the-Counter Payment</h3>
+//         <p className="text-sm text-gray-600 mb-6">
+//           Record payments received in person (cash, check, bank transfer, etc.) that don't go through PayMongo.
+//         </p>
+
+//         <form onSubmit={handleSubmit} className="space-y-6">
+//           {/* Invoice Selection */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2">
+//               Select Invoice *
+//             </label>
+//             <div className="relative">
+//               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+//               <input
+//                 type="text"
+//                 placeholder="Search by invoice number or customer name..."
+//                 value={searchTerm}
+//                 onChange={(e) => setSearchTerm(e.target.value)}
+//                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+//               />
+//             </div>
+            
+//             {searchTerm && (
+//               <div className="mt-2 border border-gray-200 rounded-md max-h-60 overflow-y-auto bg-white shadow-lg z-10">
+//                 {isLoadingInvoices ? (
+//                   <div className="p-4 text-center text-gray-500">
+//                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+//                     <p className="mt-2 text-sm">Loading invoices...</p>
+//                   </div>
+//                 ) : filteredInvoices.length === 0 ? (
+//                   <div className="p-4 text-center text-gray-500 text-sm">
+//                     No invoices found
+//                   </div>
+//                 ) : (
+//                   filteredInvoices.map((invoice) => (
+//                     <button
+//                       key={invoice.id}
+//                       type="button"
+//                       onClick={() => handleInvoiceSelect(invoice)}
+//                       className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+//                     >
+//                       <div className="flex justify-between items-start">
+//                         <div>
+//                           <p className="font-medium text-gray-900">{invoice.invoiceNumber}</p>
+//                           <p className="text-sm text-gray-600">{invoice.customerName}</p>
+//                         </div>
+//                         <div className="text-right">
+//                           <p className="text-sm font-medium text-gray-900">
+//                             {formatCurrency(invoice.remainingAmount)}
+//                           </p>
+//                           <p className="text-xs text-gray-500">remaining</p>
+//                         </div>
+//                       </div>
+//                     </button>
+//                   ))
+//                 )}
+//               </div>
+//             )}
+
+//             {/* Selected Invoice Display */}
+//             {selectedInvoice && (
+//               <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-md">
+//                 <div className="flex items-center justify-between">
+//                   <div>
+//                     <p className="font-medium text-gray-900">{selectedInvoice.invoiceNumber}</p>
+//                     <p className="text-sm text-gray-600">{selectedInvoice.customerName}</p>
+//                     <p className="text-xs text-gray-500 mt-1">
+//                       Total: {formatCurrency(selectedInvoice.totalAmount)} • 
+//                       Paid: {formatCurrency(selectedInvoice.paidAmount)} • 
+//                       Remaining: <span className="font-medium text-red-600">{formatCurrency(selectedInvoice.remainingAmount)}</span>
+//                     </p>
+//                   </div>
+//                   <button
+//                     type="button"
+//                     onClick={() => {
+//                       setSelectedInvoice(null);
+//                       setFormData(prev => ({ ...prev, invoiceId: '', amount: '' }));
+//                     }}
+//                     className="text-gray-400 hover:text-gray-600"
+//                   >
+//                     ×
+//                   </button>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+
+//           {/* Payment Amount */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2">
+//               Payment Amount *
+//             </label>
+//             <input
+//               type="number"
+//               name="amount"
+//               value={formData.amount}
+//               onChange={handleInputChange}
+//               step="0.01"
+//               min="0.01"
+//               max={selectedInvoice?.remainingAmount || ''}
+//               placeholder="0.00"
+//               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+//               required
+//             />
+//             {selectedInvoice && (
+//               <p className="text-xs text-gray-500 mt-1">
+//                 Maximum: {formatCurrency(selectedInvoice.remainingAmount)}
+//               </p>
+//             )}
+//           </div>
+
+//           {/* Payment Method */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2">
+//               Payment Method *
+//             </label>
+//             <select
+//               name="paymentMethod"
+//               value={formData.paymentMethod}
+//               onChange={handleInputChange}
+//               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+//               required
+//             >
+//               <option value="cash">Cash</option>
+//               <option value="check">Check</option>
+//               <option value="bank_transfer">Bank Transfer</option>
+//               <option value="gcash">GCash</option>
+//               <option value="maya">Maya</option>
+//               <option value="other">Other</option>
+//             </select>
+//           </div>
+
+//           {/* Reference Number */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2">
+//               Reference Number (Optional)
+//             </label>
+//             <input
+//               type="text"
+//               name="reference"
+//               value={formData.reference}
+//               onChange={handleInputChange}
+//               placeholder="Check number, transaction ID, etc."
+//               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+//             />
+//           </div>
+
+//           {/* Notes */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2">
+//               Notes (Optional)
+//             </label>
+//             <textarea
+//               name="notes"
+//               value={formData.notes}
+//               onChange={handleInputChange}
+//               rows={3}
+//               placeholder="Additional notes about this payment..."
+//               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+//             />
+//           </div>
+
+//           {/* Error Message */}
+//           {error && (
+//             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+//               <p className="text-sm text-red-600">{error}</p>
+//             </div>
+//           )}
+
+//           {/* Submit Button */}
+//           <div className="flex justify-end">
+//             <button
+//               type="submit"
+//               disabled={isLoading}
+//               className="px-6 py-2 cursor-pointer bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+//             >
+//               {isLoading ? (
+//                 <>
+//                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+//                   Recording...
+//                 </>
+//               ) : (
+//                 <>
+//                   Record Payment
+//                 </>
+//               )}
+//             </button>
+//           </div>
+//         </form>
+//       </div>
+
+//       {/* Success Modal */}
+//       <SuccessModal
+//         isOpen={showSuccessModal}
+//         onClose={() => setShowSuccessModal(false)}
+//         title="Payment Recorded Successfully"
+//         message="The over-the-counter payment has been recorded and the invoice balance has been updated."
+//         autoClose={true}
+//         autoCloseDelay={3000}
+//       />
+//     </div>
+//   );
+// };
+
 // Main Settings component
 function Settings() {
   const [activeTab, setActiveTab] = useState('company');
@@ -414,7 +783,8 @@ function Settings() {
   const tabs = [
     { id: 'company', label: 'Company Profile', icon: Building2, component: CompanyProfile },
     { id: 'paymongo', label: 'PayMongo Methods', icon: CreditCard, component: PayMongoMethods },
-    { id: 'markup', label: 'Markup Settings', icon: TrendingUp, component: MarkupSettings }
+    { id: 'markup', label: 'Markup Settings', icon: TrendingUp, component: MarkupSettings },
+    // { id: 'otc', label: 'OTC Payments', icon: DollarSign, component: OverTheCounterPayments }
   ];
 
   const activeTabData = tabs.find(tab => tab.id === activeTab);

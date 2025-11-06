@@ -921,7 +921,6 @@ const Payment = () => {
                 disabled={!paymentAmount}
                 className="flex items-center cursor-pointer px-8 py-3 bg-[#3182ce] text-white rounded-lg hover:bg-[#2c5282] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                <DollarSign className="w-5 h-5 mr-2" />
                 Pay {paymentAmount ? formatCurrency(parseFloat(paymentAmount)) : 'Now'}
               </button>
             </div>

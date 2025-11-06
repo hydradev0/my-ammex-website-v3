@@ -127,7 +127,7 @@ const IncomingPaymentsTab = ({
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Due Date</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Totals</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 uppercase tracking-wider"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -177,11 +177,12 @@ const IncomingPaymentsTab = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center gap-2 justify-end">
-                        <AdvanceActionsDropdown
+                        {/* Temporarily disabled actions */}
+                        {/* <AdvanceActionsDropdown
                           item={row}
                           quickActions={quickActions}
                           onAction={handleAction}
-                        />
+                        /> */}
                       </div>
                     </td>
                   </tr>
@@ -205,7 +206,8 @@ const IncomingPaymentsTab = ({
         />
       )}
 
-      {modalState.isOpen && (
+      {/* Temporarily disabled payment actions modal */}
+      {/* {modalState.isOpen && (
         <PaymentActionsModal
           isOpen={modalState.isOpen}
           actionType={modalState.actionType}
@@ -217,7 +219,7 @@ const IncomingPaymentsTab = ({
             closeModal();
           }}
         />
-      )}
+      )} */}
     </div>
   );
 };

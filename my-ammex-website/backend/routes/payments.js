@@ -187,4 +187,9 @@ router.get('/receipts/:receiptId', protect, authorize('Client'), ctrl.getPayment
 // @access  Private (Client)
 router.get('/receipts/:receiptId/download', protect, authorize('Client'), ctrl.downloadPaymentReceipt);
 
+// @route   GET /api/payments/invoices/:id/download-payment
+// @desc    Download invoice payment-format PDF (shows paid and balance)
+// @access  Private (Client, Admin, Sales Marketing)
+router.get('/invoices/:id/download-payment', protect, authorize('Client', 'Admin', 'Sales Marketing'), ctrl.downloadPaymentHistoryPdf);
+
 module.exports = router;

@@ -33,6 +33,9 @@ const Invoice = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Inline pagination dropdown state
+  const [showOpenPageSize, setShowOpenPageSize] = useState(false);
+  const [showCompletedPageSize, setShowCompletedPageSize] = useState(false);
 
   useEffect(() => {
     const loadInvoices = async () => {
@@ -721,6 +724,59 @@ const Invoice = () => {
                 </div>
               </div>
             )}
+            {sortedOpenInvoices.length > 0 && (
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="text-sm text-gray-600">
+                  {"Showing " + (startIndex + 1) + "–" + Math.min(startIndex + itemsPerPage, sortedOpenInvoices.length) + " of " + sortedOpenInvoices.length}
+                </div>
+                <div className="flex items-center gap-3 justify-between sm:justify-end">
+                  <div className="flex items-center gap-2 text-sm text-gray-700 relative">
+                    <span>Rows per page</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowOpenPageSize(!showOpenPageSize)}
+                      className="border border-gray-300 bg-white hover:bg-gray-50 cursor-pointer rounded-md px-2 py-1 flex items-center gap-1"
+                    >
+                      <span>{itemsPerPage}</span>
+                      <ChevronDown className="w-4 h-4 text-gray-600" />
+                    </button>
+                    {showOpenPageSize && (
+                      <div className="absolute top-full right-0 mt-1 w-28 bg-white border border-gray-200 rounded-md shadow-md z-20">
+                        {[10,20,30,50].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => { setItemsPerPage(n); setCurrentPage(1); setShowOpenPageSize(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${itemsPerPage === n ? 'bg-gray-100 text-gray-900' : 'text-gray-700'}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1.5 rounded-md border text-sm ${currentPage === 1 ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed' : 'text-gray-700 border-gray-300 bg-white hover:bg-gray-50 cursor-pointer'}`}
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      {"Page " + currentPage + " of " + Math.ceil(sortedOpenInvoices.length / itemsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(Math.min(Math.ceil(sortedOpenInvoices.length / itemsPerPage), currentPage + 1))}
+                      disabled={currentPage >= Math.ceil(sortedOpenInvoices.length / itemsPerPage)}
+                      className={`px-3 py-1.5 rounded-md border text-sm ${currentPage >= Math.ceil(sortedOpenInvoices.length / itemsPerPage) ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed' : 'text-gray-700 border-gray-300 bg-white hover:bg-gray-50 cursor-pointer'}`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -837,6 +893,59 @@ const Invoice = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+            {sortedCompletedInvoices.length > 0 && (
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="text-sm text-gray-600">
+                  {"Showing " + (startIndex + 1) + "–" + Math.min(startIndex + itemsPerPage, sortedCompletedInvoices.length) + " of " + sortedCompletedInvoices.length}
+                </div>
+                <div className="flex items-center gap-3 justify-between sm:justify-end">
+                  <div className="flex items-center gap-2 text-sm text-gray-700 relative">
+                    <span>Rows per page</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCompletedPageSize(!showCompletedPageSize)}
+                      className="border border-gray-300 bg-white hover:bg-gray-50 cursor-pointer rounded-md px-2 py-1 flex items-center gap-1"
+                    >
+                      <span>{itemsPerPage}</span>
+                      <ChevronDown className="w-4 h-4 text-gray-600" />
+                    </button>
+                    {showCompletedPageSize && (
+                      <div className="absolute top-full right-0 mt-1 w-28 bg-white border border-gray-200 rounded-md shadow-md z-20">
+                        {[10,20,30,50].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => { setItemsPerPage(n); setCurrentPage(1); setShowCompletedPageSize(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${itemsPerPage === n ? 'bg-gray-100 text-gray-900' : 'text-gray-700'}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1.5 rounded-md border text-sm ${currentPage === 1 ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed' : 'text-gray-700 border-gray-300 bg-white hover:bg-gray-50 cursor-pointer'}`}
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      {"Page " + currentPage + " of " + Math.ceil(sortedCompletedInvoices.length / itemsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(Math.min(Math.ceil(sortedCompletedInvoices.length / itemsPerPage), currentPage + 1))}
+                      disabled={currentPage >= Math.ceil(sortedCompletedInvoices.length / itemsPerPage)}
+                      className={`px-3 py-1.5 rounded-md border text-sm ${currentPage >= Math.ceil(sortedCompletedInvoices.length / itemsPerPage) ? 'text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed' : 'text-gray-700 border-gray-300 bg-white hover:bg-gray-50 cursor-pointer'}`}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
