@@ -871,7 +871,7 @@ const Invoice = () => {
                 </p>
                 <button
                   onClick={handleViewPaymentReceipts}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700 underline"
+                  className="text-sm cursor-pointer font-medium text-blue-600 hover:text-blue-700 underline"
                 >
                   View Payment Receipts
                 </button>

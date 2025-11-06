@@ -1145,7 +1145,7 @@ const initializeModels = (sequelize) => {
       }
     },
     type: {
-      type: DataTypes.ENUM('invoice_overdue', 'order_rejected', 'order_appeal', 'order_approved', 'stock_low', 'stock_high', 'general'),
+      type: DataTypes.ENUM('invoice_overdue', 'order_rejected', 'order_appeal', 'order_approved', 'stock_low', 'stock_high', 'general', 'payment_approved', 'payment_rejected'),
       allowNull: false
     },
     title: {

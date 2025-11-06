@@ -18,7 +18,7 @@ const getRequiredColumns = (type) => {
     case 'sales_by_product':
       return ['month_start', 'model_no', 'category_name'];
     case 'bulk':
-      return ['customer_name', 'bulk_orders_amount', 'model_no', 'month_start'];
+      return ['month_start', 'customer_name', 'bulk_orders_amount', 'model_no'];
     default:
       return [];
   }
@@ -381,7 +381,7 @@ function ImportData() {
                 <p><strong>Sales by Product:</strong> month_start, model_no, category_name</p>
               </div>
               <div>
-                <p><strong>Bulk Orders by Name:</strong> customer_name, bulk_orders_amount, model_no, month_start</p>
+                <p><strong>Bulk Orders by Name:</strong> month_start, customer_name, bulk_orders_amount, model_no</p>
               </div>
             </div>
           </div>

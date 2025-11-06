@@ -14,23 +14,19 @@ function generatePaymentNumber() {
   return `PAY-${yyyy}${mm}${dd}-${random}`;
 }
 
-// Generate unique receipt number
-async function generateReceiptNumber() {
-  const { PaymentReceipt } = getModels();
+// Generate unique receipt number using payment ID and timestamp
+// Format: RCP-YYYY-MMDD-PaymentID-RandomCode
+// This ensures uniqueness even with concurrent requests
+function generateReceiptNumber(paymentId) {
   const now = new Date();
   const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
   
-  // Get the count of receipts this year
-  const count = await PaymentReceipt.count({
-    where: {
-      receiptNumber: {
-        [require('sequelize').Op.like]: `RCP-${yyyy}-%`
-      }
-    }
-  });
+  // Use payment ID (ensures 1-to-1 mapping) + random 3-digit code for extra uniqueness
+  const random = Math.floor(100 + Math.random() * 900); // 100-999
   
-  const nextNumber = String(count + 1).padStart(4, '0');
-  return `RCP-${yyyy}-${nextNumber}`;
+  return `RCP-${yyyy}${mm}${dd}-${paymentId}-${random}`;
 }
 
 // Helper: Format payment method display name
@@ -301,6 +297,16 @@ async function createPaymentReceipt(payment, invoice) {
   try {
     const { PaymentReceipt, Customer } = getModels();
     
+    // Check if receipt already exists for this payment (idempotency)
+    const existingReceipt = await PaymentReceipt.findOne({
+      where: { paymentId: payment.id }
+    });
+    
+    if (existingReceipt) {
+      console.log(`⚠️ Receipt already exists for payment ${payment.id}: ${existingReceipt.receiptNumber}`);
+      return existingReceipt;
+    }
+    
     // Get customer details
     const customer = await Customer.findByPk(payment.customerId);
     if (!customer) {
@@ -314,8 +320,8 @@ async function createPaymentReceipt(payment, invoice) {
     // Determine status based on remaining balance
     const status = remainingAmount <= 0 ? 'Completed' : 'Partial';
     
-    // Generate receipt number
-    const receiptNumber = await generateReceiptNumber();
+    // Generate receipt number with payment ID
+    const receiptNumber = generateReceiptNumber(payment.id);
     
     // Prepare receipt data
     const receiptData = {
@@ -639,6 +645,18 @@ const approvePayment = async (req, res, next) => {
       notes: `Approved by admin`,
       performedBy: reviewerId
     });
+
+    // Reload invoice with updated balance for receipt
+    await payment.invoice.reload();
+
+    // Create payment receipt with updated invoice data
+    console.log(`💰 Creating payment receipt for payment ID ${payment.id}...`);
+    const receipt = await createPaymentReceipt(payment, payment.invoice);
+    if (receipt) {
+      console.log(`✅ Payment receipt created successfully: ${receipt.receiptNumber}`);
+    } else {
+      console.error(`❌ Failed to create payment receipt for payment ID ${payment.id}`);
+    }
 
     // Create notification for customer
     await Notification.create({

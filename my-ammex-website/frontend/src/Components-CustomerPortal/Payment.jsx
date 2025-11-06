@@ -600,6 +600,7 @@ const Payment = () => {
                       handleAmountChange(val.replace(',', '.'));
                     }
                   }}
+                  onWheel={(e) => e.target.blur()}
                   className={`w-full pl-6 pr-4 py-3 border rounded-lg focus:ring-2 focus:outline-none text-lg
                   [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
                   ${validationErrors.amount ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
