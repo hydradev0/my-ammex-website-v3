@@ -1189,7 +1189,7 @@ const SalesTrend = () => {
               {!predictions.error && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Insights</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Insights</h3>
                   <div className="space-y-3">
                     {predictions.insights.map((insight, index) => (
                       <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">

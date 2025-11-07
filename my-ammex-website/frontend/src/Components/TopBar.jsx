@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
@@ -14,9 +14,34 @@ function TopBar() {
   const menuRef = useRef(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [markingId, setMarkingId] = useState(null);
+  const [markingAll, setMarkingAll] = useState(false);
   const notificationsRef = useRef(null);
 
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+
+  const handleMarkAsRead = async (notificationId) => {
+    if (!notificationId) return;
+    setMarkingId(notificationId);
+    try {
+      await markAsRead(notificationId);
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    } finally {
+      setMarkingId((current) => (current === notificationId ? null : current));
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    setMarkingAll(true);
+    try {
+      await markAllAsRead();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    } finally {
+      setMarkingAll(false);
+    }
+  };
 
   const handleDataRestored = (dataType, restoredData) => {
     // Trigger a refresh for the specific data type without page reload
@@ -76,7 +101,7 @@ function TopBar() {
             )}
           </button>
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999]">
               <div className="p-3 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
@@ -89,11 +114,15 @@ function TopBar() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-200">
-                    {notifications.map((n) => (
+                    {notifications.map((n) => {
+                      const isInventoryAlert = n.type === 'stock_low' || n.type === 'stock_high';
+                      const isMarking = markingId === n.id;
+
+                      return (
                       <div
                         key={n.id}
-                        className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${!n.adminIsRead ? 'bg-blue-50' : ''}`}
-                        onClick={() => markAsRead(n.id)}
+                        className={`p-3 hover:bg-gray-50 transition-colors ${isMarking ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'} ${!n.adminIsRead ? 'bg-blue-50' : ''}`}
+                        onClick={() => handleMarkAsRead(n.id)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -103,20 +132,53 @@ function TopBar() {
                               dangerouslySetInnerHTML={{ __html: n.message }}
                             />
                             <p className="text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                            {isMarking && (
+                              <p className="text-[11px] text-blue-200 mt-1">Marking as read…</p>
+                            )}
+                            {isInventoryAlert && (
+                              <div className="mt-3 flex items-center gap-3">
+                                <button
+                                  onClick={async (event) => {
+                                    event.stopPropagation();
+                                    await handleMarkAsRead(n.id);
+                                    setShowNotifications(false);
+                                    navigate('/inventory/Items');
+                                  }}
+                                  className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                >
+                                  View Items
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={async (event) => {
+                                    event.stopPropagation();
+                                    await handleMarkAsRead(n.id);
+                                    setShowNotifications(false);
+                                    navigate('/home/dashboard');
+                                  }}
+                                  className="text-xs cursor-pointer text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                                >
+                                  View Dashboard
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
               </div>
               {notifications.length > 0 && (
                 <div className="p-3 border-t text-center border-gray-200 bg-gray-50">
                     <button
-                      onClick={markAllAsRead}
-                      className="text-sm cursor-pointer text-blue-600 hover:text-blue-800"
+                      onClick={handleMarkAllAsRead}
+                      disabled={markingAll || unreadCount === 0}
+                      className={`text-sm ${markingAll || unreadCount === 0 ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer text-blue-600 hover:text-blue-800'}`}
                     >
-                      {unreadCount > 0 ? 'Mark all as read' : ''}
+                      {markingAll ? 'Marking…' : unreadCount > 0 ? 'Mark all as read' : ''}
                     </button>
                 </div>
               )}
@@ -133,7 +195,7 @@ function TopBar() {
               <Menu size={20} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded-md shadow-lg ring-1 ring-black/5 py-1">
+              <div className="absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded-md shadow-lg ring-1 ring-black/5 py-1 z-[9999]">
                 {user.role === 'Admin' && (<button
                   onClick={() => navigate('/admin/account-management')}
                   className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"

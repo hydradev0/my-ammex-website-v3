@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, User, ShoppingCart, X, AlertCircle, ExternalLink, Package, AlertTriangle } from 'lucide-react';
+import { Bell, User, ShoppingCart, X, AlertCircle, ExternalLink, Package, AlertTriangle, NotepadText } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { appealRejectedPayment } from '../services/paymentService';
 import { appealRejectedOrder } from '../services/orderService';
@@ -14,6 +14,8 @@ function TopBarPortal() {
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [markingId, setMarkingId] = useState(null);
+  const [markingAll, setMarkingAll] = useState(false);
   const [realTimeCartCount, setRealTimeCartCount] = useState(0);
   const notificationsRef = useRef(null);
   
@@ -122,6 +124,29 @@ function TopBarPortal() {
     };
   }, []);
 
+  const handleMarkAsRead = async (notificationId) => {
+    if (!notificationId) return;
+    setMarkingId(notificationId);
+    try {
+      await markAsRead(notificationId);
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    } finally {
+      setMarkingId((current) => (current === notificationId ? null : current));
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    setMarkingAll(true);
+    try {
+      await markAllAsRead();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    } finally {
+      setMarkingAll(false);
+    }
+  };
+
   return (
     <div className="bg-[#2c5282] w-full flex items-center px-3 sm:px-5 text-white text-sm h-16 sm:h-18">
       <div className="flex justify-between w-full max-w-7xl">
@@ -169,13 +194,18 @@ function TopBarPortal() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-200">
-                    {notifications.map((notification) => (
+                    {notifications.map((notification) => {
+                      const isMarking = markingId === notification.id;
+
+                      return (
                       <div
                         key={notification.id}
-                        className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                        className={`p-4 hover:bg-gray-50 transition-colors ${
+                          isMarking ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'
+                        } ${
                           !notification.isRead ? 'bg-blue-50' : ''
                         }`}
-                        onClick={() => markAsRead(notification.id)}
+                        onClick={() => handleMarkAsRead(notification.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start space-x-3 flex-1">
@@ -216,6 +246,9 @@ function TopBarPortal() {
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
+                              {isMarking && (
+                                <p className="text-xs text-blue-500 mt-1">Marking as read…</p>
+                              )}
                               {notification.type === 'order_rejected' && (
                                 <div className="mt-2 flex items-center gap-3">
                                   <button
@@ -227,9 +260,10 @@ function TopBarPortal() {
                                       setAppealReason('');
                                       setIsAppealOpen(true);
                                     }}
-                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800"
+                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1"
                                   >
                                     Appeal
+                                    <NotepadText className="w-3 h-3" />
                                   </button>
                                   <button
                                     onClick={() => navigate('/products/orders')}
@@ -256,7 +290,8 @@ function TopBarPortal() {
                           
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -267,10 +302,11 @@ function TopBarPortal() {
                     className="w-full text-center text-sm"
                   >
                     <button
-                      onClick={markAllAsRead}
-                      className="text-sm cursor-pointer text-blue-600 hover:text-blue-800"
+                      onClick={handleMarkAllAsRead}
+                      disabled={markingAll || unreadCount === 0}
+                      className={`text-sm ${markingAll || unreadCount === 0 ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer text-blue-600 hover:text-blue-800'}`}
                     >
-                      {unreadCount > 0 ? 'Mark all as read' : ''}
+                      {markingAll ? 'Marking…' : unreadCount > 0 ? 'Mark all as read' : ''}
                     </button>
                   </div>
                 </div>

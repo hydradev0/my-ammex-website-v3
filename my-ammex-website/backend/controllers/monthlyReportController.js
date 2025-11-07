@@ -60,7 +60,8 @@ class MonthlyReportController {
       });
 
       // Get top products from u_sales_fact_monthly_by_product
-      // Note: We join with InvoiceItem to get actual sales revenue for each product
+      // Note: We calculate sales with discounts applied by proportionally distributing
+      // the invoice's final total_amount (after discount) across invoice items
       const topProducts = await getSequelize().query(`
         SELECT 
           sfp.month_start,
@@ -70,13 +71,29 @@ class MonthlyReportController {
           COALESCE(product_sales.total_sales, 0) as total_sales
         FROM u_sales_fact_monthly_by_product sfp
         LEFT JOIN (
+          WITH invoice_subtotals AS (
+            SELECT 
+              i.id as invoice_id,
+              SUM(ii.total_price) as invoice_subtotal
+            FROM "Invoice" i
+            JOIN "InvoiceItem" ii ON i.id = ii.invoice_id
+            WHERE DATE_TRUNC('month', i.invoice_date)::date = :monthStart
+            GROUP BY i.id
+          )
           SELECT 
             item.model_no,
             DATE_TRUNC('month', i.invoice_date)::date as month_start,
-            SUM(ii.total_price) as total_sales
+            SUM(
+              CASE 
+                WHEN ist.invoice_subtotal > 0 
+                THEN (ii.total_price / ist.invoice_subtotal) * i.total_amount
+                ELSE 0
+              END
+            ) as total_sales
           FROM "Invoice" i
           JOIN "InvoiceItem" ii ON i.id = ii.invoice_id
           JOIN "Item" item ON ii.item_id = item.id
+          JOIN invoice_subtotals ist ON i.id = ist.invoice_id
           WHERE DATE_TRUNC('month', i.invoice_date)::date = :monthStart
           GROUP BY item.model_no, DATE_TRUNC('month', i.invoice_date)::date
         ) product_sales ON sfp.model_no = product_sales.model_no 

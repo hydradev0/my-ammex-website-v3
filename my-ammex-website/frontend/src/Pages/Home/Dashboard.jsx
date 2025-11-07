@@ -7,10 +7,12 @@ import InventoryAlerts from '../../Components-Dashboard/InventoryAlerts';
 import DailyComparison from '../../Components-Dashboard/DailyComparison';
 import { getMetricsCardsForRole } from '../../utils/roleManager';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,6 +81,8 @@ const Dashboard = () => {
             valueSuffix={` ${metrics.orders?.total || 0 === 1 ? 'order' : 'orders'}`}
             subtitle={`${metrics.orders?.pending || 0} orders pending`}
             statusIndicator={formatGrowth(metrics.orders?.growth)}
+            linkText="View Orders"
+            onLinkClick={() => navigate('/sales/orders')}
           />
         );
       

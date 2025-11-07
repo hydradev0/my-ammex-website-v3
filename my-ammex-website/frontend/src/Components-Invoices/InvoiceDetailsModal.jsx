@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, User, Mail, FileText, Package, DollarSign, Download } from 'lucide-react';
+import { X, Calendar, User, Mail, FileText, Package, DollarSign, Download, Loader2 } from 'lucide-react';
 import ScrollLock from '../Components/ScrollLock';
 
 const InvoiceDetailsModal = ({
@@ -11,11 +11,20 @@ const InvoiceDetailsModal = ({
   formatDate,
   onDownloadPdf
 }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   if (!isOpen || !invoice) return null;
 
   const handleDownloadPdf = async () => {
     if (onDownloadPdf) {
-      await onDownloadPdf(invoice);
+      try {
+        setIsDownloading(true);
+        await onDownloadPdf(invoice);
+      } catch (error) {
+        console.error('Error downloading PDF:', error);
+      } finally {
+        setIsDownloading(false);
+      }
     }
   };
 
@@ -224,10 +233,20 @@ const InvoiceDetailsModal = ({
             </button>
             <button
               onClick={handleDownloadPdf}
-              className="flex items-center cursor-pointer space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              disabled={isDownloading}
+              className="flex items-center cursor-pointer space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4" />
-              <span>Download PDF</span>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Downloading...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Download PDF</span>
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -889,7 +889,7 @@ const Payment = () => {
                         setValidationErrors(prev => ({ ...prev, cardholderName: undefined }));
                       }
                     }}
-                    placeholder="JUAN DELA CRUZ"
+                    placeholder="JUAN A. DELA CRUZ"
                     className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none uppercase ${
                       validationErrors.cardholderName 
                         ? 'border-red-500 focus:ring-red-500' 

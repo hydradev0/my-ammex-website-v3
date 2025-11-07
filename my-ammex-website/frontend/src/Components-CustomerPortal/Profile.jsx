@@ -771,10 +771,10 @@ const Profile = () => {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-200 mb-4 md:mb-6"></div>
+        {/* <div className="border-t border-gray-200 mb-4 md:mb-6"></div> */}
 
         {/* Additional Information */}
-        <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+        {/* <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <h2 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6">Additional Information</h2>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Notes</label>
@@ -789,7 +789,7 @@ const Profile = () => {
               <div className="text-gray-900 text-sm sm:text-base">{userData.notes}</div>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
     </>
