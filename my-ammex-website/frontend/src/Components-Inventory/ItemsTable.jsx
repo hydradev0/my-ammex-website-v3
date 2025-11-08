@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
@@ -27,25 +27,10 @@ import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 //   'Tools': 'bg-red-100 text-red-800',
 // };
 
-function mapStockDataToItemTableFormat(stockItem) {
-  // Map StockMovement item to ItemsTable item structure
-  return {
-    itemCode: stockItem.id ? (stockItem.category?.substring(0,2).toUpperCase() || 'IT') + String(stockItem.id).padStart(3, '0') : '',
-    itemName: stockItem.name || '',
-    quantity: stockItem.currentStock || 0,
-    unit: 'pcs', // Default, as StockMovement doesn't specify unit
-    sellingPrice: stockItem.price || 0,
-    supplierPrice: stockItem.price ? (stockItem.price * 0.9) : 0, // Example: 10% below price
-    category: stockItem.category || '',
-    vendor: '', // Not available in StockMovement
-    description: '', // Not available in StockMovement
-    minLevel: 0, // Not available in StockMovement
-    maxLevel: 0  // Not available in StockMovement
-  };
-}
 
 function ItemsTable({ categories, setCategories, units, suppliers = [], subcategories = [] }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { refreshTriggers } = useDataRefresh();
   const role = user?.role;
@@ -68,6 +53,38 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
   // State for search and filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterValue, setFilterValue] = useState('Filter by...');
+  
+  // Ref to track the last processed search param to avoid re-processing
+  const lastProcessedSearchRef = useRef(null);
+  
+  // Read search parameter from URL on mount or when location changes
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const searchParam = searchParams.get('search');
+    
+    // Only process if it's a new search param (different from last processed)
+    if (searchParam && lastProcessedSearchRef.current !== searchParam) {
+      lastProcessedSearchRef.current = searchParam;
+      setSearchTerm(searchParam);
+      
+      // Clear search param from URL after applying (cleaner URL, better back button UX)
+      // Use requestAnimationFrame to ensure it happens after render
+      requestAnimationFrame(() => {
+        const currentParams = new URLSearchParams(window.location.search);
+        if (currentParams.get('search') === searchParam) {
+          currentParams.delete('search');
+          const newSearch = currentParams.toString();
+          const newUrl = newSearch 
+            ? `${location.pathname}?${newSearch}` 
+            : location.pathname;
+          navigate(newUrl, { replace: true });
+        }
+      });
+    } else if (!searchParam) {
+      // Reset ref when search param is removed (allows processing same search again)
+      lastProcessedSearchRef.current = null;
+    }
+  }, [location.search, location.pathname, navigate]);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -242,6 +259,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       const matchesSearch = 
         (item.itemName || '').toLowerCase().includes(searchLower) ||
         (item.itemCode || '').toLowerCase().includes(searchLower) ||
+        (item.modelNo || '').toLowerCase().includes(searchLower) ||
         (item.category?.name || '').toLowerCase().includes(searchLower);
       
       const matchesFilter = filterValue === 'Filter by...' || (item.category?.name || item.category) === filterValue;

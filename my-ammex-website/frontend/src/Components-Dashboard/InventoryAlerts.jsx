@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown, CopyIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react';
 import { getInventoryAlerts } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
 
 const InventoryAlerts = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [lowStockAlerts, setLowStockAlerts] = useState([]);
   const [overstockAlerts, setOverstockAlerts] = useState([]);
@@ -14,7 +16,6 @@ const InventoryAlerts = () => {
   const [activeTab, setActiveTab] = useState('lowStock'); // 'lowStock' or 'overstock'
   const [severityDropdownOpen, setSeverityDropdownOpen] = useState(false);
   const severityDropdownRef = useRef(null);
-  const [copiedId, setCopiedId] = useState(null);
 
   const severityOptions = [
     { value: 'all', label: 'All Severities' },
@@ -269,7 +270,7 @@ const InventoryAlerts = () => {
                       </div>
                     )}
 
-                    {/* Item Code with copy */}
+                    {/* Item Code with navigate to inventory */}
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-xs text-gray-500">
                             Item Code: <span className="font-semibold text-gray-900">{alert.itemCode || alert.item_code || alert.item?.itemCode || '-'}</span>
@@ -277,32 +278,18 @@ const InventoryAlerts = () => {
                           {Boolean(alert.itemCode || alert.item_code || alert.item?.itemCode) && (
                             <button
                               type="button"
-                              className="text-xs cursor-pointer px-1 py-1 border-transparent rounded hover:bg-gray-100 text-gray-700"
+                              className="text-xs cursor-pointer px-1 py-1 border-transparent rounded hover:text-black text-gray-700 flex items-center gap-1"
                               onClick={() => {
                                 const code = alert.itemCode || alert.item_code || alert.item?.itemCode;
                                 if (code) {
-                                  if (navigator.clipboard && navigator.clipboard.writeText) {
-                                    navigator.clipboard.writeText(code);
-                                  } else {
-                                    const textarea = document.createElement('textarea');
-                                    textarea.value = code;
-                                    document.body.appendChild(textarea);
-                                    textarea.select();
-                                    try { document.execCommand('copy'); } catch (e) {}
-                                    document.body.removeChild(textarea);
-                                  }
-                                  setCopiedId(alert.id);
-                                  window.clearTimeout(window.__copyTimeout);
-                                  window.__copyTimeout = window.setTimeout(() => setCopiedId(null), 2000);
+                                  navigate(`/inventory/Items?search=${encodeURIComponent(code)}`);
                                 }
                               }}
-                              title="Copy item code"
+                              title="View item in inventory"
                             >
-                              <CopyIcon className="w-4 h-4" />
+                              <ExternalLink className="w-4 h-4" />
+                              <span>View Item</span>
                             </button>
-                          )}
-                          {copiedId === alert.id && (
-                            <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">Copied!</span>
                           )}
                         </div>
 

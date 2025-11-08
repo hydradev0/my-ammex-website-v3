@@ -62,13 +62,25 @@ export const apiCall = async (endpoint, options = {}) => {
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
       const token = localStorage.getItem('token');
+      
+      // Don't set Content-Type for FormData - browser will set it with boundary
+      const isFormData = options.body instanceof FormData;
+      
+      // Build headers, ensuring Authorization is preserved
+      const headers = {
+        ...options.headers,
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      
+      // Remove Content-Type if it's explicitly set to undefined (for FormData)
+      if (headers['Content-Type'] === undefined) {
+        delete headers['Content-Type'];
+      }
+      
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...options.headers,
-        },
+        headers,
         ...options,
       });
 

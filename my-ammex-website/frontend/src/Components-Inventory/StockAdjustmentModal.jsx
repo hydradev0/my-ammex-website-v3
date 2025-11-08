@@ -104,10 +104,10 @@ function StockAdjustmentModal({
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all"
-      style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all flex flex-col max-h-[100vh]"
+      style={{ transform: 'scale(0.85)', transformOrigin: 'center' }}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <Package className="h-6 w-6 text-blue-600" />
@@ -122,8 +122,8 @@ function StockAdjustmentModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content - Scrollable */}
+        <div className="p-6 overflow-y-auto flex-1 mr-1">
           {/* Item Info */}
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-semibold text-gray-800 mb-2">{item.itemName}</h4>
@@ -247,7 +247,13 @@ function StockAdjustmentModal({
                     <div className="text-gray-700">
                       <span className="font-medium">Stock:</span> {Number(history.oldQuantity).toLocaleString()} → {Number(history.newQuantity).toLocaleString()}
                       <span className="ml-3 text-gray-600">
-                        <span className="font-medium">Change:</span> {history.adjustmentAmount >= 0 ? '+' : ''}{Number(history.adjustmentAmount).toLocaleString()}
+                        <span className="font-medium">Change:</span> {
+                          history.adjustmentType === 'subtract' 
+                            ? '-' 
+                            : history.adjustmentType === 'add' 
+                            ? '+' 
+                            : history.adjustmentAmount >= 0 ? '+' : '-'
+                        }{Number(history.adjustmentAmount).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -262,7 +268,7 @@ function StockAdjustmentModal({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 p-6 border-t border-gray-100">
+        <div className="flex gap-3 p-6 border-t border-gray-100 flex-shrink-0 bg-white rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}

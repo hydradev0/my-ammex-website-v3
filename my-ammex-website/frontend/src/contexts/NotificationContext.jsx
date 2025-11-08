@@ -88,28 +88,79 @@ export const NotificationProvider = ({ children }) => {
 
   // Mark notification as read using unified API
   const markAsRead = async (notificationId) => {
+    // Optimistically update the UI first for instant feedback
+    // Update both isRead and adminIsRead to handle both client and admin notifications
+    setNotifications(prev => {
+      const updated = prev.map(n => {
+        if (n.id === notificationId) {
+          return { ...n, adminIsRead: true, isRead: true };
+        }
+        return n;
+      });
+      setUnreadCount(computeUnreadCount(updated));
+      return updated;
+    });
+    
     try {
-      // Use the unified notification API
+      // Make API call in the background
       await markUnifiedNotificationAsRead(notificationId);
       
-      // Re-fetch from server to persist across reloads
-      const fetchedNotifications = await fetchNotifications();
-      setNotifications(fetchedNotifications);
-      setUnreadCount(computeUnreadCount(fetchedNotifications));
+      // Re-fetch from server to ensure consistency (but UI already updated)
+      // This can happen in the background without blocking
+      fetchNotifications().then(fetchedNotifications => {
+        setNotifications(fetchedNotifications);
+        setUnreadCount(computeUnreadCount(fetchedNotifications));
+      }).catch(error => {
+        console.error('Failed to refresh notifications:', error);
+        // If refresh fails, we already optimistically updated, so UI is fine
+      });
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
+      // On error, re-fetch to get correct state from server
+      fetchNotifications().then(fetchedNotifications => {
+        setNotifications(fetchedNotifications);
+        setUnreadCount(computeUnreadCount(fetchedNotifications));
+      }).catch(refreshError => {
+        console.error('Failed to refresh notifications after error:', refreshError);
+      });
     }
   };
 
   // Mark all notifications as read using unified API
   const markAllAsRead = async () => {
+    // Optimistically update the UI first for instant feedback
+    setNotifications(prev => {
+      const updated = prev.map(n => ({
+        ...n,
+        adminIsRead: true,
+        isRead: true
+      }));
+      setUnreadCount(0);
+      return updated;
+    });
+    
     try {
+      // Make API call in the background
       await markAllUnifiedNotificationsAsRead();
-      const fetchedNotifications = await fetchNotifications();
-      setNotifications(fetchedNotifications);
-      setUnreadCount(computeUnreadCount(fetchedNotifications));
+      
+      // Re-fetch from server to ensure consistency (but UI already updated)
+      // This can happen in the background without blocking
+      fetchNotifications().then(fetchedNotifications => {
+        setNotifications(fetchedNotifications);
+        setUnreadCount(computeUnreadCount(fetchedNotifications));
+      }).catch(error => {
+        console.error('Failed to refresh notifications:', error);
+        // If refresh fails, we already optimistically updated, so UI is fine
+      });
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
+      // Revert optimistic update on error by re-fetching
+      fetchNotifications().then(fetchedNotifications => {
+        setNotifications(fetchedNotifications);
+        setUnreadCount(computeUnreadCount(fetchedNotifications));
+      }).catch(refreshError => {
+        console.error('Failed to revert notifications:', refreshError);
+      });
     }
   };
 

@@ -681,7 +681,7 @@ const WebsiteData = () => {
                 <XAxis
                   dataKey="name"
                   stroke="#9ca3af"
-                  angle={-25}
+                  angle={-40}
                   textAnchor="end"
                   height={140}
                   tick={{ fontSize: 15 }}

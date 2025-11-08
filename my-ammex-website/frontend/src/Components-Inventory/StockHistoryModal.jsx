@@ -50,17 +50,23 @@ function StockHistoryModal({
   };
 
   const getStockChangeIcon = (adjustmentType, adjustmentAmount) => {
-    if (adjustmentType === 'add' || adjustmentAmount > 0) {
+    if (adjustmentType === 'add') {
       return <TrendingUp className="h-4 w-4 text-green-600" />;
-    } else if (adjustmentType === 'subtract' || adjustmentAmount < 0) {
+    } else if (adjustmentType === 'subtract') {
+      return <TrendingDown className="h-4 w-4 text-red-600" />;
+    } else if (adjustmentAmount > 0) {
+      return <TrendingUp className="h-4 w-4 text-green-600" />;
+    } else if (adjustmentAmount < 0) {
       return <TrendingDown className="h-4 w-4 text-red-600" />;
     }
     return <Package className="h-4 w-4 text-gray-600" />;
   };
 
   const getStockChangeColor = (adjustmentType, adjustmentAmount) => {
-    if (adjustmentType === 'add' || adjustmentAmount > 0) return 'text-green-600';
-    if (adjustmentType === 'subtract' || adjustmentAmount < 0) return 'text-red-600';
+    if (adjustmentType === 'add') return 'text-green-600';
+    if (adjustmentType === 'subtract') return 'text-red-600';
+    if (adjustmentAmount > 0) return 'text-green-600';
+    if (adjustmentAmount < 0) return 'text-red-600';
     return 'text-gray-600';
   };
 
@@ -174,11 +180,27 @@ function StockHistoryModal({
                         </div>
 
                         {/* Adjustment Amount */}
-                        <div className="col-span-2 bg-green-50 p-3 rounded-lg">
-                          <p className="text-xs text-green-700 mb-1">Adjustment Amount</p>
+                        <div className={`col-span-2 p-3 rounded-lg ${
+                          record.adjustmentType === 'subtract' 
+                            ? 'bg-red-50' 
+                            : record.adjustmentType === 'add' 
+                            ? 'bg-green-50' 
+                            : 'bg-gray-50'
+                        }`}>
+                          <p className={`text-xs mb-1 ${
+                            record.adjustmentType === 'subtract' 
+                              ? 'text-red-700' 
+                              : record.adjustmentType === 'add' 
+                              ? 'text-green-700' 
+                              : 'text-gray-700'
+                          }`}>Adjustment Amount</p>
                           <div className="flex items-center justify-between">
                             <span className={`text-sm font-semibold ${getStockChangeColor(record.adjustmentType, record.adjustmentAmount)}`}>
-                              {record.adjustmentAmount >= 0 ? '+' : ''}{Number(record.adjustmentAmount).toLocaleString()}
+                              {record.adjustmentType === 'subtract' 
+                                ? '-' 
+                                : record.adjustmentType === 'add' 
+                                ? '+' 
+                                : record.adjustmentAmount >= 0 ? '+' : ''}{Number(record.adjustmentAmount).toLocaleString()}
                             </span>
                           </div>
                         </div>

@@ -5,8 +5,8 @@ import { apiCall } from '../../utils/apiConfig';
 import TopBar from '../../Components/TopBar';
 
 const IMPORT_TYPES = [
-  { value: 'sales', label: 'Monthly Sales Data', description: 'Import aggregated monthly sales (sales_fact_monthly)' },
-  { value: 'sales_by_product', label: 'Sales by Product', description: 'Import monthly sales by model (sales_fact_monthly_by_product)' },
+  { value: 'sales', label: 'Monthly Sales Data', description: 'Import  aggregated monthly sales (sales_fact_monthly)' },
+  { value: 'sales_by_product', label: 'Sales by Product', description: 'Import monthly sales product (sales_fact_monthly_by_product)' },
   { value: 'bulk', label: 'Bulk Orders by Name', description: 'Import customer bulk orders by customer (customer_bulk_monthly_by_name)' }
 ];
 
@@ -16,7 +16,7 @@ const getRequiredColumns = (type) => {
     case 'sales':
       return ['month_start', 'total_revenue'];
     case 'sales_by_product':
-      return ['month_start', 'model_no', 'category_name'];
+      return ['month_start', 'model_no'];
     case 'bulk':
       return ['month_start', 'customer_name', 'bulk_orders_amount', 'model_no'];
     default:
@@ -25,18 +25,43 @@ const getRequiredColumns = (type) => {
 };
 
 // Function to get optional columns for each import type
-// const getOptionalColumns = (type) => {
-//   switch (type) {
-//     case 'sales':
-//       return ['total_orders', 'total_units', 'avg_order_value', 'new_customers'];
-//     case 'sales_by_product':
-//       return [];
-//     case 'bulk':
-//       return [];
-//     default:
-//       return [];
-//   }
-// };
+const getOptionalColumns = (type) => {
+  switch (type) {
+    case 'sales':
+      return ['total_orders', 'total_units', 'avg_order_value', 'new_customers'];
+    case 'sales_by_product':
+      return ['category_name'];
+    case 'bulk':
+      return [];
+    default:
+      return [];
+  }
+};
+
+// Function to generate sample CSV data
+const generateSampleCSV = (type) => {
+  let headers = [];
+  let sampleRow = [];
+  
+  switch (type) {
+    case 'sales':
+      headers = ['month_start', 'total_revenue', 'total_orders', 'total_units', 'avg_order_value', 'new_customers'];
+      sampleRow = ['2024-01-01', '150000.00', '250', '5000', '600.00', '15'];
+      break;
+    case 'sales_by_product':
+      headers = ['month_start', 'model_no', 'category_name'];
+      sampleRow = ['2024-01-01', 'APFN46100', 'Nitrile Gloves'];
+      break;
+    case 'bulk':
+      headers = ['month_start', 'customer_name', 'bulk_orders_amount', 'model_no'];
+      sampleRow = ['2024-01-01', 'ABC Company', '25000.00', 'APFN46100'];
+      break;
+    default:
+      return '';
+  }
+  
+  return headers.join(',') + '\n' + sampleRow.join(',');
+};
 
 function ImportData() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -47,12 +72,23 @@ function ImportData() {
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
-    if (file && file.type === 'text/csv') {
-      setSelectedFile(file);
-      setResult(null);
-    } else {
+    if (!file) return;
+    
+    // Validate file type
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
       alert('Please select a valid CSV file');
+      return;
     }
+    
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      alert('File size exceeds 10MB limit. Please upload a smaller file.');
+      return;
+    }
+    
+    setSelectedFile(file);
+    setResult(null);
   };
 
   const handleDrag = (e) => {
@@ -71,12 +107,23 @@ function ImportData() {
     setDragActive(false);
     
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'text/csv') {
-      setSelectedFile(file);
-      setResult(null);
-    } else {
+    if (!file) return;
+    
+    // Validate file type
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
       alert('Please select a valid CSV file');
+      return;
     }
+    
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      alert('File size exceeds 10MB limit. Please upload a smaller file.');
+      return;
+    }
+    
+    setSelectedFile(file);
+    setResult(null);
   };
 
   const handleImport = async () => {
@@ -96,9 +143,7 @@ function ImportData() {
       const response = await apiCall('/import/csv', {
         method: 'POST',
         body: formData,
-        headers: {
-          // Don't set Content-Type for FormData, let browser set it with boundary
-        },
+        // Don't pass headers - apiCall will handle Authorization and skip Content-Type for FormData
       });
 
       setResult({
@@ -116,6 +161,34 @@ function ImportData() {
     } finally {
       setImporting(false);
     }
+  };
+
+  const downloadSampleCSV = () => {
+    const csvContent = generateSampleCSV(importType);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sample_${importType}_import.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const downloadFullErrorReport = () => {
+    if (!result || !result.errors || result.errors.length === 0) return;
+    
+    const errorReport = result.errors.map(err => `Row ${err.row}: ${err.message}`).join('\n');
+    const blob = new Blob([errorReport], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `import_errors_${new Date().toISOString()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   const resetForm = () => {
@@ -173,26 +246,39 @@ function ImportData() {
                           </span>
                         ))}
                       </div>
-                      {/* {getOptionalColumns(type.value).length > 0 && (
+                      {getOptionalColumns(type.value).length > 0 && (
                         <>
                           <p className="text-xs font-medium text-gray-600 mb-2 mt-2">Optional columns:</p>
                           <div className="flex flex-wrap gap-1">
                             {getOptionalColumns(type.value).map((column, idx) => (
                               <span
                                 key={idx}
-                                className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border"
+                                className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border border-blue-200"
                               >
                                 {column}
                               </span>
                             ))}
                           </div>
                         </>
-                      )} */}
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+          
+          {/* Download Sample CSV Button */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={downloadSampleCSV}
+              className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Sample CSV
+            </button>
           </div>
         </div>
 
@@ -256,7 +342,7 @@ function ImportData() {
             <button
               onClick={handleImport}
               disabled={importing}
-              className="w-full mt-6 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-semibold"
+              className="w-full mt-6 px-6 py-3 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-semibold"
             >
               {importing ? (
                 <span className="flex items-center justify-center">
@@ -326,9 +412,19 @@ function ImportData() {
 
                 {result.errors && result.errors.length > 0 && (
                   <div className="bg-white rounded-lg p-4">
-                    <div className="flex items-center mb-3">
-                      <AlertCircle className="text-yellow-600 mr-2" size={20} />
-                      <h4 className="font-semibold text-gray-900">Errors Found</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center">
+                        <AlertCircle className="text-yellow-600 mr-2" size={20} />
+                        <h4 className="font-semibold text-gray-900">Errors Found ({result.errors.length})</h4>
+                      </div>
+                      {result.errors.length > 10 && (
+                        <button
+                          onClick={downloadFullErrorReport}
+                          className="px-3 py-1 cursor-pointer bg-gray-600 text-white rounded text-xs hover:bg-gray-700 transition-colors"
+                        >
+                          Download Full Report
+                        </button>
+                      )}
                     </div>
                     <div className="max-h-48 overflow-y-auto">
                       {result.errors.slice(0, 10).map((error, idx) => (
@@ -337,8 +433,8 @@ function ImportData() {
                         </div>
                       ))}
                       {result.errors.length > 10 && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          ... and {result.errors.length - 10} more errors
+                        <p className="text-sm text-gray-600 mt-2 italic">
+                          Showing first 10 of {result.errors.length} errors. Download full report to see all.
                         </p>
                       )}
                     </div>
@@ -347,7 +443,7 @@ function ImportData() {
 
                 <button
                   onClick={resetForm}
-                  className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="mt-4 px-6 py-2 cursor-pointer bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Import Another File
                 </button>
@@ -371,17 +467,20 @@ function ImportData() {
           
           <div className="mt-4 p-3 bg-white rounded border border-blue-300">
             <h4 className="font-semibold text-blue-900 mb-2">🎯 Quick Reference:</h4>
-            <div className="text-sm text-blue-800 space-y-2">
+            <div className="text-sm text-blue-800 space-y-3">
               <div>
-                <p><strong>Monthly Sales Data:</strong></p>
+                <p className="font-semibold">Monthly Sales Data:</p>
                 <p className="ml-2"><span className="text-red-600 font-semibold">Required:</span> month_start, total_revenue</p>
-                <p className="ml-2"><span className="text-gray-600">Optional:</span> total_orders, total_units, avg_order_value, new_customers</p>
+                <p className="ml-2"><span className="text-blue-600">Optional:</span> total_orders, total_units, avg_order_value, new_customers</p>
               </div>
               <div>
-                <p><strong>Sales by Product:</strong> month_start, model_no, category_name</p>
+                <p className="font-semibold">Sales by Product:</p>
+                <p className="ml-2"><span className="text-red-600 font-semibold">Required:</span> month_start, model_no</p>
+                <p className="ml-2"><span className="text-blue-600">Optional:</span> category_name</p>
               </div>
               <div>
-                <p><strong>Bulk Orders by Name:</strong> month_start, customer_name, bulk_orders_amount, model_no</p>
+                <p className="font-semibold">Bulk Orders by Name:</p>
+                <p className="ml-2"><span className="text-red-600 font-semibold">Required:</span> month_start, customer_name, bulk_orders_amount, model_no</p>
               </div>
             </div>
           </div>

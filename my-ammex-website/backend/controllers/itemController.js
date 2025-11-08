@@ -484,10 +484,13 @@ const updateItemStock = async (req, res, next) => {
     // Note: Stock level checking is handled automatically by Sequelize afterUpdate hook
     // No need to manually call NotificationService.checkStockLevels here
 
+    // Determine sign based on adjustment type
+    const sign = adjustmentType === 'subtract' ? '-' : adjustmentType === 'add' ? '+' : adjustmentAmount >= 0 ? '+' : '-';
+    
     res.json({
       success: true,
       data: updatedItem,
-      message: `Stock updated successfully. ${oldQuantity.toLocaleString()} → ${calculatedNewQuantity.toLocaleString()} (${adjustmentAmount >= 0 ? '+' : ''}${adjustmentAmount.toLocaleString()})`
+      message: `Stock updated successfully. ${oldQuantity.toLocaleString()} → ${calculatedNewQuantity.toLocaleString()} (${sign}${Math.abs(adjustmentAmount).toLocaleString()})`
     });
   } catch (error) {
     next(error);

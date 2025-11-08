@@ -119,12 +119,14 @@ exports.authorize = (...roles) => {
     }
 
     const userCanonical = toCanonical(normalizeRole(req.user.role));
+    
     if (!allowedCanonical.includes(userCanonical)) {
       return res.status(403).json({
         success: false,
         message: `User role ${req.user.role} is not authorized to access this route`,
       });
     }
+    
     next();
   };
 };

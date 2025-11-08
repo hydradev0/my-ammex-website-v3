@@ -20,27 +20,51 @@ function TopBar() {
 
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
-  const handleMarkAsRead = async (notificationId) => {
+  const handleMarkAsRead = async (notificationId, silent = false, optimistic = false) => {
     if (!notificationId) return;
-    setMarkingId(notificationId);
+    
+    // Find the notification to check if it's already read
+    const notification = notifications.find(n => n.id === notificationId);
+    const isAlreadyRead = notification?.adminIsRead;
+    
+    // Only show loading state if not silent and not already read
+    if (!silent && !isAlreadyRead) {
+      setMarkingId(notificationId);
+    }
+    
+    // If optimistic, mark as read immediately in the UI without waiting for API
+    if (optimistic) {
+      // Optimistically update the notification state
+      // The context will handle the actual API call in the background
+      markAsRead(notificationId).catch(error => {
+        console.error('Failed to mark notification as read:', error);
+        // Optionally: revert optimistic update on error
+      });
+      return;
+    }
+    
     try {
       await markAsRead(notificationId);
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     } finally {
-      setMarkingId((current) => (current === notificationId ? null : current));
+      if (!silent && !isAlreadyRead) {
+        setMarkingId((current) => (current === notificationId ? null : current));
+      }
     }
   };
 
   const handleMarkAllAsRead = async () => {
-    setMarkingAll(true);
-    try {
-      await markAllAsRead();
-    } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-    } finally {
-      setMarkingAll(false);
+    // Only show loading state if there are unread notifications
+    if (unreadCount > 0) {
+      setMarkingAll(true);
     }
+    // Fire and forget - optimistic updates handle the UI
+    markAllAsRead().catch(error => {
+      console.error('Failed to mark all notifications as read:', error);
+    }).finally(() => {
+      setMarkingAll(false);
+    });
   };
 
   const handleDataRestored = (dataType, restoredData) => {
@@ -121,8 +145,13 @@ function TopBar() {
                       return (
                       <div
                         key={n.id}
-                        className={`p-3 hover:bg-gray-50 transition-colors ${isMarking ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'} ${!n.adminIsRead ? 'bg-blue-50' : ''}`}
-                        onClick={() => handleMarkAsRead(n.id)}
+                        className={`p-3 hover:bg-gray-50 transition-colors ${isMarking && !n.adminIsRead ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'} ${!n.adminIsRead ? 'bg-blue-50' : ''}`}
+                        onClick={() => {
+                          // Only show loading state if notification is not already read
+                          if (!n.adminIsRead) {
+                            handleMarkAsRead(n.id);
+                          }
+                        }}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -132,31 +161,54 @@ function TopBar() {
                               dangerouslySetInnerHTML={{ __html: n.message }}
                             />
                             <p className="text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
-                            {isMarking && (
-                              <p className="text-[11px] text-blue-200 mt-1">Marking as read…</p>
+                            {isMarking && !n.adminIsRead && (
+                              <p className="text-[11px] text-blue-600 mt-1">Marking as read…</p>
                             )}
-                            {isInventoryAlert && (
-                              <div className="mt-3 flex items-center gap-3">
+                             {isInventoryAlert && (
+                              <div 
+                                className="mt-3 flex items-center gap-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <button
-                                  onClick={async (event) => {
+                                  onClick={(event) => {
                                     event.stopPropagation();
-                                    await handleMarkAsRead(n.id);
+                                    // Close notifications immediately for instant feedback
                                     setShowNotifications(false);
-                                    navigate('/inventory/Items');
+                                    
+                                    // Mark as read optimistically (fire and forget - no await)
+                                    // This allows navigation to happen immediately without waiting
+                                    if (!n.adminIsRead) {
+                                      handleMarkAsRead(n.id, true, true);
+                                    }
+                                    
+                                    // Navigate immediately - don't wait for API call
+                                    const searchValue = n.data?.itemCode || n.data?.modelNo;
+                                    const searchParam = searchValue ? `?search=${encodeURIComponent(searchValue)}` : '';
+                                    navigate(`/inventory/Items${searchParam}`);
                                   }}
-                                  className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                  className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
+                                  title={n.data?.itemCode || n.data?.modelNo ? `View item: ${n.data?.itemCode || n.data?.modelNo}` : 'View all items'}
                                 >
-                                  View Items
+                                  View Item
                                   <ExternalLink className="w-3 h-3" />
                                 </button>
                                 <button
-                                  onClick={async (event) => {
+                                  onClick={(event) => {
                                     event.stopPropagation();
-                                    await handleMarkAsRead(n.id);
+                                    // Close notifications immediately for instant feedback
                                     setShowNotifications(false);
+                                    
+                                    // Mark as read optimistically (fire and forget - no await)
+                                    // This allows navigation to happen immediately without waiting
+                                    if (!n.adminIsRead) {
+                                      handleMarkAsRead(n.id, true, true);
+                                    }
+                                    
+                                    // Navigate immediately - don't wait for API call
                                     navigate('/home/dashboard');
                                   }}
-                                  className="text-xs cursor-pointer text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                                  className="text-xs cursor-pointer text-gray-600 hover:text-black px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                  title="Go to dashboard"
                                 >
                                   View Dashboard
                                   <ExternalLink className="w-3 h-3" />

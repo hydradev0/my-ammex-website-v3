@@ -124,27 +124,51 @@ function TopBarPortal() {
     };
   }, []);
 
-  const handleMarkAsRead = async (notificationId) => {
+  const handleMarkAsRead = async (notificationId, silent = false, optimistic = false) => {
     if (!notificationId) return;
-    setMarkingId(notificationId);
+    
+    // Find the notification to check if it's already read
+    const notification = notifications.find(n => n.id === notificationId);
+    const isAlreadyRead = notification?.isRead;
+    
+    // Only show loading state if not silent and not already read
+    if (!silent && !isAlreadyRead) {
+      setMarkingId(notificationId);
+    }
+    
+    // If optimistic, mark as read immediately in the UI without waiting for API
+    if (optimistic) {
+      // Optimistically update the notification state
+      // The context will handle the actual API call in the background
+      markAsRead(notificationId).catch(error => {
+        console.error('Failed to mark notification as read:', error);
+        // Optionally: revert optimistic update on error
+      });
+      return;
+    }
+    
     try {
       await markAsRead(notificationId);
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     } finally {
-      setMarkingId((current) => (current === notificationId ? null : current));
+      if (!silent && !isAlreadyRead) {
+        setMarkingId((current) => (current === notificationId ? null : current));
+      }
     }
   };
 
   const handleMarkAllAsRead = async () => {
-    setMarkingAll(true);
-    try {
-      await markAllAsRead();
-    } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-    } finally {
-      setMarkingAll(false);
+    // Only show loading state if there are unread notifications
+    if (unreadCount > 0) {
+      setMarkingAll(true);
     }
+    // Fire and forget - optimistic updates handle the UI
+    markAllAsRead().catch(error => {
+      console.error('Failed to mark all notifications as read:', error);
+    }).finally(() => {
+      setMarkingAll(false);
+    });
   };
 
   return (
@@ -201,11 +225,16 @@ function TopBarPortal() {
                       <div
                         key={notification.id}
                         className={`p-4 hover:bg-gray-50 transition-colors ${
-                          isMarking ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'
+                          isMarking && !notification.isRead ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'
                         } ${
                           !notification.isRead ? 'bg-blue-50' : ''
                         }`}
-                        onClick={() => handleMarkAsRead(notification.id)}
+                        onClick={() => {
+                          // Only show loading state if notification is not already read
+                          if (!notification.isRead) {
+                            handleMarkAsRead(notification.id);
+                          }
+                        }}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start space-x-3 flex-1">
@@ -246,13 +275,17 @@ function TopBarPortal() {
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
-                              {isMarking && (
+                              {isMarking && !notification.isRead && (
                                 <p className="text-xs text-blue-500 mt-1">Marking as read…</p>
                               )}
                               {notification.type === 'order_rejected' && (
-                                <div className="mt-2 flex items-center gap-3">
+                                <div 
+                                  className="mt-2 flex items-center gap-3"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <button
-                                    onClick={() => {
+                                    onClick={(event) => {
+                                      event.stopPropagation();
                                       setAppealOrderId(notification?.data?.orderId || notification?.data?.orderNumber);
                                       setAppealPaymentId(null);
                                       setAppealType('order');
@@ -260,14 +293,28 @@ function TopBarPortal() {
                                       setAppealReason('');
                                       setIsAppealOpen(true);
                                     }}
-                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
                                   >
                                     Appeal
                                     <NotepadText className="w-3 h-3" />
                                   </button>
                                   <button
-                                    onClick={() => navigate('/products/orders')}
-                                    className="text-xs cursor-pointer text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      // Close notifications immediately for instant feedback
+                                      setShowNotifications(false);
+                                      
+                                      // Mark as read optimistically (fire and forget - no await)
+                                      // This allows navigation to happen immediately without waiting
+                                      if (!notification.isRead) {
+                                        handleMarkAsRead(notification.id, true, true);
+                                      }
+                                      
+                                      // Navigate immediately - don't wait for API call
+                                      navigate('/products/orders');
+                                    }}
+                                    className="text-xs cursor-pointer text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                    title="View order details"
                                   >
                                     View Order
                                     <ExternalLink className="w-3 h-3" />
@@ -275,10 +322,27 @@ function TopBarPortal() {
                                 </div>
                               )}
                               {notification.type === 'order_approved' && (
-                                <div className="mt-2 flex items-center gap-3">
+                                <div 
+                                  className="mt-2 flex items-center gap-3"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <button
-                                    onClick={() => navigate('/products/invoices')}
-                                    className="text-xs cursor-pointer text-green-600 hover:text-green-800 flex items-center gap-1"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      // Close notifications immediately for instant feedback
+                                      setShowNotifications(false);
+                                      
+                                      // Mark as read optimistically (fire and forget - no await)
+                                      // This allows navigation to happen immediately without waiting
+                                      if (!notification.isRead) {
+                                        handleMarkAsRead(notification.id, true, true);
+                                      }
+                                      
+                                      // Navigate immediately - don't wait for API call
+                                      navigate('/products/invoices');
+                                    }}
+                                    className="text-xs cursor-pointer text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
+                                    title="View invoice"
                                   >
                                     View Invoice
                                     <ExternalLink className="w-3 h-3" />
