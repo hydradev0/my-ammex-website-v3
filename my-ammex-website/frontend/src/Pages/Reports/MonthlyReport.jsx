@@ -135,7 +135,7 @@ export default function MonthlyReport() {
     const allData = [];
     
     // Header
-    allData.push(['MONTHLY SALES REPORT']);
+    allData.push(['MONTHLY REPORT']);
     allData.push(['']);
     allData.push([`Report Period: ${selectedMonth} ${selectedYear}`]);
     allData.push(['']);
@@ -255,7 +255,7 @@ export default function MonthlyReport() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Monthly Sales Report</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Monthly Report</h1>
               <p className="text-lg text-gray-600">{selectedMonth} {selectedYear}</p>
             </div>
             

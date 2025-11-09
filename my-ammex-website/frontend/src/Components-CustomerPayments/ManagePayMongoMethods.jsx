@@ -161,14 +161,14 @@ const ManagePayMongoMethods = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">No Payment Methods Found</h3>
               <p className="text-gray-500 mb-4">
-                No PayMongo payment methods are configured yet. Please check your backend setup.
+                Your are not authorized to access this page.
               </p>
-              <button
+              {/* <button
                 onClick={loadPaymentMethods}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="px-4 cursor-pointer py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 Retry Loading
-              </button>
+              </button> */}
             </div>
           ) : (
             <div className="space-y-4">

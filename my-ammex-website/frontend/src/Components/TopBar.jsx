@@ -268,12 +268,13 @@ function TopBar() {
                 >
                   <Archive size={16} /> Archive
                 </button>
-                <button
+                {user.role === 'Admin' || user.role === 'Sales Marketing' && (<button
                   onClick={() => navigate('/settings')}
                   className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <Settings size={16} /> Settings
                 </button>
+                )}
                 <div className="my-1 border-t border-gray-200" />
                 <button
                   onClick={() => { setMenuOpen(false); logout(); }}

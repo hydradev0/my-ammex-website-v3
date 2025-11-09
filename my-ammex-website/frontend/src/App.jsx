@@ -154,7 +154,7 @@ function AppContent() {
         <Route
           path="inventory/*"
           element={
-            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor", "Sales Marketing"]}>
+            <ProtectedRoute allowedRoles={["Admin", "Warehouse Supervisor"]}>
               <Inventory />
             </ProtectedRoute>
           }
@@ -166,14 +166,13 @@ function AppContent() {
         
         {/* Settings */}
         <Route 
-          path="settings" 
+          path="settings"
           element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor", "Client"]}>
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <Settings />
             </ProtectedRoute>
           } 
         />
-        <Route path="admin/settings" element={<ProtectedRoute requiredRole="Admin"><Settings /></ProtectedRoute>} />
         
         {/* Customer Portal - Client role only */}
         <Route
@@ -236,7 +235,7 @@ function AppContent() {
         <Route
           path="reports/monthly-report"
           element={
-            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing", "Warehouse Supervisor"]}>
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
               <MonthlyReport />
             </ProtectedRoute>
           }

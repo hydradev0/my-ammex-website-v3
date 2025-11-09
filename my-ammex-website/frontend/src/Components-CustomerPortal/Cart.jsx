@@ -939,12 +939,20 @@ const Cart = () => {
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
                         
-                          <div className="text-sm text-gray-500 mb-1">
-                            <span className="font-medium">Model:</span> {item.modelNo || 'N/A'}
+                          <div className='flex justify-between'>
+                            <div className='flex flex-col'>
+                              <div className="text-sm text-gray-500 mb-1">
+                                <span className="font-medium">Model No:</span> {item.modelNo || 'N/A'}
+                              </div>
+                              <div className="text-sm text-gray-500 mb-1">
+                                <span className="font-medium">Item Name:</span> {item.name || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-500 mb-2">
+                              <span className="font-medium">Category:</span> {item.subcategory || item.category || 'N/A'}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500 mb-2">
-                            <span className="font-medium">Category:</span> {item.subcategory || item.category || 'N/A'}
-                          </div>
+
                           <div className="flex justify-between">
                             <p className="text-gray-600 mb-3">
                               ₱{(item.sellingPrice || item.price || 0).toLocaleString()}

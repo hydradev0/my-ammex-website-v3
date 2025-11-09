@@ -9,13 +9,12 @@ function Navigation() {
   const location = useLocation();
   const { user } = useAuth();
   const role = user?.role;
-  const isInventoryAllowed = role === 'Admin' || role === 'Warehouse Supervisor' || role === 'Sales Marketing';
+  const isInventoryAllowed = role === 'Admin' || role === 'Warehouse Supervisor';
   const isSalesAllowed = role === 'Admin' || role === 'Sales Marketing';
   const isBusinessPartnersAllowed = role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor';
-  const isPurchasingAllowed = role === 'Admin' || role === 'Sales Marketing';
   const customerAllowed = role === 'Admin' || role === 'Sales Marketing';
   const supplierAllowed = role === 'Admin' || role === 'Warehouse Supervisor';
-  const isReportsAllowed = role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor';
+  const isReportsAllowed = role === 'Admin' || role === 'Sales Marketing';
   const isAdminAllowed = role === 'Admin';
 
   const navItems = [
@@ -33,40 +32,25 @@ function Navigation() {
         supplierAllowed ? { name: 'Suppliers', link: '/businesspartners/suppliers' } : null,
       ].filter(Boolean)
     } : null,
+
     isSalesAllowed ? {
       name: 'Sales',
       dropdownItems: [
         { name: 'Orders', link: '/sales/orders' },
         { name: 'Invoices', link: '/sales/invoices' },
         { name: 'Payments', link: '/sales/payments' },
-        // { name: 'Sales Quotes', link: '/Sales/SalesQuotes' },
-        // { name: 'Sales Order', link: '/Sales/SalesOrder' },
-        // { name: 'Sales Invoice', link: '/Sales/SalesInvoice' },
-        // { name: 'Delivery', link: '/Sales/Delivery' }
       ]
     } : null,
-    // isPurchasingAllowed ? {
-    //   name: 'Purchasing',
-    //   dropdownItems: [
-    //     // { name: 'Purchase Quotes', link: '/Purchasing/PurchaseQuotes' },
-    //     { name: 'Purchase Order', link: '/purchasing/purchaseorder' },
-    //   ]
-    // } : null,
+
     isInventoryAllowed ? {
       name: 'Inventory',
-      dropdownItems: (
-        role === 'Sales Marketing'
-          ? [
-              { name: 'Items', link: '/inventory/items' }
-            ]
-          : [
+      dropdownItems: [
               { name: 'Items', link: '/inventory/items' },
               { name: 'Unit', link: '/inventory/unit' },
               { name: 'Category', link: '/inventory/category' },
-              // { name: 'Product Specs', link: '/Inventory/ProductSpecs' },
             ]
-      )
     } : null,
+    
     isReportsAllowed ? {
       name: 'Reports',
       dropdownItems: [

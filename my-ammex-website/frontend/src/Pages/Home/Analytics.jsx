@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
-import { Loader, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Import new components
@@ -178,8 +178,20 @@ const Analytics = () => {
               {(!isAdmin && isSalesMarketing) && (
                 <div className="flex flex-col gap-6">
                   <div className="w-full">
-                    <SalesPerformance />
+                    <SalesTrendThumbnail />
                   </div>
+                  <div className="w-full">
+                    <CustomerPurchaseThumbnail />
+                  </div>
+                  <div className="w-full">
+                    <WebsiteDataThumbnail />
+                  </div>
+                </div>
+              )}
+
+              {/* Warehouse Supervisor only: single column layout */}
+              {(!isAdmin && !isSalesMarketing && isWarehouseSupervisor) && (
+                <div className="flex flex-col gap-6">
                   <div className="w-full">
                     <CustomerPurchaseThumbnail />
                   </div>
@@ -190,7 +202,7 @@ const Analytics = () => {
           )}
 
           {/* Fallback: no analytics for this role */}
-          {!isAdmin && !isSalesMarketing  && (
+          {!isAdmin && !isSalesMarketing  && !isWarehouseSupervisor && (
             <div className="flex min-h-[calc(90vh-200px)] justify-center items-center mt-6 text-gray-600">No analytics available for your role.</div>
           )}
         </div>

@@ -306,7 +306,7 @@ const PaymentReceiving = () => {
                 <Receipt className="w-4 h-4" />
                 Payment History
               </button>
-              <button
+              {/* <button
                 onClick={() => setActiveTab('failures')}
                 className={`py-2 cursor-pointer px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === 'failures'
@@ -319,7 +319,7 @@ const PaymentReceiving = () => {
                 <span className="bg-red-100 text-red-600 py-1 px-2 rounded-full text-xs">
                   {failedPayments.length}
                 </span>
-              </button>
+              </button> */}
             </nav>
           </div>
         </div>
@@ -365,13 +365,13 @@ const PaymentReceiving = () => {
         )}
 
         {/* Failed Payments Tab Content */}
-        {activeTab === 'failures' && (
+        {/* {activeTab === 'failures' && (
           <FailedPaymentsTab
             failedPayments={failedPayments}
             isLoading={isLoadingFailed}
             onRefresh={handleRefreshFailedPayments}
           />
-        )}
+        )} */}
       </div>
     </>
   );
