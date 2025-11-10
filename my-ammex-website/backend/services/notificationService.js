@@ -105,8 +105,8 @@ class NotificationService {
     try {
       const { Notification } = getModels();
       
-      // Only warehouse/admin and admin can see stock notifications
-      if (user.role !== 'Admin' && user.role !== 'Warehouse Admin') {
+      // Only warehouse supervisor and admin can see stock notifications
+      if (user.role !== 'Admin' && user.role !== 'Warehouse Supervisor') {
         return { notifications: [], unreadCount: 0 };
       }
       
@@ -141,7 +141,7 @@ class NotificationService {
       }
       
       // Check if user has permission to read this notification
-      if (user.role !== 'Admin' && user.role !== 'Warehouse Admin') {
+      if (user.role !== 'Admin' && user.role !== 'Warehouse Supervisor') {
         throw new Error('Access denied');
       }
       
@@ -167,7 +167,7 @@ class NotificationService {
       const { Op } = require('sequelize');
       
       // Check if user has permission
-      if (user.role !== 'Admin' && user.role !== 'Warehouse Admin') {
+      if (user.role !== 'Admin' && user.role !== 'Warehouse Supervisor') {
         throw new Error('Access denied');
       }
       

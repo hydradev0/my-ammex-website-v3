@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog, ExternalLink } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog, ExternalLink, MessageSquare, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
 import { useNotifications } from '../contexts/NotificationContext';
+import { replyToAppeal } from '../services/notificationService';
+import { createPortal } from 'react-dom';
+import ScrollLock from './ScrollLock';
 
 function TopBar() {
   const navigate = useNavigate();
@@ -17,15 +20,19 @@ function TopBar() {
   const [markingId, setMarkingId] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
   const notificationsRef = useRef(null);
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [selectedAppeal, setSelectedAppeal] = useState(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, isNotificationRead } = useNotifications();
 
   const handleMarkAsRead = async (notificationId, silent = false, optimistic = false) => {
     if (!notificationId) return;
     
     // Find the notification to check if it's already read
     const notification = notifications.find(n => n.id === notificationId);
-    const isAlreadyRead = notification?.adminIsRead;
+    const isAlreadyRead = isNotificationRead(notification);
     
     // Only show loading state if not silent and not already read
     if (!silent && !isAlreadyRead) {
@@ -140,29 +147,51 @@ function TopBar() {
                   <div className="divide-y divide-gray-200">
                     {notifications.map((n) => {
                       const isInventoryAlert = n.type === 'stock_low' || n.type === 'stock_high';
+                      const isOrderAppeal = n.type === 'order_appeal';
                       const isMarking = markingId === n.id;
+                      const notifIsRead = isNotificationRead(n);
 
                       return (
                       <div
                         key={n.id}
-                        className={`p-3 hover:bg-gray-50 transition-colors ${isMarking && !n.adminIsRead ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'} ${!n.adminIsRead ? 'bg-blue-50' : ''}`}
+                        className={`p-3 hover:bg-gray-50 transition-colors ${isMarking && !notifIsRead ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'} ${!notifIsRead ? 'bg-blue-50' : ''}`}
                         onClick={() => {
                           // Only show loading state if notification is not already read
-                          if (!n.adminIsRead) {
+                          if (!notifIsRead && !isOrderAppeal) {
                             handleMarkAsRead(n.id);
                           }
                         }}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${!n.adminIsRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</p>
+                            <p className={`text-sm font-medium ${!notifIsRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</p>
                             <p
                               className="text-xs text-gray-600 mt-1"
                               dangerouslySetInnerHTML={{ __html: n.message }}
                             />
                             <p className="text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
-                            {isMarking && !n.adminIsRead && (
+                            {isMarking && !notifIsRead && (
                               <p className="text-[11px] text-blue-600 mt-1">Marking as read…</p>
+                            )}
+                            {isOrderAppeal && (
+                              <div 
+                                className="mt-3 flex items-center gap-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setSelectedAppeal(n);
+                                    setReplyMessage('');
+                                    setReplyModalOpen(true);
+                                  }}
+                                  className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
+                                  title="Send a response to the customer"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  Reply to Customer
+                                </button>
+                              </div>
                             )}
                              {isInventoryAlert && (
                               <div 
@@ -177,7 +206,7 @@ function TopBar() {
                                     
                                     // Mark as read optimistically (fire and forget - no await)
                                     // This allows navigation to happen immediately without waiting
-                                    if (!n.adminIsRead) {
+                                    if (!notifIsRead) {
                                       handleMarkAsRead(n.id, true, true);
                                     }
                                     
@@ -200,7 +229,7 @@ function TopBar() {
                                     
                                     // Mark as read optimistically (fire and forget - no await)
                                     // This allows navigation to happen immediately without waiting
-                                    if (!n.adminIsRead) {
+                                    if (!notifIsRead) {
                                       handleMarkAsRead(n.id, true, true);
                                     }
                                     
@@ -292,6 +321,108 @@ function TopBar() {
         onClose={() => setArchiveOpen(false)} 
         onDataRestored={handleDataRestored}
       />
+
+      {/* Reply to Appeal Modal */}
+      <ScrollLock active={replyModalOpen} />
+      {replyModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-3">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Reply to Appeal</h3>
+              <button
+                className="text-gray-400 cursor-pointer hover:text-gray-600"
+                onClick={() => {
+                  setReplyModalOpen(false);
+                  setSelectedAppeal(null);
+                  setReplyMessage('');
+                }}
+                aria-label="Close"
+                disabled={sendingReply}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {selectedAppeal && (
+                <>
+                  <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-semibold">Order:</span> {selectedAppeal.data?.orderNumber || 'Unknown'}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-semibold">Appeal Reason:</span>
+                    </p>
+                    <p className="text-sm text-gray-700 italic">
+                      {selectedAppeal.data?.appealReason || 'No reason provided'}
+                    </p>
+                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Your Response
+                  </label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={4}
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Enter your response to the customer's appeal..."
+                    disabled={sendingReply}
+                  />
+                </>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800 disabled:opacity-50"
+                onClick={() => {
+                  setReplyModalOpen(false);
+                  setSelectedAppeal(null);
+                  setReplyMessage('');
+                }}
+                disabled={sendingReply}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm cursor-pointer bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                disabled={sendingReply || !replyMessage.trim()}
+                onClick={async () => {
+                  if (!selectedAppeal || !replyMessage.trim()) return;
+                  try {
+                    setSendingReply(true);
+                    await replyToAppeal(selectedAppeal.id, replyMessage.trim());
+                    setReplyModalOpen(false);
+                    setSelectedAppeal(null);
+                    setReplyMessage('');
+                    setShowNotifications(false);
+                    // Refresh notifications to show updated status
+                    if (refreshNotifications) {
+                      refreshNotifications();
+                    }
+                  } catch (e) {
+                    console.error('Failed to send reply:', e);
+                    alert(e.message || 'Failed to send reply. Please try again.');
+                  } finally {
+                    setSendingReply(false);
+                  }
+                }}
+              >
+                {sendingReply ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-4 h-4" />
+                    Send Response
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

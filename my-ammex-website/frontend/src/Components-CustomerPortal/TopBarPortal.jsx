@@ -19,7 +19,7 @@ function TopBarPortal() {
   const [realTimeCartCount, setRealTimeCartCount] = useState(0);
   const notificationsRef = useRef(null);
   
-  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, refreshNotifications } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, refreshNotifications, isNotificationRead } = useNotifications();
   
   // Profile completion check
   const {
@@ -129,7 +129,7 @@ function TopBarPortal() {
     
     // Find the notification to check if it's already read
     const notification = notifications.find(n => n.id === notificationId);
-    const isAlreadyRead = notification?.isRead;
+    const isAlreadyRead = isNotificationRead(notification);
     
     // Only show loading state if not silent and not already read
     if (!silent && !isAlreadyRead) {
@@ -220,18 +220,19 @@ function TopBarPortal() {
                   <div className="divide-y divide-gray-200">
                     {notifications.map((notification) => {
                       const isMarking = markingId === notification.id;
+                      const notifIsRead = isNotificationRead(notification);
 
                       return (
                       <div
                         key={notification.id}
                         className={`p-4 hover:bg-gray-50 transition-colors ${
-                          isMarking && !notification.isRead ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'
+                          isMarking && !notifIsRead ? 'opacity-60 cursor-progress pointer-events-none' : 'cursor-pointer'
                         } ${
-                          !notification.isRead ? 'bg-blue-50' : ''
+                          !notifIsRead ? 'bg-blue-50' : ''
                         }`}
                         onClick={() => {
                           // Only show loading state if notification is not already read
-                          if (!notification.isRead) {
+                          if (!notifIsRead) {
                             handleMarkAsRead(notification.id);
                           }
                         }}
@@ -260,11 +261,11 @@ function TopBarPortal() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <p className={`text-sm font-medium ${
-                                  !notification.isRead ? 'text-gray-900' : 'text-gray-700'
+                                  !notifIsRead ? 'text-gray-900' : 'text-gray-700'
                                 }`}>
                                   {notification.title}
                                 </p>
-                                {!notification.isRead && (
+                                {!notifIsRead && (
                                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                                 )}
                               </div>
@@ -275,7 +276,7 @@ function TopBarPortal() {
                               <p className="text-xs text-gray-400 mt-1">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
-                              {isMarking && !notification.isRead && (
+                              {isMarking && !notifIsRead && (
                                 <p className="text-xs text-blue-500 mt-1">Marking as read…</p>
                               )}
                               {notification.type === 'order_rejected' && (
@@ -293,7 +294,7 @@ function TopBarPortal() {
                                       setAppealReason('');
                                       setIsAppealOpen(true);
                                     }}
-                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
+                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-800  px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
                                   >
                                     Appeal
                                     <NotepadText className="w-3 h-3" />
@@ -306,14 +307,14 @@ function TopBarPortal() {
                                       
                                       // Mark as read optimistically (fire and forget - no await)
                                       // This allows navigation to happen immediately without waiting
-                                      if (!notification.isRead) {
+                                      if (!notifIsRead) {
                                         handleMarkAsRead(notification.id, true, true);
                                       }
                                       
                                       // Navigate immediately - don't wait for API call
                                       navigate('/products/orders');
                                     }}
-                                    className="text-xs cursor-pointer text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                    className="text-xs cursor-pointer text-gray-600 hover:text-gray-800  px-2 py-1 rounded flex items-center gap-1 transition-colors"
                                     title="View order details"
                                   >
                                     View Order
@@ -334,14 +335,14 @@ function TopBarPortal() {
                                       
                                       // Mark as read optimistically (fire and forget - no await)
                                       // This allows navigation to happen immediately without waiting
-                                      if (!notification.isRead) {
+                                      if (!notifIsRead) {
                                         handleMarkAsRead(notification.id, true, true);
                                       }
                                       
                                       // Navigate immediately - don't wait for API call
                                       navigate('/products/invoices');
                                     }}
-                                    className="text-xs cursor-pointer text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
+                                    className="text-xs cursor-pointer text-green-600 hover:text-green-800 px-2 py-1 rounded flex items-center gap-1 transition-colors font-medium"
                                     title="View invoice"
                                   >
                                     View Invoice

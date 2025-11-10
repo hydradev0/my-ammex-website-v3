@@ -93,7 +93,7 @@ type: {
 
 ```
 GET    /api/notifications              # Get all notifications for user
-GET    /api/notifications/stock         # Get stock notifications (Admin/Warehouse Admin)
+GET    /api/notifications/stock         # Get stock notifications (Admin/Warehouse Supervisor)
 PATCH  /api/notifications/:id/read      # Mark notification as read
 PATCH  /api/notifications/read-all      # Mark all notifications as read
 GET    /api/notifications/stats         # Get notification statistics
@@ -102,8 +102,8 @@ GET    /api/notifications/stats         # Get notification statistics
 ### Role-Based Access
 
 - **Admin**: Can see all notifications (orders, stock, general)
-- **Sales Marketing**: Can see order and general notifications
-- **Warehouse Admin**: Can see stock notifications
+- **Sales Marketing**: Can see order and general notifications (NO stock alerts)
+- **Warehouse Supervisor**: Can see stock notifications only
 - **Client**: Can see their own order notifications
 
 ## Notification Types
@@ -150,7 +150,7 @@ node backend/scripts/testNotificationSystem.js
 // Get all notifications for current user
 GET /api/notifications
 
-// Get stock notifications (Admin/Warehouse Admin only)
+// Get stock notifications (Admin/Warehouse Supervisor only)
 GET /api/notifications/stock
 
 // Mark notification as read
@@ -173,7 +173,7 @@ PATCH /api/notifications/read-all
 1. Item quantity updated
 2. Stock level monitoring triggered
 3. Notifications created if thresholds reached
-4. Warehouse admin notified
+4. Warehouse supervisor notified
 
 ## Error Handling
 

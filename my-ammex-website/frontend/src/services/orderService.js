@@ -138,4 +138,18 @@ export const markAllOrderNotificationsAsRead = async () => {
   return data;
 };
 
+// Delete order (Admin/Sales Marketing only)
+export const deleteOrder = async (orderId) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+    method: 'DELETE',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to delete order');
+  return data; // { success, message }
+};
+
 

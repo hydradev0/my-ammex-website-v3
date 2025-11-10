@@ -350,6 +350,11 @@ const initializeModels = (sequelize) => {
     paymentTerms: {
       type: DataTypes.STRING,
       defaultValue: '30 days'
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      field: 'is_active',
+      defaultValue: true
     }
   }, {
     timestamps: true

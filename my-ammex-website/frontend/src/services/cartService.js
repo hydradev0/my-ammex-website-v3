@@ -336,8 +336,8 @@ export const recoverCartFromDatabase = async (customerId) => {
       const transformedItems = dbItems.map(cartItem => ({
         id: cartItem.item.id,
         name: cartItem.item.itemName,
-        price: parseFloat(cartItem.unitPrice),
-        sellingPrice: parseFloat(cartItem.unitPrice), // Add new field for consistency
+        price: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
+        sellingPrice: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
         stock: cartItem.item.quantity,
         itemCode: cartItem.item.itemCode,
         modelNo: cartItem.item.modelNo,
@@ -687,8 +687,8 @@ export const initializeCartFromDatabase = async (customerId, overwriteLocalStora
       const transformedItems = dbCart.data.items.map(cartItem => ({
         id: cartItem.item.id,
         name: cartItem.item.itemName,
-        price: parseFloat(cartItem.unitPrice),
-        sellingPrice: parseFloat(cartItem.unitPrice), // Add new field for consistency
+        price: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
+        sellingPrice: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
         stock: cartItem.item.quantity,
         itemCode: cartItem.item.itemCode,
         modelNo: cartItem.item.modelNo,

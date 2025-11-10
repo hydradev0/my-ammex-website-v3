@@ -6,7 +6,8 @@ const {
   getStockNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  getNotificationStats
+  getNotificationStats,
+  replyToAppeal
 } = require('../controllers/notificationController');
 
 // @route   GET /api/notifications
@@ -16,8 +17,8 @@ router.get('/', protect, getAllNotifications);
 
 // @route   GET /api/notifications/stock
 // @desc    Get stock notifications for warehouse/admin
-// @access  Private (Admin, Warehouse Admin)
-router.get('/stock', protect, authorize('Admin', 'Warehouse Admin'), getStockNotifications);
+// @access  Private (Admin, Warehouse Supervisor)
+router.get('/stock', protect, authorize('Admin', 'Warehouse Supervisor'), getStockNotifications);
 
 // @route   PATCH /api/notifications/:id/read
 // @desc    Mark a notification as read
@@ -33,5 +34,10 @@ router.patch('/read-all', protect, markAllNotificationsAsRead);
 // @desc    Get notification statistics
 // @access  Private (All roles)
 router.get('/stats', protect, getNotificationStats);
+
+// @route   POST /api/notifications/:id/reply
+// @desc    Reply to an order appeal notification
+// @access  Private (Admin, Sales Marketing)
+router.post('/:id/reply', protect, authorize('Admin', 'Sales Marketing'), replyToAppeal);
 
 module.exports = router;

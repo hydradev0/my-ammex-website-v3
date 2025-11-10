@@ -253,7 +253,7 @@ Rules:
           'X-Title': 'Ammex Website Analytics Insights'
         },
         body: JSON.stringify({
-          model: 'qwen/qwen2.5-vl-32b-instruct:free',
+          model: 'anthropic/claude-3.5-sonnet',
           messages: [
             { 
               role: 'system', 

@@ -52,7 +52,7 @@ export const NotificationProvider = ({ children }) => {
   const computeUnreadCount = (list) => {
     if (!Array.isArray(list)) return 0;
     const role = user?.role;
-    if (role === 'Admin' || role === 'Sales Marketing') {
+    if (role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor') {
       return list.filter(n => !n.adminIsRead).length;
     }
     return list.filter(n => !n.isRead).length;
@@ -169,7 +169,13 @@ export const NotificationProvider = ({ children }) => {
     const notification = notifications.find(n => n.id === notificationId);
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
     
-    if (notification && !notification.isRead) {
+    // Check if notification is unread based on role
+    const role = user?.role;
+    const isUnread = (role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor')
+      ? !notification?.adminIsRead
+      : !notification?.isRead;
+    
+    if (notification && isUnread) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
   };
@@ -177,7 +183,14 @@ export const NotificationProvider = ({ children }) => {
   // Add new notification (for real-time updates)
   const addNotification = (notification) => {
     setNotifications(prev => [notification, ...prev]);
-    if (!notification.isRead) {
+    
+    // Check if notification is unread based on role
+    const role = user?.role;
+    const isUnread = (role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor')
+      ? !notification?.adminIsRead
+      : !notification?.isRead;
+    
+    if (isUnread) {
       setUnreadCount(prev => prev + 1);
     }
   };
@@ -191,6 +204,16 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  // Helper: check if a notification is read based on role
+  const isNotificationRead = (notification) => {
+    if (!notification) return true;
+    const role = user?.role;
+    if (role === 'Admin' || role === 'Sales Marketing' || role === 'Warehouse Supervisor') {
+      return notification.adminIsRead;
+    }
+    return notification.isRead;
+  };
+
   const value = {
     notifications,
     unreadCount,
@@ -199,7 +222,8 @@ export const NotificationProvider = ({ children }) => {
     markAllAsRead,
     removeNotification,
     addNotification,
-    refreshNotifications
+    refreshNotifications,
+    isNotificationRead
   };
 
   return (

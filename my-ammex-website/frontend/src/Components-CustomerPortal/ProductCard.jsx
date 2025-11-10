@@ -32,6 +32,7 @@ const ProductCard = ({ product, onCardClick }) => {
       {/* Product Info */}
       <div className="p-2 sm:p-4 flex flex-col flex-1">
         <h3 className="text-sm sm:text-base font-bold mb-1 sm:mb-2 text-gray-700 line-clamp-2 leading-tight">{product.modelNo}</h3>
+        <p className="text-gray-500 mb-1 sm:mb-2 text-xs leading-tight">{product.name}</p>
         <p className="text-gray-500 mb-1 sm:mb-2 text-xs leading-tight">{product.category}</p>
         <div className="flex flex-col sm:flex-row sm:justify-between mb-2 sm:mb-3">
           <div className="text-sm sm:text-lg font-bold text-[#2c5282] mb-1 sm:mb-0">₱{(product.price || 0).toLocaleString()}</div>

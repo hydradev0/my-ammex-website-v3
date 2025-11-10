@@ -54,10 +54,15 @@ const Cart = () => {
 
       const localIds = new Set(cart.map(i => i.id));
 
-      // Update stock for existing items and append any new ones from DB
+      // Update stock and prices for existing items and append any new ones from DB
       const merged = cart.map(localItem => {
         const serverItem = dbCart.find(d => d.id === localItem.id);
-        return serverItem ? { ...localItem, stock: serverItem.stock } : localItem;
+        return serverItem ? { 
+          ...localItem, 
+          stock: serverItem.stock,
+          sellingPrice: serverItem.sellingPrice,
+          price: serverItem.price
+        } : localItem;
       });
 
       dbCart.forEach(serverItem => {
@@ -171,6 +176,11 @@ const Cart = () => {
       setCart(cart);
       setSelectedIds(new Set(cart.map(it => it.id)));
       setIsLoading(false);
+      
+      // Refresh cart data immediately after initial load to get latest prices
+      if (user?.id && cart.length > 0) {
+        refreshCartData();
+      }
     };
 
     initializeCart();
@@ -476,8 +486,11 @@ const Cart = () => {
       setPreviewError('');
       setPreviewLoading(true);
 
-      // Fast client-side validation using current cart snapshot
-      const selectedItems = getSelectedItems();
+      // Refresh cart data to get latest prices and stock from database
+      const latestCart = await refreshCartData();
+      const selectedItems = latestCart.filter(i => selectedIds.has(i.id));
+      
+      // Fast client-side validation using refreshed cart data
       const { hasIssues, message } = getStockIssues(selectedItems);
       if (hasIssues) {
         setErrorModalMessage(message);

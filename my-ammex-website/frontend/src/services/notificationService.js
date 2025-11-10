@@ -55,3 +55,19 @@ export const getNotificationStats = async () => {
   if (!res.ok) throw new Error(data.message || 'Failed to fetch notification stats');
   return data;
 };
+
+// Reply to an order appeal notification
+export const replyToAppeal = async (notificationId, replyMessage) => {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}/reply`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ replyMessage }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to send reply');
+  return data;
+};

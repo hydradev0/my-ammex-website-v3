@@ -54,8 +54,8 @@ const getOrderById = async (req, res, next) => {
     const { Order, OrderItem } = getModels();
     const { id } = req.params;
 
-    const order = await Order.findByPk(id, {
-      where: { isActive: true }, // Filter for active order
+    const order = await Order.findOne({
+      where: { id, isActive: true }, // Filter for active order
       include: [
         {
           model: OrderItem,
@@ -458,11 +458,11 @@ const getOrdersByStatus = async (req, res, next) => {
 
     // Get the count of orders separately to avoid counting items
     const totalCount = await Order.count({
-      where: { status }
+      where: { status, isActive: true }
     });
 
     const orders = await Order.findAll({
-      where: { status },
+      where: { status, isActive: true },
       include: [
         { model: Customer, as: 'customer' },
         { 
@@ -536,7 +536,7 @@ const getMyOrders = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Customer not found for user' });
     }
 
-    const where = { customerId: customer.id };
+    const where = { customerId: customer.id, isActive: true };
     if (status) {
       // Use provided status directly (DB enum now includes 'rejected')
       where.status = status;

@@ -5,7 +5,7 @@ import ProcessOrderModal from './ProcessOrderModal';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import PaginationTable from '../Components/PaginationTable';
 import ModernSearchFilter from '../Components/ModernSearchFilter';
-import { getPendingOrdersForSales, getRejectedOrdersForSales, updateOrderStatus } from '../services/orderService';
+import { getPendingOrdersForSales, getRejectedOrdersForSales, updateOrderStatus, deleteOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import ErrorModal from '../Components/ErrorModal';
 import SuccessModal from '../Components/SuccessModal';
@@ -297,17 +297,25 @@ function HandleOrders() {
   };
 
   // Permanently delete rejected order
-  const handleDeleteRejectedOrder = async (orderId) => {
+  const handleDeleteRejectedOrder = async (order) => {
+    const orderId = order.id;
     setDeletingOrderId(orderId);
     try {
-      // Simulate API call delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Delete from backend using the database ID
+      await deleteOrder(order.orderDbId || order.id);
       
+      // Remove from rejected orders list
       const updatedRejectedOrders = rejectedOrders.filter(o => o.id !== orderId);
       setRejectedOrders(updatedRejectedOrders);
+      setFilteredRejectedOrders(updatedRejectedOrders);
       setTotalRejectedCount((c) => Math.max(0, c - 1));
+      
+      // Show success message
     } catch (e) {
       console.error('Failed to delete order:', e);
+      const msg = e?.message || 'Failed to delete order. Please try again.';
+      setErrorModalMessage(msg);
+      setErrorModalOpen(true);
     } finally {
       setDeletingOrderId(null);
     }
@@ -352,7 +360,7 @@ function HandleOrders() {
 
   const handleConfirmDelete = async () => {
     if (orderToDelete) {
-      await handleDeleteRejectedOrder(orderToDelete.id);
+      await handleDeleteRejectedOrder(orderToDelete);
       setIsDeleteModalOpen(false);
       setOrderToDelete(null);
     }
@@ -714,7 +722,7 @@ function HandleOrders() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-md font-medium">
                           <button 
                             onClick={() => handleviewOrder(order)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
+                            className="text-blue-600 hover:text-blue-900 mr-4 cursor-pointer"
                             title="View Order"
                           >
                             <Eye className="w-5 h-5" />
@@ -722,7 +730,7 @@ function HandleOrders() {
                           <button 
                             onClick={() => handleReApproveOrder(order)}
                             disabled={reApprovingOrderId === order.id}
-                            className={`mr-4 ${
+                            className={`mr-4 cursor-pointer ${
                               reApprovingOrderId === order.id 
                                 ? 'text-gray-400 cursor-not-allowed' 
                                 : 'text-green-600 hover:text-green-900'
@@ -738,7 +746,7 @@ function HandleOrders() {
                           <button 
                             onClick={() => handleDeleteClick(order)}
                             disabled={deletingOrderId === order.id}
-                            className={`mr-4 ${
+                            className={`mr-4 cursor-pointer ${
                               deletingOrderId === order.id 
                                 ? 'text-gray-400 cursor-not-allowed' 
                                 : 'text-red-600 hover:text-red-900'
