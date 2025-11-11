@@ -34,8 +34,30 @@ const ProductCard = ({ product, onCardClick }) => {
         <h3 className="text-sm sm:text-base font-bold mb-1 sm:mb-2 text-gray-700 line-clamp-2 leading-tight">{product.modelNo}</h3>
         <p className="text-gray-500 mb-1 sm:mb-2 text-xs leading-tight">{product.name}</p>
         <p className="text-gray-500 mb-1 sm:mb-2 text-xs leading-tight">{product.category}</p>
+        
+        {/* Price Section with Discount Support */}
         <div className="flex flex-col sm:flex-row sm:justify-between mb-2 sm:mb-3">
-          <div className="text-sm sm:text-lg font-bold text-[#2c5282] mb-1 sm:mb-0">₱{(product.price || 0).toLocaleString()}</div>
+          <div className="flex flex-col mb-1 sm:mb-0">
+            {product.discountPercentage && product.discountPercentage > 0 ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm sm:text-lg font-bold text-[#e53e3e]">
+                    ₱{(product.discountedPrice || product.price).toLocaleString()}
+                  </div>
+                  <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold">
+                    -{product.discountPercentage}%
+                  </span>
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-500 line-through">
+                  ₱{(product.price || 0).toLocaleString()}
+                </div>
+              </>
+            ) : (
+              <div className="text-sm sm:text-lg font-bold text-[#2c5282]">
+                ₱{(product.price || 0).toLocaleString()}
+              </div>
+            )}
+          </div>
           <div className="text-xs text-gray-600">
             Stock: <span className={`font-semibold ${product.stock > 10 ? 'text-green-600' : product.stock > 0 ? 'text-orange-600' : 'text-red-600'}`}>
               {product.stock}

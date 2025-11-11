@@ -4,8 +4,6 @@ import {
   CreditCard,
   TrendingUp,
   Save,
-  DollarSign,
-  Search
 } from 'lucide-react';
 import RoleBasedLayout from './RoleBasedLayout';
 import ManagePayMongoMethods from '../Components-CustomerPayments/ManagePayMongoMethods';

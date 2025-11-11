@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog, ExternalLink, MessageSquare, X } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Archive, CreditCard, Menu, Upload, UserCog, ExternalLink, MessageSquare, X, Tag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataRefresh } from '../contexts/DataRefreshContext';
 import ArchiveModal from './ArchiveModal';
@@ -297,7 +297,14 @@ function TopBar() {
                 >
                   <Archive size={16} /> Archive
                 </button>
-                {user.role === 'Admin' || user.role === 'Sales Marketing' && (<button
+                {(user.role === 'Admin' || user.role === 'Sales Marketing') && (<button
+                  onClick={() => navigate('/product-discounts')}
+                  className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Tag size={16} /> Product Discounts
+                </button>
+                )}
+                {(user.role === 'Admin' || user.role === 'Sales Marketing') && (<button
                   onClick={() => navigate('/settings')}
                   className="w-full cursor-pointer text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >

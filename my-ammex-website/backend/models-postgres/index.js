@@ -1751,6 +1751,8 @@ const initializeModels = (sequelize) => {
     as: 'customer'
   });
 
+  // ProductDiscount relationships will be added after ProductDiscount model is defined
+
   // Settings Model
   const Settings = sequelize.define('Settings', {
     id: {
@@ -1802,6 +1804,79 @@ const initializeModels = (sequelize) => {
     updatedAt: 'updated_at'
   });
 
+  // ProductDiscount Model
+  const ProductDiscount = sequelize.define('ProductDiscount', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    itemId: {
+      type: DataTypes.INTEGER,
+      field: 'item_id',
+      allowNull: false,
+      references: {
+        model: 'Item',
+        key: 'id'
+      },
+      validate: {
+        notEmpty: { msg: 'Item ID is required' }
+      }
+    },
+    discountPercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      field: 'discount_percentage',
+      allowNull: false,
+      validate: {
+        min: { args: [0.01], msg: 'Discount must be at least 0.01%' },
+        max: { args: [100], msg: 'Discount cannot exceed 100%' }
+      }
+    },
+    startDate: {
+      type: DataTypes.DATEONLY,
+      field: 'start_date',
+      allowNull: true
+    },
+    endDate: {
+      type: DataTypes.DATEONLY,
+      field: 'end_date',
+      allowNull: true
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      field: 'is_active',
+      allowNull: false,
+      defaultValue: true
+    },
+    createdBy: {
+      type: DataTypes.INTEGER,
+      field: 'created_by',
+      allowNull: true,
+      references: {
+        model: 'User',
+        key: 'id'
+      }
+    }
+  }, {
+    tableName: 'ProductDiscount',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+  });
+
+  // ProductDiscount relationships
+  // Note: We only need ProductDiscount to access Item, not the reverse
+  // Inventory doesn't need to display discounts - that's handled in the discount management interface
+  ProductDiscount.belongsTo(Item, {
+    foreignKey: 'itemId',
+    as: 'item'
+  });
+
+  ProductDiscount.belongsTo(User, {
+    foreignKey: 'createdBy',
+    as: 'creator'
+  });
+
   // Instance method to match password
   User.prototype.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
@@ -1829,7 +1904,8 @@ const initializeModels = (sequelize) => {
     Notification,
     PriceHistory,
     StockHistory,
-    Settings
+    Settings,
+    ProductDiscount
   };
 };
 

@@ -255,11 +255,26 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                   </div>
 
                   {/* Price */}
-                  <div className="flex items-center space-x-3 lg:space-x-4">
-                    <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">₱{(product.price || 0).toLocaleString()}</span>
-                    {/* Discounted Price */}
-                    {/* <span className="text-sm text-gray-500 line-through">${(product.price * 1.2).toLocaleString()}</span>
-                    <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-semibold">20% OFF</span> */}
+                  <div className="flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0 lg:space-x-3">
+                    {product.discountPercentage && product.discountPercentage > 0 ? (
+                      <>
+                        <div className="flex items-center space-x-2 lg:space-x-3">
+                          <span className="text-xl lg:text-3xl font-bold text-[#e53e3e]">
+                            ₱{(product.discountedPrice || product.price).toLocaleString()}
+                          </span>
+                          <span className="bg-red-500 text-white px-2 lg:px-3 py-1 lg:py-1.5 rounded-full text-xs lg:text-sm font-semibold">
+                            -{product.discountPercentage}% OFF
+                          </span>
+                        </div>
+                        <span className="text-sm lg:text-lg text-gray-500 line-through">
+                          ₱{(product.price || 0).toLocaleString()}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">
+                        ₱{(product.price || 0).toLocaleString()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Stock Status */}

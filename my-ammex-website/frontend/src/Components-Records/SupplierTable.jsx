@@ -436,7 +436,7 @@ function SupplierTable() {
           isOpen={deleteModal.isOpen}
           title="Delete Supplier"
           entityName={deleteModal.supplierName}
-          description="Are you sure you want to delete this supplier? The supplier will be removed from the system."
+          description="The supplier will be removed from the system."
           confirmLabel={deletingSupplier ? 'Deleting...' : 'Delete Supplier'}
           cancelLabel="Cancel"
           loading={deletingSupplier}

@@ -1,4 +1,4 @@
-const { getModels } = require('../config/db');
+const { getModels, getSequelize } = require('../config/db');
 const { Op } = require('sequelize');
 
 // Get all items
@@ -26,9 +26,49 @@ const getAllItems = async (req, res, next) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Fetch active discounts for all items
+    const sequelize = getSequelize();
+    const itemIds = items.rows.map(item => item.id);
+    
+    let discountsMap = {};
+    if (itemIds.length > 0) {
+      const discounts = await sequelize.query(`
+        SELECT item_id, discount_percentage
+        FROM "ProductDiscount"
+        WHERE item_id IN (:itemIds) AND is_active = true
+      `, {
+        replacements: { itemIds },
+        type: sequelize.QueryTypes.SELECT
+      });
+      
+      discountsMap = discounts.reduce((acc, d) => {
+        acc[d.item_id] = parseFloat(d.discount_percentage);
+        return acc;
+      }, {});
+    }
+
+    // Add discount info to each item
+    const itemsWithDiscounts = items.rows.map(item => {
+      const itemJson = item.toJSON();
+      const discountPercentage = discountsMap[item.id] || 0;
+      
+      if (discountPercentage > 0) {
+        const originalPrice = parseFloat(itemJson.sellingPrice) || 0;
+        const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+        
+        return {
+          ...itemJson,
+          discountPercentage: discountPercentage,
+          discountedPrice: parseFloat(discountedPrice.toFixed(2))
+        };
+      }
+      
+      return itemJson;
+    });
+
     res.json({
       success: true,
-      data: items.rows,
+      data: itemsWithDiscounts,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(items.count / limit),
@@ -45,6 +85,7 @@ const getAllItems = async (req, res, next) => {
 const getItemById = async (req, res, next) => {
   try {
     const { Item, Category, Unit } = getModels();
+    const sequelize = getSequelize();
     const { id } = req.params;
 
     const item = await Item.findByPk(id, {
@@ -61,9 +102,31 @@ const getItemById = async (req, res, next) => {
       });
     }
 
+    // Check for active discount
+    const discounts = await sequelize.query(`
+      SELECT discount_percentage
+      FROM "ProductDiscount"
+      WHERE item_id = :itemId AND is_active = true
+      LIMIT 1
+    `, {
+      replacements: { itemId: id },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    const itemJson = item.toJSON();
+    
+    if (discounts.length > 0) {
+      const discountPercentage = parseFloat(discounts[0].discount_percentage);
+      const originalPrice = parseFloat(itemJson.sellingPrice) || 0;
+      const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+      
+      itemJson.discountPercentage = discountPercentage;
+      itemJson.discountedPrice = parseFloat(discountedPrice.toFixed(2));
+    }
+
     res.json({
       success: true,
-      data: item
+      data: itemJson
     });
   } catch (error) {
     next(error);

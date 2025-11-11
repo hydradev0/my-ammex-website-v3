@@ -40,7 +40,7 @@ function ConfirmDeleteModal({
         <div className="p-6">
           {entityName && (
             <p className="text-gray-700 mb-4">
-              Are you sure you want to delete <span className="font-semibold text-gray-900">"{entityName}"</span>?
+              Are you sure you want to removed <span className="font-semibold text-gray-900">"{entityName}"</span>?
             </p>
           )}
           {description && (

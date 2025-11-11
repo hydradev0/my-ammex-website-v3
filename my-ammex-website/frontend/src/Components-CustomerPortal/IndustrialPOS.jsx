@@ -51,7 +51,10 @@ const IndustrialPOS = ({ items = [], categories = [], onCartCountChange }) => {
         itemCode: item.itemCode,
         vendor: item.vendor,
         description: item.description || '',
-        unit: item.unit?.name || 'pcs'
+        unit: item.unit?.name || 'pcs',
+        // Include discount information from backend
+        discountPercentage: item.discountPercentage || 0,
+        discountedPrice: item.discountedPrice || null
       };
     });
   }, [items]);

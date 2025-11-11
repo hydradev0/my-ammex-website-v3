@@ -1,16 +1,12 @@
-react-dom_client.js?v=45f59ff1:18244 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
-content.js:1 Simple Autoscroll Loaded
-orderService.js?t=1762672675368:25  GET http://localhost:5000/api/orders/status/rejected?page=1&limit=5 500 (Internal Server Error)
-getRejectedOrdersForSales @ orderService.js?t=1762672675368:25
-(anonymous) @ HandleOrders.jsx:122
-(anonymous) @ HandleOrders.jsx:154
+discountService.js:52  GET http://localhost:5000/api/discounts/active 500 (Internal Server Error)
+getDiscountedProducts @ discountService.js:52
+fetchDiscountedProducts @ ProductDiscountManagement.jsx:217
+(anonymous) @ ProductDiscountManagement.jsx:85
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
 commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
 commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10065
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
 recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
 commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
 recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
@@ -56,24 +52,9 @@ commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10077
 flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11498
 (anonymous) @ react-dom_client.js?v=45f59ff1:11255
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
+<ProductDiscountManagement>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
+AppContent @ App.jsx:174
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -88,7 +69,7 @@ performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <AppContent>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
+App @ App.jsx:273
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -104,19 +85,18 @@ performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <App>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
 (anonymous) @ main.jsx:17
-HandleOrders.jsx:150 Failed to load rejected orders: Error: column Order.is_active does not exist
-    at getRejectedOrdersForSales (orderService.js?t=1762672675368:31:22)
-    at async HandleOrders.jsx:122:21
-(anonymous) @ HandleOrders.jsx:150
-await in (anonymous)
-(anonymous) @ HandleOrders.jsx:154
+discountService.js:66 Error fetching discounted products: Error: relation "item" does not exist
+    at getDiscountedProducts (discountService.js:61:13)
+    at async fetchDiscountedProducts (ProductDiscountManagement.jsx:217:24)
+getDiscountedProducts @ discountService.js:66
+await in getDiscountedProducts
+fetchDiscountedProducts @ ProductDiscountManagement.jsx:217
+(anonymous) @ ProductDiscountManagement.jsx:85
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
 commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
 commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10065
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
 recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
 commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
 recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
@@ -162,24 +142,9 @@ commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10077
 flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11498
 (anonymous) @ react-dom_client.js?v=45f59ff1:11255
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
+<ProductDiscountManagement>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
+AppContent @ App.jsx:174
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -194,7 +159,7 @@ performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <AppContent>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
+App @ App.jsx:273
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -210,17 +175,17 @@ performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <App>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
 (anonymous) @ main.jsx:17
-orderService.js?t=1762672675368:9  GET http://localhost:5000/api/orders/status/pending?page=1&limit=5 500 (Internal Server Error)
-getPendingOrdersForSales @ orderService.js?t=1762672675368:9
-(anonymous) @ HandleOrders.jsx:74
-(anonymous) @ HandleOrders.jsx:106
+ProductDiscountManagement.jsx:224 Failed to fetch discounted products: Error: relation "item" does not exist
+    at getDiscountedProducts (discountService.js:61:13)
+    at async fetchDiscountedProducts (ProductDiscountManagement.jsx:217:24)
+fetchDiscountedProducts @ ProductDiscountManagement.jsx:224
+await in fetchDiscountedProducts
+(anonymous) @ ProductDiscountManagement.jsx:85
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
 commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
 commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10065
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
 recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
 commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
 recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
@@ -266,24 +231,9 @@ commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10077
 flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11498
 (anonymous) @ react-dom_client.js?v=45f59ff1:11255
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
+<ProductDiscountManagement>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
+AppContent @ App.jsx:174
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -298,7 +248,7 @@ performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <AppContent>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
+App @ App.jsx:273
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -314,123 +264,16 @@ performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <App>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
 (anonymous) @ main.jsx:17
-HandleOrders.jsx:100 Failed to load pending orders: Error: column Order.is_active does not exist
-    at getPendingOrdersForSales (orderService.js?t=1762672675368:15:22)
-    at async HandleOrders.jsx:74:21
-(anonymous) @ HandleOrders.jsx:100
-await in (anonymous)
-(anonymous) @ HandleOrders.jsx:106
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
-commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10065
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10059
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10162
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=45f59ff1:10046
-commitPassiveMountOnFiber @ react-dom_client.js?v=45f59ff1:10077
-flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11498
-(anonymous) @ react-dom_client.js?v=45f59ff1:11255
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<AppContent>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-(anonymous) @ main.jsx:17
-orderService.js?t=1762672675368:25  GET http://localhost:5000/api/orders/status/rejected?page=1&limit=5 500 (Internal Server Error)
-getRejectedOrdersForSales @ orderService.js?t=1762672675368:25
-(anonymous) @ HandleOrders.jsx:122
-(anonymous) @ HandleOrders.jsx:154
+ProductDiscountManagement.jsx:183 ✅ Fetched page 1, limit 144, got 31 products
+discountService.js:52  GET http://localhost:5000/api/discounts/active 500 (Internal Server Error)
+getDiscountedProducts @ discountService.js:52
+fetchDiscountedProducts @ ProductDiscountManagement.jsx:217
+(anonymous) @ ProductDiscountManagement.jsx:85
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
 commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
 reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10194
-recursivelyTraverseReconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10173
-reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10187
 doubleInvokeEffectsOnFiber @ react-dom_client.js?v=45f59ff1:11657
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11628
@@ -458,24 +301,9 @@ commitDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11665
 flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11505
 (anonymous) @ react-dom_client.js?v=45f59ff1:11255
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
+<ProductDiscountManagement>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
+AppContent @ App.jsx:174
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -490,7 +318,7 @@ performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <AppContent>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
+App @ App.jsx:273
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -506,19 +334,18 @@ performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <App>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
 (anonymous) @ main.jsx:17
-HandleOrders.jsx:150 Failed to load rejected orders: Error: column Order.is_active does not exist
-    at getRejectedOrdersForSales (orderService.js?t=1762672675368:31:22)
-    at async HandleOrders.jsx:122:21
-(anonymous) @ HandleOrders.jsx:150
-await in (anonymous)
-(anonymous) @ HandleOrders.jsx:154
+discountService.js:66 Error fetching discounted products: Error: relation "item" does not exist
+    at getDiscountedProducts (discountService.js:61:13)
+    at async fetchDiscountedProducts (ProductDiscountManagement.jsx:217:24)
+getDiscountedProducts @ discountService.js:66
+await in getDiscountedProducts
+fetchDiscountedProducts @ ProductDiscountManagement.jsx:217
+(anonymous) @ ProductDiscountManagement.jsx:85
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
 commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
 reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10194
-recursivelyTraverseReconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10173
-reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10187
 doubleInvokeEffectsOnFiber @ react-dom_client.js?v=45f59ff1:11657
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11628
@@ -546,24 +373,9 @@ commitDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11665
 flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11505
 (anonymous) @ react-dom_client.js?v=45f59ff1:11255
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
+<ProductDiscountManagement>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
+AppContent @ App.jsx:174
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -578,7 +390,7 @@ performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <AppContent>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
+App @ App.jsx:273
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -594,17 +406,17 @@ performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <App>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
 (anonymous) @ main.jsx:17
-orderService.js?t=1762672675368:9  GET http://localhost:5000/api/orders/status/pending?page=1&limit=5 500 (Internal Server Error)
-getPendingOrdersForSales @ orderService.js?t=1762672675368:9
-(anonymous) @ HandleOrders.jsx:74
-(anonymous) @ HandleOrders.jsx:106
+ProductDiscountManagement.jsx:224 Failed to fetch discounted products: Error: relation "item" does not exist
+    at getDiscountedProducts (discountService.js:61:13)
+    at async fetchDiscountedProducts (ProductDiscountManagement.jsx:217:24)
+fetchDiscountedProducts @ ProductDiscountManagement.jsx:224
+await in fetchDiscountedProducts
+(anonymous) @ ProductDiscountManagement.jsx:85
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
 commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
 reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10194
-recursivelyTraverseReconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10173
-reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10187
 doubleInvokeEffectsOnFiber @ react-dom_client.js?v=45f59ff1:11657
 runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
 recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11628
@@ -632,24 +444,9 @@ commitDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11665
 flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11505
 (anonymous) @ react-dom_client.js?v=45f59ff1:11255
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
+<ProductDiscountManagement>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
+AppContent @ App.jsx:174
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -664,7 +461,7 @@ performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
 performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <AppContent>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
+App @ App.jsx:273
 react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
 renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
 renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
@@ -680,94 +477,4 @@ performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
 <App>
 exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
 (anonymous) @ main.jsx:17
-HandleOrders.jsx:100 Failed to load pending orders: Error: column Order.is_active does not exist
-    at getPendingOrdersForSales (orderService.js?t=1762672675368:15:22)
-    at async HandleOrders.jsx:74:21
-(anonymous) @ HandleOrders.jsx:100
-await in (anonymous)
-(anonymous) @ HandleOrders.jsx:106
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17732
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-commitHookEffectListMount @ react-dom_client.js?v=45f59ff1:8616
-commitHookPassiveMountEffects @ react-dom_client.js?v=45f59ff1:8674
-reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10194
-recursivelyTraverseReconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10173
-reconnectPassiveEffects @ react-dom_client.js?v=45f59ff1:10187
-doubleInvokeEffectsOnFiber @ react-dom_client.js?v=45f59ff1:11657
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11628
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-recursivelyTraverseAndDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11634
-commitDoubleInvokeEffectsInDEV @ react-dom_client.js?v=45f59ff1:11665
-flushPassiveEffects @ react-dom_client.js?v=45f59ff1:11505
-(anonymous) @ react-dom_client.js?v=45f59ff1:11255
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<HandleOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-CustomerOrders @ CustomerOrders.jsx:9
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<CustomerOrders>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-AppContent @ App.jsx:125
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<AppContent>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-App @ App.jsx:261
-react-stack-bottom-frame @ react-dom_client.js?v=45f59ff1:17678
-renderWithHooksAgain @ react-dom_client.js?v=45f59ff1:4396
-renderWithHooks @ react-dom_client.js?v=45f59ff1:4332
-updateFunctionComponent @ react-dom_client.js?v=45f59ff1:6759
-beginWork @ react-dom_client.js?v=45f59ff1:7805
-runWithFiberInDEV @ react-dom_client.js?v=45f59ff1:1540
-performUnitOfWork @ react-dom_client.js?v=45f59ff1:11059
-workLoopSync @ react-dom_client.js?v=45f59ff1:10916
-renderRootSync @ react-dom_client.js?v=45f59ff1:10898
-performWorkOnRoot @ react-dom_client.js?v=45f59ff1:10510
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=45f59ff1:11825
-performWorkUntilDeadline @ react-dom_client.js?v=45f59ff1:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=45f59ff1:256
-(anonymous) @ main.jsx:17
-reload.js:22 WebSocket connection to 'ws://127.0.0.1:8080//ws' failed: 
-init @ reload.js:22
-(anonymous) @ reload.js:65
+ProductDiscountManagement.jsx:183 ✅ Fetched page 1, limit 144, got 31 products

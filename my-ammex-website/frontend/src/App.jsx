@@ -40,6 +40,8 @@ import WebsiteData from './Components-Analytics/WebsiteData';
 
 import Settings from './Components/Settings';
 
+import ProductDiscountManagement from './Components/ProductDiscountManagement';
+
 function AppContent() {
   const location = useLocation();
   const shouldShowGradient = location.pathname === '/login' || location.pathname === '/' || location.pathname === '/landingpage';
@@ -164,6 +166,15 @@ function AppContent() {
         <Route path="admin/account-management" element={<ProtectedRoute requiredRole="Admin"><AccountManagement /></ProtectedRoute>} />
         <Route path="admin/import-data" element={<ProtectedRoute requiredRole="Admin"><ImportData /></ProtectedRoute>} />
         
+        {/* Product Discounts */}
+        <Route 
+          path="product-discounts" 
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Sales Marketing"]}>
+              <ProductDiscountManagement />
+            </ProtectedRoute>} 
+          />
+
         {/* Settings */}
         <Route 
           path="settings"
@@ -173,6 +184,7 @@ function AppContent() {
             </ProtectedRoute>
           } 
         />
+
         
         {/* Customer Portal - Client role only */}
         <Route

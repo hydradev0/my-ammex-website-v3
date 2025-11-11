@@ -4,7 +4,7 @@ import {
   PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, CartesianGrid, XAxis, YAxis, Legend, ResponsiveContainer
 } from 'recharts';
-import { Eye, MousePointer, ShoppingCart, ArrowLeft, ChartBar, RefreshCw, ChevronDown, Calendar, TrendingUp, Lightbulb, Sparkles } from 'lucide-react';
+import { Eye, MousePointer, ShoppingCart, ArrowLeft, ChartBar, RefreshCw, ChevronDown, Calendar, TrendingUp, Lightbulb, Sparkles, Tag, ArrowRight, Zap } from 'lucide-react';
 import RoleBasedLayout from '../Components/RoleBasedLayout';
 import { getWebsiteCategoryTraffic, getWebsiteTopClickedItems, getWebsiteCartAdditions, refreshWebsiteAnalytics, generateAIInsights } from '../services/websiteAnalytics';
 import { formatNumber, formatCurrency } from '../utils/format';
@@ -770,6 +770,86 @@ const WebsiteData = () => {
                 </ul>
               </div>
             </div>
+
+            {/* AI Suggested Discounts Section */}
+            {insights.suggestedDiscounts && insights.suggestedDiscounts.length > 0 && (
+              <div className="mt-1 border-t border-gray-300 p-6 bg-gradient-to-br from-orange-50 to-yellow-50">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg">
+                    <Tag className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      Suggested Discounts
+                      <Zap className="w-5 h-5 text-yellow-600" />
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">Products that could benefit from promotional pricing to boost conversions</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const productNames = insights.suggestedDiscounts.map(p => p.productName).join(',');
+                      const modelNos = insights.suggestedDiscounts.map(p => p.modelNo).join(',');
+                      navigate(`/product-discounts?suggested=ai&products=${encodeURIComponent(productNames)}&models=${encodeURIComponent(modelNos)}`);
+                    }}
+                    className="cursor-pointer px-6 py-3 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                  >
+                    <Tag className="w-5 h-5" />
+                    Apply Discounts to All
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {insights.suggestedDiscounts.map((product, index) => (
+                    <div key={index} className="bg-white border-2 border-orange-200 rounded-xl p-4 hover:border-orange-400 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-white text-sm font-bold">
+                                {index + 1}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <h5 className="font-bold text-gray-900 text-lg">{product.productName}</h5>
+                              {product.modelNo && product.modelNo !== 'N/A' && (
+                                <p className="text-sm text-gray-600 mt-1">Model: {product.modelNo}</p>
+                              )}
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              <div className="inline-flex items-center px-3 py-1.5 bg-slate-600 text-white rounded-full font-semibold text-sm">
+                                {product.recommendedDiscount}% OFF
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2 ml-11">
+                            <div className="flex items-start gap-2">
+                              <span className="text-xs font-semibold text-orange-600 uppercase mt-0.5">Reason:</span>
+                              <p className="text-sm text-gray-700 flex-1">{product.reason}</p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-xs font-semibold text-green-600 uppercase mt-0.5">Impact:</span>
+                              <p className="text-sm text-gray-700 flex-1">{product.expectedImpact}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            navigate(`/product-discounts?suggested=ai&products=${encodeURIComponent(product.productName)}&models=${encodeURIComponent(product.modelNo)}&discount=${product.recommendedDiscount}`);
+                          }}
+                          className="flex-shrink-0 cursor-pointer px-4 py-2 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 text-sm"
+                        >
+                          Apply Discount
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

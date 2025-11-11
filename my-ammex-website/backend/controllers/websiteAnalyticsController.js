@@ -210,9 +210,15 @@ CRITICAL ANALYSIS FOCUS:
 
 3. **Revenue Opportunities**: Find underperforming high-interest items that need optimization
 
+4. **DISCOUNT SUGGESTIONS**: Identify products that would benefit from promotional discounts to boost conversions
+   - High interest (good clicks) but low cart additions = needs price incentive
+   - Strategic discounts to move inventory or increase cart additions
+   - Maximum 5 products to discount
+
 Based on this data, provide:
 - Key trends focusing on conversion funnel drop-offs and opportunities
 - Actionable recommendations for improving conversions, especially for high-click-low-cart items
+- SPECIFIC PRODUCTS TO DISCOUNT with recommended discount percentages (max 5 products)
 
 IMPORTANT: Respond with ONLY valid JSON. No markdown formatting, no explanations outside the JSON.
 
@@ -230,16 +236,29 @@ Return this exact JSON structure:
     "Third recommendation (category or marketing specific)",
     "Fourth recommendation (product optimization specific)",
     "Fifth recommendation (checkout or conversion improvement)"
+  ],
+  "suggestedDiscounts": [
+    {
+      "productName": "Exact product name from data",
+      "modelNo": "Exact model number from data",
+      "reason": "Brief reason why this product needs discount (e.g., 'High clicks (450) but low cart rate (2.7%) - price barrier')",
+      "recommendedDiscount": 15,
+      "expectedImpact": "Brief expected impact (e.g., 'Could boost cart additions by 40-50%')"
+    }
   ]
 }
 
 Rules:
 - ALWAYS compare clicked items vs cart additions to find conversion issues
 - Mention specific product names and model numbers
-- Include actual numbers and percentages from the data
-- Focus on actionable insights that can improve revenue
+- Include actual numbers (₱ use this before the number, example: ₱1000) and percentages from the data
+- Focus on actionable insights that can improve revenue (NOT WITH WEBSITE PERFORMANCE)
 - Identify both problems (high click, low cart) AND opportunities (high cart additions)
-- Keep each point concise but data-driven`;
+- Keep each point concise but data-driven
+- For suggestedDiscounts: Choose UP TO 5 products max from the provided data
+- Recommended discounts should be between 5% and 25%
+- Only suggest discounts for products that actually exist in the TOP CLICKED or CART data
+- If no products need discounts, return empty array []`;
 
       console.log('🤖 Calling OpenRouter AI...');
 
@@ -301,13 +320,15 @@ Rules:
 
       // Validate structure
       if (!insights.trends || !Array.isArray(insights.trends) || 
-          !insights.recommendations || !Array.isArray(insights.recommendations)) {
+          !insights.recommendations || !Array.isArray(insights.recommendations) ||
+          !insights.suggestedDiscounts || !Array.isArray(insights.suggestedDiscounts)) {
         throw new Error('Invalid insights structure from AI');
       }
 
       console.log('✅ AI insights generated successfully');
       console.log(`   - ${insights.trends.length} trends identified`);
       console.log(`   - ${insights.recommendations.length} recommendations provided`);
+      console.log(`   - ${insights.suggestedDiscounts.length} products suggested for discount`);
 
       return res.json({ 
         success: true, 

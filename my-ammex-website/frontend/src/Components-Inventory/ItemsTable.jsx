@@ -130,7 +130,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
   });
 
   // Windowed fetching (fetch 10 UI pages at a time)
-  const PAGE_WINDOW_MULTIPLIER = 10;
+  const PAGE_WINDOW_MULTIPLIER = 20;
   const [fetchedBackendPage, setFetchedBackendPage] = useState(1);
   const [fetchedLimit, setFetchedLimit] = useState(itemsPerPage * PAGE_WINDOW_MULTIPLIER);
 
@@ -771,7 +771,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
           isOpen={deleteModal.isOpen}
           title="Delete Item"
           entityName={deleteModal.itemName}
-          description="Are you sure you want to delete this item? The item will be removed from the system."
+          description="The item will be removed from the system."
           confirmLabel={deletingItem ? 'Deleting...' : 'Delete Item'}
           cancelLabel="Cancel"
           loading={deletingItem}
