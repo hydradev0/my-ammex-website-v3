@@ -73,6 +73,72 @@ async function resolveSelectedCartItems(customerId, identifiers) {
   return { cart, items: selectedCartItems };
 }
 
+// Helper function to get fresh item data with discounts
+const getFreshItemData = async (itemId) => {
+  const { Item } = require('../config/db').getModels();
+  const { getSequelize } = require('../config/db');
+  try {
+    const item = await Item.findByPk(itemId);
+    if (!item) return null;
+
+    const sequelize = getSequelize();
+    const originalPrice = Number(item.sellingPrice || item.price || 0);
+
+    // Query the ProductDiscount table for active discounts
+    const discounts = await sequelize.query(`
+      SELECT discount_percentage, start_date, end_date, is_active
+      FROM "ProductDiscount"
+      WHERE item_id = :itemId AND is_active = true
+      LIMIT 1
+    `, {
+      replacements: { itemId },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    let discountedPrice = null;
+    let discountPercentage = 0;
+    let startDate = null;
+    let endDate = null;
+
+    // Calculate discounted price if discount exists and is within date range
+    if (discounts.length > 0) {
+      const discount = discounts[0];
+      discountPercentage = parseFloat(discount.discount_percentage);
+      startDate = discount.start_date;
+      endDate = discount.end_date;
+
+      const now = new Date();
+      
+      // Convert to date-only strings for comparison (YYYY-MM-DD)
+      const nowDateStr = now.toISOString().split('T')[0];
+      const startDateStr = startDate ? String(startDate) : null;
+      const endDateStr = endDate ? String(endDate) : null;
+
+      // Compare dates as strings (YYYY-MM-DD format ensures correct comparison)
+      const isInDateRange = (!startDateStr || nowDateStr >= startDateStr) && (!endDateStr || nowDateStr <= endDateStr);
+
+      if (isInDateRange && discountPercentage > 0) {
+        const discountAmount = originalPrice * (discountPercentage / 100);
+        discountedPrice = Math.max(0, originalPrice - discountAmount);
+      }
+    }
+
+    return {
+      id: item.id,
+      itemName: item.itemName,
+      price: originalPrice,
+      discountPercentage,
+      discountedPrice,
+      startDate,
+      endDate,
+      isActive: item.isActive
+    };
+  } catch (error) {
+    console.error('Error fetching fresh item data:', error);
+    return null;
+  }
+};
+
 // POST /api/checkout/preview
 // Body: { itemIds?: number[], cartItemIds?: number[] }
 // Note: Does not hard-fail on incomplete profile; returns warnings instead
@@ -99,17 +165,26 @@ const previewCheckout = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No selected items found in cart' });
     }
 
-    const lineItems = items.map((ci) => {
-      const unitPrice = Number(ci.unitPrice || (ci.item ? ci.item.price : 0));
+    // Get fresh item data with current discount status
+    const lineItems = await Promise.all(items.map(async (ci) => {
+      const freshItemData = await getFreshItemData(ci.itemId);
+      const itemName = freshItemData?.itemName || ci.item?.itemName || 'Unknown Item';
+
+      // Use discounted price if available, otherwise use original price from fresh data
+      let unitPrice = freshItemData?.price || Number(ci.unitPrice || 0);
+      if (freshItemData?.discountedPrice) {
+        unitPrice = Number(freshItemData.discountedPrice);
+      }
+
       const quantity = Number(ci.quantity);
       return {
         itemId: ci.itemId,
-        name: ci.item?.itemName,
+        name: itemName,
         price: unitPrice,
         quantity,
         total: unitPrice * quantity
       };
-    });
+    }));
 
     const totalAmount = lineItems.reduce((acc, li) => acc + li.total, 0);
 
@@ -159,9 +234,16 @@ const confirmCheckout = async (req, res, next) => {
     const orderNumber = generateOrderNumber();
     const userId = req.user.id; // employee or same user (client) placing the order
 
-    // Build totals
-    const lineItems = items.map((ci) => {
-      const unitPrice = Number(ci.unitPrice || (ci.item ? ci.item.price : 0));
+    // Get fresh item data and build totals with current discount status
+    const lineItems = await Promise.all(items.map(async (ci) => {
+      const freshItemData = await getFreshItemData(ci.itemId);
+
+      // Use discounted price if available, otherwise use original price from fresh data
+      let unitPrice = freshItemData?.price || Number(ci.unitPrice || 0);
+      if (freshItemData?.discountedPrice) {
+        unitPrice = Number(freshItemData.discountedPrice);
+      }
+
       const quantity = Number(ci.quantity);
       return {
         orderId: null, // fill later
@@ -170,7 +252,7 @@ const confirmCheckout = async (req, res, next) => {
         unitPrice,
         totalPrice: unitPrice * quantity
       };
-    });
+    }));
     const totalAmount = lineItems.reduce((acc, li) => acc + li.totalPrice, 0);
 
     // Create order
@@ -240,13 +322,19 @@ const confirmCheckout = async (req, res, next) => {
       }))
     };
 
-    // Try to enrich item names from the just-removed cart items' joins
+    // Try to enrich item names with fresh data
     try {
-      clientShape.items = items.map((ci) => ({
-        name: ci.item?.itemName,
-        quantity: Number(ci.quantity),
-        price: Number(ci.unitPrice || (ci.item ? ci.item.price : 0)),
-        total: Number(ci.quantity) * Number(ci.unitPrice || (ci.item ? ci.item.price : 0))
+      clientShape.items = await Promise.all(items.map(async (ci, index) => {
+        const freshItemData = await getFreshItemData(ci.itemId);
+        const itemName = freshItemData?.itemName || ci.item?.itemName || 'Unknown Item';
+        // Use the calculated unitPrice from lineItems (which includes discounts)
+        const unitPrice = lineItems[index].unitPrice;
+        return {
+          name: itemName,
+          quantity: Number(ci.quantity),
+          price: unitPrice,
+          total: unitPrice * Number(ci.quantity)
+        };
       }));
     } catch (_) {}
 

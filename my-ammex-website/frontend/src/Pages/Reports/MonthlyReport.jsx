@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, ChevronDown, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Download, ChevronDown, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet, X } from 'lucide-react';
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
 import { getMonthlyReport, getAvailableYears, getAvailableMonths } from '../../services/monthlyReportsService';
 import * as XLSX from 'xlsx';
+import { createPortal } from 'react-dom';
+import ScrollLock from '../../Components/ScrollLock';
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -36,6 +38,11 @@ export default function MonthlyReport() {
   const [productsPage, setProductsPage] = useState(1);
   const [customersPage, setCustomersPage] = useState(1);
   const itemsPerPage = 5;
+
+  // Modal states
+  const [modelNumbersModalOpen, setModelNumbersModalOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedModelNumbers, setSelectedModelNumbers] = useState([]);
 
   // Fetch available years on component mount
   useEffect(() => {
@@ -178,16 +185,20 @@ export default function MonthlyReport() {
     // Top Customers Section
     allData.push(['TOP CUSTOMERS OF THE MONTH']);
     allData.push(['']);
-    allData.push(['Customer', 'Bulk Count', 'Bulk Amount', 'Avg Bulk Amount', 'Model No.']);
-    
+        allData.push(['Customer', 'Bulk Count', 'Bulk Amount', 'Avg Bulk Amount', 'Model No.']);
+
     if (reportData.topCustomers && reportData.topCustomers.length > 0) {
       reportData.topCustomers.forEach(customer => {
+        // For Excel export, show all model numbers (not truncated like in UI)
+        const modelNumbers = customer.modelNo && customer.modelNo !== 'N/A' ? customer.modelNo.split(', ') : [];
+        const modelDisplay = modelNumbers.length > 0 ? modelNumbers.join(', ') : 'N/A';
+
         allData.push([
           customer.customer || '',
           customer.bulkCount || 0,
           customer.bulkAmount || 0,
           customer.avgBulkAmount || 0,
-          customer.modelNo || ''
+          modelDisplay
         ]);
       });
     }
@@ -482,7 +493,28 @@ export default function MonthlyReport() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           ₱{customer.avgBulkAmount ? parseFloat(customer.avgBulkAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{customer.modelNo}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right pr-8">
+                          {(() => {
+                            const modelNumbers = customer.modelNo && customer.modelNo !== 'N/A' ? customer.modelNo.split(', ') : [];
+                            if (modelNumbers.length <= 2) {
+                              return customer.modelNo;
+                            } else {
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setSelectedCustomer(customer.customer);
+                                    setSelectedModelNumbers(modelNumbers);
+                                    setModelNumbersModalOpen(true);
+                                  }}
+                                  className="text-blue-600 cursor-pointer hover:text-blue-800 underline text-sm font-semibold"
+                                  title={`Click to view all ${modelNumbers.length} model numbers`}
+                                >
+                                  View ({modelNumbers.length})
+                                </button>
+                              );
+                            }
+                          })()}
+                        </td>
                       </tr>
                     ))
                   ) : (
@@ -526,6 +558,68 @@ export default function MonthlyReport() {
       </div>
     </div>
     </RoleBasedLayout>
+
+    {/* Model Numbers Modal */}
+    <ScrollLock active={modelNumbersModalOpen} />
+    {modelNumbersModalOpen && createPortal(
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-lg shadow-lg w-full max-w-sm mx-4 max-h-[70vh] flex flex-col">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-gray-900">Model Numbers</h3>
+            <button
+              className="text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+              onClick={() => {
+                setModelNumbersModalOpen(false);
+                setSelectedCustomer(null);
+                setSelectedModelNumbers([]);
+              }}
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="px-4 py-3 flex-1 overflow-hidden">
+            <div className="mb-3">
+              <p className="text-xs text-gray-500 mb-1">Customer</p>
+              <p className="text-sm font-medium text-gray-900">{selectedCustomer}</p>
+            </div>
+
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">Models ({selectedModelNumbers.length})</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md">
+                <div className="divide-y divide-gray-100">
+                  {selectedModelNumbers.map((model, index) => (
+                    <div
+                      key={index}
+                      className="px-3 py-2 text-sm font-mono text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      {model}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-4 py-3 border-t border-gray-200 flex justify-end bg-gray-50 rounded-b-lg">
+            <button
+              className="px-3 py-1.5 text-xs text-gray-600 cursor-pointer hover:text-gray-800 hover:bg-gray-100 border border-gray-200 rounded transition-colors"
+              onClick={() => {
+                setModelNumbersModalOpen(false);
+                setSelectedCustomer(null);
+                setSelectedModelNumbers([]);
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
     </>
   );
 }

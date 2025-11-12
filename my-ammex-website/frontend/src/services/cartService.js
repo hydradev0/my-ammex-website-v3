@@ -96,7 +96,12 @@ export const addToCart = async (customerId, itemId, quantity = 1, productData = 
       const cartItem = {
         id: itemId,
         price: productData?.price || 0,
-        sellingPrice: productData?.price || 0, // Add new field for consistency
+        sellingPrice: productData?.sellingPrice || productData?.price || 0,
+        discountedPrice: productData?.discountedPrice || null,
+        discountPercentage: productData?.discountPercentage || null,
+        startDate: productData?.startDate || null,
+        endDate: productData?.endDate || null,
+        isActive: productData?.isActive || false,
         stock: productData?.stock || 0,
         itemCode: productData?.itemCode || '',
         modelNo: productData?.modelNo || '',
@@ -319,6 +324,29 @@ export const clearCart = async (customerId) => {
   }
 };
 
+// Helper function to fetch fresh item data including discounts
+const fetchFreshItemData = async (itemId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/items/${itemId}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch fresh data for item ${itemId}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.success ? data.data : null;
+  } catch (error) {
+    console.error(`Error fetching fresh data for item ${itemId}:`, error);
+    return null;
+  }
+};
+
 // Recover cart from database when localStorage and backup are empty
 export const recoverCartFromDatabase = async (customerId) => {
   try {
@@ -332,25 +360,36 @@ export const recoverCartFromDatabase = async (customerId) => {
     const dbItems = dbCart.data?.items || [];
 
     if (dbItems.length > 0) {
-      // Transform database items to localStorage format
-      const transformedItems = dbItems.map(cartItem => ({
-        id: cartItem.item.id,
-        name: cartItem.item.itemName,
-        price: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
-        sellingPrice: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
-        stock: cartItem.item.quantity,
-        itemCode: cartItem.item.itemCode,
-        modelNo: cartItem.item.modelNo,
-        vendor: cartItem.item.vendor,
-        description: cartItem.item.description,
-        unit: cartItem.item.unit?.name || 'pcs',
-        quantity: cartItem.quantity,
-        category: cartItem.item.category?.name || null,
-        subcategory: cartItem.item.subcategory?.name || null,
-        // Include image properties from database
-        image: cartItem.item.image || null,
-        images: cartItem.item.images || []
-      }));
+      // Fetch fresh item data including discounts for each cart item
+      const transformedItems = await Promise.all(
+        dbItems.map(async (cartItem) => {
+          const freshItemData = await fetchFreshItemData(cartItem.item.id);
+
+          return {
+            id: cartItem.item.id,
+            name: freshItemData?.name || cartItem.item.itemName,
+            price: freshItemData?.price || parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice),
+            sellingPrice: freshItemData?.sellingPrice || freshItemData?.price || parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice),
+            discountedPrice: freshItemData?.discountedPrice || null,
+            discountPercentage: freshItemData?.discountPercentage || null,
+            startDate: freshItemData?.startDate || null,
+            endDate: freshItemData?.endDate || null,
+            isActive: freshItemData?.isActive || false,
+            stock: freshItemData?.stock || cartItem.item.quantity,
+            itemCode: freshItemData?.itemCode || cartItem.item.itemCode,
+            modelNo: freshItemData?.modelNo || cartItem.item.modelNo,
+            vendor: freshItemData?.vendor || cartItem.item.vendor,
+            description: freshItemData?.description || cartItem.item.description,
+            unit: freshItemData?.unit?.name || freshItemData?.unit || cartItem.item.unit?.name || 'pcs',
+            quantity: cartItem.quantity,
+            category: freshItemData?.category?.name || freshItemData?.category || cartItem.item.category?.name || null,
+            subcategory: freshItemData?.subcategory?.name || freshItemData?.subcategory || cartItem.item.subcategory?.name || null,
+            // Include image properties from fresh data or fallback to database
+            image: freshItemData?.image || cartItem.item.image || null,
+            images: freshItemData?.images || cartItem.item.images || []
+          };
+        })
+      );
 
       // Restore to localStorage and create backup
       localStorage.setItem('customerCart', JSON.stringify(transformedItems));
@@ -681,35 +720,46 @@ const syncToDatabase = async (customerId, itemId, quantity, productData) => {
 export const initializeCartFromDatabase = async (customerId, overwriteLocalStorage = false) => {
   try {
     const dbCart = await getCustomerCart(customerId);
-    
+
     if (dbCart.success && dbCart.data?.items) {
-      // Transform database cart items to match localStorage format
-      const transformedItems = dbCart.data.items.map(cartItem => ({
-        id: cartItem.item.id,
-        name: cartItem.item.itemName,
-        price: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
-        sellingPrice: parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice), // Use current price from Item table
-        stock: cartItem.item.quantity,
-        itemCode: cartItem.item.itemCode,
-        modelNo: cartItem.item.modelNo,
-        vendor: cartItem.item.vendor,
-        description: cartItem.item.description,
-        unit: cartItem.item.unit?.name || 'pcs',
-        quantity: cartItem.quantity,
-        category: cartItem.item.category?.name || null,
-        subcategory: cartItem.item.subcategory?.name || null,
-        // Include image properties from database
-        image: cartItem.item.image || null,
-        images: cartItem.item.images || []
-      }));
-      
+      // Fetch fresh item data including discounts for each cart item
+      const transformedItems = await Promise.all(
+        dbCart.data.items.map(async (cartItem) => {
+          const freshItemData = await fetchFreshItemData(cartItem.item.id);
+
+          return {
+            id: cartItem.item.id,
+            name: freshItemData?.name || cartItem.item.itemName,
+            price: freshItemData?.price || parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice),
+            sellingPrice: freshItemData?.sellingPrice || freshItemData?.price || parseFloat(cartItem.item.sellingPrice || cartItem.unitPrice),
+            discountedPrice: freshItemData?.discountedPrice || null,
+            discountPercentage: freshItemData?.discountPercentage || null,
+            startDate: freshItemData?.startDate || null,
+            endDate: freshItemData?.endDate || null,
+            isActive: freshItemData?.isActive || false,
+            stock: freshItemData?.stock || cartItem.item.quantity,
+            itemCode: freshItemData?.itemCode || cartItem.item.itemCode,
+            modelNo: freshItemData?.modelNo || cartItem.item.modelNo,
+            vendor: freshItemData?.vendor || cartItem.item.vendor,
+            description: freshItemData?.description || cartItem.item.description,
+            unit: freshItemData?.unit?.name || freshItemData?.unit || cartItem.item.unit?.name || 'pcs',
+            quantity: cartItem.quantity,
+            category: freshItemData?.category?.name || freshItemData?.category || cartItem.item.category?.name || null,
+            subcategory: freshItemData?.subcategory?.name || freshItemData?.subcategory || cartItem.item.subcategory?.name || null,
+            // Include image properties from fresh data or fallback to database
+            image: freshItemData?.image || cartItem.item.image || null,
+            images: freshItemData?.images || cartItem.item.images || []
+          };
+        })
+      );
+
       // Only update localStorage if explicitly requested (not during sync operations)
       if (overwriteLocalStorage) {
         localStorage.setItem('customerCart', JSON.stringify(transformedItems));
       }
       return transformedItems;
     }
-    
+
     return [];
   } catch (error) {
     console.error('Error initializing cart from database:', error);

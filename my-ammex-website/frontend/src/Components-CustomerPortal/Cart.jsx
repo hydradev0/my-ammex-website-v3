@@ -27,6 +27,7 @@ const Cart = () => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [removingItemId, setRemovingItemId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [checkoutSelection, setCheckoutSelection] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [inputValues, setInputValues] = useState({});
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -38,14 +39,16 @@ const Cart = () => {
   const paymentTermsOptions = ['30 days', '60 days', '90 days'];
   const paymentTermsDropdownRef = useRef(null);
 
-  const refreshCartData = async () => {
+  const refreshCartData = async (updateSelection = false) => {
     try {
       if (!user?.id) {
         const local = getLocalCart();
         const uniqueLocal = local.filter((it, i, arr) => i === arr.findIndex(t => t.id === it.id));
         setLocalCart(uniqueLocal); // Use setLocalCart to sync global state
         setCart(uniqueLocal);
-        setSelectedIds(new Set(uniqueLocal.map(it => it.id)));
+        if (updateSelection) {
+          setSelectedIds(new Set(uniqueLocal.map(it => it.id)));
+        }
         return uniqueLocal;
       }
 
@@ -57,8 +60,8 @@ const Cart = () => {
       // Update stock and prices for existing items and append any new ones from DB
       const merged = cart.map(localItem => {
         const serverItem = dbCart.find(d => d.id === localItem.id);
-        return serverItem ? { 
-          ...localItem, 
+        return serverItem ? {
+          ...localItem,
           stock: serverItem.stock,
           sellingPrice: serverItem.sellingPrice,
           price: serverItem.price
@@ -73,7 +76,9 @@ const Cart = () => {
 
       setLocalCart(merged); // Use setLocalCart to sync global state
       setCart(merged);
-      setSelectedIds(new Set(merged.map(it => it.id)));
+      if (updateSelection) {
+        setSelectedIds(new Set(merged.map(it => it.id)));
+      }
       return merged;
     } catch (_) {
       // silently ignore; user can adjust manually
@@ -179,7 +184,7 @@ const Cart = () => {
       
       // Refresh cart data immediately after initial load to get latest prices
       if (user?.id && cart.length > 0) {
-        refreshCartData();
+        refreshCartData(true); // Update selection to include any new items from database
       }
     };
 
@@ -219,6 +224,7 @@ const Cart = () => {
     const handleClickOutside = (event) => {
       if (showPreviewModal && previewModalRef.current && event.target === previewModalRef.current) {
         setShowPreviewModal(false);
+        setCheckoutSelection(new Set());
       }
     };
 
@@ -264,7 +270,7 @@ const Cart = () => {
     setShowConfirmModal(true);
   };
 
-  // Keep selection in sync with cart. New items become selected by default.
+  // Keep selection in sync with cart. Only remove items that no longer exist.
   useEffect(() => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -273,10 +279,7 @@ const Cart = () => {
       for (const id of Array.from(next)) {
         if (!cartIds.has(id)) next.delete(id);
       }
-      // Add any new ids (default selected)
-      cart.forEach(item => {
-        if (!next.has(item.id)) next.add(item.id);
-      });
+      // Don't automatically select new items during cart updates - only during initialization
       return next;
     });
   }, [cart]);
@@ -439,7 +442,7 @@ const Cart = () => {
   };
 
   const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + ((item.sellingPrice || item.price || 0) * item.quantity), 0);
+    return cart.reduce((total, item) => total + ((item.discountedPrice || item.sellingPrice || item.price || 0) * item.quantity), 0);
   };
 
   const getTotalItems = () => {
@@ -450,8 +453,16 @@ const Cart = () => {
     return cart.filter(item => selectedIds.has(item.id));
   };
 
+  const getCheckoutItems = () => {
+    return cart.filter(item => checkoutSelection.has(item.id));
+  };
+
   const getSelectedTotalPrice = () => {
-    return getSelectedItems().reduce((total, item) => total + ((item.sellingPrice || item.price || 0) * item.quantity), 0);
+    return getSelectedItems().reduce((total, item) => total + ((item.discountedPrice || item.sellingPrice || item.price || 0) * item.quantity), 0);
+  };
+
+  const getCheckoutTotalPrice = () => {
+    return getCheckoutItems().reduce((total, item) => total + ((item.discountedPrice || item.sellingPrice || item.price || 0) * item.quantity), 0);
   };
 
 
@@ -480,15 +491,19 @@ const Cart = () => {
     if (cart.length === 0) return;
     if (getSelectedItems().length === 0) return;
     if (hasQuantityErrors()) return;
-    
+
     try {
       // Immediate UX feedback
       setPreviewError('');
       setPreviewLoading(true);
 
-      // Refresh cart data to get latest prices and stock from database
-      const latestCart = await refreshCartData();
-      const selectedItems = latestCart.filter(i => selectedIds.has(i.id));
+      // Capture current selection before refreshing (to avoid async state issues)
+      const currentSelection = new Set(selectedIds);
+      setCheckoutSelection(currentSelection);
+
+      // Refresh cart data to get latest prices and stock from database (don't change selection)
+      const latestCart = await refreshCartData(false);
+      const selectedItems = latestCart.filter(i => currentSelection.has(i.id));
       
       // Fast client-side validation using refreshed cart data
       const { hasIssues, message } = getStockIssues(selectedItems);
@@ -517,8 +532,9 @@ const Cart = () => {
     try {
        // Final safeguard: refetch latest stock and block if insufficient
        setConfirmingCheckout(true);
+       const currentSelection = new Set(checkoutSelection);
        const latestCart = await refreshCartData();
-       const selectedItems = latestCart.filter(i => selectedIds.has(i.id));
+       const selectedItems = latestCart.filter(i => currentSelection.has(i.id));
        const { hasIssues, message } = getStockIssues(selectedItems);
        if (hasIssues) {
          setErrorModalMessage(message);
@@ -566,7 +582,7 @@ const Cart = () => {
   const previewModalContent = showPreviewModal ? (
     <div 
       ref={previewModalRef}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
     >
       <div 
         className="bg-white rounded-lg shadow-xl max-w-3xl w-full h-[120vh] flex flex-col"
@@ -650,7 +666,7 @@ const Cart = () => {
 
         {/* Stock warning if needed */}
         {(() => {
-          const selected = getSelectedItems();
+          const selected = getCheckoutItems();
           const { hasIssues, message } = getStockIssues(selected);
           if (!hasIssues) return null;
           return (
@@ -672,15 +688,40 @@ const Cart = () => {
         <div className="flex-1 overflow-y-auto mr-1.5 my-1.5">
           <div className="px-3 pb-6">
             <div className="space-y-3">
-              {getSelectedItems().map((item, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              {getCheckoutItems().map((item, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  {/* Product Image */}
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {(() => {
+                      // Get the first image from images array or fallback to single image
+                      const displayImage = (item.images && Array.isArray(item.images) && item.images.length > 0)
+                        ? item.images[0]
+                        : item.image;
+
+                      if (displayImage && (displayImage.startsWith('/') || displayImage.startsWith('http'))) {
+                        return (
+                          <img
+                            src={displayImage}
+                            alt={item.modelNo || 'Product'}
+                            className="object-contain w-full h-full"
+                          />
+                        );
+                      } else {
+                        return <ShoppingBag size={16} className="text-gray-400" />;
+                      }
+                    })()}
+                  </div>
+
+                  {/* Product Details */}
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900">{item.modelNo}</h4>
                     <p className="text-sm text-gray-500">{item.subcategory || item.category}</p>
-                    <p className="text-sm text-gray-500">Qty: {item.quantity} × {(item.sellingPrice || item.price || 0).toLocaleString()}</p>
+                    <p className="text-sm text-gray-500">Qty: {item.quantity} × ₱{(item.discountedPrice || item.sellingPrice || item.price || 0).toLocaleString()}</p>
                   </div>
-                  <div className="text-right ml-4">
-                    <p className="font-semibold text-gray-900">₱{((item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}</p>
+
+                  {/* Price */}
+                  <div className="text-right">
+                    <p className={`font-semibold ${item.discountPercentage > 0 ? 'text-red-600' : 'text-gray-900'}`}>₱{((item.discountedPrice || item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -693,7 +734,7 @@ const Cart = () => {
           <div className="border-b border-gray-200 pb-4 mb-4">
             <div className="flex justify-between items-center mb-4">
               <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
-              <span className="text-xl font-bold text-gray-900">₱{getSelectedTotalPrice().toLocaleString()}</span>
+              <span className="text-xl font-bold text-gray-900">₱{getCheckoutTotalPrice().toLocaleString()}</span>
             </div>
           </div>
 
@@ -706,7 +747,10 @@ const Cart = () => {
 
           <div className="flex gap-3">
             <button
-              onClick={() => setShowPreviewModal(false)}
+              onClick={() => {
+                setShowPreviewModal(false);
+                setCheckoutSelection(new Set());
+              }}
               className="flex-1 px-4 cursor-pointer py-3 border border-gray-300 text-gray-700 rounded-3xl hover:bg-gray-50 transition-colors"
             >
               Back to Cart
@@ -714,20 +758,21 @@ const Cart = () => {
             <button
               onClick={() => {
                 if (confirmingCheckout) return;
-                const { hasIssues } = getStockIssues(getSelectedItems());
+                const { hasIssues } = getStockIssues(getCheckoutItems());
                 if (hasIssues) return;
                 if (previewWarning?.profileIncomplete) {
                   setShowPreviewModal(false);
+                  setCheckoutSelection(new Set());
                   navigate('/products/profile');
                 } else {
                   handleConfirmPreview();
                 }
               }}
-              disabled={confirmingCheckout || getStockIssues(getSelectedItems()).hasIssues}
+              disabled={confirmingCheckout || getStockIssues(getCheckoutItems()).hasIssues}
               className={`flex-1 cursor-pointer px-4 py-3 rounded-3xl font-medium transition-colors ${
                 confirmingCheckout
                   ? 'bg-[#6aa3db] text-white cursor-not-allowed'
-                  : getStockIssues(getSelectedItems()).hasIssues
+                  : getStockIssues(getCheckoutItems()).hasIssues
                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                     : (previewWarning?.profileIncomplete ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#3182ce] text-white hover:bg-[#2c5282]')
               }`}
@@ -961,17 +1006,30 @@ const Cart = () => {
                                 <span className="font-medium">Item Name:</span> {item.name || 'N/A'}
                               </div>
                             </div>
-                            <div className="text-sm text-gray-500 mb-2">
-                              <span className="font-medium">Category:</span> {item.subcategory || item.category || 'N/A'}
-                            </div>
                           </div>
 
                           <div className="flex justify-between">
+                            <div className="mb-3">
+                              {item.discountPercentage > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-600 font-bold text-lg">
+                                    ₱{(item.discountedPrice || item.sellingPrice || item.price || 0).toLocaleString()}
+                                  </span>
+                                  <span className="text-gray-500 line-through text-sm">
+                                    ₱{(item.sellingPrice || item.price || 0).toLocaleString()}
+                                  </span>
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                    -{item.discountPercentage}%
+                                  </span>
+                                </div>
+                              ) : (
+                                <p className="text-gray-600">
+                                  ₱{(item.sellingPrice || item.price || 0).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
                             <p className="text-gray-600 mb-3">
-                              ₱{(item.sellingPrice || item.price || 0).toLocaleString()}
-                            </p>
-                            <p className="text-gray-600 mb-3">
-                              Quantity: {item.quantity} 
+                              Quantity: {item.quantity}
                             </p>
                           </div>
                     
@@ -1054,8 +1112,8 @@ const Cart = () => {
                             )}
                             
                             <div className="flex items-center gap-4">
-                              <span className="text-lg font-semibold text-gray-900">
-                                ₱{((item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}
+                              <span className={`text-lg font-semibold ${item.discountPercentage > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                ₱{((item.discountedPrice || item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}
                               </span>
                               <button
                                 onClick={() => handleRemoveItemClick(item.id)}

@@ -517,7 +517,7 @@ const WebsiteData = () => {
             <ChartBar className="w-8 h-8 text-pink-600" />
             Website Traffics
           </h1>
-          <p className="text-gray-600 mt-2">Analyze website traffic patterns and user behavior insights</p>
+          <p className="text-gray-600 mt-2">Analyze website traffic patterns and user behavior</p>
           {/* Filters */}
           <div className="mt-4 space-y-3">
             {/* Top Row: Dropdown, AI Button, Refresh Button */}

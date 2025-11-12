@@ -13,8 +13,8 @@ const getAllNotifications = async (req, res, next) => {
     if (role === 'Admin') {
       // Admin: show all notifications
       const adminNotifications = await Notification.findAll({
-        where: { 
-          type: { [require('sequelize').Op.in]: ['order_appeal', 'general', 'stock_low', 'stock_high', 'order_approved'] }
+        where: {
+          type: { [require('sequelize').Op.in]: ['order_appeal', 'general', 'stock_low', 'stock_high'] }
         },
         order: [['createdAt', 'DESC']]
       });
@@ -23,8 +23,8 @@ const getAllNotifications = async (req, res, next) => {
     } else if (role === 'Sales Marketing') {
       // Sales Marketing: show only order/business-related notifications (NO stock alerts)
       const salesNotifications = await Notification.findAll({
-        where: { 
-          type: { [require('sequelize').Op.in]: ['order_appeal', 'general', 'order_approved'] }
+        where: {
+          type: { [require('sequelize').Op.in]: ['order_appeal', 'general'] }
         },
         order: [['createdAt', 'DESC']]
       });
@@ -151,8 +151,8 @@ const markAllNotificationsAsRead = async (req, res, next) => {
           adminReadAt: new Date()
         },
         {
-          where: { 
-            type: { [Op.in]: ['order_appeal', 'order_approved', 'general', 'stock_low', 'stock_high'] },
+          where: {
+            type: { [Op.in]: ['order_appeal', 'general', 'stock_low', 'stock_high'] },
             adminIsRead: false
           }
         }
@@ -164,8 +164,8 @@ const markAllNotificationsAsRead = async (req, res, next) => {
           adminReadAt: new Date()
         },
         {
-          where: { 
-            type: { [Op.in]: ['order_appeal', 'order_approved', 'general'] },
+          where: {
+            type: { [Op.in]: ['order_appeal', 'general'] },
             adminIsRead: false
           }
         }
@@ -225,8 +225,8 @@ const getNotificationStats = async (req, res, next) => {
 
     if (role === 'Admin') {
       const notifications = await Notification.findAll({
-        where: { 
-          type: { [Op.in]: ['order_appeal', 'order_approved', 'general', 'stock_low', 'stock_high'] }
+        where: {
+          type: { [Op.in]: ['order_appeal', 'general', 'stock_low', 'stock_high'] }
         }
       });
       
@@ -245,8 +245,8 @@ const getNotificationStats = async (req, res, next) => {
       });
     } else if (role === 'Sales Marketing') {
       const notifications = await Notification.findAll({
-        where: { 
-          type: { [Op.in]: ['order_appeal', 'order_approved', 'general'] }
+        where: {
+          type: { [Op.in]: ['order_appeal', 'general'] }
         }
       });
       
