@@ -85,7 +85,8 @@ const getDiscountedProducts = async (req, res, next) => {
     const sequelize = getSequelize();
     const { Item, Category } = getModels();
     
-    // Query to get active discounts
+    // Query to get active discounts (including expired ones for admin view)
+    // We check date range to determine if discount is actually active
     const discounts = await sequelize.query(`
       SELECT 
         pd.id as discount_id,
@@ -99,7 +100,14 @@ const getDiscountedProducts = async (req, res, next) => {
         i.model_no,
         i.item_name,
         i.selling_price,
-        c.name as category_name
+        c.name as category_name,
+        CASE 
+          WHEN pd.is_active = true 
+            AND (pd.start_date IS NULL OR pd.start_date <= CURRENT_DATE)
+            AND (pd.end_date IS NULL OR pd.end_date >= CURRENT_DATE)
+          THEN true
+          ELSE false
+        END as is_currently_active
       FROM "ProductDiscount" pd
       INNER JOIN "Item" i ON pd.item_id = i.id
       LEFT JOIN "Category" c ON i.category_id = c.id
@@ -128,7 +136,7 @@ const getDiscountedProducts = async (req, res, next) => {
         discountedPrice: parseFloat(discountedPrice.toFixed(2)),
         startDate: item.start_date,
         endDate: item.end_date,
-        isActive: item.is_active
+        isActive: item.is_currently_active // Use calculated active status based on date range
       };
     });
 

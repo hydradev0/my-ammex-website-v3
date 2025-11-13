@@ -57,14 +57,16 @@ const Cart = () => {
 
       const localIds = new Set(cart.map(i => i.id));
 
-      // Update stock and prices for existing items and append any new ones from DB
+      // Update stock, prices, and discounts for existing items and append any new ones from DB
       const merged = cart.map(localItem => {
         const serverItem = dbCart.find(d => d.id === localItem.id);
         return serverItem ? {
           ...localItem,
           stock: serverItem.stock,
           sellingPrice: serverItem.sellingPrice,
-          price: serverItem.price
+          price: serverItem.price,
+          discountedPrice: serverItem.discountedPrice || null,
+          discountPercentage: serverItem.discountPercentage || 0
         } : localItem;
       });
 

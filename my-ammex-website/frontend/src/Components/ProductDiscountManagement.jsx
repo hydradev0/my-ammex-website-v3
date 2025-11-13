@@ -62,6 +62,10 @@ function ProductDiscountManagement() {
   const [isAISuggested, setIsAISuggested] = useState(false);
   const [aiSuggestedProducts, setAiSuggestedProducts] = useState([]);
   
+  // Discounted products search state
+  const [discountedSearchTerm, setDiscountedSearchTerm] = useState('');
+  const [filteredDiscountedProducts, setFilteredDiscountedProducts] = useState([]);
+  
   // Pagination with windowed fetching
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
@@ -221,7 +225,9 @@ function ProductDiscountManagement() {
     try {
       const response = await getDiscountedProductsAPI();
       if (response.success) {
-        setDiscountedProducts(response.data || []);
+        const products = response.data || [];
+        setDiscountedProducts(products);
+        setFilteredDiscountedProducts(products);
       } else {
         setError(response.message || 'Failed to fetch discounted products');
       }
@@ -232,6 +238,29 @@ function ProductDiscountManagement() {
       setIsLoadingDiscounted(false);
     }
   };
+
+  // Helper function for currency formatting
+  const formatCurrency = (amount) => `₱${Number(amount).toLocaleString()}`;
+
+  // Filter discounted products based on search term
+  useEffect(() => {
+    if (!discountedSearchTerm.trim()) {
+      setFilteredDiscountedProducts(discountedProducts);
+      return;
+    }
+
+    const term = discountedSearchTerm.toLowerCase();
+    const filtered = discountedProducts.filter(product =>
+      product.modelNo?.toLowerCase().includes(term) ||
+      product.itemCode?.toLowerCase().includes(term) ||
+      product.name?.toLowerCase().includes(term) ||
+      product.category?.toLowerCase().includes(term) ||
+      product.discountPercentage?.toString().includes(term) ||
+      formatCurrency(product.price).toLowerCase().includes(term) ||
+      formatCurrency(product.discountedPrice).toLowerCase().includes(term)
+    );
+    setFilteredDiscountedProducts(filtered);
+  }, [discountedSearchTerm, discountedProducts]);
 
 
   const handleProductToggle = (product) => {
@@ -279,6 +308,50 @@ function ProductDiscountManagement() {
     const discount = parseFloat(discountPercentage);
     if (isNaN(discount) || discount <= 0 || discount > maxDiscount) {
       setError(`Please enter a valid discount between 1 and ${maxDiscount}%`);
+      return;
+    }
+
+    // Period validation
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      
+      // Start date should not be in the past
+      if (start < today) {
+        setError('Start date cannot be in the past');
+        return;
+      }
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Set to end of day
+      
+      // End date should not be in the past
+      if (end < today) {
+        setError('End date cannot be in the past');
+        return;
+      }
+
+      // If both dates are provided, end date must be after start date
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        
+        if (end < start) {
+          setError('End date must be after start date');
+          return;
+        }
+      }
+    }
+
+    // If start date is provided but end date is not, that's allowed (ongoing discount)
+    // If end date is provided but start date is not, we should require start date
+    if (endDate && !startDate) {
+      setError('Start date is required when end date is provided');
       return;
     }
 
@@ -353,7 +426,6 @@ function ProductDiscountManagement() {
     }
   };
 
-  const formatCurrency = (amount) => `₱${Number(amount).toLocaleString()}`;
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', { 
@@ -554,9 +626,6 @@ function ProductDiscountManagement() {
                               {formatCurrency(product.price)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {product.itemCode}
-                          </p>
                         </div>
                       </div>
                     );
@@ -716,6 +785,7 @@ function ProductDiscountManagement() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
                       className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -731,10 +801,11 @@ function ProductDiscountManagement() {
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      min={startDate}
+                      min={startDate || new Date().toISOString().split('T')[0]}
                       className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">The end date is valid until midnight 11:59 PM (or 23:59).</p>
                 </div>
               </div>
 
@@ -770,7 +841,31 @@ function ProductDiscountManagement() {
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Currently Discounted Products</h2>
-              <span className="text-sm text-gray-500">{discountedProducts.length} product(s)</span>
+              <span className="text-sm text-gray-500">
+                {filteredDiscountedProducts.length} of {discountedProducts.length} product(s)
+              </span>
+            </div>
+
+            {/* Search Field for Discounted Products */}
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search discounted products by name, model, item code, discount, or price..."
+                  value={discountedSearchTerm}
+                  onChange={(e) => setDiscountedSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {discountedSearchTerm && (
+                  <button
+                    onClick={() => setDiscountedSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
             
             {isLoadingDiscounted ? (
@@ -783,6 +878,18 @@ function ProductDiscountManagement() {
                 <Tag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium">No products currently have discounts applied</p>
                 <p className="text-sm mt-2">Use the search above to find and apply discounts to products</p>
+              </div>
+            ) : filteredDiscountedProducts.length === 0 ? (
+              <div className="text-center py-16 text-gray-500">
+                <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">No products found</p>
+                <p className="text-sm mt-2">Try adjusting your search term</p>
+                <button
+                  onClick={() => setDiscountedSearchTerm('')}
+                  className="mt-4 text-blue-600 hover:text-blue-700 font-medium text-sm"
+                >
+                  Clear search
+                </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -799,12 +906,12 @@ function ProductDiscountManagement() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {discountedProducts.map((product) => (
+                    {filteredDiscountedProducts.map((product) => (
                       <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div>
                             <p className="font-semibold text-gray-900">{product.modelNo}</p>
-                            <p className="text-sm text-gray-600 mt-1">{product.itemCode}</p>
+                            <p className="text-sm text-gray-600 mt-1">{product.name}</p>
                           </div>
                         </td>
                         <td className="px-6 py-4">

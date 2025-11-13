@@ -26,7 +26,7 @@ const getAllItems = async (req, res, next) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Fetch active discounts for all items
+    // Fetch active discounts for all items (only discounts within valid date range)
     const sequelize = getSequelize();
     const itemIds = items.rows.map(item => item.id);
     
@@ -35,7 +35,10 @@ const getAllItems = async (req, res, next) => {
       const discounts = await sequelize.query(`
         SELECT item_id, discount_percentage
         FROM "ProductDiscount"
-        WHERE item_id IN (:itemIds) AND is_active = true
+        WHERE item_id IN (:itemIds) 
+          AND is_active = true
+          AND (start_date IS NULL OR start_date <= CURRENT_DATE)
+          AND (end_date IS NULL OR end_date >= CURRENT_DATE)
       `, {
         replacements: { itemIds },
         type: sequelize.QueryTypes.SELECT
@@ -102,11 +105,14 @@ const getItemById = async (req, res, next) => {
       });
     }
 
-    // Check for active discount
+    // Check for active discount (only discounts within valid date range)
     const discounts = await sequelize.query(`
       SELECT discount_percentage
       FROM "ProductDiscount"
-      WHERE item_id = :itemId AND is_active = true
+      WHERE item_id = :itemId 
+        AND is_active = true
+        AND (start_date IS NULL OR start_date <= CURRENT_DATE)
+        AND (end_date IS NULL OR end_date >= CURRENT_DATE)
       LIMIT 1
     `, {
       replacements: { itemId: id },
