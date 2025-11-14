@@ -611,7 +611,13 @@ ${JSON.stringify(processedData, null, 2)}
 Historical Top Performing Products by Month (Previous Year Same Months + Recent Fallback):
 ${JSON.stringify(processedTopProducts, null, 2)}
 
-Based on the historical top products from the same months in the previous year (and recent months as fallback), predict which products will likely be top performers in the forecasted months.
+CRITICAL INSTRUCTIONS FOR TOP PRODUCTS PREDICTION:
+For each forecasted month, you MUST match the seasonal pattern by using products from the SAME MONTH in the previous year:
+- If forecasting December 2025, use the top products from December 2024 (if available in the data above)
+- If forecasting January 2026, use the top products from January 2025 (if available in the data above)
+- Prioritize products that appeared in the same month from the previous year
+- Only use overall historical patterns or recent fallback data if seasonal data for that specific month is unavailable
+- Match the seasonal pattern FIRST, then supplement with other data if needed
 
 IMPORTANT: You must respond with ONLY valid JSON. Do not include any markdown formatting, explanations, or text outside the JSON. Start your response with { and end with }.
 
@@ -621,7 +627,7 @@ Return this exact JSON structure:
   "totalPredicted": number,
   "avgMonthly": number,
   "monthlyBreakdown": [
-    ${forecastPeriod >= 1 ? '{\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 2 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 3 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 4 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 5 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}${forecastPeriod >= 6 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category", "expectedOrders": number},\n        {"name": "Product Name", "category": "Category", "expectedOrders": number}\n      ]\n    }' : ''}
+    ${forecastPeriod >= 1 ? '{\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category"},\n        {"name": "Product Name", "category": "Category"}\n      ]\n    }' : ''}${forecastPeriod >= 2 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category"},\n        {"name": "Product Name", "category": "Category"}\n      ]\n    }' : ''}${forecastPeriod >= 3 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category"},\n        {"name": "Product Name", "category": "Category"}\n      ]\n    }' : ''}${forecastPeriod >= 4 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category"},\n        {"name": "Product Name", "category": "Category"}\n      ]\n    }' : ''}${forecastPeriod >= 5 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category"},\n        {"name": "Product Name", "category": "Category"}\n      ]\n    }' : ''}${forecastPeriod >= 6 ? ',\n    {\n      "month": "MMM YYYY",\n      "predicted": number,\n      "topProducts": [\n        {"name": "Product Name", "category": "Category"},\n        {"name": "Product Name", "category": "Category"}\n      ]\n    }' : ''}
   ],
   "insights": [
     "insight 1",
@@ -635,7 +641,9 @@ Return this exact JSON structure:
   ]
 }
 
-Based on the top products data provided, predict which products will likely continue to perform well in the forecast period. Consider seasonal trends and product category performance. Ensure all monetary values are in the same currency as the historical data (PHP). Be realistic and conservative in your predictions.
+For sales predictions, analyze the full historical sales data to identify trends and growth patterns. 
+For top products, prioritize seasonal matching as described above. Consider seasonal trends and product category performance. 
+Ensure all monetary values are in the same currency as the historical data (PHP). Be realistic and conservative in your predictions.
     `;
 
     try {
@@ -822,13 +830,12 @@ Based on the top products data provided, predict which products will likely cont
       forecastDate.setMonth(currentDate.getMonth() + index + 1); // +1 to start from next month
       const monthLabel = forecastDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
 
-      // Validate and normalize topProducts
+      // Validate and normalize topProducts (without expectedOrders)
       let topProducts = [];
       if (Array.isArray(item.topProducts)) {
         topProducts = item.topProducts.map(product => ({
           name: product.name || 'Unknown Product',
-          category: product.category || 'General',
-          expectedOrders: Math.max(0, Math.round(product.expectedOrders || 0))
+          category: product.category || 'General'
         }));
       }
 
@@ -1020,10 +1027,18 @@ ${JSON.stringify(historicalBulkData, null, 2)}
 Historical Top Bulk Customers by Month (Previous Year Same Months + Recent Fallback):
 ${JSON.stringify(processedTopBulkCustomers, null, 2)}
 
+CRITICAL INSTRUCTIONS FOR TOP CUSTOMERS PREDICTION:
+For each forecasted month, you MUST match the seasonal pattern by using customers from the SAME MONTH in the previous year:
+- If forecasting December 2025, use the top customers from December 2024 (if available in the data above)
+- If forecasting January 2026, use the top customers from January 2025 (if available in the data above)
+- Prioritize customers that appeared in the same month from the previous year
+- Only use overall historical patterns or recent fallback data if seasonal data for that specific month is unavailable
+- Match the seasonal pattern FIRST, then supplement with other data if needed
+
 For each forecasted month, predict:
-1. Total bulk orders count and amount
-2. Top 3-5 customers likely to place bulk orders (based on their historical patterns)
-3. Include customer names and their model numbers
+1. Total bulk orders count and amount (use overall historical bulk data for trend analysis)
+2. Top 3-5 customers likely to place bulk orders (MUST prioritize seasonal pattern matching as described above)
+3. Include customer names and their model numbers from the seasonal data
 
 IMPORTANT: Respond with ONLY valid JSON. No markdown.
 You must generate EXACTLY ${forecastPeriod} objects in the "monthlyBreakdown" array - one for each forecasted month.

@@ -468,16 +468,23 @@ const SalesTrend = () => {
     allData.push(['']);
     
     // Top Products section if available
-    const allTopProducts = predictions.monthlyBreakdown.flatMap(item => item.topProducts || []);
-    if (allTopProducts.length > 0) {
-      allData.push(['TOP PRODUCTS FORECAST']);
-      allData.push(['']);
-      allData.push(['Rank', 'Product Name', 'Category', 'Expected Orders']);
-      
-      allTopProducts.slice(0, 10).forEach((product, index) => {
-        allData.push([index + 1, product.name, product.category, product.expectedOrders]);
-      });
-    }
+    allData.push(['TOP PREDICTED PRODUCTS']);
+    allData.push(['']);
+    allData.push(['Note: Products listed by predicted popularity based on historical patterns and sales trends.']);
+    allData.push(['Note: Specific order quantities not predicted due to limited historical product-level data.']);
+    allData.push(['']);
+    
+    predictions.monthlyBreakdown.forEach((monthData, monthIndex) => {
+      if (monthData.topProducts && monthData.topProducts.length > 0) {
+        allData.push(['']);
+        allData.push([`${monthData.month} - Top Products`]);
+        allData.push(['Rank', 'Product Name', 'Category']);
+        
+        monthData.topProducts.forEach((product, index) => {
+          allData.push([index + 1, product.name, product.category]);
+        });
+      }
+    });
 
     // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(allData);
@@ -1156,20 +1163,14 @@ const SalesTrend = () => {
                         {predictions.monthlyBreakdown[selectedProductTab].topProducts.map((product, prodIndex) => (
                           <div
                             key={prodIndex}
-                            className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
+                            className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
                           >
-                            <div className="flex items-center gap-4 flex-1">
-                              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                                {prodIndex + 1}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-gray-600 text-sm">Model: <span className="font-semibold text-gray-900">{product.name}</span></p>
-                                <p className="text-gray-600 text-sm">Category: <span className="font-semibold text-gray-900">{product.category}</span></p>
-                              </div>
+                            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                              {prodIndex + 1}
                             </div>
-                            <div className="text-right flex-shrink-0 ml-4">
-                              <p className="text-lg font-bold text-blue-600">{formatNumber(product.expectedOrders)}</p>
-                              <p className="text-xs text-gray-500">expected orders</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-base font-semibold text-gray-900">{product.name}</p>
+                              <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-700">{product.category}</span></p>
                             </div>
                           </div>
                         ))}

@@ -410,7 +410,7 @@ const CustomerPurchaseForecast = () => {
       if (row.topCustomers && row.topCustomers.length > 0) {
         allData.push(['']);
         allData.push([`${row.month} - Top Customers`]);
-        allData.push(['Rank', 'Customer Name', 'Model No.', 'Expected Amount']);
+        allData.push(['Rank', 'Customer Name', 'Model No.', 'Expected Bulk Amount']);
         
         row.topCustomers.forEach((customer, index) => {
           allData.push([index + 1, customer.name, customer.modelNo, customer.expectedAmount]);
@@ -1083,7 +1083,7 @@ const CustomerPurchaseForecast = () => {
                             </div>
                             <div className="text-right flex-shrink-0 ml-4">
                               <p className="text-lg font-bold text-purple-600">{formatCurrency(customer.expectedAmount)}</p>
-                              <p className="text-xs text-gray-500">expected sales</p>
+                              <p className="text-xs text-gray-500">expected bulk amount</p>
                             </div>
                           </div>
                         ))}
