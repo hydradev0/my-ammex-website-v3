@@ -194,6 +194,7 @@ const GenericTable = ({
                   >
                     {columns.map((column) => {
                       let cellContent;
+                      const rawValue = item[column.key];
                       
                       if (column.render) {
                         cellContent = column.render(item[column.key], item);
@@ -203,8 +204,18 @@ const GenericTable = ({
                         cellContent = item[column.key];
                       }
                       
+                      // Get the text value for title attribute (for truncated cells)
+                      // Always use the raw value for the title, not the rendered content
+                      const titleText = column.truncate && rawValue != null && rawValue !== ''
+                        ? (typeof rawValue === 'string' ? rawValue : String(rawValue))
+                        : undefined;
+                      
                       return (
-                        <td key={column.key} className={`px-6 py-4 whitespace-nowrap text-[16px] text-gray-700 ${column.cellClassName || column.width || ''} ${column.truncate ? 'truncate' : ''}`}>
+                        <td 
+                          key={column.key} 
+                          className={`px-6 py-4 whitespace-nowrap text-[16px] text-gray-700 ${column.cellClassName || column.width || ''} ${column.truncate ? 'truncate' : ''}`}
+                          title={titleText}
+                        >
                           {cellContent}
                         </td>
                       );

@@ -133,6 +133,44 @@ export const removeDiscount = async (productId) => {
 };
 
 /**
+ * Update discount for a product
+ * @param {Object} discountData - Discount data
+ * @param {number} discountData.productId - Product ID
+ * @param {number} discountData.discountPercentage - Discount percentage (1-100)
+ * @param {string} discountData.startDate - Start date (optional)
+ * @param {string} discountData.endDate - End date (optional)
+ * @returns {Promise<Object>} Response with success message
+ */
+export const updateDiscount = async ({ productId, discountPercentage, startDate, endDate }) => {
+  try {
+    // Use applyDiscount endpoint which handles deactivating old and creating new
+    const response = await fetch(`${API_BASE_URL}/discounts/apply`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        productIds: [productId],
+        discountPercentage: parseFloat(discountPercentage),
+        startDate: startDate || null,
+        endDate: endDate || null
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update discount');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating discount:', error);
+    throw error;
+  }
+};
+
+/**
  * Get discount settings (max discount, tiers, etc.)
  * @returns {Promise<Object>} Response with discount settings
  */

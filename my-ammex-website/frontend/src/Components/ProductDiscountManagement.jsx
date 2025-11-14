@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { 
   Search,
   Tag,
@@ -11,16 +12,19 @@ import {
   CheckSquare,
   Square,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Edit
 } from 'lucide-react';
 import RoleBasedLayout from './RoleBasedLayout';
 import SuccessModal from './SuccessModal';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import ScrollLock from './ScrollLock';
 import {
   getItemsForDiscount,
   getDiscountedProducts as getDiscountedProductsAPI,
   applyDiscount as applyDiscountAPI,
   removeDiscount as removeDiscountAPI,
+  updateDiscount as updateDiscountAPI,
   getDiscountSettings as getDiscountSettingsAPI
 } from '../services/discountService';
 
@@ -40,6 +44,12 @@ function ProductDiscountManagement() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [productToRemove, setProductToRemove] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [productToEdit, setProductToEdit] = useState(null);
+  const [editDiscountPercentage, setEditDiscountPercentage] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [isUpdatingDiscount, setIsUpdatingDiscount] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [discountPercentage, setDiscountPercentage] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -396,6 +406,101 @@ function ProductDiscountManagement() {
     const product = discountedProducts.find(p => p.id === productId) || null;
     setProductToRemove(product);
     setShowConfirmModal(true);
+  };
+
+  const handleEditDiscount = (product) => {
+    setProductToEdit(product);
+    setEditDiscountPercentage(product.discountPercentage?.toString() || '');
+    setEditStartDate(product.startDate ? new Date(product.startDate).toISOString().split('T')[0] : '');
+    setEditEndDate(product.endDate ? new Date(product.endDate).toISOString().split('T')[0] : '');
+    setError('');
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setProductToEdit(null);
+    setEditDiscountPercentage('');
+    setEditStartDate('');
+    setEditEndDate('');
+    setError('');
+  };
+
+  const handleUpdateDiscount = async () => {
+    if (!productToEdit) {
+      return;
+    }
+
+    const discount = parseFloat(editDiscountPercentage);
+    if (isNaN(discount) || discount <= 0 || discount > maxDiscount) {
+      setError(`Please enter a valid discount between 1 and ${maxDiscount}%`);
+      return;
+    }
+
+    // Period validation (same as apply discount)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (editStartDate) {
+      const start = new Date(editStartDate);
+      start.setHours(0, 0, 0, 0);
+      
+      if (start < today) {
+        setError('Start date cannot be in the past');
+        return;
+      }
+    }
+
+    if (editEndDate) {
+      const end = new Date(editEndDate);
+      end.setHours(23, 59, 59, 999);
+      
+      if (end < today) {
+        setError('End date cannot be in the past');
+        return;
+      }
+
+      if (editStartDate) {
+        const start = new Date(editStartDate);
+        start.setHours(0, 0, 0, 0);
+        
+        if (end < start) {
+          setError('End date must be after start date');
+          return;
+        }
+      }
+    }
+
+    if (editEndDate && !editStartDate) {
+      setError('Start date is required when end date is provided');
+      return;
+    }
+
+    setError('');
+    setIsUpdatingDiscount(true);
+    try {
+      const response = await updateDiscountAPI({
+        productId: productToEdit.id,
+        discountPercentage: discount,
+        startDate: editStartDate || null,
+        endDate: editEndDate || null
+      });
+
+      if (response.success) {
+        setSuccessMessage(response.message || 'Discount updated successfully');
+        setShowSuccessModal(true);
+        handleCloseEditModal();
+        fetchDiscountedProducts();
+        console.log('✅ Discount updated successfully');
+      } else {
+        setError(response.message || 'Failed to update discount');
+      }
+    } catch (error) {
+      console.error('❌ Failed to update discount:', error);
+      setError(error.message || 'Failed to update discount. Please try again.');
+    } finally {
+      setIsUpdatingDiscount(false);
+    }
   };
 
   const confirmRemoveDiscount = async () => {
@@ -941,20 +1046,30 @@ function ProductDiscountManagement() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleRemoveDiscount(product.id)}
-                            disabled={removingDiscountId === product.id}
-                            className="text-red-600 cursor-pointer hover:text-red-700 font-medium text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                          >
-                            {removingDiscountId === product.id ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                                <span>Removing...</span>
-                              </>
-                            ) : (
-                              'Remove'
-                            )}
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleEditDiscount(product)}
+                              disabled={isUpdatingDiscount}
+                              className="text-blue-600 cursor-pointer hover:text-blue-700 font-medium text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Edit
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={() => handleRemoveDiscount(product.id)}
+                              disabled={removingDiscountId === product.id}
+                              className="text-red-600 cursor-pointer hover:text-red-700 font-medium text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                              {removingDiscountId === product.id ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                  <span>Removing...</span>
+                                </>
+                              ) : (
+                                'Remove'
+                              )}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -991,6 +1106,178 @@ function ProductDiscountManagement() {
         }}
         onConfirm={confirmRemoveDiscount}
       />
+
+      {/* Edit Discount Modal */}
+      {showEditModal && productToEdit && createPortal(
+        <>
+          <ScrollLock active={showEditModal} />
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div 
+              className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden"
+              style={{ transform: 'scale(0.85)', transformOrigin: 'center' }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <Edit className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Discount</h2>
+                </div>
+                <button
+                  onClick={handleCloseEditModal}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {/* Product Info */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Product</p>
+                  <p className="text-lg font-bold text-gray-900">{productToEdit.name || productToEdit.modelNo}</p>
+                  <p className="text-sm text-gray-600 mt-1">{productToEdit.modelNo}</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Original Price:</span>
+                    <span className="text-lg font-bold text-gray-900">{formatCurrency(productToEdit.price)}</span>
+                  </div>
+                </div>
+
+                {/* Quick Discount Tiers */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Quick Apply Discount
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {discountTiers.map((tier, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setEditDiscountPercentage(tier.value.toString())}
+                        className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all ${
+                          editDiscountPercentage === tier.value.toString()
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {tier.label}: {tier.value}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Discount Input Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Discount Percentage (%) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editDiscountPercentage}
+                      onChange={(e) => setEditDiscountPercentage(e.target.value)}
+                      min="0"
+                      max={maxDiscount}
+                      step="0.1"
+                      placeholder="Enter discount %"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                      [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Maximum: {maxDiscount}%</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Start Date (Optional)
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      End Date (Optional)
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={editEndDate}
+                        onChange={(e) => setEditEndDate(e.target.value)}
+                        min={editStartDate || new Date().toISOString().split('T')[0]}
+                        className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">The end date is valid until midnight 11:59 PM (or 23:59).</p>
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600 font-medium">{error}</p>
+                  </div>
+                )}
+
+                {/* Preview */}
+                {editDiscountPercentage && !isNaN(parseFloat(editDiscountPercentage)) && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900 mb-2">Preview</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">New Discounted Price:</span>
+                      <span className="text-xl font-bold text-green-600">
+                        {formatCurrency(productToEdit.price * (1 - parseFloat(editDiscountPercentage) / 100))}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-gray-600">Savings:</span>
+                      <span className="text-lg font-semibold text-red-600">
+                        {formatCurrency(productToEdit.price * (parseFloat(editDiscountPercentage) / 100))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-gray-200 p-6 flex justify-end gap-4 flex-shrink-0">
+                <button
+                  onClick={handleCloseEditModal}
+                  disabled={isUpdatingDiscount}
+                  className="px-6 cursor-pointer py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateDiscount}
+                  disabled={!editDiscountPercentage || isUpdatingDiscount}
+                  className="px-6 py-3 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium flex items-center gap-2 transition-colors"
+                >
+                  {isUpdatingDiscount ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      <span>Update Discount</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }

@@ -280,11 +280,20 @@ function CategoryTable({ categories, setCategories }) {
     });
   }, []);
   
-  // Filter categories based on search term
+  // Filter and sort categories based on search term (newest first)
   const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) return categories;
+    // Sort categories by newest first (by id DESC or createdAt DESC if available)
+    const sortedCategories = [...categories].sort((a, b) => {
+      // Prefer createdAt if available, otherwise use id (higher id = newer)
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return (b.id || 0) - (a.id || 0);
+    });
     
-    return categories.filter(category => {
+    if (!searchTerm.trim()) return sortedCategories;
+    
+    return sortedCategories.filter(category => {
       const searchLower = searchTerm.toLowerCase();
       return category.name.toLowerCase().includes(searchLower);
     });

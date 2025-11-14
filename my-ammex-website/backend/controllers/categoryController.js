@@ -25,7 +25,7 @@ const getCategories = async (req, res) => {
         parentId: null // Only get main categories (not subcategories)
       },
       include: includeOptions,
-      order: [['name', 'ASC']]
+      order: [['createdAt', 'DESC']]
     });
 
     res.json({

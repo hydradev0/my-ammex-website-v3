@@ -85,6 +85,19 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       lastProcessedSearchRef.current = null;
     }
   }, [location.search, location.pathname, navigate]);
+
+  // Check for success state from navigation (e.g., after creating a new item)
+  useEffect(() => {
+    if (location.state?.showSuccess) {
+      setSuccessModal({
+        isOpen: true,
+        title: location.state.successTitle || 'Success!',
+        message: location.state.successMessage || 'Operation completed successfully.'
+      });
+      // Clear the state to prevent showing modal again on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -194,7 +207,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       header: 'Item Code',
       width: 'w-64',
       cellClassName: 'w-64',
-      truncate: true
+      truncate: true,
     },
     { 
       key: 'itemName', 
@@ -202,7 +215,7 @@ function ItemsTable({ categories, setCategories, units, suppliers = [], subcateg
       render: (value) => value || '',
       width: 'w-60',
       cellClassName: 'w-60',
-      truncate: true
+      truncate: true,
     },
     { 
       key: 'modelNo', 

@@ -382,8 +382,14 @@ function NewItem({
         const response = await createItem(itemData);
         
         if (response.success) {
-          // Navigate back to items list
-          navigate('/inventory/Items');
+          // Navigate immediately with state to show success modal on Items page
+          navigate('/inventory/Items', {
+            state: {
+              showSuccess: true,
+              successTitle: 'Item Created Successfully!',
+              successMessage: `The item "${formData.itemName || formData.modelNo}" has been successfully added to your inventory.`
+            }
+          });
         } else {
           // Handle error - you might want to show error messages
           console.error('Failed to create item:', response.message);
