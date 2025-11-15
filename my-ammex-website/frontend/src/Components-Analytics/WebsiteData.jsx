@@ -464,8 +464,8 @@ const WebsiteData = () => {
     allData.push(['Generated Date:', new Date().toLocaleString()]);
     allData.push(['']);
     
-    // Key Trends Section
-    allData.push(['KEY TRENDS']);
+    // INSIGHTS Section
+    allData.push(['INSIGHTS']);
     allData.push(['']);
     allData.push(['#', 'Trend']);
     
@@ -926,13 +926,13 @@ const WebsiteData = () => {
 
             {/* Content */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-              {/* Key Trends */}
+              {/* INSIGHTS */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <TrendingUp className="w-5 h-5 text-purple-600" />
                   </div>
-                  <h4 className="text-lg font-bold text-gray-900">Key Trends</h4>
+                  <h4 className="text-lg font-bold text-gray-900">Insights</h4>
                 </div>
                 <ul className="space-y-3">
                   {insights.trends.map((trend, index) => (
@@ -989,7 +989,8 @@ const WebsiteData = () => {
                     onClick={() => {
                       const productNames = insights.suggestedDiscounts.map(p => p.productName).join(',');
                       const modelNos = insights.suggestedDiscounts.map(p => p.modelNo).join(',');
-                      navigate(`/product-discounts?suggested=ai&products=${encodeURIComponent(productNames)}&models=${encodeURIComponent(modelNos)}`);
+                      const url = `${window.location.origin}/product-discounts?suggested=ai&products=${encodeURIComponent(productNames)}&models=${encodeURIComponent(modelNos)}`;
+                      window.open(url, '_blank');
                     }}
                     className="cursor-pointer px-6 py-3 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                   >
@@ -1037,7 +1038,8 @@ const WebsiteData = () => {
                         
                         <button
                           onClick={() => {
-                            navigate(`/product-discounts?suggested=ai&products=${encodeURIComponent(product.productName)}&models=${encodeURIComponent(product.modelNo)}&discount=${product.recommendedDiscount}`);
+                            const url = `${window.location.origin}/product-discounts?suggested=ai&products=${encodeURIComponent(product.productName)}&models=${encodeURIComponent(product.modelNo)}&discount=${product.recommendedDiscount}`;
+                            window.open(url, '_blank');
                           }}
                           className="flex-shrink-0 cursor-pointer px-4 py-2 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2 text-sm"
                         >

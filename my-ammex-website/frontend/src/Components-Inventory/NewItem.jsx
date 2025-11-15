@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Info, DollarSign, Boxes, Image } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Info, DollarSign, Boxes, Image, Save, X } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { getSubcategories, createItem } from '../services/inventoryService';
 import { uploadMultipleImages } from '../services/cloudinaryService';
 import ImageUpload from './ImageUpload';
+import { createPortal } from 'react-dom';
+import ScrollLock from '../Components/ScrollLock';
 
 
 function NewItem({ 
@@ -14,6 +16,7 @@ function NewItem({
   errors: backendErrors = {}
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // State for form fields
   const [formData, setFormData] = useState({
@@ -38,6 +41,15 @@ function NewItem({
   const [isLoading, setIsLoading] = useState(false);
   // State for markup settings
   const [markupRate, setMarkupRate] = useState(30); // Default to 30%
+  
+  // State for draft modal
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const hasUnsavedChanges = useRef(false);
+  const previousLocationRef = useRef(location.pathname);
+  const isNavigatingAwayRef = useRef(false);
   
   // Helper functions for number formatting with commas
   const formatNumberWithCommas = (value) => {
@@ -99,12 +111,276 @@ function NewItem({
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
 
+  // Sort categories alphabetically for dropdown display
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => 
+      (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
+    );
+  }, [categories]);
+
   // Update errors when backend errors change
   useEffect(() => {
     if (Object.keys(backendErrors).length > 0) {
       setErrors(backendErrors);
     }
   }, [backendErrors]);
+
+  // Check if form has data
+  const hasFormData = () => {
+    return !!(
+      formData.modelNo.trim() ||
+      formData.itemName.trim() ||
+      formData.vendor.trim() ||
+      formData.sellingPrice.trim() ||
+      formData.supplierPrice.trim() ||
+      formData.unit.trim() ||
+      formData.quantity.trim() ||
+      formData.category.trim() ||
+      formData.subcategory.trim() ||
+      formData.description.trim() ||
+      formData.minLevel.trim() ||
+      formData.maxLevel.trim() ||
+      formData.images.length > 0
+    );
+  };
+
+  // Save draft to localStorage
+  const saveDraft = () => {
+    try {
+      // Only save image preview URLs, not file objects
+      const imagesForDraft = formData.images.map(img => ({
+        preview: img.preview || img.url || '',
+        url: img.url || ''
+      }));
+      
+      const draftData = {
+        ...formData,
+        images: imagesForDraft,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem('newItem_draft', JSON.stringify(draftData));
+      hasUnsavedChanges.current = false;
+      return true;
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      return false;
+    }
+  };
+
+  // Load draft from localStorage
+  const loadDraft = () => {
+    try {
+      const draftJson = localStorage.getItem('newItem_draft');
+      if (draftJson && categories.length > 0) {
+        const draftData = JSON.parse(draftJson);
+        // Restore form data but keep images array structure
+        setFormData({
+          ...draftData,
+          images: draftData.images || []
+        });
+        // Restore category selection to trigger subcategory fetch
+        if (draftData.category) {
+          const selectedCategory = categories.find(cat => cat.name === draftData.category);
+          if (selectedCategory) {
+            setSelectedCategoryId(selectedCategory.id);
+          }
+        }
+        hasUnsavedChanges.current = true;
+        setDraftLoaded(true);
+        // Hide notification after 5 seconds
+        setTimeout(() => setDraftLoaded(false), 5000);
+        return true;
+      }
+    } catch (error) {
+      console.error('Failed to load draft:', error);
+    }
+    return false;
+  };
+
+  // Clear draft from localStorage
+  const clearDraft = () => {
+    localStorage.removeItem('newItem_draft');
+    hasUnsavedChanges.current = false;
+  };
+
+  // Load draft on component mount (after categories are available)
+  useEffect(() => {
+    if (categories.length > 0) {
+      const loaded = loadDraft();
+      if (!loaded) {
+        setDraftLoaded(false);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
+
+  // Update hasUnsavedChanges when form data changes
+  useEffect(() => {
+    hasUnsavedChanges.current = hasFormData();
+  }, [
+    formData.modelNo,
+    formData.itemName,
+    formData.vendor,
+    formData.sellingPrice,
+    formData.supplierPrice,
+    formData.unit,
+    formData.quantity,
+    formData.category,
+    formData.subcategory,
+    formData.description,
+    formData.minLevel,
+    formData.maxLevel,
+    formData.images.length
+  ]);
+
+  // Handle browser beforeunload (tab/window close)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges.current) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+        return ''; // Required for some browsers
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // Initialize previous location on mount
+  useEffect(() => {
+    previousLocationRef.current = location.pathname;
+  }, []);
+
+  // Intercept navigation by hooking into History API (used by React Router)
+  useEffect(() => {
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    const handlePushState = (state, title, url) => {
+      // Skip if we're intentionally navigating away
+      if (isNavigatingAwayRef.current) {
+        originalPushState.call(window.history, state, title, url);
+        return;
+      }
+
+      // Parse the URL to get the pathname (handle both absolute and relative URLs)
+      let targetPath;
+      try {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          const urlObj = new URL(url);
+          targetPath = urlObj.pathname;
+        } else {
+          // Relative URL - resolve it
+          const baseUrl = window.location.origin + window.location.pathname;
+          const resolvedUrl = new URL(url, baseUrl);
+          targetPath = resolvedUrl.pathname;
+        }
+      } catch (e) {
+        // Fallback: use the URL as-is if parsing fails
+        targetPath = url.startsWith('/') ? url : '/' + url;
+      }
+
+      // Skip if navigating to the same path
+      if (targetPath === previousLocationRef.current) {
+        originalPushState.call(window.history, state, title, url);
+        return;
+      }
+
+      // Check if navigation state has skipDraftCheck flag
+      if (state?.skipDraftCheck) {
+        originalPushState.call(window.history, state, title, url);
+        previousLocationRef.current = targetPath;
+        return;
+      }
+
+      // If we have unsaved changes, block navigation
+      if (hasUnsavedChanges.current) {
+        // Store the intended destination
+        setPendingNavigation({
+          to: targetPath,
+          options: { state: state }
+        });
+        
+        // Show modal
+        setShowDraftModal(true);
+        
+        // Don't call originalPushState - block the navigation
+        return;
+      }
+
+      // Allow navigation
+      originalPushState.call(window.history, state, title, url);
+      previousLocationRef.current = targetPath;
+    };
+
+    const handleReplaceState = (state, title, url) => {
+      // Always allow replaceState (used for redirects, etc.)
+      originalReplaceState.call(window.history, state, title, url);
+      
+      // Update previous location if it's not a skipDraftCheck navigation
+      if (!state?.skipDraftCheck) {
+        const urlObj = new URL(url, window.location.origin);
+        previousLocationRef.current = urlObj.pathname;
+      }
+    };
+
+    // Override history methods
+    window.history.pushState = handlePushState;
+    window.history.replaceState = handleReplaceState;
+
+    return () => {
+      // Restore original methods on unmount
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+    };
+  }, [navigate]);
+
+  // Also handle location changes as a fallback
+  useEffect(() => {
+    // Skip if we're intentionally navigating away
+    if (isNavigatingAwayRef.current) {
+      previousLocationRef.current = location.pathname;
+      isNavigatingAwayRef.current = false;
+      return;
+    }
+
+    // Skip if location hasn't changed
+    if (previousLocationRef.current === location.pathname) {
+      return;
+    }
+
+    // Check if navigation state has skipDraftCheck flag
+    const state = location.state;
+    if (state?.skipDraftCheck) {
+      previousLocationRef.current = location.pathname;
+      isNavigatingAwayRef.current = false;
+      return;
+    }
+
+    // If we have unsaved changes and location changed, block navigation
+    if (hasUnsavedChanges.current && !showDraftModal) {
+      // Store the intended destination
+      setPendingNavigation({
+        to: location.pathname,
+        options: { state: location.state }
+      });
+      
+      // Navigate back to previous location using replace to avoid adding to history
+      navigate(previousLocationRef.current, { replace: true, state: { skipDraftCheck: true } });
+      
+      // Show modal
+      setShowDraftModal(true);
+      
+      // Don't update previousLocationRef yet - wait for user decision
+      return;
+    }
+
+    // Update previous location if navigation is allowed
+    previousLocationRef.current = location.pathname;
+  }, [location.pathname, location.state, navigate, showDraftModal]);
 
   // Fetch markup settings on component mount
   useEffect(() => {
@@ -314,7 +590,7 @@ function NewItem({
         const failedUploads = uploadResults.filter(result => !result.success);
         if (failedUploads.length > 0) {
           console.error('Some images failed to upload:', failedUploads);
-          setErrors({ images: 'Failed to upload some images. Please try again.' });
+          setErrors({ images: 'Failed to upload some images. Please try to upload again.' });
           setIsLoading(false);
           return;
         }
@@ -382,12 +658,17 @@ function NewItem({
         const response = await createItem(itemData);
         
         if (response.success) {
+          // Clear draft on successful submission
+          clearDraft();
+          // Set flag to allow navigation
+          isNavigatingAwayRef.current = true;
           // Navigate immediately with state to show success modal on Items page
           navigate('/inventory/Items', {
             state: {
               showSuccess: true,
               successTitle: 'Item Created Successfully!',
-              successMessage: `The item "${formData.itemName || formData.modelNo}" has been successfully added to your inventory.`
+              successMessage: `The item "${formData.itemName || formData.modelNo}" has been successfully added to your inventory.`,
+              skipDraftCheck: true
             }
           });
         } else {
@@ -416,7 +697,55 @@ function NewItem({
   };
 
   const handleBack = () => {
-    navigate('/inventory/items');
+    if (hasUnsavedChanges.current) {
+      setPendingNavigation({ to: '/inventory/items', options: {} });
+      setShowDraftModal(true);
+    } else {
+      navigate('/inventory/items');
+    }
+  };
+
+  // Handle draft modal actions
+  const handleSaveDraftAndNavigate = async () => {
+    setIsSavingDraft(true);
+    const saved = saveDraft();
+    setIsSavingDraft(false);
+    
+    if (saved && pendingNavigation) {
+      setShowDraftModal(false);
+      isNavigatingAwayRef.current = true;
+      // Use navigate with skipDraftCheck flag
+      navigate(pendingNavigation.to, { 
+        state: { 
+          ...pendingNavigation.options?.state,
+          skipDraftCheck: true 
+        }
+      });
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleDiscardAndNavigate = () => {
+    clearDraft();
+    setShowDraftModal(false);
+    if (pendingNavigation) {
+      isNavigatingAwayRef.current = true;
+      // Use navigate with skipDraftCheck flag
+      navigate(pendingNavigation.to, { 
+        state: { 
+          ...pendingNavigation.options?.state,
+          skipDraftCheck: true 
+        }
+      });
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleCancelNavigation = () => {
+    setShowDraftModal(false);
+    setPendingNavigation(null);
+    // We're already on the correct page, just need to reset the flag
+    isNavigatingAwayRef.current = false;
   };
 
   return (
@@ -437,6 +766,24 @@ function NewItem({
           </div>
         </div>
       </div>
+
+      {/* Draft Loaded Notification */}
+      {draftLoaded && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+            <Save className="h-5 w-5 text-blue-600 flex-shrink-0" />
+            <p className="text-blue-800 text-sm">
+              <span className="font-semibold">Draft restored!</span> Your previous work has been loaded.
+            </p>
+            <button
+              onClick={() => setDraftLoaded(false)}
+              className="ml-auto text-blue-600 hover:text-blue-800"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -537,7 +884,7 @@ function NewItem({
                     </button>
                     {categoryDropdownOpen && (
                       <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {categories.map(cat => (
+                        {sortedCategories.map(cat => (
                           <li
                             key={cat.id}
                             className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.category === cat.name ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
@@ -815,6 +1162,71 @@ function NewItem({
           </div>
         </div>
       </div>
+
+      {/* Draft Save Modal */}
+      {showDraftModal && (
+        <>
+          <ScrollLock active={showDraftModal} />
+          {createPortal(
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all"
+                style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Save className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Save as Draft?</h3>
+                  </div>
+                  <button
+                    onClick={handleCancelNavigation}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6">
+                  <p className="text-gray-700 mb-4">
+                    You have unsaved changes. Would you like to save your progress as a draft before leaving?
+                  </p>
+                  <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    Your draft will be automatically loaded when you return to this page.
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 p-6 border-t border-gray-100">
+                  <button
+                    onClick={handleDiscardAndNavigate}
+                    disabled={isSavingDraft}
+                    className="flex-1 px-4 py-3 cursor-pointer border-2 border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-200 disabled:opacity-50"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    onClick={handleSaveDraftAndNavigate}
+                    disabled={isSavingDraft}
+                    className="flex-1 px-4 py-3 cursor-pointer bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  >
+                    {isSavingDraft ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Saving...</span>
+                      </div>
+                    ) : (
+                      'Save Draft'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+        </>
+      )}
     </div>
   );
 }
