@@ -4,7 +4,8 @@ import {
   PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, CartesianGrid, XAxis, YAxis, Legend, ResponsiveContainer
 } from 'recharts';
-import { Eye, MousePointer, ShoppingCart, ArrowLeft, ChartBar, RefreshCw, ChevronDown, Calendar, TrendingUp, Lightbulb, Sparkles, Tag, ArrowRight, Zap } from 'lucide-react';
+import { Eye, MousePointer, ShoppingCart, ArrowLeft, ChartBar, RefreshCw, ChevronDown, Calendar, TrendingUp, Lightbulb, Sparkles, Tag, ArrowRight, Zap, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import RoleBasedLayout from '../Components/RoleBasedLayout';
 import { getWebsiteCategoryTraffic, getWebsiteTopClickedItems, getWebsiteCartAdditions, refreshWebsiteAnalytics, generateAIInsights } from '../services/websiteAnalytics';
 import { formatNumber, formatCurrency } from '../utils/format';
@@ -451,6 +452,184 @@ const WebsiteData = () => {
     }
   };
 
+  const exportInsightsToExcel = () => {
+    if (!insights) return;
+
+    const allData = [];
+    
+    // Header
+    allData.push(['AI INSIGHTS & RECOMMENDATIONS REPORT']);
+    allData.push(['']);
+    allData.push([`Report Period: ${startParam} to ${endParam}`]);
+    allData.push(['Generated Date:', new Date().toLocaleString()]);
+    allData.push(['']);
+    
+    // Key Trends Section
+    allData.push(['KEY TRENDS']);
+    allData.push(['']);
+    allData.push(['#', 'Trend']);
+    
+    if (insights.trends && insights.trends.length > 0) {
+      insights.trends.forEach((trend, index) => {
+        allData.push([index + 1, trend]);
+      });
+    } else {
+      allData.push(['N/A', 'No trends available']);
+    }
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Recommendations Section
+    allData.push(['RECOMMENDATIONS']);
+    allData.push(['']);
+    allData.push(['#', 'Recommendation']);
+    
+    if (insights.recommendations && insights.recommendations.length > 0) {
+      insights.recommendations.forEach((rec, index) => {
+        allData.push([index + 1, rec]);
+      });
+    } else {
+      allData.push(['N/A', 'No recommendations available']);
+    }
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Suggested Discounts Section (if available)
+    if (insights.suggestedDiscounts && insights.suggestedDiscounts.length > 0) {
+      allData.push(['SUGGESTED DISCOUNTS']);
+      allData.push(['']);
+      allData.push(['#', 'Product Name', 'Model No.', 'Recommended Discount (%)', 'Reason', 'Expected Impact']);
+      
+      insights.suggestedDiscounts.forEach((product, index) => {
+        allData.push([
+          index + 1,
+          product.productName || 'N/A',
+          product.modelNo && product.modelNo !== 'N/A' ? product.modelNo : 'N/A',
+          product.recommendedDiscount || 'N/A',
+          product.reason || 'N/A',
+          product.expectedImpact || 'N/A'
+        ]);
+      });
+    }
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths for better readability
+    ws['!cols'] = [
+      { wch: 8 },  // # column
+      { wch: 40 }, // Trend/Recommendation/Product Name column
+      { wch: 20 }, // Model No. column
+      { wch: 22 }, // Discount column
+      { wch: 50 }, // Reason column
+      { wch: 50 }  // Expected Impact column
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'AI Insights');
+    
+    const filename = `Website_Insights_${startParam}_to_${endParam}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
+
+  const exportChartsToExcel = () => {
+    const allData = [];
+    
+    // Header
+    allData.push(['WEBSITE TRAFFIC ANALYTICS REPORT']);
+    allData.push(['']);
+    allData.push([`Report Period: ${startParam} to ${endParam}`]);
+    allData.push(['Generated Date:', new Date().toLocaleString()]);
+    allData.push(['']);
+    
+    // Category Traffic Distribution Section
+    allData.push(['CATEGORY TRAFFIC DISTRIBUTION']);
+    allData.push(['']);
+    allData.push(['Category', 'Clicks', 'Percentage (%)']);
+    
+    if (categoryTrafficData && categoryTrafficData.length > 0) {
+      categoryTrafficData.forEach((item) => {
+        allData.push([
+          item.category || 'N/A',
+          item.clicks || 0,
+          item.percentage ? `${item.percentage}%` : '0%'
+        ]);
+      });
+    } else {
+      allData.push(['No data available', '', '']);
+    }
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Most Clicked Items Section
+    allData.push(['MOST CLICKED ITEMS']);
+    allData.push(['']);
+    allData.push(['#', 'Product Name', 'Model No.', 'Clicks']);
+    
+    if (topClickedItems && topClickedItems.length > 0) {
+      topClickedItems.forEach((item, index) => {
+        allData.push([
+          index + 1,
+          item.originalName || item.name || 'N/A',
+          item.modelNo && item.modelNo !== 'N/A' ? item.modelNo : 'N/A',
+          item.clicks || 0
+        ]);
+      });
+    } else {
+      allData.push(['No data available', '', '', '']);
+    }
+    
+    // Spacing
+    allData.push(['']);
+    allData.push(['']);
+    
+    // Most Added to Cart Section
+    allData.push(['MOST ADDED TO CART']);
+    allData.push(['']);
+    allData.push(['#', 'Product Name', 'Model No.', 'Additions', 'Total Value']);
+    
+    if (cartAdditionsData && cartAdditionsData.length > 0) {
+      cartAdditionsData.forEach((item, index) => {
+        allData.push([
+          index + 1,
+          item.originalName || item.name || 'N/A',
+          item.modelNo && item.modelNo !== 'N/A' ? item.modelNo : 'N/A',
+          item.additions || 0,
+          item.value ? formatCurrency(item.value) : '₱0'
+        ]);
+      });
+    } else {
+      allData.push(['No data available', '', '', '', '']);
+    }
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths for better readability
+    ws['!cols'] = [
+      { wch: 8 },  // # column
+      { wch: 35 }, // Category/Product Name column
+      { wch: 20 }, // Model No. column
+      { wch: 12 }, // Clicks/Additions column
+      { wch: 15 }, // Percentage column
+      { wch: 18 }  // Total Value column
+    ];
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Website Traffic');
+    
+    const filename = `Website_Traffic_Charts_${startParam}_to_${endParam}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
+
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       // Try to get additional data from the payload
@@ -520,7 +699,7 @@ const WebsiteData = () => {
           <p className="text-gray-600 mt-2">Analyze website traffic patterns and user behavior</p>
           {/* Filters */}
           <div className="mt-4 space-y-3">
-            {/* Top Row: Dropdown, AI Button, Refresh Button */}
+            {/* Top Row: Dropdown, AI Button, Export Charts Button, Refresh Button */}
             <div className="flex flex-wrap items-center gap-3">
               <CustomDropdown
                 options={[
@@ -544,6 +723,17 @@ const WebsiteData = () => {
               >
                 <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                 <span>{isGenerating ? 'Generating...' : 'Generate AI Insights'}</span>
+              </button>
+
+              {/* Export Charts Button */}
+              <button
+                onClick={exportChartsToExcel}
+                disabled={loading || (!categoryTrafficData.length && !topClickedItems.length && !cartAdditionsData.length)}
+                className="group cursor-pointer flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export chart data to Excel"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Charts</span>
               </button>
 
               {/* Refresh Button */}
@@ -715,11 +905,21 @@ const WebsiteData = () => {
                     <p className="text-sm text-purple-100">Based on your selected date range</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm font-medium text-white">{startParam} to {endParam}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-2 border border-white/100 bg-white/20 rounded-lg backdrop-blur-sm">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-medium text-white">{startParam} to {endParam}</span>
+                  </div>
+                  <button
+                    onClick={exportInsightsToExcel}
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-white/100 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm text-white font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                    title="Export insights to Excel"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="text-sm">Export Insights</span>
+                  </button>
                 </div>
               </div>
             </div>
