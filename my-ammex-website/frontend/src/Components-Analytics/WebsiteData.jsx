@@ -865,15 +865,15 @@ const WebsiteData = () => {
           {loading ? (
             <VerticalBarChartSkeleton />
           ) : (
-            <ResponsiveContainer width="100%" height={400}>
+            <ResponsiveContainer width="100%" height={500}>
               <BarChart data={cartAdditionsData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis
                   dataKey="name"
                   stroke="#9ca3af"
-                  angle={-40}
+                  angle={-55}
                   textAnchor="end"
-                  height={140}
+                  height={240}
                   tick={{ fontSize: 15 }}
                   interval={0}
                 />

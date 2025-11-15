@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, Filter, TrendingUp, TrendingDown, ExternalLink, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { getInventoryAlerts } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -115,6 +116,86 @@ const InventoryAlerts = () => {
       case 'medium': return <Clock className="w-4 h-4" />;
       default: return <Bell className="w-4 h-4" />;
     }
+  };
+
+  // Excel export function
+  const exportToExcel = () => {
+    if (filteredAlerts.length === 0) {
+      return; // Don't export if there are no alerts
+    }
+
+    const allData = [];
+    
+    // Header
+    allData.push(['INVENTORY ALERTS REPORT']);
+    allData.push(['']);
+    allData.push([`Alert Type: ${activeTab === 'lowStock' ? 'Low Stock Alerts' : 'Overstock Alerts'}`]);
+    allData.push([`Filter: ${filterSeverity === 'all' ? 'All Severities' : filterSeverity.charAt(0).toUpperCase() + filterSeverity.slice(1)}`]);
+    if (searchTerm) {
+      allData.push([`Search Term: ${searchTerm}`]);
+    }
+    allData.push([`Generated Date: ${new Date().toLocaleString()}`]);
+    allData.push(['']);
+    
+    // Column headers
+    const headers = [
+      'Severity',
+      'Model No.',
+      'Item Name',
+      'Category',
+      'Vendor',
+      activeTab === 'lowStock' ? 'Current Stock' : 'Current Stock',
+      activeTab === 'lowStock' ? 'Minimum Level' : 'Maximum Level',
+      activeTab === 'lowStock' ? '' : 'Excess Amount',
+      'Unit',
+      'Message'
+    ].filter(header => header !== ''); // Remove empty headers
+    
+    allData.push(headers);
+    
+    // Data rows
+    filteredAlerts.forEach(alert => {
+      const row = [
+        (alert.severity || 'medium').charAt(0).toUpperCase() + (alert.severity || 'medium').slice(1),
+        alert.modelNo || '',
+        alert.itemName || '',
+        alert.categoryName || '',
+        alert.vendor || '',
+        alert.currentStock || 0,
+        activeTab === 'lowStock' ? (alert.minimumStockLevel || 0) : (alert.maximumStockLevel || 0),
+        ...(activeTab === 'overstock' ? [alert.excessAmount > 0 ? alert.excessAmount : 0] : []),
+        alert.unitName || 'units',
+        alert.message || ''
+      ];
+      allData.push(row);
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths for better readability
+    const colWidths = [
+      { wch: 12 }, // Severity
+      { wch: 20 }, // Model No.
+      { wch: 30 }, // Item Name
+      { wch: 20 }, // Category
+      { wch: 20 }, // Vendor
+      { wch: 15 }, // Current Stock
+      { wch: 15 }, // Min/Max Level
+      ...(activeTab === 'overstock' ? [{ wch: 15 }] : []), // Excess Amount
+      { wch: 10 }, // Unit
+      { wch: 40 }  // Message
+    ];
+    ws['!cols'] = colWidths;
+
+    // Create workbook and write file
+    const wb = XLSX.utils.book_new();
+    const sheetName = activeTab === 'lowStock' ? 'Low Stock Alerts' : 'Overstock Alerts';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `Inventory_Alerts_${activeTab === 'lowStock' ? 'LowStock' : 'Overstock'}_${dateStr}.xlsx`;
+    XLSX.writeFile(wb, filename);
   };
 
   // Check if user has access to inventory alerts
@@ -242,6 +323,16 @@ const InventoryAlerts = () => {
                 </ul>
               )}
             </div>
+            <button
+              type="button"
+              onClick={exportToExcel}
+              disabled={filteredAlerts.length === 0}
+              className="flex cursor-pointer items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
+              title="Export filtered alerts to Excel"
+            >
+              <Download className="w-5 h-5" />
+              <span>Export Excel</span>
+            </button>
           </div>
 
           {/* Alerts List */}
@@ -270,19 +361,20 @@ const InventoryAlerts = () => {
                       </div>
                     )}
 
-                    {/* Item Code with navigate to inventory */}
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-xs text-gray-500">
-                            Item Code: <span className="font-semibold text-gray-900">{alert.itemCode || alert.item_code || alert.item?.itemCode || '-'}</span>
-                          </p>
-                          {Boolean(alert.itemCode || alert.item_code || alert.item?.itemCode) && (
+                    {/* Details split: left (model, item name) | right (category, vendor) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2 ">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1 ">
+                          <h3 className="text-sm text-gray-500">
+                            Model: <span className="font-semibold text-gray-900">{alert.modelNo || ''}</span>
+                          </h3>
+                          {alert.modelNo && (
                             <button
                               type="button"
                               className="text-xs cursor-pointer px-1 py-1 border-transparent rounded hover:text-black text-gray-700 flex items-center gap-1"
                               onClick={() => {
-                                const code = alert.itemCode || alert.item_code || alert.item?.itemCode;
-                                if (code) {
-                                  navigate(`/inventory/Items?search=${encodeURIComponent(code)}`);
+                                if (alert.modelNo) {
+                                  navigate(`/inventory/Items?search=${encodeURIComponent(alert.modelNo)}`);
                                 }
                               }}
                               title="View item in inventory"
@@ -292,18 +384,12 @@ const InventoryAlerts = () => {
                             </button>
                           )}
                         </div>
-
-                    {/* Details split: left (model, category) | right (item name, vendor) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-                      <div>
-                        <h3 className="text-sm text-gray-500">
-                          Model: <span className="font-semibold text-gray-900">{alert.modelNo || ''}</span>
-                        </h3>
                         <p className="text-sm text-gray-500">
                           Item Name: <span className="font-semibold text-gray-900">{alert.itemName}</span>
                         </p>
                       </div>
-                      <div className="">
+
+                      <div className="space-y-2">
                           <h3 className="text-sm text-gray-500">
                             Category: <span className="font-semibold text-gray-900">{alert.categoryName || ''}</span>
                           </h3>
