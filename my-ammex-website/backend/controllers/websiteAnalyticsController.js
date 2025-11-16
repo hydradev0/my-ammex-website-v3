@@ -206,12 +206,19 @@ CRITICAL ANALYSIS FOCUS:
    - Identify items with HIGH CLICKS but LOW/NO cart additions → Price issues? Out of stock? Poor product description?
    - Identify items with HIGH cart additions → Potential for upselling, bundling, or checkout optimization
 
-2. **Category Performance**: Analyze click-through rates and conversion patterns by category
+2. **Stock Availability Analysis**: Analyze stock levels as a key factor in conversion drop-offs
+   - Products with HIGH CLICKS but LOW/NO cart additions may be OUT OF STOCK or have LOW STOCK
+   - Stock availability is a critical factor - customers cannot add out-of-stock items to cart
+   - If product has stock data available, explicitly mention stock status in analysis
+   - For products with high interest but no cart additions, stock issues should be prioritized over price issues
 
-3. **Revenue Opportunities**: Find underperforming high-interest items that need optimization
+3. **Category Performance**: Analyze click-through rates and conversion patterns by category
 
-4. **DISCOUNT SUGGESTIONS**: Identify products that would benefit from promotional discounts to boost conversions
-   - High interest (good clicks) but low cart additions = needs price incentive
+4. **Revenue Opportunities**: Find underperforming high-interest items that need optimization
+
+5. **DISCOUNT SUGGESTIONS**: Identify products that would benefit from promotional discounts to boost conversions
+   - High interest (good clicks) but low cart additions = may need price incentive OR stock replenishment
+   - ONLY suggest discounts for products that are IN STOCK (if stock data available)
    - Strategic discounts to move inventory or increase cart additions
    - Maximum 5 products to discount
 
@@ -225,23 +232,23 @@ IMPORTANT: Respond with ONLY valid JSON. No markdown formatting, no explanations
 Return this exact JSON structure:
 {
   "trends": [
-    "First key trend (mention specific products with numbers - e.g., 'Product X has 450 clicks but only 12 cart additions (2.7% conversion) - suggests pricing or availability issues')",
-    "Second key trend (conversion funnel insight)",
+    "First key trend (mention specific products with numbers - e.g., 'Product X has 450 clicks but only 12 cart additions (2.7% conversion) - suggests pricing, stock availability, or product description issues')",
+    "Second key trend (conversion funnel insight - prioritize stock availability when analyzing high-click-low-cart items)",
     "Third key trend (category performance insight)",
     "Fourth key trend (revenue opportunity insight)"
   ],
   "recommendations": [
-    "First recommendation (specific action for high-click-low-cart items)",
+    "First recommendation (specific action for high-click-low-cart items - check stock availability first, then price)",
     "Second recommendation (specific action for high-cart items - discounts, urgency, etc.)",
     "Third recommendation (category or marketing specific)",
-    "Fourth recommendation (product optimization specific)",
+    "Fourth recommendation (product optimization specific - may include stock replenishment if out of stock)",
     "Fifth recommendation (checkout or conversion improvement)"
   ],
   "suggestedDiscounts": [
     {
       "productName": "Exact product name from data",
       "modelNo": "Exact model number from data",
-      "reason": "Brief reason why this product needs discount (e.g., 'High clicks (450) but low cart rate (2.7%) - price barrier')",
+      "reason": "Brief reason why this product needs discount (e.g., 'High clicks (450) but low cart rate (2.7%) - price barrier. NOTE: Only suggest discount if product is IN STOCK')",
       "recommendedDiscount": 15,
       "expectedImpact": "Brief expected impact (e.g., 'Could boost cart additions by 40-50%')"
     }
@@ -250,6 +257,8 @@ Return this exact JSON structure:
 
 Rules:
 - ALWAYS compare clicked items vs cart additions to find conversion issues
+- When analyzing high clicks but low/no cart additions, PRIORITIZE checking stock availability FIRST before assuming price issues
+- Stock availability is critical - customers cannot add out-of-stock items to cart, which directly causes conversion drop-offs
 - Mention specific product names and model numbers
 - Include actual numbers (₱ use this before the number, example: ₱1000) and percentages from the data
 - Focus on actionable insights that can improve revenue (NOT WITH WEBSITE PERFORMANCE)
@@ -258,6 +267,7 @@ Rules:
 - For suggestedDiscounts: Choose UP TO 5 products max from the provided data
 - Recommended discounts should be between 5% and 25%
 - Only suggest discounts for products that actually exist in the TOP CLICKED or CART data
+- ONLY suggest discounts for products that are IN STOCK (if stock data is available in the provided data)
 - If no products need discounts, return empty array []`;
 
       console.log('🤖 Calling OpenRouter AI...');
