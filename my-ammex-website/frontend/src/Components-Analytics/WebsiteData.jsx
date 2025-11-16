@@ -502,13 +502,17 @@ const WebsiteData = () => {
     if (insights.suggestedDiscounts && insights.suggestedDiscounts.length > 0) {
       allData.push(['SUGGESTED DISCOUNTS']);
       allData.push(['']);
-      allData.push(['#', 'Product Name', 'Model No.', 'Recommended Discount (%)', 'Reason', 'Expected Impact']);
+      allData.push(['#', 'Product Name', 'Model No.', 'Current Price', 'Discounted Price', 'Current Margin (%)', 'Max Safe Discount (%)', 'Recommended Discount (%)', 'Reason', 'Expected Impact']);
       
       insights.suggestedDiscounts.forEach((product, index) => {
         allData.push([
           index + 1,
           product.productName || 'N/A',
           product.modelNo && product.modelNo !== 'N/A' ? product.modelNo : 'N/A',
+          product.sellingPrice ? formatCurrency(product.sellingPrice) : 'N/A',
+          product.discountedPrice ? formatCurrency(product.discountedPrice) : 'N/A',
+          product.currentMargin !== undefined ? `${product.currentMargin.toFixed(1)}%` : 'N/A',
+          product.maxSafeDiscount !== undefined ? `${product.maxSafeDiscount}%` : 'N/A',
           product.recommendedDiscount || 'N/A',
           product.reason || 'N/A',
           product.expectedImpact || 'N/A'
@@ -522,11 +526,15 @@ const WebsiteData = () => {
     // Set column widths for better readability
     ws['!cols'] = [
       { wch: 8 },  // # column
-      { wch: 40 }, // Trend/Recommendation/Product Name column
-      { wch: 20 }, // Model No. column
-      { wch: 22 }, // Discount column
-      { wch: 50 }, // Reason column
-      { wch: 50 }  // Expected Impact column
+      { wch: 35 }, // Trend/Recommendation/Product Name column
+      { wch: 18 }, // Model No. column
+      { wch: 15 }, // Current Price column
+      { wch: 18 }, // Discounted Price column
+      { wch: 18 }, // Current Margin column
+      { wch: 20 }, // Max Safe Discount column
+      { wch: 22 }, // Recommended Discount column
+      { wch: 45 }, // Reason column
+      { wch: 45 }  // Expected Impact column
     ];
 
     // Create workbook and write file
@@ -1033,6 +1041,39 @@ const WebsiteData = () => {
                               <span className="text-xs font-semibold text-green-600 uppercase mt-0.5">Impact:</span>
                               <p className="text-sm text-gray-700 flex-1">{product.expectedImpact}</p>
                             </div>
+                            
+                            {/* Pricing Information */}
+                            {(product.sellingPrice || product.currentMargin || product.maxSafeDiscount) && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <div className="grid grid-cols-2 gap-3">
+                                  {product.sellingPrice && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-gray-600 uppercase">Current Price:</span>
+                                      <span className="text-sm font-semibold text-gray-900">{formatCurrency(product.sellingPrice)}</span>
+                                    </div>
+                                  )}
+                                  {product.discountedPrice && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-green-600 uppercase">Discounted Price:</span>
+                                      <span className="text-sm font-semibold text-green-700">{formatCurrency(product.discountedPrice)}</span>
+                                    </div>
+                                  )}
+                                  {product.currentMargin !== undefined && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-blue-600 uppercase">Current Margin:</span>
+                                      <span className="text-sm font-semibold text-blue-700">{product.currentMargin.toFixed(1)}%</span>
+                                    </div>
+                                  )}
+                                  {product.maxSafeDiscount !== undefined && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-purple-600 uppercase">Max Safe Discount:</span>
+                                      <span className="text-sm font-semibold text-purple-700">{product.maxSafeDiscount}%</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
                           </div>
                         </div>
                         

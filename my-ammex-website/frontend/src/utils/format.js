@@ -3,9 +3,13 @@ export const formatNumber = (n) => {
   return num.toLocaleString();
 };
 
-export const formatCurrency = (n, currency = 'USD', locale = 'en-US') => {
+export const formatCurrency = (n) => {
   const num = Number(n || 0);
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(num);
+  if (num === 0) return '₱0.00';
+  return `₱${num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
 };
 
 

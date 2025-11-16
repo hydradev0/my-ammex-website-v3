@@ -187,6 +187,92 @@ class WebsiteAnalyticsController {
 
       const totalClicks = totalCategoryData.reduce((sum, cat) => sum + (cat.clicks || 0), 0);
 
+      // Fetch stock information for all products in the analytics data
+      const sequelize = getSequelize();
+      if (!sequelize) {
+        return res.status(500).json({ success: false, error: 'DB not connected' });
+      }
+
+      // Collect all unique model_no values from topClickedItems and cartAdditions
+      const modelNos = new Set();
+      topItemsData.forEach(item => {
+        if (item.modelNo) modelNos.add(item.modelNo);
+      });
+      cartData.forEach(item => {
+        if (item.modelNo) modelNos.add(item.modelNo);
+      });
+
+      // Fetch stock information for all products
+      let stockMap = {};
+      if (modelNos.size > 0) {
+        try {
+          const modelNoArray = Array.from(modelNos);
+          // Create placeholders for IN clause
+          const placeholders = modelNoArray.map((_, index) => `:modelNo${index}`).join(',');
+          const replacements = {};
+          modelNoArray.forEach((modelNo, index) => {
+            replacements[`modelNo${index}`] = modelNo;
+          });
+
+          const stockRows = await sequelize.query(
+            `SELECT model_no, quantity, min_level, is_active, selling_price, supplier_price
+             FROM "Item"
+             WHERE model_no IN (${placeholders})`,
+            {
+              type: QueryTypes.SELECT,
+              replacements: replacements
+            }
+          );
+
+          // Create a map of model_no to stock and pricing info
+          stockRows.forEach(row => {
+            const supplierPrice = Number(row.supplier_price || 0);
+            const sellingPrice = Number(row.selling_price || 0);
+            const margin = sellingPrice - supplierPrice;
+            const marginPercentage = supplierPrice > 0 ? ((sellingPrice - supplierPrice) / supplierPrice) * 100 : 0;
+            
+            stockMap[row.model_no] = {
+              quantity: Number(row.quantity || 0),
+              minLevel: Number(row.min_level || 0),
+              isActive: row.is_active !== false,
+              stockStatus: row.quantity === 0 ? 'OUT OF STOCK' : 
+                          row.quantity <= (row.min_level || 0) ? 'LOW STOCK' : 'IN STOCK',
+              pricing: {
+                supplierPrice: supplierPrice,
+                sellingPrice: sellingPrice,
+                margin: margin,
+                marginPercentage: Math.round(marginPercentage * 100) / 100 // Round to 2 decimal places
+              }
+            };
+          });
+
+          // Enhance topItemsData with stock and pricing information
+          topItemsData.forEach(item => {
+            if (stockMap[item.modelNo]) {
+              item.stock = stockMap[item.modelNo];
+            } else {
+              // Product not found in Item table
+              item.stock = { quantity: null, stockStatus: 'UNKNOWN', pricing: null };
+            }
+          });
+
+          // Enhance cartData with stock and pricing information
+          cartData.forEach(item => {
+            if (stockMap[item.modelNo]) {
+              item.stock = stockMap[item.modelNo];
+            } else {
+              // Product not found in Item table
+              item.stock = { quantity: null, stockStatus: 'UNKNOWN', pricing: null };
+            }
+          });
+
+          console.log(`📦 Stock data fetched for ${Object.keys(stockMap).length} products`);
+        } catch (stockError) {
+          console.error('⚠️ Error fetching stock data:', stockError);
+          // Continue without stock data rather than failing completely
+        }
+      }
+
       // Create prompt for AI
       const prompt = `You are a business analyst AI specializing in e-commerce website analytics and conversion optimization for Ammex company. Analyze the following website traffic data and provide actionable insights and recommendations.
 
@@ -195,11 +281,21 @@ DATA PERIOD: ${dateRange?.start || 'N/A'} to ${dateRange?.end || 'N/A'}
 CATEGORY TRAFFIC (Total clicks: ${totalClicks}):
 ${JSON.stringify(totalCategoryData, null, 2)}
 
-TOP CLICKED PRODUCTS:
+TOP CLICKED PRODUCTS (with stock information):
 ${JSON.stringify(topItemsData, null, 2)}
 
-MOST ADDED TO CART:
+MOST ADDED TO CART (with stock information):
 ${JSON.stringify(cartData, null, 2)}
+
+NOTE: Each product in the data above includes a "stock" object with:
+- quantity: Current stock quantity (0 = OUT OF STOCK)
+- minLevel: Minimum stock level threshold
+- stockStatus: "OUT OF STOCK", "LOW STOCK", "IN STOCK", or "UNKNOWN"
+- isActive: Whether the product is currently active
+- pricing: Object containing pricing information (if available):
+  - supplierPrice: Cost price from supplier (₱)
+  - sellingPrice: Current selling price (₱)
+  - margin: Profit margin (sellingPrice - supplierPrice) in ₱
 
 CRITICAL ANALYSIS FOCUS:
 1. **Conversion Funnel Issues**: Compare products in "Top Clicked" vs "Most Added to Cart"
@@ -207,18 +303,30 @@ CRITICAL ANALYSIS FOCUS:
    - Identify items with HIGH cart additions → Potential for upselling, bundling, or checkout optimization
 
 2. **Stock Availability Analysis**: Analyze stock levels as a key factor in conversion drop-offs
-   - Products with HIGH CLICKS but LOW/NO cart additions may be OUT OF STOCK or have LOW STOCK
+   - Stock data is AVAILABLE in the product data above - CHECK the "stock" object for each product
+   - Products with HIGH CLICKS but LOW/NO cart additions may be OUT OF STOCK or have LOW STOCK - CHECK stock.quantity and stock.stockStatus
    - Stock availability is a critical factor - customers cannot add out-of-stock items to cart
-   - If product has stock data available, explicitly mention stock status in analysis
-   - For products with high interest but no cart additions, stock issues should be prioritized over price issues
+   - ALWAYS mention stock status (OUT OF STOCK, LOW STOCK, IN STOCK) in your analysis when discussing products
+   - For products with high interest but no cart additions, PRIORITIZE stock issues FIRST (if stock.quantity = 0 or stock.stockStatus = "OUT OF STOCK", that's the primary issue)
+   - Use actual stock numbers from stock.quantity in your analysis (e.g., "Product X has 0 stock units - out of stock")
 
 3. **Category Performance**: Analyze click-through rates and conversion patterns by category
 
 4. **Revenue Opportunities**: Find underperforming high-interest items that need optimization
 
 5. **DISCOUNT SUGGESTIONS**: Identify products that would benefit from promotional discounts to boost conversions
-   - High interest (good clicks) but low cart additions = may need price incentive OR stock replenishment
-   - ONLY suggest discounts for products that are IN STOCK (if stock data available)
+   - **CRITICAL**: Pricing data is AVAILABLE in stock.pricing object - USE IT to determine safe discount percentages!
+   - **Margin Analysis**: Check stock.pricing.marginPercentage for each product. Products with higher margins can safely have larger discounts.
+   - **Discount Safety Rules**:
+     * DO NOT recommend discounts that would reduce selling price below supplier price (stock.pricing.supplierPrice)
+     * Maximum safe discount = stock.pricing.marginPercentage (e.g., if margin is 30%, max safe discount is ~25% to leave small buffer)
+     * Typical margin is ~30%, so safe discount range is usually 5-25% depending on margin
+     * For products with lower margins (<20%), suggest smaller discounts (5-10%)
+     * For products with higher margins (>30%), can suggest larger discounts (15-25%)
+   - Stock data is AVAILABLE - CHECK stock.stockStatus for each product before suggesting discounts
+   - ONLY suggest discounts for products with stock.stockStatus = "IN STOCK" or stock.quantity > 0
+   - DO NOT suggest discounts for products with stock.stockStatus = "OUT OF STOCK" (they need stock replenishment, not discounts)
+   - For products with stock.stockStatus = "LOW STOCK", discounts may help move remaining inventory
    - Strategic discounts to move inventory or increase cart additions
    - Maximum 5 products to discount
 
@@ -232,10 +340,10 @@ IMPORTANT: Respond with ONLY valid JSON. No markdown formatting, no explanations
 Return this exact JSON structure:
 {
   "trends": [
-    "First key trend (mention specific products with numbers - e.g., 'Product X has 450 clicks but only 12 cart additions (2.7% conversion) - suggests pricing, stock availability, or product description issues')",
-    "Second key trend (conversion funnel insight - prioritize stock availability when analyzing high-click-low-cart items)",
+    "First key trend (mention specific products with numbers - e.g., 'Product X has 450 clicks but only 12 cart additions (2.7% conversion) - suggests pricing or stock availability issues)",
+    "Second key trend (conversion funnel insight - prioritize stock availability when analyzing high-click-low-cart items, use stock.stockStatus from data)",
     "Third key trend (category performance insight)",
-    "Fourth key trend (revenue opportunity insight)"
+    "Fourth key trend (revenue opportunity insight - mention stock status for products discussed)"
   ],
   "recommendations": [
     "First recommendation (specific action for high-click-low-cart items - check stock availability first, then price)",
@@ -248,26 +356,43 @@ Return this exact JSON structure:
     {
       "productName": "Exact product name from data",
       "modelNo": "Exact model number from data",
-      "reason": "Brief reason why this product needs discount (e.g., 'High clicks (450) but low cart rate (2.7%) - price barrier. NOTE: Only suggest discount if product is IN STOCK')",
+      "reason": "Brief reason why this product needs discount (e.g., 'High cart additions (120) but low orders (5) - price sensitivity at checkout. Current margin: 30%, safe discount range: 10-25%. NOTE: Only suggest discount if product is IN STOCK')",
+      "expectedImpact": "Brief expected impact (e.g., 'Could improve cart-to-checkout conversion by 30-40%, boosting orders significantly')"
       "recommendedDiscount": 15,
-      "expectedImpact": "Brief expected impact (e.g., 'Could boost cart additions by 40-50%')"
+      "maxSafeDiscount": 25,
+      "currentMargin": 30,
+      "sellingPrice": 1000,
+      "discountedPrice": 850,
     }
   ]
 }
 
 Rules:
 - ALWAYS compare clicked items vs cart additions to find conversion issues
-- When analyzing high clicks but low/no cart additions, PRIORITIZE checking stock availability FIRST before assuming price issues
+- Stock data is INCLUDED in the product data above - USE IT! Check the "stock" object for each product
+- When analyzing high clicks but low/no cart additions, PRIORITIZE checking stock.stockStatus FIRST before assuming price issues
+- If stock.quantity = 0 or stock.stockStatus = "OUT OF STOCK", that's the PRIMARY issue - mention it explicitly in analysis
 - Stock availability is critical - customers cannot add out-of-stock items to cart, which directly causes conversion drop-offs
+- ALWAYS mention stock status (OUT OF STOCK, LOW STOCK, IN STOCK) when discussing products in trends and recommendations
+- Include actual stock quantities in your analysis (e.g., "Product X has 450 clicks but 0 stock units - out of stock issue")
 - Mention specific product names and model numbers
 - Include actual numbers (₱ use this before the number, example: ₱1000) and percentages from the data
 - Focus on actionable insights that can improve revenue (NOT WITH WEBSITE PERFORMANCE)
 - Identify both problems (high click, low cart) AND opportunities (high cart additions)
 - Keep each point concise but data-driven
 - For suggestedDiscounts: Choose UP TO 5 products max from the provided data
-- Recommended discounts should be between 5% and 25%
+- **CRITICAL**: Use stock.pricing data to determine safe discount percentages:
+  * Check stock.pricing.marginPercentage for each product
+  * recommendedDiscount must be LESS THAN marginPercentage (leave at least 2-5% buffer)
+  * maxSafeDiscount = marginPercentage - 2% (minimum buffer to avoid loss)
+  * Calculate discountedPrice = sellingPrice * (1 - recommendedDiscount / 100)
+  * ALWAYS include currentMargin, sellingPrice, and discountedPrice in response
+  * Example: If margin is 30%, max safe discount is ~25-28%, so recommend 15-20%
 - Only suggest discounts for products that actually exist in the TOP CLICKED or CART data
-- ONLY suggest discounts for products that are IN STOCK (if stock data is available in the provided data)
+- ONLY suggest discounts for products where stock.stockStatus = "IN STOCK" or stock.quantity > 0
+- DO NOT suggest discounts for products where stock.stockStatus = "OUT OF STOCK" - they need stock replenishment, not discounts
+- DO NOT suggest discounts for products without pricing data (stock.pricing is null)
+- Focus on cart-to-checkout conversion (high cart additions but low orders), NOT click-to-cart conversion
 - If no products need discounts, return empty array []`;
 
       console.log('🤖 Calling OpenRouter AI...');
