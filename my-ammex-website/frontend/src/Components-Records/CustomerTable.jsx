@@ -105,7 +105,8 @@ function CustomerTable() {
       // Transform form data to match backend model
       const customerPayload = {
         customerName: customerData.companyName,
-        street: customerData.street,
+        addressLine1: customerData.addressLine1,
+        barangay: customerData.barangay,
         city: customerData.city,
         postalCode: customerData.postalCode,
         country: customerData.country,

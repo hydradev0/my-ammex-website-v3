@@ -30,9 +30,9 @@ function Inventory() {
         
         // Fetch categories, units, and suppliers in parallel
         const [categoriesResponse, unitsResponse, suppliersResponse] = await Promise.all([
-          getCategories(),
-          getUnits(),
-          getSuppliers()
+          getCategories(), // Returns all active categories (no pagination)
+          getUnits(), // Returns all active units (no pagination)
+          getSuppliers({ limit: 200 }) // Fetch suppliers with limit (supports pagination)
         ]);
 
         if (categoriesResponse.success) {

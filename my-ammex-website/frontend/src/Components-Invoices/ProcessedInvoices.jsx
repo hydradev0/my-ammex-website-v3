@@ -59,7 +59,13 @@ const ProcessedInvoices = () => {
           orderId: invoice.order?.orderNumber || `ORD-${invoice.orderId}`,
           customerName: invoice.customer?.customerName || 'Unknown Customer',
           customerEmail: invoice.customer?.email1 || '',
-          customerAddress: `${invoice.customer?.street || ''}, ${invoice.customer?.city || ''}, ${invoice.customer?.postalCode || ''}, ${invoice.customer?.country || ''}`.trim(),
+          customerAddress: `${[
+            invoice.customer?.addressLine1,
+            invoice.customer?.barangay,
+            invoice.customer?.city,
+            invoice.customer?.postalCode,
+            invoice.customer?.country
+          ].filter(Boolean).join(', ')}`,
           invoiceDate: invoice.invoiceDate,
           dueDate: invoice.dueDate,
           totalAmount: Number(invoice.totalAmount),

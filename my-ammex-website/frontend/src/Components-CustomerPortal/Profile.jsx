@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Edit, Save, X, User, Building, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import TopBarPortal from './TopBarPortal';
@@ -6,38 +6,21 @@ import PhoneInputField from '../Components/PhoneInputField';
 import { getCustomers, updateCustomer, getMyCustomer } from '../services/customerService';
 import { updateMyUser } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
+import { listMuncities, listBarangays, listProvinces } from '@jobuntux/psgc';
 
-// Philippine cities organized by major regions
-const PHILIPPINE_CITIES = [
-  // Metro Manila
-  'Caloocan', 'Las Piñas', 'Makati', 'Malabon', 'Mandaluyong', 'Manila', 'Marikina', 'Muntinlupa',
-  'Navotas', 'Parañaque', 'Pasay', 'Pasig', 'Pateros', 'Quezon City', 'San Juan', 'Taguig', 'Valenzuela',
+const normalizeString = (value = '') => value.trim().toLowerCase();
 
-  // Luzon (North)
-  'Baguio', 'Dagupan', 'San Fernando (La Union)', 'Vigan', 'Tuguegarao', 'Batac', 'Laoag',
+const splitContactName = (fullName = '') => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { firstName: '', lastName: '' };
+  const firstName = parts.shift();
+  const lastName = parts.join(' ');
+  return { firstName, lastName };
+};
 
-  // Luzon (Central)
-  'Angeles', 'San Fernando (Pampanga)', 'Olongapo', 'Balanga', 'Cabanatuan', 'Gapan', 'Palayan',
-  'San Jose del Monte', 'Tuguegarao', 'Batac', 'Laoag',
-
-  // Luzon (South)
-  'Batangas City', 'Lipa', 'Tanauan', 'Santo Tomas', 'Lucena', 'Tayabas', 'San Pablo',
-  'Calamba', 'Santa Rosa', 'Biñan', 'Cabuyao', 'San Pedro', 'Santa Cruz', 'Alaminos',
-
-  // Visayas
-  'Cebu City', 'Mandaue', 'Lapu-Lapu', 'Talisay', 'Toledo', 'Danao', 'Carcar', 'Bogo',
-  'Bacolod', 'Talisay (Negros Occidental)', 'Silay', 'Cadiz', 'Escalante', 'Sagay', 'Victorias',
-  'Iloilo City', 'Passi', 'Roxas', 'Tacloban', 'Ormoc', 'Baybay', 'Calbayog',
-
-  // Mindanao
-  'Davao City', 'Tagum', 'Panabo', 'Digos', 'Mati', 'Samal', 'Cagayan de Oro', 'Iligan',
-  'Butuan', 'Surigao', 'Bislig', 'Tandag', 'Bayugan', 'Malaybalay', 'Valencia', 'Ozamiz',
-  'Tangub', 'Oroquieta', 'Dipolog', 'Dapitan', 'Pagadian', 'Zamboanga City', 'Isabela',
-
-  // Other major cities
-  'General Santos', 'Koronadal', 'Tacurong', 'Kidapawan', 'Cotabato City', 'Marawi',
-  'Lamitan', 'Samal', 'Dipolog', 'Pagadian', 'Surigao', 'Butuan'
-].sort();
+const combineContactName = (firstName = '', lastName = '') => {
+  return [firstName, lastName].filter(Boolean).join(' ').trim();
+};
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -56,7 +39,10 @@ const Profile = () => {
     customerId: '',
     companyName: '',
     contactName: '',
-    street: '',
+    contactFirstName: '',
+    contactLastName: '',
+    addressLine1: '',
+    barangay: '',
     city: '',
     postalCode: '',
     country: 'Philippines',
@@ -66,34 +52,126 @@ const Profile = () => {
     email2: '',
     balance: 0,
     notes: '',
-    isActive: true
+    isActive: true,
+    cityCode: '',
+    barangayCode: ''
   });
 
   // User account email state (from auth context)
   const [userEmail, setUserEmail] = useState('');
 
-  const [editData, setEditData] = useState({ ...userData });
+  const [editData, setEditData] = useState({ 
+    ...userData,
+    contactFirstName: '',
+    contactLastName: '',
+    cityCode: '',
+    barangayCode: ''
+  });
   const [editUserEmail, setEditUserEmail] = useState('');
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
+  const [barangayDropdownOpen, setBarangayDropdownOpen] = useState(false);
+  const [citySearchTerm, setCitySearchTerm] = useState('');
+  const [barangaySearchTerm, setBarangaySearchTerm] = useState('');
+  const [filteredCities, setFilteredCities] = useState([]);
+  const [barangayOptions, setBarangayOptions] = useState([]);
+  const [filteredBarangays, setFilteredBarangays] = useState([]);
+
+  const cityOptions = useMemo(() => {
+    const provinces = listProvinces();
+    const provinceMap = provinces.reduce((acc, province) => {
+      if (province?.provCode) {
+        acc[province.provCode] = province.provName;
+      }
+      return acc;
+    }, {});
+
+    return listMuncities()
+      .map((city) => {
+        const provinceName = provinceMap[city.provCode];
+        return {
+          code: city.munCityCode,
+          name: city.munCityName,
+          displayName: provinceName ? `${city.munCityName}, ${provinceName}` : city.munCityName,
+          provCode: city.provCode
+        };
+      })
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, []);
+
+  useEffect(() => {
+    setFilteredCities(cityOptions);
+  }, [cityOptions]);
+
+  useEffect(() => {
+    setFilteredBarangays(barangayOptions);
+  }, [barangayOptions]);
+
+  useEffect(() => {
+    if (!editData.city || editData.cityCode || !cityOptions.length) {
+      return;
+    }
+    const normalizedCity = normalizeString(editData.city);
+    const matchedCity = cityOptions.find(
+      (option) => normalizeString(option.name) === normalizedCity
+    );
+    if (matchedCity) {
+      setEditData(prev => ({ ...prev, cityCode: matchedCity.code }));
+    }
+  }, [editData.city, editData.cityCode, cityOptions]);
+
+  useEffect(() => {
+    if (!editData.cityCode) {
+      setBarangayOptions([]);
+      return;
+    }
+    const options = listBarangays(editData.cityCode)
+      .map((barangay) => ({
+        code: barangay.brgyCode,
+        name: barangay.brgyName
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setBarangayOptions(options);
+  }, [editData.cityCode]);
+
+  useEffect(() => {
+    if (!editData.barangay || editData.barangayCode || !barangayOptions.length) {
+      return;
+    }
+    const normalizedBarangay = normalizeString(editData.barangay);
+    const matchedBarangay = barangayOptions.find(
+      (option) => normalizeString(option.name) === normalizedBarangay
+    );
+    if (matchedBarangay) {
+      setEditData(prev => ({ ...prev, barangayCode: matchedBarangay.code }));
+    }
+  }, [editData.barangay, editData.barangayCode, barangayOptions]);
 
   // Helper function to format customer data consistently
-  const formatCustomerData = (customer) => ({
-    id: customer.id,
-    customerId: customer.customerId || '',
-    companyName: customer.customerName || '', // Map customerName to companyName for display
-    contactName: customer.contactName || '',
-    street: customer.street || '',
-    city: customer.city || '',
-    postalCode: customer.postalCode || '',
-    country: customer.country || 'Philippines',
-    telephone1: customer.telephone1 || '',
-    telephone2: customer.telephone2 || '',
-    email1: customer.email1 || '',
-    email2: customer.email2 || '',
-    balance: customer.balance || 0,
-    notes: customer.notes || '',
-    isActive: customer.isActive !== undefined ? customer.isActive : true
-  });
+  const formatCustomerData = (customer) => {
+    const { firstName, lastName } = splitContactName(customer.contactName || '');
+    return {
+      id: customer.id,
+      customerId: customer.customerId || '',
+      companyName: customer.customerName || '', // Map customerName to companyName for display
+      contactName: customer.contactName || '',
+      contactFirstName: firstName,
+      contactLastName: lastName,
+      addressLine1: customer.addressLine1 || customer.street || '',
+      barangay: customer.barangay || '',
+      city: customer.city || '',
+      postalCode: customer.postalCode || '',
+      country: customer.country || 'Philippines',
+      telephone1: customer.telephone1 || '',
+      telephone2: customer.telephone2 || '',
+      email1: customer.email1 || '',
+      email2: customer.email2 || '',
+      balance: customer.balance || 0,
+      notes: customer.notes || '',
+      isActive: customer.isActive !== undefined ? customer.isActive : true,
+      cityCode: customer.cityCode || '',
+      barangayCode: customer.barangayCode || ''
+    };
+  };
 
   // Fetch customer data on component mount (client loads own record; admin uses URL param)
   useEffect(() => {
@@ -117,7 +195,7 @@ const Profile = () => {
             setEditData(formattedData);
             // Opens edit mode if required fields are missing
             if (!formattedData.companyName || !formattedData.telephone1 || !user?.email || 
-              !formattedData.street || !formattedData.city || !formattedData.postalCode || !formattedData.country) {
+              !formattedData.addressLine1 || !formattedData.barangay || !formattedData.city || !formattedData.postalCode || !formattedData.country) {
               setIsEditing(true);
             }
           } else {
@@ -160,6 +238,11 @@ const Profile = () => {
     const handleClickOutside = (event) => {
       if (cityDropdownOpen && !event.target.closest('.city-dropdown-container')) {
         setCityDropdownOpen(false);
+        setCitySearchTerm('');
+      }
+      if (barangayDropdownOpen && !event.target.closest('.barangay-dropdown-container')) {
+        setBarangayDropdownOpen(false);
+        setBarangaySearchTerm('');
       }
     };
 
@@ -167,7 +250,7 @@ const Profile = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [cityDropdownOpen]);
+  }, [cityDropdownOpen, barangayDropdownOpen]);
 
   const handleBack = () => {
     navigate('/Products');
@@ -202,9 +285,9 @@ const Profile = () => {
         newErrors.companyName = 'Company name is required';
       }
       if (!editUserEmail || editUserEmail.trim() === '') {
-        newErrors.email1 = 'Account email is required';
+        newErrors.email1 = 'Company Email 1 is required';
       } else if (!emailRegex.test(editUserEmail)) {
-        newErrors.email1 = 'Please enter a valid email address';
+        newErrors.email1 = 'Please enter a valid company email address';
       }
       // Check if telephone1 is empty or incomplete
       if (!editData.telephone1 ||
@@ -212,18 +295,30 @@ const Profile = () => {
           editData.telephone1 === '+' ||
           (editData.telephone1.startsWith('+') && editData.telephone1.length < 13) || // Too short for a complete number
           /^\+\d{1,3}$/.test(editData.telephone1)) { // Just country code
-        newErrors.telephone1 = 'Telephone 1 is empty or incomplete';
+        newErrors.telephone1 = 'Company Telephone 1 is empty or incomplete';
+      }
+
+      if (!editData.addressLine1 || editData.addressLine1.trim() === '') {
+        newErrors.addressLine1 = 'Address Line 1 is required';
+      } else if (!phStreetRegex.test(editData.addressLine1)) {
+        newErrors.addressLine1 = 'Please enter a valid address';
+      }
+      if (!editData.barangay || editData.barangay.trim() === '') {
+        newErrors.barangay = 'Barangay is required';
       }
 
       // Optional fields: validate format only if provided
-      if (editData.contactName && !phStreetRegex.test(editData.contactName)) {
-        newErrors.contactName = 'Please enter a valid name';
+      if (editData.contactFirstName && !phStreetRegex.test(editData.contactFirstName)) {
+        newErrors.contactFirstName = 'Please enter a valid first name';
+      }
+      if (editData.contactLastName && !phStreetRegex.test(editData.contactLastName)) {
+        newErrors.contactLastName = 'Please enter a valid last name';
       }
       if (editData.email2 && !emailRegex.test(editData.email2)) {
-        newErrors.email2 = 'Please enter a valid email address';
+        newErrors.email2 = 'Please enter a valid company email address';
       }
-      if (editData.street && !phStreetRegex.test(editData.street)) {
-        newErrors.street = 'Please enter a valid street';
+      if (!editData.city || editData.city.trim() === '') {
+        newErrors.city = 'City is required';
       }
       // City validation is handled by dropdown selection
       if (editData.postalCode && !phPostalRegex.test(editData.postalCode)) {
@@ -242,7 +337,8 @@ const Profile = () => {
         editData.companyName,
         editUserEmail,
         editData.telephone1,
-        editData.street,
+        editData.addressLine1,
+        editData.barangay,
         editData.city,
         editData.postalCode,
         editData.country
@@ -255,11 +351,12 @@ const Profile = () => {
       // Transform form data to match backend model
       const updatePayload = {
         customerName: editData.companyName, // Map companyName to customerName for backend
-        street: editData.street,
+        addressLine1: editData.addressLine1,
+        barangay: editData.barangay,
         city: editData.city,
         postalCode: editData.postalCode,
         country: editData.country,
-        contactName: editData.contactName,
+        contactName: combineContactName(editData.contactFirstName, editData.contactLastName),
         telephone1: editData.telephone1,
         telephone2: editData.telephone2,
         email1: editUserEmail, // Use account email as email1
@@ -302,7 +399,26 @@ const Profile = () => {
           }
         }
         
-        setUserData({ ...userData, ...editData });
+        const updatedContactName = combineContactName(editData.contactFirstName, editData.contactLastName);
+        setUserData(prev => ({
+          ...prev,
+          companyName: editData.companyName,
+          contactName: updatedContactName,
+          contactFirstName: editData.contactFirstName,
+          contactLastName: editData.contactLastName,
+          addressLine1: editData.addressLine1,
+          barangay: editData.barangay,
+          city: editData.city,
+          cityCode: editData.cityCode,
+          barangayCode: editData.barangayCode,
+          postalCode: editData.postalCode,
+          country: editData.country,
+          telephone1: editData.telephone1,
+          telephone2: editData.telephone2,
+          email1: editUserEmail,
+          email2: editData.email2,
+          notes: editData.notes
+        }));
         setUserEmail(editUserEmail);
         setIsEditing(false);
         // You could show a success message here
@@ -340,6 +456,60 @@ const Profile = () => {
     if (fieldErrors.email1) {
       setFieldErrors(prev => ({ ...prev, email1: null }));
     }
+  };
+
+  const handleCitySelect = (cityOption) => {
+    setEditData(prev => ({
+      ...prev,
+      city: cityOption?.name || '',
+      cityCode: cityOption?.code || '',
+      barangay: '',
+      barangayCode: ''
+    }));
+    if (fieldErrors.city || fieldErrors.barangay) {
+      setFieldErrors(prev => ({ ...prev, city: null, barangay: null }));
+    }
+    setCityDropdownOpen(false);
+    setCitySearchTerm('');
+    setBarangayDropdownOpen(false);
+    setBarangaySearchTerm('');
+  };
+
+  const handleCitySearchChange = (value) => {
+    setCitySearchTerm(value);
+    if (!value) {
+      setFilteredCities(cityOptions);
+      return;
+    }
+    const normalized = value.trim().toLowerCase();
+    setFilteredCities(
+      cityOptions.filter((city) => city.displayName.toLowerCase().includes(normalized))
+    );
+  };
+
+  const handleBarangaySelect = (barangayOption) => {
+    setEditData(prev => ({
+      ...prev,
+      barangay: barangayOption?.name || '',
+      barangayCode: barangayOption?.code || ''
+    }));
+    if (fieldErrors.barangay) {
+      setFieldErrors(prev => ({ ...prev, barangay: null }));
+    }
+    setBarangayDropdownOpen(false);
+    setBarangaySearchTerm('');
+  };
+
+  const handleBarangaySearchChange = (value) => {
+    setBarangaySearchTerm(value);
+    if (!value) {
+      setFilteredBarangays(barangayOptions);
+      return;
+    }
+    const normalized = value.trim().toLowerCase();
+    setFilteredBarangays(
+      barangayOptions.filter((barangay) => barangay.name.toLowerCase().includes(normalized))
+    );
   };
 
   // Show loading state
@@ -448,38 +618,39 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Required Fields Notice */}
-      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h4 className="text-sm font-medium text-blue-900">
-              Required Fields for Ordering
-            </h4>
-            <p className="text-sm text-blue-700 mt-1">
-              The following fields are required to place orders:
-            </p>
-            <ul className="text-sm text-blue-700 mt-2 space-y-1">
-              <li>• Company Name</li>
-              <li>• Telephone 1</li>
-              <li>• Email Address</li>
-              <li>• Complete Address (Street, City, Postal Code, Country)</li>
-            </ul>
+      <div>
+          {/* Required Fields Notice */}
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-blue-900">
+                  Required Fields for Ordering
+                </h4>
+                <p className="text-sm text-blue-700 mt-1">
+                  The following fields are required to place orders:
+                </p>
+                <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                  <li>• Company Name</li>
+                  <li>• Company Telephone 1</li>
+                  <li>• Company Email 1</li>
+                  <li>• Complete Address (Address Line 1, Barangay, City, Postal Code, Country)</li>
+                </ul>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Error Display */}
-      {(error || formError) && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800">{error || formError}</span>
-          </div>
-        </div>
-      )}
+          {/* Error Display */}
+          {(error || formError) && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <span className="text-red-800">{error || formError}</span>
+              </div>
+            </div>
+          )}
 
-      <div className="bg-white rounded-lg shadow p-4 sm:p-6 md:p-8 lg:p-10">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 md:p-8 lg:p-10">
         {/* Account Information */}
         <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <h2 className="text-lg sm:text-xl md:text-xl lg:text-2xl font-semibold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
@@ -531,21 +702,37 @@ const Profile = () => {
                 <div className="text-gray-900 text-sm sm:text-base">{userData.companyName}</div>
               )}
             </div>
-            <div>
+            <div className="sm:col-span-2 lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Contact Name</label>
               {isEditing ? (
-                <>
-                  <input
-                    type="text"
-                    value={editData.contactName}
-                    onChange={(e) => handleInputChange('contactName', e.target.value)}
-                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.contactName ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                    aria-invalid={!!fieldErrors.contactName}
-                  />
-                  {fieldErrors.contactName && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.contactName}</p>
-                  )}
-                </>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={editData.contactFirstName}
+                      onChange={(e) => handleInputChange('contactFirstName', e.target.value)}
+                      className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.contactFirstName ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                      aria-invalid={!!fieldErrors.contactFirstName}
+                      placeholder="First name"
+                    />
+                    {fieldErrors.contactFirstName && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.contactFirstName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={editData.contactLastName}
+                      onChange={(e) => handleInputChange('contactLastName', e.target.value)}
+                      className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.contactLastName ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                      aria-invalid={!!fieldErrors.contactLastName}
+                      placeholder="Last name"
+                    />
+                    {fieldErrors.contactLastName && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.contactLastName}</p>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="text-gray-900 text-sm sm:text-base">{userData.contactName}</div>
               )}
@@ -564,7 +751,7 @@ const Profile = () => {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Telephone 1 </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Company Telephone 1 </label>
               {isEditing ? (
                 <>
                   <PhoneInputField
@@ -581,7 +768,7 @@ const Profile = () => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Telephone 2</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Company Telephone 2</label>
               {isEditing ? (
                 <>
                   <PhoneInputField
@@ -612,7 +799,7 @@ const Profile = () => {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email 1 (Account Email)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Company Email 1 (Account Email)</label>
               {isEditing ? (
                 <>
                   <input
@@ -634,7 +821,7 @@ const Profile = () => {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email 2</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Company Email 2</label>
               {isEditing ? (
                 <>
                   <input
@@ -665,23 +852,17 @@ const Profile = () => {
             Address Information
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-            <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Street</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Country</label>
               {isEditing ? (
-                <>
-                  <input
-                    type="text"
-                    value={editData.street}
-                    onChange={(e) => handleInputChange('street', e.target.value)}
-                    aria-invalid={!!fieldErrors.street}
-                    className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.street ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                  />
-                  {fieldErrors.street && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.street}</p>
-                  )}
-                </>
+                <input
+                  type="text"
+                  value="Philippines"
+                  disabled={true}
+                  className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg text-sm sm:text-base cursor-not-allowed"
+                />
               ) : (
-                <div className="text-gray-900 text-sm sm:text-base">{userData.street}</div>
+                <div className="text-gray-900 text-sm sm:text-base">{userData.country || 'Philippines'}</div>
               )}
             </div>
             <div>
@@ -691,7 +872,13 @@ const Profile = () => {
                   <div className="city-dropdown-container relative">
                     <div
                       className={`w-full px-3 py-2 md:px-4 md:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base cursor-pointer flex items-center justify-between ${fieldErrors.city ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                      onClick={() => setCityDropdownOpen(!cityDropdownOpen)}
+                      onClick={() => {
+                        setCityDropdownOpen(!cityDropdownOpen);
+                        if (!cityDropdownOpen) {
+                          setCitySearchTerm('');
+                          setFilteredCities(cityOptions);
+                        }
+                      }}
                     >
                       <span className={editData.city ? 'text-gray-900' : 'text-gray-500'}>
                         {editData.city || 'Select a city'}
@@ -700,28 +887,41 @@ const Profile = () => {
                     </div>
 
                     {cityDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <div
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-500"
-                          onClick={() => {
-                            handleInputChange('city', '');
-                            setCityDropdownOpen(false);
-                          }}
-                        >
-                          Select a city
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+                        <div className="p-2 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={citySearchTerm}
+                            onChange={(e) => handleCitySearchChange(e.target.value)}
+                            className="w-full px-2 py-1 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#3182ce]"
+                            placeholder="Search city"
+                          />
                         </div>
-                        {PHILIPPINE_CITIES.map((city) => (
+                        <div className="max-h-52 overflow-y-auto">
                           <div
-                            key={city}
-                            className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${editData.city === city ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}`}
-                            onClick={() => {
-                              handleInputChange('city', city);
-                              setCityDropdownOpen(false);
-                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-500"
+                            onClick={() => handleCitySelect(null)}
                           >
-                            {city}
+                            Clear selection
                           </div>
-                        ))}
+                          {filteredCities.map((city) => (
+                            <div
+                              key={city.code}
+                              className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                                editData.city === city.name ? 'bg-blue-50 text-blue-900' : 'text-gray-900'
+                              }`}
+                              onClick={() => handleCitySelect(city)}
+                            >
+                              <p className="font-medium">{city.name}</p>
+                              {city.displayName !== city.name && (
+                                <p className="text-xs text-gray-500">{city.displayName}</p>
+                              )}
+                            </div>
+                          ))}
+                          {!filteredCities.length && (
+                            <div className="px-3 py-2 text-sm text-gray-500">No cities found</div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -752,20 +952,95 @@ const Profile = () => {
                 <div className="text-gray-900 text-sm sm:text-base">{userData.postalCode}</div>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Country</label>
-              {isEditing ? (
-                <>
-                  <input
-                    type="text"
-                    value="Philippines"
-                    disabled={true}
-                    className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg text-sm sm:text-base cursor-not-allowed"
-                  />
-                </>
-              ) : (
-                <div className="text-gray-900 text-sm sm:text-base">{userData.country || 'Philippines'}</div>
-              )}
+
+            <div className="sm:col-span-2 lg:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="lg:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Barangay</label>
+                {isEditing ? (
+                  <>
+                    <div className={`barangay-dropdown-container relative ${!editData.city ? 'opacity-60' : ''}`}>
+                      <div
+                        className={`w-full px-3 py-2 md:px-4 md:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base flex items-center justify-between ${
+                          fieldErrors.barangay ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        } ${!editData.city ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                        onClick={() => {
+                          if (!editData.city) return;
+                          setBarangayDropdownOpen(!barangayDropdownOpen);
+                          if (!barangayDropdownOpen) {
+                            setBarangaySearchTerm('');
+                            setFilteredBarangays(barangayOptions);
+                          }
+                        }}
+                      >
+                        <span className={editData.barangay ? 'text-gray-900' : 'text-gray-500'}>
+                          {editData.barangay || (editData.city ? 'Select a barangay' : 'Select a city first')}
+                        </span>
+                        <ChevronRight className={`w-4 h-4 text-gray-400 transform transition-transform ${barangayDropdownOpen ? 'rotate-90' : ''}`} />
+                      </div>
+
+                      {barangayDropdownOpen && editData.city && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+                          <div className="p-2 border-b border-gray-200">
+                            <input
+                              type="text"
+                              value={barangaySearchTerm}
+                              onChange={(e) => handleBarangaySearchChange(e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#3182ce]"
+                              placeholder="Search barangay"
+                            />
+                          </div>
+                          <div className="max-h-52 overflow-y-auto">
+                            <div
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-500"
+                              onClick={() => handleBarangaySelect(null)}
+                            >
+                              Clear selection
+                            </div>
+                            {filteredBarangays.map((barangay) => (
+                              <div
+                                key={barangay.code}
+                                className={`px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                                  editData.barangay === barangay.name ? 'bg-blue-50 text-blue-900' : 'text-gray-900'
+                                }`}
+                                onClick={() => handleBarangaySelect(barangay)}
+                              >
+                                {barangay.name}
+                              </div>
+                            ))}
+                            {!filteredBarangays.length && (
+                              <div className="px-3 py-2 text-sm text-gray-500">No barangays found</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {fieldErrors.barangay && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.barangay}</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-gray-900 text-sm sm:text-base">{userData.barangay}</div>
+                )}
+              </div>
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Address Line 1</label>
+                {isEditing ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editData.addressLine1}
+                      onChange={(e) => handleInputChange('addressLine1', e.target.value)}
+                      aria-invalid={!!fieldErrors.addressLine1}
+                      className={`w-full px-3 py-2 md:px-4 md:py-3 border focus:outline-none rounded-lg focus:ring-2 focus:ring-[#3182ce] focus:border-transparent text-sm sm:text-base ${fieldErrors.addressLine1 ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                    />
+                    {fieldErrors.addressLine1 && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.addressLine1}</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-gray-900 text-sm sm:text-base">{userData.addressLine1}</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -790,6 +1065,7 @@ const Profile = () => {
             )}
           </div>
         </div> */}
+          </div>
       </div>
     </div>
     </>

@@ -13,7 +13,8 @@ async function validateCustomerProfileOrThrow(customerId) {
 
   const requiredFields = {
     customerName: 'Customer name',
-    street: 'Street',
+    addressLine1: 'Address Line 1',
+    barangay: 'Barangay',
     city: 'City',
     postalCode: 'Postal code',
     country: 'Country',
@@ -265,19 +266,23 @@ const confirmCheckout = async (req, res, next) => {
       finalAmount: totalAmount,
       shippingAddress: JSON.stringify({
         name: customer.customerName,
-        street: customer.street,
+        addressLine1: customer.addressLine1,
+        barangay: customer.barangay,
         city: customer.city,
         postalCode: customer.postalCode,
         country: customer.country,
+        street: customer.addressLine1,
         phone: customer.telephone1,
         email: customer.email1
       }),
       billingAddress: JSON.stringify({
         name: customer.customerName,
-        street: customer.street,
+        addressLine1: customer.addressLine1,
+        barangay: customer.barangay,
         city: customer.city,
         postalCode: customer.postalCode,
         country: customer.country,
+        street: customer.addressLine1,
         phone: customer.telephone1,
         email: customer.email1
       }),

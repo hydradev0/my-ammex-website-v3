@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Info, DollarSign, Boxes, Image, Save, X } from 'lucide-react';
+import { ArrowLeft, Info, DollarSign, Boxes, Image, Save, X, ChevronDown } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { getSubcategories, createItem } from '../services/inventoryService';
 import { uploadMultipleImages } from '../services/cloudinaryService';
@@ -84,21 +84,25 @@ function NewItem({
   };
   
   // Use suppliers data for vendor dropdown (deduplicated and alphabetically sorted)
-  const vendors = suppliers.length > 0 
-    ? Array.from(
-        // Deduplicate by lowercase display name while preserving original casing
-        new Map(
-          suppliers
-            .map(supplier => supplier.companyName || '')
-            .filter(name => name && name.trim() !== '')
-            .map(name => [name.toLowerCase(), name])
-        ).values()
-      ).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
-    : ['No suppliers available'];
+  const vendors = useMemo(() => {
+    return suppliers.length > 0 
+      ? Array.from(
+          // Deduplicate by lowercase display name while preserving original casing
+          new Map(
+            suppliers
+              .map(supplier => supplier.companyName || '')
+              .filter(name => name && name.trim() !== '')
+              .map(name => [name.toLowerCase(), name])
+          ).values()
+        ).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
+      : ['No suppliers available'];
+  }, [suppliers]);
   
   // Dropdown open states and refs
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
   const vendorDropdownRef = useRef(null);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+  const [filteredVendors, setFilteredVendors] = useState([]);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef(null);
   const [subcategoryDropdownOpen, setSubcategoryDropdownOpen] = useState(false);
@@ -117,6 +121,11 @@ function NewItem({
       (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' })
     );
   }, [categories]);
+
+  // Initialize filtered vendors
+  useEffect(() => {
+    setFilteredVendors(vendors);
+  }, [vendors]);
 
   // Update errors when backend errors change
   useEffect(() => {
@@ -410,16 +419,17 @@ function NewItem({
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
+      if (vendorDropdownOpen && vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
         setVendorDropdownOpen(false);
+        setVendorSearchTerm('');
       }
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+      if (categoryDropdownOpen && categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
         setCategoryDropdownOpen(false);
       }
-      if (subcategoryDropdownRef.current && !subcategoryDropdownRef.current.contains(event.target)) {
+      if (subcategoryDropdownOpen && subcategoryDropdownRef.current && !subcategoryDropdownRef.current.contains(event.target)) {
         setSubcategoryDropdownOpen(false);
       }
-      if (unitDropdownRef.current && !unitDropdownRef.current.contains(event.target)) {
+      if (unitDropdownOpen && unitDropdownRef.current && !unitDropdownRef.current.contains(event.target)) {
         setUnitDropdownOpen(false);
       }
     };
@@ -500,6 +510,19 @@ function NewItem({
     if (errors.images) {
       setErrors({ ...errors, images: null });
     }
+  };
+
+  // Handle vendor search change
+  const handleVendorSearchChange = (value) => {
+    setVendorSearchTerm(value);
+    if (!value) {
+      setFilteredVendors(vendors);
+      return;
+    }
+    const normalized = value.trim().toLowerCase();
+    setFilteredVendors(
+      vendors.filter((vendor) => vendor.toLowerCase().includes(normalized))
+    );
   };
   
   // Validate form
@@ -815,32 +838,65 @@ function NewItem({
                 {/* Vendor Dropdown */}
                 <div>
                   <label className="block text-lg font-medium text-gray-700 mb-2">Supplier <span className="text-red-500">*</span></label>
-                  <div className="relative w-full" ref={vendorDropdownRef}>
-                    <button
-                      type="button"
+                  <div className="relative w-full vendor-dropdown-container" ref={vendorDropdownRef}>
+                    <div
                       className={`cursor-pointer w-full text-lg pl-4 pr-4 py-3 rounded-lg border ${errors.vendor ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none bg-white text-left flex justify-between items-center`}
-                      onClick={() => setVendorDropdownOpen((open) => !open)}
+                      onClick={() => {
+                        setVendorDropdownOpen(!vendorDropdownOpen);
+                        if (!vendorDropdownOpen) {
+                          setVendorSearchTerm('');
+                          setFilteredVendors(vendors);
+                        }
+                      }}
                     >
-                      <span>{formData.vendor || 'Select supplier'}</span>
-                      <svg className={`h-5 w-5 ml-2 transition-transform ${vendorDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
+                      <span className={formData.vendor ? 'text-gray-900' : 'text-gray-500'}>
+                        {formData.vendor || 'Select supplier'}
+                      </span>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 transform transition-transform ${vendorDropdownOpen ? 'rotate-180' : ''}`} />
+                    </div>
                     {vendorDropdownOpen && (
-                      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {vendors.map((option) => (
-                          <li
-                            key={option}
-                            className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${formData.vendor === option ? 'bg-blue-600 text-white hover:bg-blue-400 hover:text-white font-semibold' : ''}`}
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 flex flex-col">
+                        <div className="p-2 border-b border-gray-200 flex-shrink-0">
+                          <input
+                            type="text"
+                            value={vendorSearchTerm}
+                            onChange={(e) => handleVendorSearchChange(e.target.value)}
+                            className="w-full px-2 py-1 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
+                            placeholder="Search supplier"
+                            onClick={(e) => e.stopPropagation()}
+                            onFocus={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                        <div className="overflow-y-auto flex-1" style={{ maxHeight: '300px' }}>
+                          <div
+                            className="px-4 py-2 text-lg hover:bg-gray-100 cursor-pointer text-gray-500"
                             onClick={() => {
-                              setFormData({ ...formData, vendor: option });
+                              setFormData({ ...formData, vendor: '' });
                               setVendorDropdownOpen(false);
                             }}
                           >
-                            {option}
-                          </li>
-                        ))}
-                      </ul>
+                            Clear selection
+                          </div>
+                          {filteredVendors.map((option) => (
+                            <div
+                              key={option}
+                              className={`px-4 py-2 text-lg cursor-pointer hover:bg-blue-100 hover:text-black ${
+                                formData.vendor === option ? 'bg-blue-50 text-blue-900' : 'text-gray-900'
+                              }`}
+                              onClick={() => {
+                                setFormData({ ...formData, vendor: option });
+                                setVendorDropdownOpen(false);
+                                setVendorSearchTerm('');
+                              }}
+                            >
+                              {option}
+                            </div>
+                          ))}
+                          {!filteredVendors.length && (
+                            <div className="px-4 py-2 text-lg text-gray-500">No suppliers found</div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                   {errors.vendor && (
@@ -878,9 +934,7 @@ function NewItem({
                       onClick={() => setCategoryDropdownOpen((open) => !open)}
                     >
                       <span>{formData.category || 'Select category'}</span>
-                      <svg className={`h-5 w-5 ml-2 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 transform transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {categoryDropdownOpen && (
                       <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
@@ -926,9 +980,7 @@ function NewItem({
                               : 'Select category first')
                         }
                       </span>
-                      <svg className={`h-5 w-5 ml-2 transition-transform ${subcategoryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 transform transition-transform ${subcategoryDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {subcategoryDropdownOpen && subcategories.length > 0 && (
                       <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
@@ -962,9 +1014,7 @@ function NewItem({
                       onClick={() => setUnitDropdownOpen((open) => !open)}
                     >
                       <span>{formData.unit || 'Select unit'}</span>
-                      <svg className={`h-5 w-5 ml-2 transition-transform ${unitDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 transform transition-transform ${unitDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {unitDropdownOpen && (
                       <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">

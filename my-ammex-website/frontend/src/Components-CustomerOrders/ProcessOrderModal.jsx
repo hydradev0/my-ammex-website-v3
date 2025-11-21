@@ -1,58 +1,13 @@
 import { useState } from 'react';
 import HandleCustomerModal from './HandleCustomerModal';
 
-function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discountPercent, setDiscountPercent, isProcessing, isRejecting }) {
+function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, reviewDiscount, isProcessing, isRejecting }) {
   const [rejectionReason, setRejectionReason] = useState('');
-  const [discountError, setDiscountError] = useState('');
   
   if (!order) return null;
 
-  const handleDiscountChange = (e) => {
-    const value = e.target.value;
-    
-    // Clear previous error
-    setDiscountError('');
-    
-    // Allow empty input for better UX
-    if (value === '' || value === null || value === undefined) {
-      setDiscountPercent('');
-      return;
-    }
-    
-    const numValue = parseFloat(value);
-    
-    // Check for invalid input
-    if (isNaN(numValue)) {
-      setDiscountError('Please enter a valid number');
-      return;
-    }
-    
-    // Check for negative values
-    if (numValue < 0) {
-      setDiscountError('Discount cannot be negative');
-      setDiscountPercent(0);
-      return;
-    }
-    
-    // Check for values above 30%
-    if (numValue > 30) {
-      setDiscountError('Maximum discount allowed is 30%');
-      setDiscountPercent(numValue); // Allow them to type the value but show error
-      return;
-    }
-    
-    // Valid input
-    setDiscountPercent(numValue);
-  };
-
   const handleProcess = () => {
-    // Don't process if there's a discount error
-    if (discountError) {
-      return;
-    }
-    
-    const discountPct = discountPercent || 0;
-    const discountAmount = (order.total * discountPct) / 100;
+    const discountAmount = reviewDiscount?.savingsAmount || 0;
     onProcess(order.id, discountAmount);
   };
 
@@ -60,9 +15,22 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
     onReject(order, rejectionReason);
   };
 
-  const discountPct = discountPercent || 0;
-  const discountAmount = (order.total * discountPct) / 100;
-  const finalTotal = order.total - discountAmount;
+  const discountPct = reviewDiscount
+    ? Number((((reviewDiscount.productTotal || order.total || 0) - (reviewDiscount.chosenTotal || 0)) / (reviewDiscount.productTotal || order.total || 1)) * 100)
+    : 0;
+  const discountAmount = reviewDiscount?.savingsAmount || 0;
+  const subtotal = reviewDiscount?.productTotal || order.total;
+  const finalTotal = reviewDiscount?.chosenTotal || (order.total - discountAmount);
+  const discountSourceLabel = (() => {
+    if (!reviewDiscount) return 'No discount applied';
+    if (reviewDiscount.applied === 'tier') {
+      return `${reviewDiscount.tierName || 'Tier'} ${reviewDiscount.tierPercent}%`;
+    }
+    if (reviewDiscount.applied === 'product') {
+      return 'Product promotion';
+    }
+    return 'No discount applied';
+  })();
 
   const footerContent = (
     <>
@@ -92,9 +60,9 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
       </button>
       <button
         onClick={handleProcess}
-        disabled={isProcessing || isRejecting || discountError}
+        disabled={isProcessing || isRejecting}
         className={`px-4 py-2 cursor-pointer text-sm font-medium text-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-          isProcessing || isRejecting || discountError
+          isProcessing || isRejecting
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
         }`}
@@ -192,30 +160,23 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
         </div>
       </div>
 
-      {/* Discount Section */}
+      {/* Discount Summary */}
       <div className="mb-6">
-        <label htmlFor="discount" className="block text-sm font-medium text-gray-700 mb-2">
-          Discount Percentage (Maximum 30%)
-        </label>
-        <div className="relative">
-          <input
-            type="number"
-            id="discount"
-            name="discount"
-            value={discountPercent}
-            onChange={handleDiscountChange}
-            min="0"
-            max="100"
-            step="0.01"
-            className={`pl-4 pr-8 py-2 max-w-2xl border rounded-lg focus:ring-2 focus:outline-none focus:border-transparent 
-            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
-            ${discountError ? 'border-red-300 focus:ring-red-600' : 'border-gray-300 focus:ring-blue-600'}`}
-          />
-          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Applied Discount</h3>
+        <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
+          <p className="text-base font-semibold text-gray-900">{discountSourceLabel}</p>
+          {discountAmount > 0 ? (
+            <p className="text-sm text-gray-600 mt-1">
+              Saving ₱{Number(discountAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (
+              {reviewDiscount?.applied === 'tier'
+                ? `${reviewDiscount.tierPercent}%`
+                : `${discountPct.toFixed(2)}%`}
+              )
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500 mt-1">No additional discount applied.</p>
+          )}
         </div>
-        {discountError && (
-          <p className="mt-1 text-sm text-red-600">{discountError}</p>
-        )}
       </div>
 
       {/* Rejection Reason Section */}
@@ -239,13 +200,13 @@ function ProcessOrderModal({ isOpen, onClose, order, onProcess, onReject, discou
         <div className="space-y-2">
           <div className="flex justify-between text-gray-600">
             <span>Subtotal:</span>
-            <span>₱{order.total.toLocaleString('en-US', {
+            <span>₱{subtotal.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             })}</span>
           </div>
           <div className="flex justify-between text-red-600">
-            <span>Discount ({discountPct}%):</span>
+            <span>Discount ({discountAmount > 0 ? discountSourceLabel : 'None'}):</span>
             <span>-₱{discountAmount.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2

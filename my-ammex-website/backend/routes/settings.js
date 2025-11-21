@@ -9,7 +9,8 @@ const {
   getCompanySettings,
   getMarkupSettings
 } = require('../controllers/settingsController');
-const { protect } = require('../middleware/auth');
+const { getAllTiers, saveTiers, getMyTier, getCustomerTier } = require('../controllers/tierController');
+const { protect, authorize } = require('../middleware/auth');
 
 // Apply authentication to all routes
 router.use(protect);
@@ -25,6 +26,18 @@ router.get('/company', getCompanySettings);
 
 // Get markup settings (for product pricing)
 router.get('/markup', getMarkupSettings);
+
+// Account Tiers
+// Reuse Settings access logic: keep protected, no specific role checks for list/save
+router.get('/tiers', getAllTiers);
+router.put('/tiers', saveTiers);
+
+// Current user's tier (any authenticated user; returns default if not a Client)
+router.get('/tiers/me', getMyTier);
+router.get('/tiers/my', getMyTier); // alias for legacy frontend path
+
+// Specific customer's tier (Admin + Sales Marketing)
+router.get('/tiers/customer/:customerId', authorize('Admin', 'Sales Marketing'), getCustomerTier);
 
 // Update all settings
 router.put('/', updateSettings);

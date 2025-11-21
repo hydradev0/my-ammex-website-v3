@@ -105,7 +105,7 @@ function generateInvoicePaymentHTML(invoice) {
           <div class="label">Bill To</div>
           <div class="value">${customer.customerName || ''}</div>
           <div>${customer.email1 || ''}</div>
-          <div>${[customer.street, customer.city, customer.country].filter(Boolean).join(', ')}</div>
+          <div>${[customer.addressLine1, customer.barangay, customer.city, customer.country].filter(Boolean).join(', ')}</div>
         </div>
         <div>
           <div class="label">Payment Terms</div>
@@ -489,8 +489,13 @@ async function createPaymentReceipt(payment, invoice) {
       return existingReceipt;
     }
     
-    // Get customer details
-    const customer = await Customer.findByPk(payment.customerId);
+    // Get customer details - explicitly exclude 'street' column that doesn't exist in database
+    // Use exclude to prevent Sequelize from trying to select non-existent column
+    const customer = await Customer.findByPk(payment.customerId, {
+      attributes: {
+        exclude: ['street'] // Explicitly exclude street column that doesn't exist in Customer table
+      }
+    });
     if (!customer) {
       console.error('Customer not found for payment:', payment.id);
       return null;
@@ -973,7 +978,9 @@ const appealRejectedPayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Only rejected payments can be appealed' });
     }
 
-    const customer = await Customer.findByPk(customerId);
+    const customer = await Customer.findByPk(customerId, {
+      attributes: ['id', 'customerId', 'customerName', 'contactName', 'email1', 'addressLine1', 'barangay', 'city', 'postalCode', 'country', 'telephone1', 'telephone2', 'isActive', 'profileCompleted', 'userId']
+    });
 
     // Record in history
     await PaymentHistory.create({
@@ -1887,6 +1894,19 @@ async function handlePaymentPaid(paymentData, Payment, Invoice, Notification, Pa
     // Reload invoice with updated balance for receipt
     await payment.invoice.reload();
     
+    // Auto-upgrade tier if invoice is now partially paid or completed
+    try {
+      const { checkAndUpgradeTier } = require('../utils/tierUtils');
+      const newStatus = (invoiceUpdate && invoiceUpdate.invoice && invoiceUpdate.invoice.status) ? invoiceUpdate.invoice.status : payment.invoice.status;
+      if (newStatus === 'completed' || newStatus === 'partially paid') {
+        // Prefer invoice.customerId if available, fallback to payment.customerId
+        const customerId = payment.invoice?.customerId || payment.customerId;
+        if (customerId) {
+          await checkAndUpgradeTier(customerId);
+        }
+      }
+    } catch (_) {}
+
     // Create payment receipt with updated invoice data
     await createPaymentReceipt(payment, payment.invoice);
 
@@ -2240,7 +2260,7 @@ const getPaymentReceiptDetails = async (req, res, next) => {
         {
           model: Customer,
           as: 'customer',
-          attributes: ['id', 'customerName', 'contactName', 'email1', 'street', 'city', 'postalCode', 'country']
+          attributes: ['id', 'customerName', 'contactName', 'email1', 'addressLine1', 'barangay', 'city', 'postalCode', 'country']
         }
       ]
     });
@@ -2333,7 +2353,7 @@ const downloadPaymentReceipt = async (req, res, next) => {
         {
           model: Customer,
           as: 'customer',
-          attributes: ['id', 'customerName', 'contactName', 'email1', 'telephone1', 'street', 'city', 'postalCode', 'country']
+          attributes: ['id', 'customerName', 'contactName', 'email1', 'telephone1', 'addressLine1', 'barangay', 'city', 'postalCode', 'country']
         }
       ]
     });

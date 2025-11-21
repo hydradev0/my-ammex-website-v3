@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import SearchFilter from '../Components/SearchFilter';
 import GenericTable from '../Components/GenericTable';
-import RecordsModal from './RecordsModal';
+import SupplierModal from './SupplierModal';
 import ViewDetailsModal from '../Components/ViewDetailsModal';
 import EditDetailsModal from '../Components/EditDetailsModal';
 import SuccessModal from '../Components/SuccessModal';
@@ -400,12 +400,10 @@ function SupplierTable() {
         />
 
         {/* New Supplier Modal */}
-        <RecordsModal
+        <SupplierModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSubmit={handleAddSupplier}
-          title="Supplier"
-          buttonText="Add Supplier"
           existingSuppliers={suppliers}
         />
 

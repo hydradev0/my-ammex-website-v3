@@ -4,11 +4,12 @@ import {
   CreditCard,
   TrendingUp,
   Save,
+  ShieldUser
 } from 'lucide-react';
 import RoleBasedLayout from './RoleBasedLayout';
 import ManagePayMongoMethods from '../Components-CustomerPayments/ManagePayMongoMethods';
 import SuccessModal from './SuccessModal';
-import { getInvoicesByStatus } from '../services/invoiceService';
+import { getTiers, saveTiers } from '../services/tierService';
 
 // Tab components
 const CompanyProfile = () => {
@@ -408,6 +409,210 @@ const PayMongoMethods = () => {
   return <ManagePayMongoMethods />;
 };
 
+// Account Tiers settings
+const TiersSettings = () => {
+  const [tiers, setTiers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  React.useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await getTiers();
+        if (res.success) {
+          setTiers(Array.isArray(res.data) ? res.data : []);
+        } else {
+          setTiers([]);
+        }
+      } catch (e) {
+        setError('Failed to load tiers');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const updateTier = (index, key, value) => {
+    setTiers(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [key]: value };
+      return next;
+    });
+  };
+
+  const addTier = () => {
+    setTiers(prev => [
+      ...prev,
+      { name: '', discountPercent: 0, minSpend: 0, isActive: true, priority: (prev[prev.length - 1]?.priority || 0) + 1 }
+    ]);
+  };
+
+  const removeTier = (index) => {
+    setTiers(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess(false);
+    try {
+      const payload = tiers.map(t => ({
+        name: String(t.name || '').trim(),
+        discountPercent: Number(t.discountPercent || 0),
+        minSpend: Number(t.minSpend || 0),
+        isActive: !!t.isActive,
+        priority: Number(t.priority || 0)
+      }));
+      const res = await saveTiers(payload);
+      if (res.success) {
+        setSuccess(true);
+      } else {
+        setError(res.message || 'Failed to save tiers');
+      }
+    } catch (e) {
+      setError(e?.message || 'Failed to save tiers');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading tiers...</p>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
+              Tiers saved successfully.
+            </div>
+          )}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Tiers</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Configure customer tiers. Discounts are applied as the best-of between product promotions and tier. No stacking.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount %</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Spend</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                    <th className="px-4 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {tiers.map((t, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          value={t.priority ?? 0}
+                          onChange={(e) => updateTier(idx, 'priority', parseInt(e.target.value))}
+                          className="w-24 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
+                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={t.name || ''}
+                          onChange={(e) => updateTier(idx, 'name', e.target.value)}
+                          className="w-48 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={t.discountPercent ?? 0}
+                          onChange={(e) => updateTier(idx, 'discountPercent', parseFloat(e.target.value))}
+                          className="w-28 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
+                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={t.minSpend ?? 0}
+                          onChange={(e) => updateTier(idx, 'minSpend', parseFloat(e.target.value))}
+                          className="w-36 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
+                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          checked={!!t.isActive}
+                          onChange={(e) => updateTier(idx, 'isActive', e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          onClick={() => removeTier(idx)}
+                          className="text-red-600 hover:text-red-800 text-sm cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={addTier}
+                className="px-4 py-2 cursor-pointer bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+              >
+                Add Tier
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Save Tiers
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // Over-the-Counter Payments component
 // const OverTheCounterPayments = () => {
 //   const [formData, setFormData] = useState({
@@ -782,6 +987,7 @@ function Settings() {
     { id: 'company', label: 'Company Profile', icon: Building2, component: CompanyProfile },
     { id: 'paymongo', label: 'PayMongo Methods', icon: CreditCard, component: PayMongoMethods },
     { id: 'markup', label: 'Markup Settings', icon: TrendingUp, component: MarkupSettings },
+    { id: 'tiers', label: 'Account Tiers', icon: ShieldUser, component: TiersSettings },
     // { id: 'otc', label: 'OTC Payments', icon: DollarSign, component: OverTheCounterPayments }
   ];
 

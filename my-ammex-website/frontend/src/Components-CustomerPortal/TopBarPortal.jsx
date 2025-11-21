@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Bell, User, ShoppingCart, X, AlertCircle, ExternalLink, Package, AlertTriangle, NotepadText } from 'lucide-react';
+import { Bell, User, ShoppingCart, X, AlertCircle, ExternalLink, Package, AlertTriangle, NotepadText, TrendingUp } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { appealRejectedPayment } from '../services/paymentService';
 import { appealRejectedOrder } from '../services/orderService';
 import { getLocalCart } from '../services/cartService';
+import { getMyTier, getTiers } from '../services/tierService';
 import LogoutMenu from './LogoutMenu';
 import ProfileCompletionModal from './ProfileCompletionModal';
 import useProfileCompletion from '../hooks/useProfileCompletion';
@@ -37,6 +38,28 @@ function TopBarPortal() {
   const [appealReason, setAppealReason] = useState('');
   const [appealSubmitting, setAppealSubmitting] = useState(false);
 
+  // Tier modal state
+  const [isTierModalOpen, setIsTierModalOpen] = useState(false);
+  const [myTier, setMyTier] = useState(null);
+  const [tiers, setTiers] = useState([]);
+  const [loadingTier, setLoadingTier] = useState(false);
+
+  // Load tier info when modal opens
+  useEffect(() => {
+    if (!isTierModalOpen) return;
+    (async () => {
+      setLoadingTier(true);
+      try {
+        const [mine, list] = await Promise.all([getMyTier(), getTiers()]);
+        if (mine?.success) setMyTier(mine.data);
+        if (list?.success) setTiers(Array.isArray(list.data) ? list.data : []);
+      } catch (_) {}
+      finally {
+        setLoadingTier(false);
+      }
+    })();
+  }, [isTierModalOpen]);
+
   // Scroll lock while appeal modal is open
   useEffect(() => {
     if (!isAppealOpen) return;
@@ -63,6 +86,33 @@ function TopBarPortal() {
       window.scrollTo(0, scrollY);
     };
   }, [isAppealOpen]);
+
+  // Scroll lock while tier modal is open
+  useEffect(() => {
+    if (!isTierModalOpen) return;
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    const original = {
+      bodyOverflow: document.body.style.overflow,
+      bodyPosition: document.body.style.position,
+      bodyTop: document.body.style.top,
+      bodyWidth: document.body.style.width,
+      htmlOverflow: document.documentElement.style.overflow,
+    };
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.documentElement.style.overflow = original.htmlOverflow;
+      document.body.style.overflow = original.bodyOverflow;
+      document.body.style.position = original.bodyPosition;
+      document.body.style.top = original.bodyTop;
+      document.body.style.width = original.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isTierModalOpen]);
 
   // Optimized cart count update - only when needed
   useEffect(() => {
@@ -423,6 +473,15 @@ function TopBarPortal() {
             >
               Invoices
             </button>
+            <button
+              className="w-full text-left px-5 py-3 cursor-pointer hover:bg-gray-100 text-gray-800 text-[15px] font-medium leading-relaxed"
+              onClick={() => {
+                setShowProfileDropdown(false);
+                setIsTierModalOpen(true);
+              }}
+            >
+              Account Tier
+            </button>
           </div>
         </div>
 
@@ -514,6 +573,98 @@ function TopBarPortal() {
         onClose={closeProfileModal}
         onComplete={handleProfileComplete}
       />
+
+      {/* Tier Modal (Portal + Scroll Lock) */}
+      {isTierModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-3 max-h-[90vh] overflow-y-auto"
+          style={{ transform: 'scale(0.95)', transformOrigin: 'center' }}
+          >
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-[#3182ce]" />
+                Account Tier
+              </h3>
+              <button
+                className="text-gray-400 cursor-pointer hover:text-gray-600"
+                onClick={() => setIsTierModalOpen(false)}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {loadingTier ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Your current tier</p>
+                      <div className="mt-1 inline-flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-50 text-blue-700">
+                          {myTier?.name || 'No Tier'}
+                        </span>
+                        <span className="text-gray-600">
+                          {typeof myTier?.discountPercent === 'number' ? `${myTier.discountPercent}% discount` : '0% discount'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress to next tier (if available) */}
+                  {(() => {
+                    if (!tiers?.length) return null;
+                    const sorted = [...tiers].sort((a, b) => (a.minSpend || 0) - (b.minSpend || 0));
+                    const currentName = myTier?.name;
+                    const currentIndex = sorted.findIndex(t => t.name === currentName);
+                    const currentTier = currentIndex >= 0 ? sorted[currentIndex] : null;
+                    const nextTier = currentIndex >= 0 ? sorted[currentIndex + 1] : sorted[0];
+                    if (!nextTier || nextTier === currentTier) return null;
+                    const currentSpend = Number(myTier?.lifetimeSpend || 0);
+                    const minSpend = Number(nextTier.minSpend || 0);
+                    const prevThreshold = Number(currentTier?.minSpend || 0);
+                    const numerator = Math.max(0, currentSpend - prevThreshold);
+                    const denominator = Math.max(1, minSpend - prevThreshold);
+                    const progress = Math.max(0, Math.min(100, Math.round((numerator / denominator) * 100)));
+                    return (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm text-gray-700">Progress to {nextTier.name}</p>
+                          <p className="text-sm text-gray-600">{progress}%</p>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-2 bg-blue-600" style={{ width: `${progress}%` }} />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Spend ₱{Math.max(0, minSpend - currentSpend).toLocaleString()} more to reach {nextTier.name}.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      Tier benefits are applied automatically at checkout. The best discount is applied between product promotions and your tier discount (no stacking).
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end">
+              <button
+                className="px-4 py-2 text-sm cursor-pointer bg-[#3182ce] text-white rounded-md hover:bg-[#4992d6]"
+                onClick={() => setIsTierModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

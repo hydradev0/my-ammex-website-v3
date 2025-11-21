@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import PhoneInputField from "../Components/PhoneInputField";
 
-function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, existingSuppliers = [] }) {
+function SupplierModal({ isOpen = true, onClose, onSubmit, existingSuppliers = [] }) {
   // State for form fields
   const initialFormData = {
     companyName: '',
@@ -70,21 +70,21 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
     }
 
     if (!formData.telephone1 || !formData.telephone1.trim()) {
-      newErrors.telephone1 = 'Telephone 1 is required';
+      newErrors.telephone1 = 'Company Telephone 1 is required';
     }
     
     if (!formData.email1.trim()) {
-      newErrors.email1 = 'Email 1 is required';
+      newErrors.email1 = 'Company Email 1 is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email1)) {
-      newErrors.email1 = 'Email 1 is invalid';
+      newErrors.email1 = 'Company Email 1 is invalid';
     }
     
     if (formData.email2 && !/\S+@\S+\.\S+/.test(formData.email2)) {
-      newErrors.email2 = 'Email 2 is invalid';
+      newErrors.email2 = 'Company Email 2 is invalid';
     }
     
     // Duplicate checks for Supplier (companyName and email1)
-    if (title === 'Supplier' && existingSuppliers && Array.isArray(existingSuppliers)) {
+    if (existingSuppliers && Array.isArray(existingSuppliers)) {
       const companyLower = formData.companyName.trim().toLowerCase();
       const emailLower = formData.email1.trim().toLowerCase();
       
@@ -159,7 +159,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
           {/* Header */}
           <div className="flex justify-between items-center p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-gray-800">Add New {title}</h2>
+              <h2 className="text-2xl font-bold text-gray-800">Add New Supplier</h2>
             </div>
             
             <button 
@@ -286,7 +286,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
               <div className="grid grid-cols-2 gap-6 bg-white rounded-xl p-4">
                 <PhoneInputField
                   id="telephone1"
-                  label="Telephone 1"
+                  label="Company Telephone 1"
                   value={formData.telephone1}
                   onChange={handleInputChange}
                   error={errors.telephone1}
@@ -295,7 +295,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
                 />
                 <PhoneInputField
                   id="telephone2"
-                  label="Telephone 2"
+                  label="Company Telephone 2"
                   value={formData.telephone2}
                   onChange={handleInputChange}
                   error={errors.telephone2}
@@ -316,7 +316,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
               <div className="grid grid-cols-2 gap-6 rounded-xl p-4">
                 <FormField
                   id="email1"
-                  label="Email 1"
+                  label="Company Email 1"
                   type="email"
                   value={formData.email1}
                   onChange={handleInputChange}
@@ -327,7 +327,7 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
                 />
                 <FormField
                   id="email2"
-                  label="Email 2"
+                  label="Company Email 2"
                   type="email"
                   value={formData.email2}
                   onChange={handleInputChange}
@@ -362,10 +362,10 @@ function RecordsModal({ isOpen = true, onClose, onSubmit, title, buttonText, exi
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Adding {title}...</span>
+                    <span>Adding Supplier...</span>
                   </div>
                 ) : (
-                  buttonText
+                  'Add Supplier'
                 )}
               </button>
             </div>
@@ -407,4 +407,5 @@ function FormField({ id, label, type, value, onChange, error, prefix, width = 'w
   );
 }
 
-export default RecordsModal;
+export default SupplierModal;
+

@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 import TopBarPortal from './TopBarPortal';
 import { getMyOrders, cancelMyOrder, appealRejectedOrder } from '../services/orderService';
+import { getMyTier } from '../services/tierService';
+import { computeBestOf } from '../utils/discounts';
 import ConfirmDeleteModal from '../Components/ConfirmDeleteModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -13,6 +15,7 @@ const Orders = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
+  const [myTier, setMyTier] = useState(null);
   
   // Tab state
   const [activeTab, setActiveTab] = useState('pending');
@@ -45,6 +48,66 @@ const Orders = () => {
   const [appealOrder, setAppealOrder] = useState(null);
   const [appealReason, setAppealReason] = useState('');
   const [appealSubmitting, setAppealSubmitting] = useState(false);
+
+  const formatCurrency = (value, opts = {}) =>
+    `₱${Number(value ?? 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      ...opts
+    })}`;
+
+  const getOrderTotals = (order) => {
+    const fallbackTotal = Number(order?.totalAmount ?? 0);
+    const originalDb = Number(order?.originalTotal ?? fallbackTotal);
+    const finalDb = Number(order?.finalAmount ?? fallbackTotal);
+    const discountDb = Number(order?.discountAmount ?? 0);
+    if (discountDb > 0 || finalDb !== originalDb) {
+      const savings = discountDb > 0 ? discountDb : Math.max(0, originalDb - finalDb);
+      const percent =
+        discountDb > 0
+          ? Number(order?.discountPercent ?? 0)
+          : originalDb > 0
+            ? (savings / originalDb) * 100
+            : 0;
+      return {
+        original: originalDb,
+        final: finalDb,
+        savings,
+        percent,
+        preview: false
+      };
+    }
+    if (!myTier?.discountPercent || !Array.isArray(order?.items) || order.items.length === 0) {
+      return {
+        original: originalDb,
+        final: originalDb,
+        savings: 0,
+        percent: 0,
+        preview: false
+      };
+    }
+    const best = computeBestOf(order.items, myTier.discountPercent, {
+      getUnitBase: (it) => Number(it.basePrice ?? it.price ?? 0),
+      getUnitDiscounted: (it) => Number(it.price ?? it.basePrice ?? 0),
+      getQty: (it) => Number(it.quantity ?? 0)
+    });
+    if (best.applied === 'tier' && best.savingsAmount > 0) {
+      return {
+        original: Number(best.productTotal ?? originalDb),
+        final: Number(best.chosenTotal ?? best.productTotal ?? originalDb),
+        savings: Number(best.savingsAmount),
+        percent: Number(best.savingsPercentOfProduct),
+        preview: true
+      };
+    }
+    return {
+      original: originalDb,
+      final: originalDb,
+      savings: 0,
+      percent: 0,
+      preview: false
+    };
+  };
 
   // Load orders from backend (on login changes)
   useEffect(() => {
@@ -82,6 +145,24 @@ const Orders = () => {
     })();
     return () => { isMounted = false; };
   }, [user?.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await getMyTier();
+        if (!isMounted) return;
+        if (res?.success) {
+          setMyTier(res.data);
+        }
+      } catch (e) {
+        console.error('Failed to load tier info:', e);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
 
   // Handle click outside modal
@@ -211,6 +292,9 @@ const Orders = () => {
   // Pagination logic for rejected orders
   const startRejectedIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRejectedOrders = sortedRejectedOrders.slice(startRejectedIndex, startRejectedIndex + itemsPerPage);
+  const selectedOrderTotals = selectedOrder ? getOrderTotals(selectedOrder) : null;
+  const appealOrderTotals = appealOrder ? getOrderTotals(appealOrder) : null;
+
 // Order Details Modal
   const modalContent = showOrderModal && selectedOrder ? (
     <div 
@@ -251,8 +335,24 @@ const Orders = () => {
               </span>
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Total Amount</h3>
-              <p className="text-xs sm:text-sm font-semibold text-gray-900">₱{selectedOrder.totalAmount.toLocaleString()}</p>
+              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Subtotal</h3>
+              <p className="text-xs sm:text-sm text-gray-900">
+                {formatCurrency(selectedOrderTotals?.original ?? selectedOrder?.totalAmount ?? 0)}
+              </p>
+            </div>
+            {selectedOrderTotals?.savings > 0 && (
+              <div>
+                <h3 className="text-xs sm:text-sm font-medium text-gray-500">Discount Applied</h3>
+                <p className="text-xs sm:text-sm text-red-600">
+                  -{formatCurrency(selectedOrderTotals.savings)} ({Math.round(selectedOrderTotals.percent)}%)
+                </p>
+              </div>
+            )}
+            <div>
+              <h3 className="text-xs sm:text-sm font-medium text-gray-500">Final Total</h3>
+              <p className="text-xs sm:text-sm font-semibold text-green-600">
+                {formatCurrency(selectedOrderTotals?.final ?? selectedOrder?.totalAmount ?? 0)}
+              </p>
             </div>
           </div>
 
@@ -417,9 +517,9 @@ const Orders = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ₱{order.totalAmount.toLocaleString()}
-                          </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                          {formatCurrency(getOrderTotals(order).final, { minimumFractionDigits: 2 })}
+                        </td>
                           <td className="flex px-6 py-4 whitespace-nowrap text-right text-sm font-medium ">
                             <button
                               onClick={() => handleViewOrder(order)}
@@ -611,7 +711,10 @@ const Orders = () => {
                   Order: <span className="font-semibold">{appealOrder?.orderNumber}</span>
                 </p>
                 <p className="text-sm text-gray-600">
-                  Amount: <span className="font-semibold">₱{appealOrder?.totalAmount?.toLocaleString()}</span>
+                  Amount:{' '}
+                  <span className="font-semibold">
+                    {formatCurrency(appealOrderTotals?.final ?? appealOrder?.totalAmount ?? 0)}
+                  </span>
                 </p>
               </div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Reason for appeal</label>

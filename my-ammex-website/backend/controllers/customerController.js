@@ -173,7 +173,7 @@ const updateCustomer = async (req, res, next) => {
 
     // Sanitize: convert empty strings to null to satisfy allowNull validators
     const fields = [
-      'customerName','street','city','postalCode','country','contactName',
+      'customerName','addressLine1','barangay','city','postalCode','country','contactName',
       'telephone1','telephone2','email1','email2','notes','profileCompleted'
     ];
     const sanitized = {};
@@ -195,7 +195,8 @@ const updateCustomer = async (req, res, next) => {
       sanitized.customerName || customer.customerName,
       sanitized.telephone1 || customer.telephone1,
       sanitized.email1 || customer.email1,
-      sanitized.street || customer.street,
+      sanitized.addressLine1 || customer.addressLine1,
+      sanitized.barangay || customer.barangay,
       sanitized.city || customer.city,
       sanitized.postalCode || customer.postalCode,
       sanitized.country || customer.country
@@ -211,7 +212,7 @@ const updateCustomer = async (req, res, next) => {
     console.log('Auto-determining profile completion:', {
       customerId: customer.customerId,
       requiredFields: requiredFields.map((field, index) => ({
-        field: ['customerName', 'telephone1', 'email1', 'street', 'city', 'postalCode', 'country'][index],
+        field: ['customerName', 'telephone1', 'email1', 'addressLine1', 'barangay', 'city', 'postalCode', 'country'][index],
         value: field,
         isEmpty: !field || field.toString().trim() === ''
       })),
@@ -366,7 +367,8 @@ const fixMyProfileCompletion = async (req, res, next) => {
       customer.customerName,
       customer.telephone1,
       customer.email1,
-      customer.street,
+      customer.addressLine1,
+      customer.barangay,
       customer.city,
       customer.postalCode,
       customer.country
@@ -385,7 +387,7 @@ const fixMyProfileCompletion = async (req, res, next) => {
         customerId: customer.customerId,
         profileCompleted: allRequiredFieldsFilled,
         requiredFields: requiredFields.map((field, index) => ({
-          field: ['customerName', 'telephone1', 'email1', 'street', 'city', 'postalCode', 'country'][index],
+          field: ['customerName', 'telephone1', 'email1', 'addressLine1', 'barangay', 'city', 'postalCode', 'country'][index],
           value: field,
           isEmpty: !field || field.toString().trim() === ''
         }))

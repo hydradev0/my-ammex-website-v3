@@ -38,7 +38,7 @@ const validateCustomer = [
     // If value is provided, validate it's a valid email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
-      throw new Error('Email 2 must be a valid email');
+      throw new Error('Company Email 2 must be a valid email');
     }
     return true;
   }),
@@ -51,7 +51,7 @@ const validateCustomer = [
     const digits = String(value).replace(/[^0-9]/g, '');
     // If there are any digits, require at least 7
     if (digits.length > 0 && digits.length < 7) {
-      throw new Error('Telephone 2 must have at least 7 digits if provided');
+      throw new Error('Company Telephone 2 must have at least 7 digits if provided');
     }
     return true;
   })

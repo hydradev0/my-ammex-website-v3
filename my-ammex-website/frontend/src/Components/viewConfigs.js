@@ -270,9 +270,14 @@ export const customerViewConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Street',
-          key: 'street',
+          label: 'Address Line 1',
+          key: 'addressLine1',
           width: 'w-full'
+        },
+        {
+          label: 'Barangay',
+          key: 'barangay',
+          width: 'w-1/2'
         },
         {
           label: 'City',
@@ -296,13 +301,13 @@ export const customerViewConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Telephone 1',
+          label: 'Company Telephone 1',
           key: 'telephone1',
           width: 'w-1/2',
           customRender: (value) => formatPhoneNumber(value)
         },
         {
-          label: 'Telephone 2',
+          label: 'Company Telephone 2',
           key: 'telephone2',
           width: 'w-1/2',
           customRender: (value) => formatPhoneNumber(value)
@@ -314,12 +319,12 @@ export const customerViewConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Email 1',
+          label: 'Company Email 1',
           key: 'email1',
           width: 'w-1/2'
         },
         {
-          label: 'Email 2',
+          label: 'Company Email 2',
           key: 'email2',
           width: 'w-1/2'
         }
@@ -365,9 +370,15 @@ export const editCustomerConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Street',
-          key: 'street',
+          label: 'Address Line 1',
+          key: 'addressLine1',
           width: 'w-full',
+          type: 'text'
+        },
+        {
+          label: 'Barangay',
+          key: 'barangay',
+          width: 'w-1/2',
           type: 'text'
         },
         {
@@ -396,13 +407,13 @@ export const editCustomerConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Telephone 1',
+          label: 'Company Telephone 1',
           key: 'telephone1',
           width: 'w-2/3',
           type: 'phoneInput',
         },
         {
-          label: 'Telephone 2',
+          label: 'Company Telephone 2',
           key: 'telephone2',
           width: 'w-2/3',
           type: 'phoneInput'
@@ -414,14 +425,14 @@ export const editCustomerConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Email 1',
+          label: 'Company Email 1',
           key: 'email1',
           width: 'w-1/2',
           type: 'email',
           required: true
         },
         {
-          label: 'Email 2',
+          label: 'Company Email 2',
           key: 'email2',
           width: 'w-1/2',
           type: 'email'
@@ -565,13 +576,13 @@ export const supplierViewConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Telephone 1',
+          label: 'Company Telephone 1',
           key: 'telephone1',
           width: 'w-1/2',
           customRender: (value) => formatPhoneNumber(value)
         },
         {
-          label: 'Telephone 2',
+          label: 'Company Telephone 2',
           key: 'telephone2',
           width: 'w-1/2',
           customRender: (value) => formatPhoneNumber(value)
@@ -583,12 +594,12 @@ export const supplierViewConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Email 1',
+          label: 'Company Email 1',
           key: 'email1',
           width: 'w-1/2'
         },
         {
-          label: 'Email 2',
+          label: 'Company Email 2',
           key: 'email2',
           width: 'w-1/2',
         }
@@ -686,14 +697,14 @@ export const editSupplierConfig = {
       gridCols: 'grid-cols-2',
       fields: [
         {
-          label: 'Email 1',
+          label: 'Company Email 1',
           key: 'email1',
           width: 'w-1/2',
           type: 'email',
           required: true
         },
         {
-          label: 'Email 2',
+          label: 'Company Email 2',
           key: 'email2',
           width: 'w-1/2',
           type: 'email'

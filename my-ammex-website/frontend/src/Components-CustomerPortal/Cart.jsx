@@ -7,6 +7,8 @@ import ErrorModal from "../Components/ErrorModal";
 import TopBarPortal from './TopBarPortal';
 import { updateCartItem, removeFromCart, clearCart, getLocalCart, setLocalCart, initializeCartFromDatabase, checkoutPreview, checkoutConfirm, recoverCartFromDatabase, preventDatabaseSync } from '../services/cartService';
 import { useAuth } from '../contexts/AuthContext';
+import { getMyTier } from '../services/tierService';
+import { computeBestOf } from '../utils/discounts';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -38,6 +40,8 @@ const Cart = () => {
   const [showPaymentTermsDropdown, setShowPaymentTermsDropdown] = useState(false);
   const paymentTermsOptions = ['30 days', '60 days', '90 days'];
   const paymentTermsDropdownRef = useRef(null);
+  const [myTier, setMyTier] = useState(null);
+  const [previewBest, setPreviewBest] = useState(null);
 
   const refreshCartData = async (updateSelection = false) => {
     try {
@@ -192,6 +196,16 @@ const Cart = () => {
 
     initializeCart();
   }, [user?.id]); // Re-run if user changes
+
+  // Load current user's tier (UI-first)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getMyTier();
+        if (res?.success) setMyTier(res.data);
+      } catch (_) {}
+    })();
+  }, []);
 
   // Event-driven cart monitoring (no more polling!)
   useEffect(() => {
@@ -520,6 +534,23 @@ const Cart = () => {
       setOrderNumber(preview?.data?.orderNumber || '');
       // Capture soft warnings (e.g., incomplete profile)
       setPreviewWarning(preview?.warnings || null);
+      // Compute best-of for UI display (no stacking)
+      try {
+        const tierPercent = Number(myTier?.discountPercent || 0);
+        const best = computeBestOf(selectedItems, tierPercent, {
+          getUnitBase: (it) => Number(it.sellingPrice ?? it.price ?? 0),
+          getUnitDiscounted: (it) => {
+            const d = it.discountedPrice;
+            if (d === null || d === undefined) return null;
+            const n = Number(d);
+            return Number.isFinite(n) ? n : null;
+          },
+          getQty: (it) => Number(it.quantity ?? 0)
+        });
+        setPreviewBest(best);
+      } catch {
+        setPreviewBest(null);
+      }
       setShowPreviewModal(true);
     } catch (e) {
       console.error('Checkout preview failed:', e);
@@ -587,7 +618,7 @@ const Cart = () => {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-3xl w-full h-[120vh] flex flex-col"
+        className="bg-white rounded-lg shadow-xl max-w-4xl w-full h-[120vh] flex flex-col"
         style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
       >
         {/* Fixed Header */}
@@ -618,6 +649,29 @@ const Cart = () => {
               <h3 className="text-sm font-medium text-gray-500">Order Number</h3>
               <p className="text-sm text-gray-900 break-all">{orderNumber}</p>
               
+              {/* Tier info */}
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">Your Tier</p>
+                <div className="mt-1 inline-flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+                    {myTier?.name || 'No Tier'}
+                  </span>
+                  <span className="text-sm text-gray-700">
+                    {typeof myTier?.discountPercent === 'number' ? `${myTier.discountPercent}%` : '0%'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Order Date</h3>
+              <p className="text-sm text-gray-900">{new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+
               {/* Payment Terms Dropdown */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Payment Terms</label>
@@ -625,7 +679,7 @@ const Cart = () => {
                   <button
                     type="button"
                     onClick={() => setShowPaymentTermsDropdown(!showPaymentTermsDropdown)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#3182ce] focus:border-[#3182ce] transition-colors"
+                    className="w-full flex cursor-pointer items-center justify-between px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#3182ce] focus:border-[#3182ce] transition-colors"
                   >
                     <span className="text-gray-900">{paymentTerms}</span>
                     <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${showPaymentTermsDropdown ? 'rotate-180' : ''}`} />
@@ -641,7 +695,7 @@ const Cart = () => {
                             setPaymentTerms(term);
                             setShowPaymentTermsDropdown(false);
                           }}
-                          className={`w-full text-left px-4 py-2.5 hover:bg-gray-100 transition-colors ${
+                          className={`w-full text-left px-4 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors ${
                             paymentTerms === term ? 'bg-blue-50 text-[#3182ce]' : 'text-gray-900'
                           }`}
                         >
@@ -652,16 +706,6 @@ const Cart = () => {
                   )}
                 </div>
               </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Order Date</h3>
-              <p className="text-sm text-gray-900">{new Date().toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}</p>
             </div>
           </div>
         </div>
@@ -681,19 +725,19 @@ const Cart = () => {
           );
         })()}
 
-        {/* Fixed Order Items Header */}
-        <div className="px-6 pt-6 pb-4 flex-shrink-0">
-          <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
+        {/* Fixed Order Items Header - Compact */}
+        <div className="px-6 pt-4 pb-2 flex-shrink-0">
+          <h3 className="text-base font-semibold text-gray-900">Order Items</h3>
         </div>
 
-        {/* Scrollable Items Section */}
-        <div className="flex-1 overflow-y-auto mr-1.5 my-1.5">
-          <div className="px-3 pb-6">
-            <div className="space-y-3">
+        {/* Scrollable Items Section - Maximized Space */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="px-6 pb-4">
+            <div className="space-y-2">
               {getCheckoutItems().map((item, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  {/* Product Image */}
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div key={index} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                  {/* Product Image - Compact */}
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {(() => {
                       // Get the first image from images array or fallback to single image
                       const displayImage = (item.images && Array.isArray(item.images) && item.images.length > 0)
@@ -709,21 +753,34 @@ const Cart = () => {
                           />
                         );
                       } else {
-                        return <ShoppingBag size={16} className="text-gray-400" />;
+                        return <ShoppingBag size={14} className="text-gray-400" />;
                       }
                     })()}
                   </div>
 
-                  {/* Product Details */}
+                  {/* Product Details - Compact */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900">{item.modelNo}</h4>
-                    <p className="text-sm text-gray-500">{item.subcategory || item.category}</p>
-                    <p className="text-sm text-gray-500">Qty: {item.quantity} × ₱{(item.discountedPrice || item.sellingPrice || item.price || 0).toLocaleString()}</p>
+                    <h4 className="font-medium text-sm text-gray-900">{item.modelNo}</h4>
+                    <p className="text-xs text-gray-500">{item.subcategory || item.category}</p>
+                    <p className="text-xs text-gray-500">
+                      Qty: {item.quantity} × ₱{(
+                        previewBest?.applied === 'tier'
+                          ? (item.sellingPrice || item.price || 0)
+                          : (item.discountedPrice || item.sellingPrice || item.price || 0)
+                      ).toLocaleString()}
+                    </p>
                   </div>
 
-                  {/* Price */}
+                  {/* Price - Compact */}
                   <div className="text-right">
-                    <p className={`font-semibold ${item.discountPercentage > 0 ? 'text-red-600' : 'text-gray-900'}`}>₱{((item.discountedPrice || item.sellingPrice || item.price || 0) * item.quantity).toLocaleString()}</p>
+                    <p className={`font-semibold text-sm ${(item.discountPercentage > 0 && (!previewBest || previewBest.applied !== 'tier')) ? 'text-red-600' : 'text-gray-900'}`}>
+                      ₱{(
+                        ((previewBest?.applied === 'tier'
+                          ? (item.sellingPrice || item.price || 0)
+                          : (item.discountedPrice || item.sellingPrice || item.price || 0)
+                        ) * item.quantity)
+                      ).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -732,28 +789,56 @@ const Cart = () => {
         </div>
 
         {/* Fixed Footer */}
-        <div className="p-6 border-t border-gray-200 flex-shrink-0">
-          <div className="border-b border-gray-200 pb-4 mb-4">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
-              <span className="text-xl font-bold text-gray-900">₱{getCheckoutTotalPrice().toLocaleString()}</span>
+        <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0 space-y-3">
+          {/* Best-of summary - Compact */}
+          {previewBest && (
+            <div className="border border-blue-200 bg-blue-50 text-blue-900 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium">
+                  Best discount: {previewBest.applied === 'tier' ? 'Tier' : previewBest.applied === 'product' ? 'Product' : 'None'}
+                  {previewBest.applied === 'tier' ? ` (${myTier?.name || 'Tier'} ${previewBest.tierPercent}%)` : ''}
+                </span>
+                {previewBest.savingsAmount > 0 && (
+                  <span className="text-xs font-medium">
+                    Save ₱{Number(previewBest.savingsAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 line-through text-xs">
+                  ₱{Number(previewBest.baseSubtotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-gray-500 text-xs">→</span>
+                <span className="font-semibold text-sm">
+                  ₱{Number(previewBest.chosenTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
+          )}
+
+          {/* Total Amount - Compact */}
+          <div className="flex justify-between items-center pb-2">
+            <span className="text-base font-semibold text-gray-900">Total Amount:</span>
+            <span className="text-lg font-bold text-gray-900">
+              ₱{(previewBest ? Number(previewBest.chosenTotal) : getCheckoutTotalPrice()).toLocaleString()}
+            </span>
           </div>
 
-          {/* Disclaimer */}
-          <div className="text-sm text-amber-700 mb-6 bg-amber-100 rounded-lg p-4 border border-amber-300">
-            <p className="font-semibold">Disclaimer:</p>
-            <p>• All orders are subject to approval.</p>
-            <p>• Once the order is approved, it can no longer be canceled.</p>
+          {/* Disclaimer - Compact */}
+          <div className="text-xs text-amber-700 bg-amber-100 rounded-lg p-3 border border-amber-300">
+            <p className="font-semibold text-xs mb-1">Disclaimer:</p>
+            <p className="text-xs">• All orders are subject to approval.</p>
+            <p className="text-xs">• Once the order is approved, it can no longer be canceled.</p>
           </div>
 
-          <div className="flex gap-3">
+          {/* Action Buttons - Compact */}
+          <div className="flex gap-3 pt-1 justify-end">
             <button
               onClick={() => {
                 setShowPreviewModal(false);
                 setCheckoutSelection(new Set());
               }}
-              className="flex-1 px-4 cursor-pointer py-3 border border-gray-300 text-gray-700 rounded-3xl hover:bg-gray-50 transition-colors"
+              className="flex px-4 cursor-pointer py-3 border border-gray-300 text-gray-700 rounded-3xl hover:bg-gray-50 transition-colors text-md font-medium"
             >
               Back to Cart
             </button>
@@ -771,7 +856,7 @@ const Cart = () => {
                 }
               }}
               disabled={confirmingCheckout || getStockIssues(getCheckoutItems()).hasIssues}
-              className={`flex-1 cursor-pointer px-4 py-3 rounded-3xl font-medium transition-colors ${
+              className={`flex cursor-pointer px-10 py-3 rounded-3xl font-medium text-md transition-colors ${
                 confirmingCheckout
                   ? 'bg-[#6aa3db] text-white cursor-not-allowed'
                   : getStockIssues(getCheckoutItems()).hasIssues
@@ -782,7 +867,7 @@ const Cart = () => {
                 {previewWarning?.profileIncomplete ? 'Go to Profile' : (
                 confirmingCheckout ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
+                    <span className="w-3.5 h-3.5 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></span>
                     Placing order...
                   </span>
                 ) : 'Confirm Order'

@@ -83,7 +83,7 @@ const InvoiceDetailsModal = ({
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                   <div>
-                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="text-sm text-gray-600">Company Name</p>
                     <p className="font-medium text-gray-900">{invoice.customerName}</p>
                   </div>
                   <div>

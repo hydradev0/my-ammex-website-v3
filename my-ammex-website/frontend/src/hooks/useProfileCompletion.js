@@ -17,7 +17,8 @@ const useProfileCompletion = () => {
       customer.customerName,
       customer.telephone1,
       customer.email1 || user.email,
-      customer.street,
+      customer.addressLine1,
+      customer.barangay,
       customer.city,
       customer.postalCode,
       customer.country

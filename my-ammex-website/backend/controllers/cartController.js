@@ -312,7 +312,8 @@ const convertCartToOrder = async (req, res) => {
     }
     const requiredFields = {
       customerName: 'Customer name',
-      street: 'Street',
+      addressLine1: 'Address Line 1',
+      barangay: 'Barangay',
       city: 'City',
       postalCode: 'Postal code',
       country: 'Country',

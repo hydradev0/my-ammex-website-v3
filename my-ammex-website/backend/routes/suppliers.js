@@ -33,7 +33,7 @@ const validateSupplier = [
     }
     return true;
   }),
-  check('email1', 'Email 1 is required and must be valid').isEmail(),
+  check('email1', 'Company Email 1 is required and must be valid').isEmail(),
   check('email2').optional({ checkFalsy: true }).trim().custom((value) => {
     // Allow empty, null, or undefined
     if (!value || value === '' || value === null || value === undefined) {
@@ -41,15 +41,15 @@ const validateSupplier = [
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
-      throw new Error('Email 2 must be a valid email');
+      throw new Error('Company Email 2 must be a valid email');
     }
     return true;
   }),
-  check('telephone1', 'Telephone 1 is required').custom((value) => {
-    if (!value) throw new Error('Telephone 1 is required');
+  check('telephone1', 'Company Telephone 1 is required').custom((value) => {
+    if (!value) throw new Error('Company Telephone 1 is required');
     const digits = String(value).replace(/[^0-9]/g, '');
     if (digits.length < 7) {
-      throw new Error('Telephone 1 must have at least 7 digits');
+      throw new Error('Company Telephone 1 must have at least 7 digits');
     }
     return true;
   }),
@@ -62,7 +62,7 @@ const validateSupplier = [
     const digits = String(value).replace(/[^0-9]/g, '');
     // If there are any digits, require at least 7
     if (digits.length > 0 && digits.length < 7) {
-      throw new Error('Telephone 2 must have at least 7 digits if provided');
+      throw new Error('Company Telephone 2 must have at least 7 digits if provided');
     }
     return true;
   })

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Clock, XCircle, Eye, Trash2, CircleCheckBig, Pencil, Package } from 'lucide-react';
 import ViewOrderModal from './ViewOrderModal';
 import ProcessOrderModal from './ProcessOrderModal';
@@ -9,7 +9,26 @@ import { getPendingOrdersForSales, getRejectedOrdersForSales, updateOrderStatus,
 import { useAuth } from '../contexts/AuthContext';
 import ErrorModal from '../Components/ErrorModal';
 import SuccessModal from '../Components/SuccessModal';
-//test
+import { getCustomerTier } from '../services/tierService';
+import { getItemById } from '../services/inventoryService';
+import { computeBestOf } from '../utils/discounts';
+
+const formatPeso = (value) =>
+  `₱${Number(value ?? 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+
+const getPendingFinalTotal = (order) => {
+  if (Number(order?.discountAmount) > 0) {
+    return Number(order?.finalAmount ?? (order?.total ?? 0) - Number(order?.discountAmount ?? 0));
+  }
+  if (order?.reviewDiscount?.savingsAmount > 0) {
+    return Number(order?.total ?? 0) - Number(order.reviewDiscount.savingsAmount);
+  }
+  return Number(order?.finalAmount ?? order?.total ?? 0);
+};
+
 function HandleOrders() {
   // Tab state
   const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'rejected'
@@ -39,7 +58,6 @@ function HandleOrders() {
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState(null);
-  const [discountPercent, setDiscountPercent] = useState('');
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [successModalOpen, setSuccessModalOpen] = useState(false);
@@ -56,6 +74,66 @@ function HandleOrders() {
   const [deletingOrderId, setDeletingOrderId] = useState(null);
 
   const { user } = useAuth();
+  const [reviewDiscount, setReviewDiscount] = useState(null);
+  const tierCacheRef = useRef(new Map());
+  const itemBaseCacheRef = useRef(new Map());
+
+  const getTierInfo = async (customerId) => {
+    if (!customerId) return { percent: 0, name: 'Tier' };
+    if (tierCacheRef.current.has(customerId)) {
+      return tierCacheRef.current.get(customerId);
+    }
+    const tierRes = await getCustomerTier(customerId);
+    const info = {
+      percent: Number(tierRes?.data?.discountPercent || 0),
+      name: tierRes?.data?.name || 'Tier'
+    };
+    tierCacheRef.current.set(customerId, info);
+    return info;
+  };
+
+  const getItemBasePrice = async (itemId, fallback = 0) => {
+    if (!itemId) return Number(fallback || 0);
+    if (itemBaseCacheRef.current.has(itemId)) {
+      return itemBaseCacheRef.current.get(itemId);
+    }
+    try {
+      const r = await getItemById(itemId);
+      const base = Number(r?.data?.sellingPrice ?? r?.data?.price ?? fallback ?? 0);
+      itemBaseCacheRef.current.set(itemId, base);
+      return base;
+    } catch {
+      return Number(fallback || 0);
+    }
+  };
+
+  const computeOrderDiscountPreview = async (order) => {
+    try {
+      const { percent, name } = await getTierInfo(order.customerId);
+      const items = await Promise.all(
+        (order.items || []).map(async (li) => {
+          const base = await getItemBasePrice(li.itemId, li.unitPrice);
+          return {
+            sellingPrice: base,
+            price: base,
+            discountedPrice: null,
+            quantity: li.quantity,
+            _orderUnitPrice: li.unitPrice
+          };
+        })
+      );
+      if (!items.length) return null;
+      const best = computeBestOf(items, percent, {
+        getUnitBase: (it) => Number(it.sellingPrice ?? it.price ?? 0),
+        getUnitDiscounted: (it) => Number(it._orderUnitPrice ?? it.sellingPrice ?? it.price ?? 0),
+        getQty: (it) => Number(it.quantity ?? 0)
+      });
+      return { ...best, tierName: name };
+    } catch (error) {
+      console.error('Failed to precompute discount preview for order', order.id, error);
+      return null;
+    }
+  };
 
   // Load pending orders from backend (Sales/Admin view)
   useEffect(() => {
@@ -73,15 +151,21 @@ function HandleOrders() {
         setIsLoading(true);
         const res = await getPendingOrdersForSales(currentPage, itemsPerPage);
         if (!mounted) return;
-        const orders = (res?.data || []).map((o) => ({
+        const baseOrders = (res?.data || []).map((o) => ({
           id: o.orderNumber || String(o.id),
           orderDbId: o.id,
+          customerId: o.customer?.id,
           clientName: o.customer?.customerName || '—',
           date: new Date(o.orderDate).toISOString().slice(0, 10),
           status: o.status,
           total: Number(o.totalAmount) || 0,
+          originalTotal: Number(o.totalAmount) || 0,
+          finalAmount: Number(o.finalAmount ?? o.totalAmount) || 0,
+          discountPercent: Number(o.discountPercent || 0),
+          discountAmount: Number(o.discountAmount || 0),
           paymentTerms: o.paymentTerms || '30 days',
           items: (o.items || []).map((it) => ({
+            itemId: it.item?.id,
             name: it.item?.itemName,
             modelNo: it.item?.modelNo,
             category: it.item?.category?.name,
@@ -92,9 +176,18 @@ function HandleOrders() {
             total: Number(it.totalPrice)
           }))
         }));
-        setPendingOrders(orders);
-        setFilteredPendingOrders(orders);
-        const totalFromApi = Number(res?.pagination?.totalItems) || orders.length;
+
+        const hydratedOrders = await Promise.all(
+          baseOrders.map(async (order) => {
+            const discount = await computeOrderDiscountPreview(order);
+            return discount ? { ...order, reviewDiscount: discount } : order;
+          })
+        );
+
+        if (!mounted) return;
+        setPendingOrders(hydratedOrders);
+        setFilteredPendingOrders(hydratedOrders);
+        const totalFromApi = Number(res?.pagination?.totalItems) || hydratedOrders.length;
         setTotalPendingCount(totalFromApi);
       } catch (e) {
         console.error('Failed to load pending orders:', e);
@@ -128,6 +221,10 @@ function HandleOrders() {
           date: new Date(o.orderDate).toISOString().slice(0, 10),
           status: 'rejected',
           total: Number(o.totalAmount) || 0,
+          originalTotal: Number(o.totalAmount) || 0,
+          finalAmount: Number(o.finalAmount ?? o.totalAmount) || 0,
+          discountPercent: Number(o.discountPercent || 0),
+          discountAmount: Number(o.discountAmount || 0),
           paymentTerms: o.paymentTerms || '30 days',
           rejectedDate: o.updatedAt ? new Date(o.updatedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
           rejectionReason: o.rejectionReason || 'Order rejected',
@@ -218,10 +315,37 @@ function HandleOrders() {
     setIsViewModalOpen(true);
   };
 
+  const updateOrderReviewDiscount = (orderId, discountData) => {
+    setPendingOrders(prev =>
+      prev.map(o => (o.id === orderId ? { ...o, reviewDiscount: discountData || null } : o))
+    );
+    setFilteredPendingOrders(prev =>
+      prev.map(o => (o.id === orderId ? { ...o, reviewDiscount: discountData || null } : o))
+    );
+  };
+
   const handleReviewOrder = (order) => {
-    setSelectedOrder(order);
-    setDiscountPercent(''); // Reset discount when opening process modal
-    setIsProcessModalOpen(true);
+    (async () => {
+      setSelectedOrder(order);
+      setIsProcessModalOpen(true);
+      setReviewDiscount(order.reviewDiscount || null);
+      if (order.reviewDiscount) {
+        return;
+      }
+      try {
+        const discountPayload = await computeOrderDiscountPreview(order);
+        setReviewDiscount(discountPayload);
+        updateOrderReviewDiscount(order.id, discountPayload);
+        setSelectedOrder(prev => {
+          if (!prev || prev.id !== order.id) return prev;
+          return { ...prev, reviewDiscount: discountPayload };
+        });
+      } catch (e) {
+        console.error('Failed computing discount for review:', e);
+        setReviewDiscount(null);
+        updateOrderReviewDiscount(order.id, null);
+      }
+    })();
   };
 
 
@@ -233,14 +357,24 @@ function HandleOrders() {
   const handleCloseProcessModal = () => {
     setIsProcessModalOpen(false);
     setSelectedOrder(null);
-    setDiscountPercent(''); // Reset discount when closing process modal
+    setReviewDiscount(null);
   };
 
   const handleProcess = async (orderId, discount) => {
     setProcessingOrderId(orderId);
     try {
-      const discountPct = discountPercent || 0;
-      const discountAmt = discount || 0;
+      // Use computed best-of result if available; ignore manual discount input
+      let discountPct = 0;
+      let discountAmt = 0;
+      const order = selectedOrder;
+      if (reviewDiscount && order) {
+        // productTotal corresponds to the current order total (before additional discount)
+        const productTotal = Number(reviewDiscount.productTotal || order.total || 0);
+        const chosenTotal = Number(reviewDiscount.chosenTotal || productTotal);
+        const savings = Math.max(0, productTotal - chosenTotal);
+        discountAmt = Number(savings.toFixed(2));
+        discountPct = productTotal > 0 ? Number(((savings / productTotal) * 100).toFixed(2)) : 0;
+      }
       
       const response = await updateOrderStatus(orderId, { 
         status: 'approved',
@@ -254,7 +388,11 @@ function HandleOrders() {
       setTotalPendingCount(c => Math.max(0, c - 1));
       
       // Show success modal
-      setSuccessModalMessage(`Order ${orderId} has been successfully approved. You can now view the order in the invoice section.`);
+      if (reviewDiscount?.applied === 'tier' && reviewDiscount?.savingsAmount > 0) {
+        setSuccessModalMessage(`Order ${orderId} approved. Applied ${reviewDiscount.tierPercent}% ${reviewDiscount.tierName} tier (saved ₱${Number(reviewDiscount.savingsAmount).toFixed(2)}). View it in invoices.`);
+      } else {
+        setSuccessModalMessage(`Order ${orderId} has been successfully approved. You can now view the order in the invoice section.`);
+      }
       setSuccessModalOpen(true);
       handleCloseProcessModal();
     } catch (e) {
@@ -565,8 +703,8 @@ function HandleOrders() {
                             Pending
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-md text-gray-500">
-                          ₱{order.total.toFixed(2)}
+                        <td className="px-6 py-4 whitespace-nowrap text-md text-left text-gray-500">
+                          {formatPeso(getPendingFinalTotal(order))}
                         </td>
                         <td className="px-10 py-4 whitespace-nowrap text-md text-gray-500">
                           {order.items.reduce((total, item) => total + item.quantity, 0)}
@@ -795,8 +933,7 @@ function HandleOrders() {
           order={selectedOrder}
           onProcess={handleProcess}
           onReject={handleRejectOrder}
-          discountPercent={discountPercent}
-          setDiscountPercent={setDiscountPercent}
+          reviewDiscount={reviewDiscount}
           isProcessing={processingOrderId === selectedOrder?.id}
           isRejecting={rejectingOrderId === selectedOrder?.id}
         />

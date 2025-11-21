@@ -132,7 +132,7 @@ async function generateInvoiceHTML(invoice) {
           <div class="label">Bill To</div>
           <div class="value">${customer.customerName || ''}</div>
           <div>${customer.email1 || ''}</div>
-          <div>${[customer.street, customer.city, customer.country].filter(Boolean).join(', ')}</div>
+          <div>${[customer.addressLine1, customer.barangay, customer.city, customer.country].filter(Boolean).join(', ')}</div>
         </div>
         <div>
           <div class="label">Payment Terms</div>
@@ -597,7 +597,9 @@ const getMyInvoices = async (req, res, next) => {
         orderId: invoice.order?.orderNumber || `ORD-${invoice.orderId}`,
         customerName: customer.customerName,
         customerEmail: customer.email1,
-        customerAddress: `${customer.street || ''}, ${customer.city || ''}, ${customer.country || ''}`.trim(),
+        customerAddress: [customer.addressLine1, customer.barangay, customer.city, customer.country]
+          .filter(Boolean)
+          .join(', '),
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         subtotal: taxCalculation.subtotal,
@@ -643,6 +645,16 @@ const updateInvoiceStatus = async (req, res, next) => {
     }
 
     await invoice.update({ status });
+
+    // Auto-upgrade tier if status becomes partially paid or completed
+    try {
+      if (status === 'completed' || status === 'partially paid') {
+        const { checkAndUpgradeTier } = require('../utils/tierUtils');
+        if (invoice.customerId) {
+          await checkAndUpgradeTier(invoice.customerId);
+        }
+      }
+    } catch (_) {}
 
     res.json({
       success: true,

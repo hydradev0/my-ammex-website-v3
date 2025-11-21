@@ -556,18 +556,25 @@ const getMyOrders = async (req, res, next) => {
         const notes = o.notes ? String(o.notes) : '';
         const idx = notes.indexOf('REJECT:');
         const isRejected = o.status === 'rejected';
+        const originalTotal = Number(o.totalAmount || 0);
+        const finalTotal = Number(o.finalAmount != null ? o.finalAmount : originalTotal);
         return {
           id: o.id,
           orderNumber: o.orderNumber,
           orderDate: o.orderDate,
           status: isRejected ? 'rejected' : o.status,
-          totalAmount: Number(o.totalAmount),
+          totalAmount: finalTotal,
+          finalAmount: finalTotal,
+          originalTotal,
+          discountPercent: Number(o.discountPercent || 0),
+          discountAmount: Number(o.discountAmount || 0),
           items: (o.items || []).map((it) => ({
             name: it.item?.itemName,
             model: it.item?.modelNo,
             quantity: Number(it.quantity),
             price: Number(it.unitPrice),
-            total: Number(it.totalPrice)
+            total: Number(it.totalPrice),
+            basePrice: Number(it.item?.sellingPrice ?? it.item?.price ?? it.unitPrice)
           })),
           ...(idx >= 0 ? { rejectionReason: notes.slice(idx + 'REJECT:'.length).trim() } : {})
         };

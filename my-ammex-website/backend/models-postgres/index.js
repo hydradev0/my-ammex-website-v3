@@ -412,7 +412,12 @@ const initializeModels = (sequelize) => {
         notEmpty: { msg: 'Company name is required' }
       }
     },
-    street: {
+    addressLine1: {
+      type: DataTypes.STRING,
+      field: 'address_line_1',
+      allowNull: true
+    },
+    barangay: {
       type: DataTypes.STRING,
       allowNull: true
     },
@@ -479,9 +484,20 @@ const initializeModels = (sequelize) => {
         model: 'User',
         key: 'id'
       }
+    },
+    // Optional: customer's assigned tier (can be null; computed dynamically if not set)
+    tierId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'tier_id',
+      references: {
+        model: 'Tier',
+        key: 'id'
+      }
     }
   }, {
     timestamps: true,
+    tableName: 'Customer',
     hooks: {
       afterCreate: async (customer, options) => {
         if (!customer.customerId) {
@@ -492,6 +508,54 @@ const initializeModels = (sequelize) => {
       }
     }
   });
+
+  // Tier Model
+  const Tier = sequelize.define('Tier', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
+    discountPercent: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      field: 'discount_percent'
+    },
+    minSpend: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      field: 'min_spend'
+    },
+    priority: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'is_active'
+    }
+  }, {
+    timestamps: true,
+    tableName: 'Tier'
+  });
+
+  // Associations for tiers
+  try {
+    Customer.belongsTo(Tier, { foreignKey: 'tierId', as: 'tier' });
+    Tier.hasMany(Customer, { foreignKey: 'tierId' });
+  } catch (e) {
+    // Association errors should not crash server startup
+  }
 
   // Supplier Model
   const Supplier = sequelize.define('Supplier', {
@@ -1889,6 +1953,7 @@ const initializeModels = (sequelize) => {
     Order,
     OrderItem,
     Customer,
+    Tier,
     Supplier,
     Unit,
     Cart,
