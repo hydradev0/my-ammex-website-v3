@@ -68,7 +68,8 @@ const Dashboard = () => {
             value={metrics.sales?.total || 0}
             valuePrefix="₱"
             subtitle={`Average order value: ₱${(metrics.sales?.averageOrderValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            statusIndicator={formatGrowth(metrics.sales?.growth)}
+            growth={metrics.sales?.growth}
+            growthColor={metrics.sales?.growth > 0 ? 'green' : metrics.sales?.growth < 0 ? 'red' : 'green'}
           />
         );
       
@@ -78,9 +79,10 @@ const Dashboard = () => {
             key={title}
             title={title}
             value={metrics.orders?.total || 0}
-            valueSuffix={` ${metrics.orders?.total || 0 === 1 ? 'order' : 'orders'}`}
+            valueSuffix={` ${(metrics.orders?.total || 0) === 1 ? 'order' : 'orders'}`}
             subtitle={`${metrics.orders?.pending || 0} orders pending`}
-            statusIndicator={formatGrowth(metrics.orders?.growth)}
+            growth={metrics.orders?.growth}
+            growthColor={metrics.orders?.growth > 0 ? 'green' : metrics.orders?.growth < 0 ? 'red' : 'green'}
             linkText="View Orders"
             onLinkClick={() => navigate('/sales/orders')}
           />
@@ -120,7 +122,7 @@ const Dashboard = () => {
             key={title}
             title={title}
             value={metrics.inventory?.outOfStock || 0}
-            valueSuffix={` ${metrics.inventory?.outOfStock || 0 === 1 ? 'item out of stock' : 'items out of stock '}`}
+            valueSuffix={` ${(metrics.inventory?.outOfStock || 0) === 1 ? 'item out of stock' : 'items out of stock'}`}
             statusIndicator={{
               text: (metrics.inventory?.outOfStock || 0) > 5 ? 'Critical' : 'Warning',
               color: (metrics.inventory?.outOfStock || 0) > 5 ? 'red' : 'yellow'

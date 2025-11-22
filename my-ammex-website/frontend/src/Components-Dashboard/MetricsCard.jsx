@@ -1,4 +1,5 @@
 import React from "react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 const MetricsCard = ({
   title,
@@ -35,10 +36,15 @@ const MetricsCard = ({
             {statusIndicator.text}
           </span>
         ) : (
-          growth !== undefined && (
+          growth !== undefined && growth !== null && growth !== 0 && (
             <span
-              className={`${growthColorClasses[growthColor]} px-2 py-1 rounded-full text-sm`}
+              className={`${growthColorClasses[growthColor]} px-2 py-1 rounded-full text-sm flex items-center gap-1`}
             >
+              {growth > 0 ? (
+                <TrendingUp className="w-4 h-4" />
+              ) : (
+                <TrendingDown className="w-4 h-4" />
+              )}
               {growth >= 0 ? "+" : ""}
               {growth.toFixed(1)}%
             </span>

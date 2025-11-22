@@ -4,6 +4,15 @@ import { AlertTriangle, Package, Bell, Search, Clock, AlertCircle, ChevronDown, 
 import * as XLSX from 'xlsx';
 import { getInventoryAlerts } from '../services/dashboardService';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Cell,
+  Tooltip
+} from 'recharts';
 
 const InventoryAlerts = () => {
   const navigate = useNavigate();
@@ -102,10 +111,10 @@ const InventoryAlerts = () => {
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'critical': return 'text-red-600 bg-red-50 border-red-200';
-      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'critical': return 'text-red-700 bg-red-100/80 border-red-300';
+      case 'high': return 'text-amber-700 bg-amber-100/80 border-amber-300';
+      case 'medium': return 'text-yellow-700 bg-yellow-100/80 border-yellow-300';
+      default: return 'text-gray-700 bg-gray-100/80 border-gray-300';
     }
   };
 
@@ -115,6 +124,115 @@ const InventoryAlerts = () => {
       case 'high': return <AlertCircle className="w-4 h-4" />;
       case 'medium': return <Clock className="w-4 h-4" />;
       default: return <Bell className="w-4 h-4" />;
+    }
+  };
+
+  // Get severity-based card styling with refined colors
+  const getSeverityCardStyle = (severity) => {
+    switch (severity) {
+      case 'critical': 
+        return {
+          border: 'border-red-400/60 border-l-4',
+          background: 'bg-gradient-to-r from-red-50/50 to-white',
+          hover: 'hover:from-red-50/70 hover:to-red-50/30',
+          shadow: 'shadow-sm shadow-red-100/50'
+        };
+      case 'high': 
+        return {
+          border: 'border-amber-400/60 border-l-4',
+          background: 'bg-gradient-to-r from-amber-50/50 to-white',
+          hover: 'hover:from-amber-50/70 hover:to-amber-50/30',
+          shadow: 'shadow-sm shadow-amber-100/50'
+        };
+      case 'medium': 
+        return {
+          border: 'border-yellow-400/60 border-l-4',
+          background: 'bg-gradient-to-r from-yellow-50/50 to-white',
+          hover: 'hover:from-yellow-50/70 hover:to-yellow-50/30',
+          shadow: 'shadow-sm shadow-yellow-100/50'
+        };
+      default: 
+        return {
+          border: 'border-gray-300 border-l-4',
+          background: 'bg-white',
+          hover: 'hover:bg-gray-50/50',
+          shadow: 'shadow-sm'
+        };
+    }
+  };
+
+  // Calculate alert counts by severity
+  const getAlertCountsBySeverity = () => {
+    const counts = {
+      critical: 0,
+      high: 0,
+      medium: 0
+    };
+    
+    currentAlerts.forEach(alert => {
+      const severity = alert.severity || 'medium';
+      if (counts[severity] !== undefined) {
+        counts[severity]++;
+      }
+    });
+    
+    return counts;
+  };
+
+  // Calculate progress percentage for low stock (current vs minimum)
+  const getLowStockProgress = (current, minimum) => {
+    if (!minimum || minimum === 0) return 0;
+    const percentage = (current / minimum) * 100;
+    return Math.min(percentage, 100); // Cap at 100%
+  };
+
+  // Calculate progress percentage for overstock (current vs maximum)
+  const getOverstockProgress = (current, maximum) => {
+    if (!maximum || maximum === 0) return 100;
+    const percentage = (current / maximum) * 100;
+    return Math.min(percentage, 200); // Allow up to 200% to show excess
+  };
+
+  // Get progress bar color with refined gradient colors
+  const getProgressBarColor = (alert, activeTab) => {
+    if (activeTab === 'lowStock') {
+      const current = alert.currentStock || 0;
+      const minimum = alert.minimumStockLevel || 0;
+      if (current === 0) return 'bg-gradient-to-r from-red-600 to-red-500';
+      if (current <= minimum * 0.3) return 'bg-gradient-to-r from-red-500 to-red-400';
+      if (current <= minimum * 0.5) return 'bg-gradient-to-r from-amber-500 to-amber-400';
+      if (current <= minimum) return 'bg-gradient-to-r from-yellow-500 to-yellow-400';
+      return 'bg-gradient-to-r from-emerald-500 to-emerald-400';
+    } else {
+      const current = alert.currentStock || 0;
+      const maximum = alert.maximumStockLevel || 0;
+      if (current >= maximum * 1.5) return 'bg-gradient-to-r from-red-600 to-red-500';
+      if (current >= maximum * 1.25) return 'bg-gradient-to-r from-orange-500 to-orange-400';
+      if (current >= maximum) return 'bg-gradient-to-r from-yellow-500 to-yellow-400';
+      return 'bg-gradient-to-r from-emerald-500 to-emerald-400';
+    }
+  };
+
+  // Prepare data for mini bar chart
+  const getMiniChartData = (alert, activeTab) => {
+    if (activeTab === 'lowStock') {
+      const current = alert.currentStock || 0;
+      const minimum = alert.minimumStockLevel || 0;
+      const target = minimum || 1;
+      
+      return [
+        { name: 'Current', value: current, label: 'Current' },
+        { name: 'Minimum', value: target, label: 'Minimum' }
+      ];
+    } else {
+      const current = alert.currentStock || 0;
+      const maximum = alert.maximumStockLevel || 0;
+      const target = maximum || 1;
+      
+      return [
+        { name: 'Current', value: current, label: 'Current' },
+        { name: 'Maximum', value: target, label: 'Maximum' }
+      ];
     }
   };
 
@@ -335,12 +453,54 @@ const InventoryAlerts = () => {
             </button>
           </div>
 
-          {/* Alerts List */}
-          <div className="divide-y divide-gray-200 max-h-[550px] overflow-y-auto pb-4 pr-4">
-            {filteredAlerts.map((alert) => (
-              <div key={alert.id} className="py-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+          {/* Alert Summary Badges */}
+          {currentAlerts.length > 0 && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Alert Summary</h3>
+              <div className="flex flex-wrap gap-3">
+                {(() => {
+                  const counts = getAlertCountsBySeverity();
+                  return Object.entries(counts).map(([severity, count]) => {
+                    if (count === 0) return null;
+                    const severityColors = {
+                      critical: 'bg-gradient-to-r from-red-100 to-red-50 text-red-800 border-red-300 shadow-sm',
+                      high: 'bg-gradient-to-r from-amber-100 to-amber-50 text-amber-800 border-amber-300 shadow-sm',
+                      medium: 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 border-yellow-300 shadow-sm'
+                    };
+                    return (
+                      <span
+                        key={severity}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold border ${severityColors[severity] || 'bg-gray-100 text-gray-700 border-gray-300'}`}
+                      >
+                        {count} {severity.charAt(0).toUpperCase() + severity.slice(1)}
+                      </span>
+                    );
+                  });
+                })()}
+                <span className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800 border border-blue-300 shadow-sm">
+                  {currentAlerts.length} Total
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Alerts List - Card Layout */}
+          <div className="grid grid-cols-1 gap-4 max-h-[550px] overflow-y-auto pb-4 pr-4">
+            {filteredAlerts.map((alert) => {
+              const cardStyle = getSeverityCardStyle(alert.severity || 'medium');
+              const progress = activeTab === 'lowStock' 
+                ? getLowStockProgress(alert.currentStock || 0, alert.minimumStockLevel || 0)
+                : getOverstockProgress(alert.currentStock || 0, alert.maximumStockLevel || 0);
+              const chartData = getMiniChartData(alert, activeTab);
+              const maxChartValue = Math.max(...chartData.map(d => d.value), 1);
+              
+              return (
+                <div 
+                  key={alert.id} 
+                  className={`rounded-lg p-5 ${cardStyle.border} ${cardStyle.background} ${cardStyle.hover} ${cardStyle.shadow} transition-all duration-200`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getSeverityColor(alert.severity || 'medium')}`}>
                         {getSeverityIcon(alert.severity || 'medium')}
@@ -351,10 +511,10 @@ const InventoryAlerts = () => {
                     {/* Alert Message */}
                     {alert.message && (
                       <div className='py-3'>
-                        <span className={`p-2 rounded-lg text-sm font-medium ${
-                          alert.severity === 'critical' ? 'bg-red-50 text-red-800' :
-                          alert.severity === 'high' ? 'bg-orange-50 text-orange-800' :
-                          'bg-yellow-50 text-yellow-800'
+                        <span className={`p-3 rounded-lg text-sm font-medium border ${
+                          alert.severity === 'critical' ? 'bg-red-50/80 text-red-900 border-red-200' :
+                          alert.severity === 'high' ? 'bg-amber-50/80 text-amber-900 border-amber-200' :
+                          'bg-yellow-50/80 text-yellow-900 border-yellow-200'
                         }`}>
                           {alert.message}
                         </span>
@@ -401,67 +561,149 @@ const InventoryAlerts = () => {
                       </div>
                     </div>
                     
-                    {activeTab === 'lowStock' ? (
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Current Stock:</span>
-                          <span className={`ml-2 font-semibold text-lg ${(alert.currentStock || 0) < (alert.minimumStockLevel || 0) ? 'text-red-600' : 'text-gray-900'}`}>
-                            {alert.currentStock || 0} {alert.unitName || 'units'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Minimum Level:</span>
-                          <span className="ml-2 font-semibold text-lg text-gray-900">{alert.minimumStockLevel || 0} {alert.unitName || 'units'}</span>
-                        </div>
-                        {/* {alert.reorderAmount > 0 && (
-                          <div className="col-span-2">
-                            <span className="text-gray-500">Suggested Reorder:</span>
-                            <span className="ml-2 font-semibold text-lg text-blue-600">{alert.reorderAmount} {alert.unitName || 'units'}</span>
+                      {/* Stock Level Visualization */}
+                      <div className="mt-4 space-y-3">
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs text-gray-600">
+                            <span>
+                              {activeTab === 'lowStock' ? 'Stock Level vs Minimum' : 'Stock Level vs Maximum'}
+                            </span>
+                            <span className="font-semibold">
+                              {activeTab === 'lowStock' 
+                                ? `${Math.round(progress)}% of minimum`
+                                : `${Math.round(progress)}% of maximum`
+                              }
+                            </span>
                           </div>
-                        )} */}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Current Stock:</span>
-                          <span className={`ml-2 font-semibold text-lg ${(alert.currentStock || 0) > (alert.maximumStockLevel || 0) ? 'text-orange-600' : 'text-gray-900'}`}>
-                            {alert.currentStock || 0} {alert.unitName || 'units'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Maximum Level:</span>
-                          <span className="ml-2 font-semibold text-lg text-gray-900">{alert.maximumStockLevel || 0} {alert.unitName || 'units'}</span>
-                        </div>
-                        {alert.excessAmount > 0 && (
-                          <div className="col-span-2">
-                            <span className="text-gray-500">Excess Stock:</span>
-                            <span className="ml-2 font-semibold text-lg text-orange-600">{alert.excessAmount} {alert.unitName || 'units'} over maximum</span>
+                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div
+                              className={`h-full ${getProgressBarColor(alert, activeTab)} transition-all duration-500 rounded-full`}
+                              style={{
+                                width: `${Math.min(progress, 100)}%`
+                              }}
+                            />
                           </div>
-                        )}
+                        </div>
+
+                        {/* Mini Horizontal Bar Chart with Hover Tooltip */}
+                        <div className="mt-4">
+                          <div className="text-xs text-gray-600 mb-2 font-medium">Visual Comparison (Hover for details)</div>
+                          <div className="h-20">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart 
+                                data={chartData} 
+                                layout="vertical"
+                                margin={{ top: 5, right: 20, left: 5, bottom: 5 }}
+                              >
+                                <XAxis 
+                                  type="number"
+                                  domain={[0, maxChartValue]}
+                                  hide
+                                />
+                                <YAxis 
+                                  type="category"
+                                  dataKey="name"
+                                  tick={{ fontSize: 10, fill: '#64748b' }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                  width={60}
+                                />
+                                <Tooltip 
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      const current = alert.currentStock || 0;
+                                      const minimum = alert.minimumStockLevel || 0;
+                                      const maximum = alert.maximumStockLevel || 0;
+                                      const unitName = alert.unitName || 'units';
+                                      
+                                      return (
+                                        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-sm text-gray-600">Current Stock:</span>
+                                              <span className={`text-sm font-semibold ${
+                                                activeTab === 'lowStock' 
+                                                  ? ((current || 0) < (minimum || 0) ? 'text-red-600' : 'text-gray-900')
+                                                  : ((current || 0) > (maximum || 0) ? 'text-orange-600' : 'text-gray-900')
+                                              }`}>
+                                                {current} {unitName}
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-sm text-gray-600">
+                                                {activeTab === 'lowStock' ? 'Minimum Level:' : 'Maximum Level:'}
+                                              </span>
+                                              <span className="text-sm font-semibold text-gray-900">
+                                                {activeTab === 'lowStock' ? minimum : maximum} {unitName}
+                                              </span>
+                                            </div>
+                                            {activeTab === 'lowStock' && (current || 0) < (minimum || 0) && (
+                                              <div className="pt-2 border-t border-gray-200">
+                                                <span className="text-sm font-semibold text-red-600">
+                                                  Short by: {(minimum || 0) - (current || 0)} {unitName}
+                                                </span>
+                                              </div>
+                                            )}
+                                            {activeTab === 'overstock' && alert.excessAmount > 0 && (
+                                              <div className="pt-2 border-t border-gray-200">
+                                                <span className="text-sm font-semibold text-orange-600">
+                                                  Excess: {alert.excessAmount} {unitName} over maximum
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                                  {chartData.map((entry, index) => {
+                                    // Refined color palette for charts
+                                    const getChartColor = () => {
+                                      if (activeTab === 'lowStock') {
+                                        if (index === 0) {
+                                          const current = alert.currentStock || 0;
+                                          const minimum = alert.minimumStockLevel || 0;
+                                          if (current === 0) return '#dc2626'; // red-600
+                                          if (current <= minimum * 0.3) return '#ea580c'; // orange-600
+                                          if (current <= minimum * 0.5) return '#f59e0b'; // amber-500
+                                          if (current <= minimum) return '#eab308'; // yellow-500
+                                          return '#10b981'; // emerald-500
+                                        }
+                                        return '#94A3B8'; // slate-400 (softer gray for threshold)
+                                      } else {
+                                        if (index === 0) {
+                                          const current = alert.currentStock || 0;
+                                          const maximum = alert.maximumStockLevel || 0;
+                                          if (current >= maximum * 1.5) return '#dc2626'; // red-600
+                                          if (current >= maximum * 1.25) return '#ea580c'; // orange-600
+                                          if (current >= maximum) return '#f59e0b'; // amber-500
+                                          return '#10b981'; // emerald-500
+                                        }
+                                        return '#94A3B8'; // slate-400
+                                      }
+                                    };
+                                    return (
+                                      <Cell 
+                                        key={`cell-${index}`} 
+                                        fill={getChartColor()}
+                                      />
+                                    );
+                                  })}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* <div className="mt-3 flex items-center gap-4">
-                      <span className={`text-sm font-medium ${
-                        activeTab === 'lowStock' ? (
-                          (alert.currentStock || 0) === 0 ? 'text-red-600' : 
-                          (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.3 ? 'text-red-500' :
-                          (alert.currentStock || 0) <= (alert.minimumStockLevel || 0) * 0.5 ? 'text-orange-500' : 'text-yellow-600'
-                        ) : (
-                          (alert.currentStock || 0) >= (alert.maximumStockLevel || 0) * 1.5 ? 'text-red-600' :
-                          (alert.currentStock || 0) >= (alert.maximumStockLevel || 0) * 1.25 ? 'text-orange-500' : 'text-yellow-600'
-                        )
-                      }`}>
-                        {activeTab === 'lowStock' 
-                          ? getStockStatus(alert.currentStock || 0, alert.minimumStockLevel || 0)
-                          : getOverstockStatus(alert.currentStock || 0, alert.maximumStockLevel || 0)
-                        }
-                      </span>
-                    </div> */}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           {filteredAlerts.length === 0 && (

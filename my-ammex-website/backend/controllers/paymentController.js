@@ -489,13 +489,8 @@ async function createPaymentReceipt(payment, invoice) {
       return existingReceipt;
     }
     
-    // Get customer details - explicitly exclude 'street' column that doesn't exist in database
-    // Use exclude to prevent Sequelize from trying to select non-existent column
-    const customer = await Customer.findByPk(payment.customerId, {
-      attributes: {
-        exclude: ['street'] // Explicitly exclude street column that doesn't exist in Customer table
-      }
-    });
+    // Get customer details
+    const customer = await Customer.findByPk(payment.customerId);
     if (!customer) {
       console.error('Customer not found for payment:', payment.id);
       return null;

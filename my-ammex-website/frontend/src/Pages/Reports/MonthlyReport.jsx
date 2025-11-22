@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, ChevronDown, Loader2, ChevronLeft, ChevronRight, X, BarChart3 } from 'lucide-react';
+import { Download, ChevronDown, Loader2, ChevronLeft, ChevronRight, X, BarChart3, DollarSign, ShoppingCart, TrendingUp, Package, Users, FileText, Inbox } from 'lucide-react';
 import RoleBasedLayout from '../../Components/RoleBasedLayout';
-import { getMonthlyReport, getAvailableYears, getAvailableMonths } from '../../services/monthlyReportsService';
+import { getMonthlyReport, getAnnualReport, getWeeklyReport, getAvailableYears, getAvailableMonths, getAvailableWeeks } from '../../services/summaryReportsService';
 import { createPortal } from 'react-dom';
 import ScrollLock from '../../Components/ScrollLock';
 import jsPDF from 'jspdf';
@@ -60,17 +60,32 @@ const getCurrentYear = () => {
   return new Date().getFullYear().toString();
 };
 
+// Helper function to get current week number
+const getCurrentWeek = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const days = Math.floor((now - start) / (24 * 60 * 60 * 1000));
+  const weekNumber = Math.ceil((days + start.getDay() + 1) / 7);
+  return weekNumber.toString();
+};
+
 export default function MonthlyReport() {
+  // Report type state
+  const [reportType, setReportType] = useState('monthly'); // 'monthly', 'weekly', 'annual'
   const [selectedYear, setSelectedYear] = useState(getCurrentYear());
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek());
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
+  const [weekDropdownOpen, setWeekDropdownOpen] = useState(false);
   const yearDropdownRef = useRef(null);
   const monthDropdownRef = useRef(null);
+  const weekDropdownRef = useRef(null);
   
   // Data states
   const [availableYears, setAvailableYears] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
+  const [availableWeeks, setAvailableWeeks] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -102,9 +117,10 @@ export default function MonthlyReport() {
     fetchYears();
   }, []);
 
-  // Fetch available months when year changes
+  // Fetch available months when year changes (for monthly and weekly reports)
   useEffect(() => {
     const fetchMonths = async () => {
+      if (reportType === 'annual') return;
       try {
         const response = await getAvailableMonths(selectedYear);
         setAvailableMonths(response.data || []);
@@ -112,25 +128,97 @@ export default function MonthlyReport() {
         console.error('Failed to fetch months:', err);
       }
     };
-    if (selectedYear) {
+    if (selectedYear && (reportType === 'monthly' || reportType === 'weekly')) {
       fetchMonths();
     }
-  }, [selectedYear]);
+  }, [selectedYear, reportType]);
 
-  // Fetch report data when year or month changes
+  // Helper function to calculate weeks in a month (fallback)
+  const getWeeksInMonth = (year, monthName) => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthIndex = monthNames.indexOf(monthName);
+    if (monthIndex === -1) return [];
+    
+    const firstDay = new Date(year, monthIndex, 1);
+    const lastDay = new Date(year, monthIndex + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    
+    // Calculate which week of the month each day falls into
+    const weeks = new Set();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, monthIndex, day);
+      const weekOfMonth = Math.ceil((day + firstDay.getDay()) / 7);
+      weeks.add(weekOfMonth);
+    }
+    
+    return Array.from(weeks).sort((a, b) => a - b).map(w => w.toString());
+  };
+
+  // Fetch available weeks when year and month change (for weekly reports)
+  useEffect(() => {
+    const fetchWeeks = async () => {
+      if (reportType !== 'weekly' || !selectedYear || !selectedMonth) return;
+      try {
+        const response = await getAvailableWeeks(selectedYear, selectedMonth);
+        const weeks = response.data || [];
+        setAvailableWeeks(weeks);
+        // Reset week to first available week when month changes
+        if (weeks.length > 0 && (!selectedWeek || !weeks.includes(selectedWeek))) {
+          setSelectedWeek(weeks[0]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch weeks:', err);
+        // Fallback: calculate weeks in the selected month
+        const calculatedWeeks = getWeeksInMonth(parseInt(selectedYear), selectedMonth);
+        setAvailableWeeks(calculatedWeeks);
+        // Reset week to first available week
+        if (calculatedWeeks.length > 0 && (!selectedWeek || !calculatedWeeks.includes(selectedWeek))) {
+          setSelectedWeek(calculatedWeeks[0]);
+        }
+      }
+    };
+    if (selectedYear && selectedMonth && reportType === 'weekly') {
+      fetchWeeks();
+    }
+  }, [selectedYear, selectedMonth, reportType]);
+
+  // Fetch report data when year, month, week, or report type changes
   useEffect(() => {
     const fetchReportData = async () => {
-      if (!selectedYear || !selectedMonth) return;
+      if (!selectedYear) return;
+      
+      // Validate required fields based on report type
+      if (reportType === 'monthly' && !selectedMonth) return;
+      if (reportType === 'weekly') {
+        // For weekly reports, ensure we have both month and week, and week is valid
+        if (!selectedMonth || !selectedWeek) return;
+        // Also check if the selected week is in the available weeks for this month
+        if (availableWeeks.length > 0 && !availableWeeks.includes(selectedWeek)) {
+          // If selected week is not available, don't fetch (will be reset by month change)
+          return;
+        }
+      }
       
       setIsLoading(true);
       setError(null);
       
       try {
-        const response = await getMonthlyReport(selectedYear, selectedMonth);
-        setReportData(response.data);
-        // Reset pagination when data changes
-        setProductsPage(1);
-        setCustomersPage(1);
+        let response;
+        if (reportType === 'monthly') {
+          response = await getMonthlyReport(selectedYear, selectedMonth);
+        } else if (reportType === 'weekly') {
+          response = await getWeeklyReport(selectedYear, selectedMonth, selectedWeek);
+        } else if (reportType === 'annual') {
+          response = await getAnnualReport(selectedYear);
+        }
+        
+        if (response) {
+          setReportData(response.data);
+          // Reset pagination when data changes
+          setProductsPage(1);
+          setCustomersPage(1);
+        }
       } catch (err) {
         console.error('Failed to fetch report data:', err);
         setError(err.message || 'Failed to load report data');
@@ -140,7 +228,7 @@ export default function MonthlyReport() {
     };
 
     fetchReportData();
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, selectedWeek, reportType, availableWeeks]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -150,6 +238,9 @@ export default function MonthlyReport() {
       }
       if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
         setMonthDropdownOpen(false);
+      }
+      if (weekDropdownRef.current && !weekDropdownRef.current.contains(event.target)) {
+        setWeekDropdownOpen(false);
       }
     };
 
@@ -337,7 +428,15 @@ export default function MonthlyReport() {
     doc.text('Report Summary', marginX, cursorY);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${selectedMonth} ${selectedYear}`, marginX, cursorY + 18);
+    let periodText = '';
+    if (reportType === 'monthly') {
+      periodText = `${selectedMonth} ${selectedYear}`;
+    } else if (reportType === 'weekly') {
+      periodText = `${selectedMonth} ${selectedYear} - Week ${selectedWeek}`;
+    } else if (reportType === 'annual') {
+      periodText = `${selectedYear}`;
+    }
+    doc.text(periodText, marginX, cursorY + 18);
     cursorY += 30;
 
     doc.setDrawColor(59, 130, 246);
@@ -399,8 +498,12 @@ export default function MonthlyReport() {
       cursorY = doc.lastAutoTable?.finalY + 30 || cursorY + 30;
     };
 
+    const productsTitle = reportType === 'monthly' ? 'Top Products of the Month' :
+                          reportType === 'weekly' ? 'Top Products of the Week' :
+                          'Top Products of the Year';
+    
     addSection(
-      'Top Products of the Month',
+      productsTitle,
       ['Model No.', 'Category', 'No. of Orders', 'Sales'],
       (reportData.topProducts || []).map(product => ([
         product.modelNo || 'N/A',
@@ -411,8 +514,12 @@ export default function MonthlyReport() {
       'No product data available for this period.'
     );
 
+    const customersTitle = reportType === 'monthly' ? 'Top Customers of the Month' :
+                           reportType === 'weekly' ? 'Top Customers of the Week' :
+                           'Top Customers of the Year';
+    
     addSection(
-      'Top Customers of the Month',
+      customersTitle,
       ['Customer', 'Bulk Count', 'Bulk Amount', 'Avg Bulk Amount', 'Model No.'],
       (reportData.topCustomers || []).map(customer => {
         const modelNumbers = customer.modelNo && customer.modelNo !== 'N/A'
@@ -429,16 +536,62 @@ export default function MonthlyReport() {
       'No customer data available for this period.'
     );
 
-    doc.save(`Report_Summary_${selectedMonth}_${selectedYear}.pdf`);
+    let filename = '';
+    if (reportType === 'monthly') {
+      filename = `Report_Summary_${selectedMonth}_${selectedYear}.pdf`;
+    } else if (reportType === 'weekly') {
+      const monthShort = selectedMonth.substring(0, 3);
+      filename = `Report_Summary_${monthShort}_${selectedYear}_Week${selectedWeek}.pdf`;
+    } else if (reportType === 'annual') {
+      filename = `Report_Summary_${selectedYear}.pdf`;
+    }
+    doc.save(filename);
   };
+
+  // Skeleton Loader Component
+  const MetricCardSkeleton = () => (
+    <div className="bg-gradient-to-br from-gray-50 to-white p-5 rounded-lg border-l-4 border-gray-300 shadow-sm animate-pulse">
+      <div className="flex items-center justify-between mb-2">
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+        <div className="p-2 bg-gray-200 rounded-lg w-8 h-8"></div>
+      </div>
+      <div className="h-8 bg-gray-200 rounded w-32 mt-2"></div>
+    </div>
+  );
 
   if (isLoading && !reportData) {
     return (
       <>
         <RoleBasedLayout />
-        <div className="w-full min-h-[calc(100vh)] flex flex-col items-center justify-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-          <div className="text-gray-600 text-lg">Loading Report Data...</div>
+        <div className="min-h-screen">
+          <div className="max-w-6xl mx-auto px-6 py-8">
+            {/* Header Skeleton */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
+              <div className="h-5 bg-gray-200 rounded w-32"></div>
+            </div>
+
+            {/* Metrics Skeleton */}
+            <section className="mb-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-40 mb-6"></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {[...Array(6)].map((_, i) => (
+                    <MetricCardSkeleton key={i} />
+                  ))}
+                </div>
+                <div className="h-64 bg-gray-100 rounded"></div>
+              </div>
+            </section>
+
+            {/* Charts Skeleton */}
+            <section className="mb-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                <div className="h-96 bg-gray-100 rounded"></div>
+              </div>
+            </section>
+          </div>
         </div>
       </>
     );
@@ -449,7 +602,16 @@ export default function MonthlyReport() {
       <>
         <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex items-center justify-center">
-          <div className="text-red-600">Error loading report data: {error}</div>
+          <div className="text-center max-w-md px-6">
+            <div className="mx-auto w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+              <X className="w-12 h-12 text-red-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-sm text-gray-400">
+              Please try refreshing the page or selecting a different time period.
+            </p>
+          </div>
         </div>
       </>
     );
@@ -460,7 +622,21 @@ export default function MonthlyReport() {
       <>
         <RoleBasedLayout />
         <div className="w-full min-h-[calc(100vh)] flex items-center justify-center">
-          <p className="text-gray-500">No data available for {selectedMonth} {selectedYear}</p>
+          <div className="text-center max-w-md px-6">
+            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+              <BarChart3 className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Data Available</h3>
+            <p className="text-gray-500 mb-4">
+              No data found for{' '}
+              {reportType === 'monthly' && `${selectedMonth} ${selectedYear}`}
+              {reportType === 'weekly' && `${selectedMonth} ${selectedYear} - Week ${selectedWeek}`}
+              {reportType === 'annual' && `${selectedYear}`}
+            </p>
+            <p className="text-sm text-gray-400">
+              Try selecting a different time period or check back later.
+            </p>
+          </div>
         </div>
       </>
     );
@@ -469,89 +645,28 @@ export default function MonthlyReport() {
   return (
     <>
     <RoleBasedLayout>
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
+      {/* Loading Overlay - Shows when data is refreshing */}
+      {isLoading && reportData && (
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
+            <p className="text-sm text-gray-600">Updating data...</p>
+          </div>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Report Summary</h1>
-              <p className="text-lg text-gray-600">{selectedMonth} {selectedYear}</p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Year Dropdown */}
-              <div className="relative" ref={yearDropdownRef}>
-                <button
-                  onClick={() => {
-                    setYearDropdownOpen(!yearDropdownOpen);
-                    setMonthDropdownOpen(false);
-                  }}
-                  disabled={isLoading}
-                  className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span>{selectedYear}</span>
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  ) : (
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${yearDropdownOpen ? 'rotate-180' : ''}`} />
-                  )}
-                </button>
-                {yearDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[120px]">
-                    {availableYears.map((year) => (
-                      <button
-                        key={year}
-                        onClick={() => {
-                          setSelectedYear(year);
-                          setYearDropdownOpen(false);
-                        }}
-                        className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
-                          selectedYear === year ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
-                        }`}
-                      >
-                        {year}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              {/* Month Dropdown */}
-              <div className="relative" ref={monthDropdownRef}>
-                <button
-                  onClick={() => {
-                    setMonthDropdownOpen(!monthDropdownOpen);
-                    setYearDropdownOpen(false);
-                  }}
-                  disabled={isLoading}
-                  className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span>{selectedMonth}</span>
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  ) : (
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${monthDropdownOpen ? 'rotate-180' : ''}`} />
-                  )}
-                </button>
-                {monthDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[140px] max-h-48 overflow-y-auto">
-                    {months.map((month) => (
-                      <button
-                        key={month}
-                        onClick={() => {
-                          setSelectedMonth(month);
-                          setMonthDropdownOpen(false);
-                        }}
-                        className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
-                          selectedMonth === month ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
-                        }`}
-                      >
-                        {month}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <p className="text-lg text-gray-600">
+                {reportType === 'monthly' && `${selectedMonth} ${selectedYear}`}
+                {reportType === 'weekly' && `${selectedMonth} ${selectedYear} - Week ${selectedWeek}`}
+                {reportType === 'annual' && `${selectedYear}`}
+              </p>
               </div>
               
               <button 
@@ -569,6 +684,192 @@ export default function MonthlyReport() {
                 </span>
               </button>
             </div>
+
+            {/* Report Type Tabs */}
+            <div className="flex items-center gap-2 border-b border-gray-200">
+              {['monthly', 'weekly', 'annual'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setReportType(type);
+                    // Reset selections when changing report type
+                    if (type === 'monthly' || type === 'weekly') {
+                      setSelectedMonth(getCurrentMonth());
+                      if (type === 'weekly') {
+                        setSelectedWeek('1'); // Reset to week 1
+                      }
+                    }
+                  }}
+                  disabled={isLoading}
+                  className={`px-4 py-2 cursor-pointer text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed capitalize ${
+                    reportType === type
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-600 hover:text-gray-900 hover:border-b-2 hover:border-gray-300'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {/* Date Selectors - Contextual based on report type */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Year Selector - Always visible */}
+              <div className="relative" ref={yearDropdownRef}>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
+                <button
+                  onClick={() => {
+                    setYearDropdownOpen(!yearDropdownOpen);
+                    setMonthDropdownOpen(false);
+                    setWeekDropdownOpen(false);
+                  }}
+                  disabled={isLoading}
+                  className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span>{selectedYear}</span>
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  ) : (
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${yearDropdownOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+                {yearDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[100px] max-h-48 overflow-y-auto">
+                    {availableYears.map((year) => (
+                      <button
+                        key={year}
+                        onClick={() => {
+                          setSelectedYear(year);
+                          setYearDropdownOpen(false);
+                        }}
+                        className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                          selectedYear === year ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                        }`}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Month Selector - For monthly and weekly reports */}
+              {(reportType === 'monthly' || reportType === 'weekly') && (
+                <div className="relative" ref={monthDropdownRef}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Month</label>
+                  <button
+                    onClick={() => {
+                      setMonthDropdownOpen(!monthDropdownOpen);
+                      setYearDropdownOpen(false);
+                      setWeekDropdownOpen(false);
+                    }}
+                    disabled={isLoading}
+                    className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span>{selectedMonth}</span>
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${monthDropdownOpen ? 'rotate-180' : ''}`} />
+                    )}
+                  </button>
+                  {monthDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[140px] max-h-48 overflow-y-auto">
+                      {availableMonths.length > 0 ? (
+                        availableMonths.map((month) => (
+                          <button
+                            key={month}
+                            onClick={() => {
+                              setSelectedMonth(month);
+                              setMonthDropdownOpen(false);
+                            }}
+                            className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                              selectedMonth === month ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                            }`}
+                          >
+                            {month}
+                          </button>
+                        ))
+                      ) : (
+                        months.map((month) => (
+                          <button
+                            key={month}
+                            onClick={() => {
+                              setSelectedMonth(month);
+                              setMonthDropdownOpen(false);
+                            }}
+                            className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                              selectedMonth === month ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                            }`}
+                          >
+                            {month}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Week Selector - Only for weekly reports */}
+              {reportType === 'weekly' && (
+                <div className="relative" ref={weekDropdownRef}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Week</label>
+                  <button
+                    onClick={() => {
+                      setWeekDropdownOpen(!weekDropdownOpen);
+                      setYearDropdownOpen(false);
+                      setMonthDropdownOpen(false);
+                    }}
+                    disabled={isLoading || !selectedMonth}
+                    className="flex items-center cursor-pointer justify-between bg-white border border-gray-300 rounded-lg px-4 py-2 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 transition-colors min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span>Week {selectedWeek}</span>
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${weekDropdownOpen ? 'rotate-180' : ''}`} />
+                    )}
+                  </button>
+                  {weekDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[120px] max-h-48 overflow-y-auto">
+                      {availableWeeks.length > 0 ? (
+                        availableWeeks.map((week) => (
+                          <button
+                            key={week}
+                            onClick={() => {
+                              setSelectedWeek(week);
+                              setWeekDropdownOpen(false);
+                            }}
+                            className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                              selectedWeek === week ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                            }`}
+                          >
+                            Week {week}
+                          </button>
+                        ))
+                      ) : (
+                        // Fallback: show weeks 1-5 (typical max weeks in a month)
+                        Array.from({ length: 5 }, (_, i) => i + 1).map((week) => (
+                          <button
+                            key={week}
+                            onClick={() => {
+                              setSelectedWeek(week.toString());
+                              setWeekDropdownOpen(false);
+                            }}
+                            className={`w-full cursor-pointer text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                              selectedWeek === week.toString() ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                            }`}
+                          >
+                            Week {week}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -579,38 +880,68 @@ export default function MonthlyReport() {
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Overall Performance</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {/* Revenue Metrics */}
-              <div className="bg-white p-5 rounded-lg border-l-5 border-blue-500 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-gray-600 mb-2">Total Sales</p>
+              <div className="bg-gradient-to-br from-blue-50 to-white p-5 rounded-lg border-l-4 border-blue-500 shadow-sm hover:shadow-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Total Sales</p>
+                  <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                    <DollarSign className="w-4 h-4 text-blue-600" />
+                  </div>
+                </div>
                 <p className="text-2xl font-bold text-gray-900">₱{reportData.totalRevenue?.toLocaleString() || '0'}</p>
               </div>
               
               {/* Order Metrics */}
-              <div className="bg-white p-5 rounded-lg border-l-5 border-pink-500 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-gray-600 mb-2">Number of Orders</p>
+              <div className="bg-gradient-to-br from-pink-50 to-white p-5 rounded-lg border-l-4 border-pink-500 shadow-sm hover:shadow-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Number of Orders</p>
+                  <div className="p-2 bg-pink-100 rounded-lg group-hover:bg-pink-200 transition-colors">
+                    <ShoppingCart className="w-4 h-4 text-pink-600" />
+                  </div>
+                </div>
                 <p className="text-2xl font-bold text-gray-900">{reportData.numberOfOrders?.toLocaleString() || '0'}</p>
               </div>
               
               {/* Average Metrics */}
-              <div className="bg-white p-5 rounded-lg border-l-5 border-yellow-500 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-gray-600 mb-2">Average Order Value</p>
+              <div className="bg-gradient-to-br from-yellow-50 to-white p-5 rounded-lg border-l-4 border-yellow-500 shadow-sm hover:shadow-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Average Order Value</p>
+                  <div className="p-2 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
+                    <TrendingUp className="w-4 h-4 text-yellow-600" />
+                  </div>
+                </div>
                 <p className="text-2xl font-bold text-gray-900">₱{reportData.avgOrderValue?.toLocaleString() || '0'}</p>
               </div>
               
               {/* Bulk Metrics */}
-              <div className="bg-white p-5 rounded-lg border-l-5 border-emerald-500 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-gray-600 mb-2">Total Bulk Amount</p>
+              <div className="bg-gradient-to-br from-emerald-50 to-white p-5 rounded-lg border-l-4 border-emerald-500 shadow-sm hover:shadow-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Total Bulk Amount</p>
+                  <div className="p-2 bg-emerald-100 rounded-lg group-hover:bg-emerald-200 transition-colors">
+                    <Package className="w-4 h-4 text-emerald-600" />
+                  </div>
+                </div>
                 <p className="text-2xl font-bold text-gray-900">₱{reportData.totalBulkAmount?.toLocaleString() || '0'}</p>
               </div>
               
               {/* Order Metrics */}
-              <div className="bg-white p-5 rounded-lg border-l-5 border-purple-500 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-gray-600 mb-2">Total Bulk Orders</p>
+              <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-lg border-l-4 border-purple-500 shadow-sm hover:shadow-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Total Bulk Orders</p>
+                  <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                    <Inbox className="w-4 h-4 text-purple-600" />
+                  </div>
+                </div>
                 <p className="text-2xl font-bold text-gray-900">{reportData.totalBulkOrders?.toLocaleString() || '0'}</p>
               </div>
               
               {/* Average Metrics */}
-              <div className="bg-white p-5 rounded-lg border-l-5 border-orange-500 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-sm text-gray-600 mb-2">Average Bulk Amount</p>
+              <div className="bg-gradient-to-br from-orange-50 to-white p-5 rounded-lg border-l-4 border-orange-500 shadow-sm hover:shadow-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Average Bulk Amount</p>
+                  <div className="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
+                    <FileText className="w-4 h-4 text-orange-600" />
+                  </div>
+                </div>
                 <p className="text-2xl font-bold text-gray-900">₱{reportData.avgBulkAmount?.toLocaleString() || '0'}</p>
               </div>
             </div>
@@ -658,7 +989,11 @@ export default function MonthlyReport() {
         <section className="mb-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Top Products of the Month</h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Top Products {reportType === 'monthly' && 'of the Month'}
+                {reportType === 'weekly' && 'of the Week'}
+                {reportType === 'annual' && 'of the Year'}
+              </h2>
               <button
                 onClick={() => setShowProductsChart(!showProductsChart)}
                 className="flex items-center cursor-pointer gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
@@ -669,95 +1004,109 @@ export default function MonthlyReport() {
             </div>
             
             {/* Products Chart */}
-            {showProductsChart && prepareProductsChartData().length > 0 && (
+            {showProductsChart && (
               <>
-                <div className="p-6 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-700 mb-4">Top Products by Sales</h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart 
-                      data={prepareProductsChartData()} 
-                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fontSize: 11 }} 
-                        stroke="#64748b"
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 12 }} 
-                        stroke="#64748b"
-                        tickFormatter={(value) => {
-                          if (value >= 1000000) {
-                            return `₱${(value / 1000000).toFixed(1)}M`;
-                          } else if (value >= 1000) {
-                            return `₱${(value / 1000).toFixed(0)}K`;
-                          } else {
-                            return `₱${value}`;
-                          }
-                        }}
-                      />
-                      <Tooltip content={<ProductsTooltip />} />
-                      <Legend />
-                      <Bar dataKey="sales" fill="#3b82f6" name="Sales (₱)" radius={[8, 8, 0, 0]} />
-                      <Bar dataKey="orders" fill="#10b981" name="No. of Orders" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                {/* Sales by Category Pie Chart */}
-                {prepareCategoryPieData().length > 0 && (
-                  <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-700 mb-4">Sales Distribution by Category</h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
-                      <ResponsiveContainer width="100%" height={350}>
-                        <PieChart>
-                          <Pie
-                            data={prepareCategoryPieData()}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={renderCustomLabel}
-                            outerRadius={120}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {prepareCategoryPieData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value) => `₱${value.toLocaleString()}`}
-                            contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                {prepareProductsChartData().length > 0 ? (
+                  <>
+                    <div className="p-6 border-b border-gray-200">
+                      <h3 className="text-lg font-medium text-gray-700 mb-4">Top Products by Sales</h3>
+                      <ResponsiveContainer width="100%" height={400}>
+                        <BarChart 
+                          data={prepareProductsChartData()} 
+                          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="name" 
+                            tick={{ fontSize: 11 }} 
+                            stroke="#64748b"
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
                           />
-                        </PieChart>
+                          <YAxis 
+                            tick={{ fontSize: 12 }} 
+                            stroke="#64748b"
+                            tickFormatter={(value) => {
+                              if (value >= 1000000) {
+                                return `₱${(value / 1000000).toFixed(1)}M`;
+                              } else if (value >= 1000) {
+                                return `₱${(value / 1000).toFixed(0)}K`;
+                              } else {
+                                return `₱${value}`;
+                              }
+                            }}
+                          />
+                          <Tooltip content={<ProductsTooltip />} />
+                          <Legend />
+                          <Bar dataKey="sales" fill="#3b82f6" name="Sales (₱)" radius={[8, 8, 0, 0]} />
+                          <Bar dataKey="orders" fill="#10b981" name="No. of Orders" radius={[8, 8, 0, 0]} />
+                        </BarChart>
                       </ResponsiveContainer>
-                      <div className="space-y-2">
-                        {prepareCategoryPieData().map((entry, index) => {
-                          const total = prepareCategoryPieData().reduce((sum, item) => sum + item.value, 0);
-                          const percentage = ((entry.value / total) * 100).toFixed(1);
-                          return (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-4 h-4 rounded" 
-                                  style={{ backgroundColor: entry.color }}
-                                />
-                                <span className="text-sm font-medium text-gray-700">{entry.name}</span>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-sm font-semibold text-gray-900">
-                                  ₱{entry.value.toLocaleString()}
+                    </div>
+                    
+                    {/* Sales by Category Pie Chart */}
+                    {prepareCategoryPieData().length > 0 && (
+                      <div className="p-6">
+                        <h3 className="text-lg font-medium text-gray-700 mb-4">Sales Distribution by Category</h3>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+                          <ResponsiveContainer width="100%" height={350}>
+                            <PieChart>
+                              <Pie
+                                data={prepareCategoryPieData()}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={renderCustomLabel}
+                                outerRadius={120}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {prepareCategoryPieData().map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                formatter={(value) => `₱${value.toLocaleString()}`}
+                                contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="space-y-2">
+                            {prepareCategoryPieData().map((entry, index) => {
+                              const total = prepareCategoryPieData().reduce((sum, item) => sum + item.value, 0);
+                              const percentage = ((entry.value / total) * 100).toFixed(1);
+                              return (
+                                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-4 h-4 rounded" 
+                                      style={{ backgroundColor: entry.color }}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-sm font-semibold text-gray-900">
+                                      ₱{entry.value.toLocaleString()}
+                                    </div>
+                                    <div className="text-xs text-gray-500">{percentage}%</div>
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500">{percentage}%</div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="p-6">
+                    <div className="flex flex-col items-center justify-center h-96 text-gray-500">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Package className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <p className="text-base font-medium text-gray-700 mb-1">No Product Data</p>
+                      <p className="text-sm text-gray-500">No product sales recorded for this period.</p>
                     </div>
                   </div>
                 )}
@@ -790,7 +1139,13 @@ export default function MonthlyReport() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="4" className="px-6 py-8 text-center text-gray-500">No product data available</td>
+                          <td colSpan="4" className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center">
+                              <Package className="w-12 h-12 text-gray-300 mb-3" />
+                              <p className="text-gray-500 font-medium">No product data available</p>
+                              <p className="text-sm text-gray-400 mt-1">Try selecting a different time period</p>
+                            </div>
+                          </td>
                         </tr>
                       )}
                     </tbody>
@@ -833,7 +1188,11 @@ export default function MonthlyReport() {
         <section className="mb-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Top Customers of the Month</h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Top Customers {reportType === 'monthly' && 'of the Month'}
+                {reportType === 'weekly' && 'of the Week'}
+                {reportType === 'annual' && 'of the Year'}
+              </h2>
               <button
                 onClick={() => setShowCustomersChart(!showCustomersChart)}
                 className="flex items-center cursor-pointer gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
@@ -844,42 +1203,56 @@ export default function MonthlyReport() {
             </div>
             
             {/* Customers Chart */}
-            {showCustomersChart && prepareCustomersChartData().length > 0 && (
-              <div className="p-6 border-b border-gray-200">
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart 
-                    data={prepareCustomersChartData()} 
-                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fontSize: 11 }} 
-                      stroke="#64748b"
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }} 
-                      stroke="#64748b"
-                      tickFormatter={(value) => {
-                        if (value >= 1000000) {
-                          return `₱${(value / 1000000).toFixed(1)}M`;
-                        } else if (value >= 1000) {
-                          return `₱${(value / 1000).toFixed(0)}K`;
-                        } else {
-                          return `₱${value}`;
-                        }
-                      }}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Bar dataKey="bulkAmount" fill="#8b5cf6" name="Bulk Amount (₱)" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="bulkCount" fill="#f59e0b" name="Bulk Count" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {showCustomersChart && (
+              <>
+                {prepareCustomersChartData().length > 0 ? (
+                  <div className="p-6 border-b border-gray-200">
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart 
+                        data={prepareCustomersChartData()} 
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fontSize: 11 }} 
+                          stroke="#64748b"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12 }} 
+                          stroke="#64748b"
+                          tickFormatter={(value) => {
+                            if (value >= 1000000) {
+                              return `₱${(value / 1000000).toFixed(1)}M`;
+                            } else if (value >= 1000) {
+                              return `₱${(value / 1000).toFixed(0)}K`;
+                            } else {
+                              return `₱${value}`;
+                            }
+                          }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                        <Bar dataKey="bulkAmount" fill="#8b5cf6" name="Bulk Amount (₱)" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="bulkCount" fill="#f59e0b" name="Bulk Count" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex flex-col items-center justify-center h-96 text-gray-500">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Users className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <p className="text-base font-medium text-gray-700 mb-1">No Customer Data</p>
+                      <p className="text-sm text-gray-500">No customer orders recorded for this period.</p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             
             {!showCustomersChart && (
@@ -933,7 +1306,13 @@ export default function MonthlyReport() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" className="px-6 py-8 text-center text-gray-500">No customer data available</td>
+                          <td colSpan="5" className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center">
+                              <Users className="w-12 h-12 text-gray-300 mb-3" />
+                              <p className="text-gray-500 font-medium">No customer data available</p>
+                              <p className="text-sm text-gray-400 mt-1">Try selecting a different time period</p>
+                            </div>
+                          </td>
                         </tr>
                       )}
                     </tbody>
