@@ -444,6 +444,25 @@ const TiersSettings = () => {
     });
   };
 
+  // Format number with commas
+  const formatNumberWithCommas = (num) => {
+    if (num === null || num === undefined || num === '') return '';
+    const numStr = num.toString();
+    // Split by decimal point if exists
+    const parts = numStr.split('.');
+    // Add commas to integer part
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  };
+
+  // Parse number from formatted string (remove commas)
+  const parseFormattedNumber = (str) => {
+    if (!str) return 0;
+    const cleaned = str.replace(/,/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const addTier = () => {
     setTiers(prev => [
       ...prev,
@@ -550,22 +569,34 @@ const TiersSettings = () => {
                       </td>
                       <td className="px-4 py-2">
                         <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={t.minSpend ?? 0}
-                          onChange={(e) => updateTier(idx, 'minSpend', parseFloat(e.target.value))}
-                          className="w-36 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
-                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          type="text"
+                          value={formatNumberWithCommas(t.minSpend ?? 0)}
+                          onChange={(e) => {
+                            const parsed = parseFormattedNumber(e.target.value);
+                            updateTier(idx, 'minSpend', parsed);
+                          }}
+                          onBlur={(e) => {
+                            // Ensure the value is properly formatted on blur
+                            const parsed = parseFormattedNumber(e.target.value);
+                            updateTier(idx, 'minSpend', parsed);
+                          }}
+                          className="w-36 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </td>
                       <td className="px-4 py-2">
-                        <input
-                          type="checkbox"
-                          checked={!!t.isActive}
-                          onChange={(e) => updateTier(idx, 'isActive', e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => updateTier(idx, 'isActive', !t.isActive)}
+                          className={`relative cursor-pointer border-2 border-transparent hover:border-2 hover:border-blue-400 inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            t.isActive ? 'bg-blue-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              t.isActive ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </td>
                       <td className="px-4 py-2 text-right">
                         <button

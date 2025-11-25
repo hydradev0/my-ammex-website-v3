@@ -39,13 +39,14 @@ const AccountsTable = ({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Active</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {accounts.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
                   No accounts found
                 </td>
               </tr>
@@ -68,11 +69,26 @@ const AccountsTable = ({
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => onToggleStatus && onToggleStatus(account)}
+                      disabled={isLoading}
+                      className={`relative cursor-pointer border-2 border-transparent hover:border-2 hover:border-blue-400 inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        account.isActive !== false ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          account.isActive !== false ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
                     <ActionButtons
                       user={account}
                       onEdit={onEdit}
                       onPasswordChange={onPasswordChange}
-                      onToggleStatus={onToggleStatus}
                       isLoading={isLoading}
                     />
                   </td>

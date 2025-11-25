@@ -562,33 +562,10 @@ const InventoryAlerts = () => {
                     </div>
                     
                       {/* Stock Level Visualization */}
-                      <div className="mt-4 space-y-3">
-                        {/* Progress Bar */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center text-xs text-gray-600">
-                            <span>
-                              {activeTab === 'lowStock' ? 'Stock Level vs Minimum' : 'Stock Level vs Maximum'}
-                            </span>
-                            <span className="font-semibold">
-                              {activeTab === 'lowStock' 
-                                ? `${Math.round(progress)}% of minimum`
-                                : `${Math.round(progress)}% of maximum`
-                              }
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                            <div
-                              className={`h-full ${getProgressBarColor(alert, activeTab)} transition-all duration-500 rounded-full`}
-                              style={{
-                                width: `${Math.min(progress, 100)}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-
+                      <div className="mt-4">
                         {/* Mini Horizontal Bar Chart with Hover Tooltip */}
                         <div className="mt-4">
-                          <div className="text-xs text-gray-600 mb-2 font-medium">Visual Comparison (Hover for details)</div>
+                          <div className="text-xs text-gray-600 mb-2 font-medium">Visual Comparison</div>
                           <div className="h-20">
                             <ResponsiveContainer width="100%" height="100%">
                               <BarChart 
@@ -616,42 +593,67 @@ const InventoryAlerts = () => {
                                       const minimum = alert.minimumStockLevel || 0;
                                       const maximum = alert.maximumStockLevel || 0;
                                       const unitName = alert.unitName || 'units';
+                                      const progressPercentage = activeTab === 'lowStock' 
+                                        ? getLowStockProgress(current, minimum)
+                                        : getOverstockProgress(current, maximum);
                                       
                                       return (
-                                        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
-                                          <div className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                              <span className="text-sm text-gray-600">Current Stock:</span>
-                                              <span className={`text-sm font-semibold ${
-                                                activeTab === 'lowStock' 
-                                                  ? ((current || 0) < (minimum || 0) ? 'text-red-600' : 'text-gray-900')
-                                                  : ((current || 0) > (maximum || 0) ? 'text-orange-600' : 'text-gray-900')
-                                              }`}>
-                                                {current} {unitName}
-                                              </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                              <span className="text-sm text-gray-600">
-                                                {activeTab === 'lowStock' ? 'Minimum Level:' : 'Maximum Level:'}
-                                              </span>
-                                              <span className="text-sm font-semibold text-gray-900">
-                                                {activeTab === 'lowStock' ? minimum : maximum} {unitName}
-                                              </span>
-                                            </div>
-                                            {activeTab === 'lowStock' && (current || 0) < (minimum || 0) && (
-                                              <div className="pt-2 border-t border-gray-200">
-                                                <span className="text-sm font-semibold text-red-600">
-                                                  Short by: {(minimum || 0) - (current || 0)} {unitName}
+                                        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg min-w-[320px]">
+                                          <div className="space-y-3">
+                                            {/* Stock Level Progress */}
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between items-center">
+                                                <span className="text-xs text-gray-500">
+                                                  {activeTab === 'lowStock' ? 'Stock Level vs Minimum' : 'Stock Level vs Maximum'}
+                                                </span>
+                                                <span className="text-xs font-semibold text-gray-700">
+                                                  {Math.round(progressPercentage)}% of {activeTab === 'lowStock' ? 'minimum' : 'maximum'}
                                                 </span>
                                               </div>
-                                            )}
-                                            {activeTab === 'overstock' && alert.excessAmount > 0 && (
-                                              <div className="pt-2 border-t border-gray-200">
-                                                <span className="text-sm font-semibold text-orange-600">
-                                                  Excess: {alert.excessAmount} {unitName} over maximum
+                                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                <div
+                                                  className={`h-full ${getProgressBarColor(alert, activeTab)} transition-all duration-300 rounded-full`}
+                                                  style={{
+                                                    width: `${Math.min(progressPercentage, 100)}%`
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+                                            
+                                            <div className="pt-2 border-t border-gray-200 space-y-2">
+                                              <div className="flex justify-between items-center">
+                                                <span className="text-sm text-gray-600">Current Stock:</span>
+                                                <span className={`text-sm font-semibold ${
+                                                  activeTab === 'lowStock' 
+                                                    ? ((current || 0) < (minimum || 0) ? 'text-red-600' : 'text-gray-900')
+                                                    : ((current || 0) > (maximum || 0) ? 'text-orange-600' : 'text-gray-900')
+                                                }`}>
+                                                  {current} {unitName}
                                                 </span>
                                               </div>
-                                            )}
+                                              <div className="flex justify-between items-center">
+                                                <span className="text-sm text-gray-600">
+                                                  {activeTab === 'lowStock' ? 'Minimum Level:' : 'Maximum Level:'}
+                                                </span>
+                                                <span className="text-sm font-semibold text-gray-900">
+                                                  {activeTab === 'lowStock' ? minimum : maximum} {unitName}
+                                                </span>
+                                              </div>
+                                              {activeTab === 'lowStock' && (current || 0) < (minimum || 0) && (
+                                                <div className="pt-2 border-t border-gray-200">
+                                                  <span className="text-sm font-semibold text-red-600">
+                                                    Short by: {(minimum || 0) - (current || 0)} {unitName}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {activeTab === 'overstock' && alert.excessAmount > 0 && (
+                                                <div className="pt-2 border-t border-gray-200">
+                                                  <span className="text-sm font-semibold text-orange-600">
+                                                    Excess: {alert.excessAmount} {unitName} over maximum
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       );

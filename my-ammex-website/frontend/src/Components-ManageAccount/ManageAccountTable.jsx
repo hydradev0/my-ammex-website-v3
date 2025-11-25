@@ -211,20 +211,49 @@ const ManageAccountTable = () => {
     // Toggle the isActive status
     const newStatus = user.isActive === false ? true : false;
     
+    // Optimistic update: immediately update local state
+    const updateLocalState = (prevUsers) => {
+      return prevUsers.map(u => {
+        const uId = u.id || u._id || u.userId;
+        if (uId === userId) {
+          return { ...u, isActive: newStatus };
+        }
+        return u;
+      });
+    };
+    
+    // Update all relevant state arrays immediately
+    setSalesAccounts(prev => updateLocalState(prev));
+    setWarehouseAccounts(prev => updateLocalState(prev));
+    setClientAccounts(prev => updateLocalState(prev));
+    setAllUsers(prev => updateLocalState(prev));
+    
+    // Make API call in the background
     try {
       await apiCall(`/auth/users/${userId}`, {
         method: 'PUT',
         body: JSON.stringify({ isActive: newStatus })
       });
       
-      // Show success modal for status change
-      setSuccessTitle('Status Updated!');
-      setSuccessMessage(`${user.name}'s account has been ${newStatus ? 'activated' : 'deactivated'} successfully.`);
-      setShowSuccessModal(true);
-      
-      // Refresh data to get updated list
-      await fetchAllUsers();
+      // Refresh data to sync with server (optional, but ensures consistency)
+      fetchAllUsers();
     } catch (err) {
+      // Revert the optimistic update on error
+      const revertUpdate = (prevUsers) => {
+        return prevUsers.map(u => {
+          const uId = u.id || u._id || u.userId;
+          if (uId === userId) {
+            return { ...u, isActive: !newStatus }; // Revert to original status
+          }
+          return u;
+        });
+      };
+      
+      setSalesAccounts(prev => revertUpdate(prev));
+      setWarehouseAccounts(prev => revertUpdate(prev));
+      setClientAccounts(prev => revertUpdate(prev));
+      setAllUsers(prev => revertUpdate(prev));
+      
       setError(err.response?.data?.message || 'Failed to update account status');
     }
   };
