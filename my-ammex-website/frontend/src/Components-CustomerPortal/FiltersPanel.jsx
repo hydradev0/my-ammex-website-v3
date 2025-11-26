@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, CircleSmall } from 'lucide-react';
+import { ChevronUp, ChevronDown, Layers, Tag } from 'lucide-react';
 
 const FiltersPanel = ({ 
   categories = [], 
@@ -22,7 +22,7 @@ const FiltersPanel = ({
     onCategorySelect(categoryName);
   };
 
-  const renderCategory = (category, level = 0) => {
+  const renderCategory = (category) => {
     const hasSubcategories = category.subcategories && category.subcategories.length > 0;
     const isExpanded = expandedCategories.has(category.id);
     const isSelected = selectedCategory === category.name;
@@ -39,45 +39,49 @@ const FiltersPanel = ({
       <div key={category.id} className="w-full">
         <button
           onClick={handleCategoryClick}
-          className={`w-full text-left px-3 cursor-pointer lg:px-4 py-2 lg:py-3 rounded-lg transition-colors border text-sm lg:text-base ${
-            isSelected
-              ? 'bg-blue-50 text-[#3182ce] font-medium border-blue-200'
-              : 'text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-gray-300'
-          }`}
-          style={{ marginLeft: level * 16 }}
+          className={`filter-category-btn w-full text-left px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 text-sm lg:text-base
+            ${isSelected
+              ? 'bg-[#e1eaf5] text-[#2c5282] font-semibold border-l-4 border-[#2c5282] shadow-sm'
+              : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 border-l-4 border-transparent'
+            }`}
         >
           <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-800">{category.name}</span>
-              {hasSubcategories && (
-                <span className="text-lg text-gray-600 ml-2">
-                  {isExpanded ? (
-                    <ChevronUp className="h-5 w-5 transition-transform duration-300" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 transition-transform duration-300" />
-                  )}
-                </span>
+            <div className="flex items-center gap-2">
+              <Tag className={`w-4 h-4 ${isSelected ? 'text-[#2c5282]' : 'text-slate-400'}`} />
+              <span>{category.name}</span>
+            </div>
+            {hasSubcategories && (
+              <span className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                <ChevronDown className={`h-4 w-4 ${isSelected ? 'text-[#2c5282]' : 'text-slate-400'}`} />
+              </span>
             )}
           </div>
         </button>
         
-        {hasSubcategories && isExpanded && (
-          <div className="ml-4 mt-1 space-y-1">
-            {category.subcategories.map((subcategory) => (
-              <button
-                key={subcategory.id}
-                onClick={() => handleCategorySelect(subcategory.name)}
-                className={`w-full text-left px-3 cursor-pointer border-2 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors text-sm lg:text-base ${
-                  selectedCategory === subcategory.name
-                    ? 'bg-blue-50 text-[#3182ce] font-medium border-blue-300 '
-                    : 'text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center">
-                  {selectedCategory === subcategory.name ? <CircleSmall className="h-2 w-2 mr-2 text-[#3182ce]" /> : <CircleSmall className="h-2 w-2 mr-2 text-gray-400" />}
-                  <span>{subcategory.name}</span>
-                </div>
-              </button>
-            ))}
+        {hasSubcategories && (
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out
+            ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className="ml-4 mt-1 space-y-1 pl-4 border-l-2 border-slate-200">
+              {category.subcategories.map((subcategory) => {
+                const isSubSelected = selectedCategory === subcategory.name;
+                return (
+                  <button
+                    key={subcategory.id}
+                    onClick={() => handleCategorySelect(subcategory.name)}
+                    className={`w-full text-left px-3 py-2.5 cursor-pointer rounded-lg transition-all duration-200 text-sm
+                      ${isSubSelected
+                        ? 'bg-[#2c5282] text-white font-medium shadow-md'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                      }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${isSubSelected ? 'bg-white' : 'bg-slate-300'}`}></span>
+                      <span>{subcategory.name}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -85,82 +89,60 @@ const FiltersPanel = ({
   };
 
   return (
-    <div className="w-full lg:w-64 flex-shrink-0">
-      <div className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 lg:sticky lg:top-6">
-        {/* Categories Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Categories</h3>
-          <div className="space-y-1">
-            {/* All Categories Option */}
-            <button
-              onClick={() => handleCategorySelect('All')}
-              className={`w-full text-left px-3 cursor-pointer lg:px-4 py-2 lg:py-3 rounded-lg transition-colors border text-sm lg:text-base ${
-                selectedCategory === 'All'
-                  ? 'bg-blue-50 text-[#3182ce] font-medium border-blue-200'
-                  : 'text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              All Categories
-            </button>
-            
-            {/* Main Categories with Subcategories */}
-            {categories.length > 0 ? (
-              categories.map((category) => renderCategory(category))
-            ) : (
-              <div className="text-gray-500 text-sm py-2">No categories available</div>
-            )}
-          </div>
-        </div>
-
-        {/* Future Filters Sections */}
-        {/* 
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Price Range</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Min"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="number"
-                placeholder="Max"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-              />
+    <div className="w-full lg:w-72 flex-shrink-0">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm lg:sticky lg:top-6 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#2c5282] to-[#234066] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Layers className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Categories</h3>
+              <p className="text-blue-100 text-xs">Browse by category</p>
             </div>
           </div>
         </div>
 
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Brand</h3>
-          <div className="space-y-2">
-            <label className="flex items-center">
-              <input type="checkbox" className="mr-2" />
-              <span className="text-sm text-gray-700">Brand A</span>
-            </label>
-            <label className="flex items-center">
-              <input type="checkbox" className="mr-2" />
-              <span className="text-sm text-gray-700">Brand B</span>
-            </label>
+        {/* Categories List */}
+        <div className="p-4 space-y-1 max-h-[60vh] overflow-y-auto">
+          {/* All Categories Option */}
+          <button
+            onClick={() => handleCategorySelect('All')}
+            className={`filter-category-btn w-full text-left px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 text-sm lg:text-base
+              ${selectedCategory === 'All'
+                ? 'bg-[#2c5282] text-white font-semibold shadow-lg'
+                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-slate-200'
+              }`}
+          >
+            <div className="flex items-center gap-2">
+              <Layers className={`w-4 h-4 ${selectedCategory === 'All' ? 'text-white' : 'text-slate-400'}`} />
+              <span>All Categories</span>
+            </div>
+          </button>
+          
+          {/* Divider */}
+          <div className="py-2">
+            <div className="border-t border-slate-200"></div>
           </div>
+          
+          {/* Main Categories with Subcategories */}
+          {categories.length > 0 ? (
+            categories.map((category) => renderCategory(category))
+          ) : (
+            <div className="text-slate-400 text-sm py-4 text-center">
+              <Layers className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+              No categories available
+            </div>
+          )}
         </div>
 
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Availability</h3>
-          <div className="space-y-2">
-            <label className="flex items-center">
-              <input type="checkbox" className="mr-2" />
-              <span className="text-sm text-gray-700">In Stock</span>
-            </label>
-            <label className="flex items-center">
-              <input type="checkbox" className="mr-2" />
-              <span className="text-sm text-gray-700">Low Stock</span>
-            </label>
-          </div>
+        {/* Footer hint */}
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
+          <p className="text-xs text-slate-500 text-center">
+            {categories.length} categories available
+          </p>
         </div>
-        */}
       </div>
     </div>
   );

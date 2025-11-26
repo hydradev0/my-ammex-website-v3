@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   // Show fewer page numbers on mobile
@@ -23,42 +23,51 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
   return (
     <div className="flex justify-center items-center gap-1 sm:gap-2 mb-4">
+      {/* Previous Button */}
       <button
         onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
         disabled={currentPage === 1}
-        className="px-3 sm:px-3 py-3 sm:py-2 bg-gray-200 text-gray-700 rounded-3xl disabled:bg-gray-100 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-sm"
+        className="flex items-center gap-1 px-3 sm:px-4 py-2.5 bg-white text-slate-700 rounded-lg border border-slate-200 
+          disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed disabled:border-slate-100
+          hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-sm font-medium shadow-sm cursor-pointer"
       >
+        <ChevronLeft className="w-4 h-4" />
         <span className="hidden sm:inline">Previous</span>
-        <span className="sm:hidden"><ArrowLeft size={16} /></span>
       </button>
       
-      {visiblePages.map((page, index) => (
-        <button
-          key={index}
-          onClick={() => typeof page === 'number' ? onPageChange(page) : null}
-          disabled={typeof page !== 'number'}
-          className={`px-5 sm:px-3 py-3 sm:py-2 rounded-3xl cursor-pointer transition-colors text-sm min-w-[2rem] sm:min-w-[2.5rem] ${
-            currentPage === page
-              ? 'bg-[#3182ce] text-white'
-              : typeof page === 'number'
-              ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              : 'bg-transparent text-gray-500 cursor-default'
-          }`}
-        >
-          {page}
-        </button>
-      ))}
+      {/* Page Numbers */}
+      <div className="flex items-center gap-1">
+        {visiblePages.map((page, index) => (
+          <button
+            key={index}
+            onClick={() => typeof page === 'number' ? onPageChange(page) : null}
+            disabled={typeof page !== 'number'}
+            className={`px-3 sm:px-4 py-2.5 rounded-lg cursor-pointer transition-all duration-200 text-sm font-medium min-w-[2.5rem] sm:min-w-[2.75rem] ${
+              currentPage === page
+                ? 'bg-slate-800 text-white shadow-lg'
+                : typeof page === 'number'
+                ? 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm'
+                : 'bg-transparent text-slate-400 cursor-default'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
       
+      {/* Next Button */}
       <button
         onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
         disabled={currentPage === totalPages}
-        className="px-3 sm:px-3 py-3 sm:py-2 bg-gray-200 text-gray-700 rounded-3xl disabled:bg-gray-100 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-sm"
+        className="flex items-center gap-1 px-3 sm:px-4 py-2.5 bg-white text-slate-700 rounded-lg border border-slate-200 
+          disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed disabled:border-slate-100
+          hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-sm font-medium shadow-sm cursor-pointer"
       >
         <span className="hidden sm:inline">Next</span>
-        <span className="sm:hidden"><ArrowRight size={16} /></span>
+        <ChevronRight className="w-4 h-4" />
       </button>
     </div>
   );
 };
 
-export default Pagination; 
+export default Pagination;

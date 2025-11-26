@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Minus, ShoppingCart, RotateCcw } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, Package, TrendingDown, Check, RotateCcw } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import ScrollLock from "../Components/ScrollLock";
 
@@ -17,7 +17,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
   const errorTimeoutRef = useRef(null);
 
   const setQuantityErrorWithTimeout = (error, message) => {
-    // Clear any existing timeout
     if (errorTimeoutRef.current) {
       clearTimeout(errorTimeoutRef.current);
       errorTimeoutRef.current = null;
@@ -26,16 +25,13 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
     setQuantityError(error);
     setQuantityErrorMessage(message);
     
-    // Set timeout to revert to max available quantity after 3 seconds for quantity exceeded errors
     if (error && message.includes('exceeded the maximum quantity')) {
       errorTimeoutRef.current = setTimeout(() => {
-        // Revert to max available quantity
         const maxQuantity = Math.max(1, getAvailableQuantity());
         setSelectedQuantity(maxQuantity);
         setInputQuantity(maxQuantity);
         setQuantityError(false);
         setQuantityErrorMessage('');
-        // Clear the timeout reference
         errorTimeoutRef.current = null;
       }, 3000);
     }
@@ -45,14 +41,12 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
       setInputQuantity(1);
         setQuantityError(false);
         setQuantityErrorMessage('');
-        // Clear the timeout reference
         errorTimeoutRef.current = null;
       }, 3000);
     }
   };
 
   const clearQuantityError = () => {
-    // Clear any existing timeout
     if (errorTimeoutRef.current) {
       clearTimeout(errorTimeoutRef.current);
       errorTimeoutRef.current = null;
@@ -61,33 +55,36 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
     setQuantityErrorMessage('');
   };
 
-  // Get current quantity of this product in cart
   const getCurrentCartQuantity = () => {
     const cartItem = cart.find(item => item.id === product.id);
     return cartItem ? cartItem.quantity : 0;
   };
 
-  // Get available quantity (stock - current cart quantity)
   const getAvailableQuantity = () => {
     const currentCartQuantity = getCurrentCartQuantity();
     return Math.max(0, product.stock - currentCartQuantity);
+  };
+
+  const getStockStatus = () => {
+    if (product.stock > 10) return { text: 'In Stock', color: 'text-emerald-600', bg: 'bg-emerald-500' };
+    if (product.stock > 0) return { text: 'Low Stock', color: 'text-amber-600', bg: 'bg-amber-500' };
+    return { text: 'Out of Stock', color: 'text-red-500', bg: 'bg-red-500' };
   };
 
   useEffect(() => {
     if (isOpen) {
       setIsAnimating(true);
       setInputQuantity(1);
+      setSelectedImageIndex(0);
       clearQuantityError();
     }
   }, [isOpen]);
 
-  // Keep the input field in sync when quantity changes via buttons
   useEffect(() => {
     setInputQuantity(selectedQuantity);
     clearQuantityError();
   }, [selectedQuantity]);
 
-  // Handle click outside modal
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isOpen && modalRef.current && event.target === modalRef.current) {
@@ -101,7 +98,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
     };
   }, [isOpen]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (errorTimeoutRef.current) {
@@ -112,6 +108,8 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
 
   if (!isOpen || !product) return null;
 
+  const stockStatus = getStockStatus();
+  const hasDiscount = product.discountPercentage && product.discountPercentage > 0;
 
   const handleAddToCart = () => {
     const productToAdd = {
@@ -136,7 +134,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
     setTimeout(() => {
       setSelectedQuantity(1);
       onClose();
-    }, 300); // Match the animation duration
+    }, 300);
   };
 
   const modalContent = (
@@ -146,7 +144,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
       style={{ opacity: isAnimating ? 1 : 0 }}
       
     >
-      {/* Mobile-First Modal */}
       <div className="flex items-end lg:items-center justify-center h-full lg:p-4">
         <div 
           className={`bg-white w-full h-11/12 lg:h-auto lg:${maxHeight} lg:${width} lg:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden transition-transform duration-300 ease-out 
@@ -154,8 +151,8 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
           style={{ transformOrigin: 'center' }}
         >
           {/* Drag Handle - Mobile Only */}
-          <div className="flex lg:hidden justify-center pt-2 pb-1 flex-shrink-0">
-            <div className="w-10 h-0.5 bg-gray-300 rounded-full"></div>
+          <div className="flex lg:hidden justify-center pt-3 pb-1 flex-shrink-0">
+            <div className="w-12 h-1 bg-slate-300 rounded-full"></div>
           </div>
 
           {/* Header */}
@@ -173,7 +170,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
           <div className="overflow-y-auto h-[calc(100vh-180px)] lg:h-[calc(100vh)] mr-2 mb-4">
             <div className="flex flex-col lg:flex-row">
               {/* Product Images */}
-              <div className="w-full lg:w-1/2 p-3 lg:p-6">
+              <div className="w-full lg:w-1/2 p-4 lg:p-6 bg-gradient-to-br from-white to-blue-50">
                 {/* Main Image Display */}
                 <div className="aspect-[4/3] bg-gray-100 rounded-lg lg:rounded-xl overflow-hidden mb-3 lg:mb-4">
                   {(() => {
@@ -191,13 +188,13 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                         <img 
                           src={currentImage} 
                           alt={product.name}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain p-4"
                         />
                       );
                     } else {
                       return (
-                        <div className="w-full h-full flex items-center justify-center text-2xl lg:text-6xl">
-                          {currentImage || '📦'}
+                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                          <Package className="w-24 h-24 lg:w-32 lg:h-32" />
                         </div>
                       );
                     }
@@ -216,12 +213,12 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                     return (
                       <div className="flex space-x-2 mb-3 lg:mb-6">
                         {images.map((image, index) => (
-                          <div 
+                          <button 
                             key={index} 
-                            className={`w-10 h-10 lg:w-16 lg:h-16 rounded-lg flex items-center justify-center text-xs lg:text-lg cursor-pointer transition-colors ${
+                            className={`flex-shrink-0 w-14 h-14 lg:w-16 lg:h-16 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ${
                               selectedImageIndex === index 
-                                ? 'bg-blue-500 text-white' 
-                                : 'bg-gray-200 hover:bg-gray-300'
+                                ? 'ring-2 ring-orange-500 ring-offset-2' 
+                                : 'ring-1 ring-slate-200 hover:ring-slate-300'
                             }`}
                             onClick={() => setSelectedImageIndex(index)}
                           >
@@ -229,12 +226,14 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                               <img 
                                 src={image} 
                                 alt={`${product.name} ${index + 1}`}
-                                className="w-full h-full object-cover rounded-lg"
+                                className="w-full h-full object-cover"
                               />
                             ) : (
-                              image || '📦'
+                              <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                                <Package className="w-6 h-6 text-slate-400" />
+                              </div>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     );
@@ -244,71 +243,78 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
               </div>
 
               {/* Product Info */}
-              <div className="w-full lg:w-1/2 p-3 lg:p-6 flex-1">
-                <div className="space-y-3 lg:space-y-6 pb-3 lg:pb-6">
+              <div className="w-full lg:w-1/2 p-4 lg:p-6 flex-1">
+                <div className="space-y-4 lg:space-y-5">
                   {/* Product Model and Category */}
                   <div>
-                    <h1 className="text-lg lg:text-2xl font-bold text-gray-900 mb-1 lg:mb-2">{product.modelNo}</h1>
-                    <span className="text-md lg:text-lg text-gray-900 font-bold">{product.name}</span>
-                    <p className="text-xs lg:text-sm text-gray-500 mb-2">{product.category}</p>
-                    <p className="text-xs lg:text-sm text-gray-500">{product.subcategory}</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                        {product.category}
+                      </span>
+                      {product.subcategory && (
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                          {product.subcategory}
+                        </span>
+                      )}
+                    </div>
+                    <h1 className="text-xl lg:text-2xl font-bold text-slate-900 mb-1">{product.modelNo}</h1>
+                    <p className="text-base lg:text-lg text-slate-600">{product.name}</p>
                   </div>
 
                   {/* Price */}
-                  <div className="flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0 lg:space-x-3">
-                    {product.discountPercentage && product.discountPercentage > 0 ? (
-                      <>
-                        <div className="flex items-center space-x-2 lg:space-x-3">
-                          <span className="text-xl lg:text-3xl font-bold text-[#e53e3e]">
+                  <div className="p-4 rounded-xl">
+                    {hasDiscount ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl lg:text-3xl font-bold text-orange-500">
                             ₱{(product.discountedPrice || product.price).toLocaleString()}
                           </span>
-                          <span className="bg-red-500 text-white px-2 lg:px-3 py-1 lg:py-1.5 rounded-full text-xs lg:text-sm font-semibold">
-                            -{product.discountPercentage}% OFF
+                          <span className="discount-badge flex items-center gap-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                            <TrendingDown className="w-3 h-3" />
+                            {product.discountPercentage}% OFF
                           </span>
                         </div>
-                        <span className="text-sm lg:text-lg text-gray-500 line-through">
+                        <span className="text-base text-slate-400 line-through">
                           ₱{(product.price || 0).toLocaleString()}
                         </span>
-                      </>
+                      </div>
                     ) : (
-                      <span className="text-xl lg:text-3xl font-bold text-[#2c5282]">
+                      <span className="text-2xl lg:text-3xl font-bold text-slate-900">
                         ₱{(product.price || 0).toLocaleString()}
                       </span>
                     )}
                   </div>
 
                   {/* Stock Status */}
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-orange-500' : 'bg-red-500'}`}></div>
-                    <span className={`text-xs lg:text-sm font-medium ${product.stock > 10 ? 'text-green-600' : product.stock > 0 ? 'text-orange-600' : 'text-red-600'}`}>
-                      {product.stock > 10 ? 'In Stock' : product.stock > 0 ? 'Low Stock' : 'Out of Stock'}
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                    <div className={`w-3 h-3 rounded-full ${stockStatus.bg} stock-indicator`}></div>
+                    <span className={`text-sm font-semibold ${stockStatus.color}`}>
+                      {stockStatus.text}
                     </span>
-                    <span className="text-xs lg:text-lg text-gray-500">
+                    <span className="text-sm text-slate-500">
                       ({product.stock} {product.unit ? product.unit.toLowerCase() : 'units'} available)
                     </span>
                   </div>
 
-                  {/*Space*/}
-
-
                   {/* Quantity Selector */}
-                  <div className="space-y-1.5 lg:space-y-2">
-                    <label className="text-sm lg:text-lg font-medium text-gray-700">
-                      Quantity <span className="text-md lg:text-lg text-gray-900 font-bold">{product.unit ? ` (${product.unit})` : ' units'}</span>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Quantity {product.unit ? `(${product.unit})` : ''}
                     </label>
-                    <div className="flex items-center space-x-2 lg:space-x-3">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleQuantityChange(-1)}
                         disabled={selectedQuantity <= 1}
-                        className="w-8 h-8 lg:w-12 lg:h-12 border cursor-pointer border-gray-300 rounded-md lg:rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-10 h-10 lg:w-12 lg:h-12 border-2 cursor-pointer border-slate-200 rounded-lg flex items-center justify-center 
+                          hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        <Minus className="w-3 h-3 lg:w-4 lg:h-4" />
+                        <Minus className="w-4 h-4 text-slate-600" />
                       </button>
                       <input
                         type="number"
-                        className={`w-10 h-8 lg:w-14 lg:h-12 text-center font-medium text-sm lg:text-lg border rounded-md 
-                        lg:rounded-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
-                        ${quantityError ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-300'}`}
+                        className={`w-16 h-10 lg:w-20 lg:h-12 text-center font-semibold text-lg border-2 rounded-lg 
+                          focus:outline-none focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                          ${quantityError ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-200'}`}
                         value={inputQuantity}
                         onChange={(e) => {
                           setInputQuantity(e.target.value);
@@ -322,24 +328,22 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                           const currentCartQuantity = getCurrentCartQuantity();
                           
                           if (parsed < 1) {
-                            // Show error for invalid input
                             setQuantityErrorWithTimeout(true, "Quantity must be at least 1");
-                            setInputQuantity(e.target.value); // Keep the invalid input visible
+                            setInputQuantity(e.target.value);
                             return;
                           }
                           if (isNaN(parsed)) {
                             setQuantityErrorWithTimeout(true, "Quantity must not be empty");
-                            setInputQuantity(e.target.value); // Keep the invalid input visible
+                            setInputQuantity(e.target.value);
                             return;
                           }
                           if (parsed > availableQuantity) {
-                            // Show error for exceeding available quantity
                             const unitText = product.unit ? ` ${product.unit.toLowerCase()}` : '';
                             const errorMessage = currentCartQuantity > 0 
                               ? `You have exceeded the maximum quantity. You already have ${currentCartQuantity}${unitText} in cart, only ${availableQuantity} more available.`
                               : `You have exceeded the maximum quantity of ${availableQuantity}${unitText}`;
                             setQuantityErrorWithTimeout(true, errorMessage);
-                            setInputQuantity(e.target.value); // Keep the invalid input visible
+                            setInputQuantity(e.target.value);
                             return;
                           }
                           const clamped = Math.max(1, Math.min(availableQuantity, parsed));
@@ -359,38 +363,35 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                       <button
                         onClick={() => handleQuantityChange(1)}
                         disabled={selectedQuantity >= getAvailableQuantity() || quantityError}
-                        className={`w-8 h-8 lg:w-12 lg:h-12 border cursor-pointer rounded-md lg:rounded-lg flex items-center justify-center transition-colors ${
+                        className={`w-10 h-10 lg:w-12 lg:h-12 border-2 cursor-pointer rounded-lg flex items-center justify-center transition-all ${
                           selectedQuantity >= getAvailableQuantity() || quantityError
-                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'border-gray-300 hover:bg-gray-50'
+                            ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                         title={selectedQuantity >= getAvailableQuantity() ? 'Maximum quantity reached' : 'Increase quantity'}
                       >
-                        <Plus className="w-3 h-3 lg:w-4 lg:h-4" />
+                        <Plus className="w-4 h-4 text-slate-600" />
                       </button>
                     </div>
+                    
+                    {/* Quantity Messages */}
                     {quantityError && (
-                      <p className="text-red-500 text-xs lg:text-sm mt-1">
+                      <p className="text-red-500 text-xs lg:text-sm bg-red-50 p-2 rounded-lg">
                         {quantityErrorMessage}
                       </p>
                     )}
-                    {!quantityError && selectedQuantity === product.stock && (
-                      <p className="text-yellow-600 text-xs lg:text-sm mt-1">
-                        You have reached the maximum quantity of {product.stock} {product.unit ? product.unit.toLowerCase() : 'units'}
-                      </p>
-                    )}
-                    {!quantityError && getCurrentCartQuantity() >= 0 && product.stock > 0 && (
-                      <p className="text-blue-600 text-xs lg:text-sm mt-1">
-                        {getCurrentCartQuantity()} {product.unit ? product.unit.toLowerCase() : 'units'} in the cart • {getAvailableQuantity()} more available
-                      </p>
-                    )}
-                    {!quantityError && getAvailableQuantity() === 0 && getCurrentCartQuantity() === 0 && (
-                      <p className="text-gray-500 text-xs lg:text-sm mt-1">
-                        Out of stock
+                    {!quantityError && getCurrentCartQuantity() > 0 && product.stock > 0 && (
+                      <p className="text-slate-600 text-xs lg:text-sm flex items-center gap-2">
+                        <span className="flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-600 rounded">
+                          <ShoppingCart className="w-3 h-3" />
+                          {getCurrentCartQuantity()} in cart
+                        </span>
+                        <span className="text-slate-400">•</span>
+                        <span>{getAvailableQuantity()} more available</span>
                       </p>
                     )}
                     {!quantityError && getAvailableQuantity() === 0 && getCurrentCartQuantity() > 0 && (
-                      <p className="text-orange-600 text-xs lg:text-sm mt-1">
+                      <p className="text-amber-600 text-xs lg:text-sm bg-amber-50 p-2 rounded-lg">
                         Maximum quantity reached ({getCurrentCartQuantity()}/{product.stock})
                       </p>
                     )}
@@ -400,31 +401,35 @@ const ProductDetailsModal = ({ product, isOpen, onClose, onAddToCart, cart = [],
                   <button
                     onClick={handleAddToCart}
                     disabled={product.stock === 0 || quantityError || getAvailableQuantity() === 0}
-                    className="w-full bg-[#48bb78] hover:bg-[#38a169] text-white py-2.5 lg:py-4 px-4 lg:px-6 rounded-lg lg:rounded-xl font-semibold lg:font-bold text-base lg:text-lg transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    className="btn-ripple w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 
+                      text-white py-3 lg:py-4 px-6 rounded-xl font-bold text-base lg:text-lg transition-all duration-300 
+                      disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed 
+                      flex items-center justify-center gap-2 shadow-lg hover:shadow-xl cursor-pointer"
                   >
-                    <ShoppingCart className="w-4 h-4 lg:w-5 lg:h-5" />
+                    <ShoppingCart className="w-5 h-5" />
                     <span>
                       {product.stock === 0 ? 'Out of Stock' : 
-                       getAvailableQuantity() === 0 ? 'Maximum quantity reached' :
-                       quantityError ? 'Cannot add to cart' : 'Add to Cart'}
+                       getAvailableQuantity() === 0 ? 'Maximum in Cart' :
+                       quantityError ? 'Fix Quantity Error' : 'Add to Cart'}
                     </span>
                   </button>
 
                   {/* Features */}
                   <div className="space-y-2 lg:space-y-3 pt-2 lg:pt-4 border-t border-gray-200">
                     <div className="flex items-center space-x-2 lg:space-x-3">
-                      <RotateCcw className="w-3 h-3 lg:w-5 lg:h-5 text-orange-600" />
                      <span className="text-xs lg:text-sm text-gray-600"></span>
                     </div>
                   </div>
 
                   {/* Description */}
-                  <div className="pt-2 lg:pt-4 border-t border-gray-200">
-                    <h3 className="font-medium text-gray-900 mb-1.5 lg:mb-2 text-sm lg:text-xl">Description</h3>
-                    <p className="text-xs lg:text-lg text-gray-600 leading-relaxed">
-                      {product.description}
-                    </p>
-                  </div>
+                  {product.description && (
+                    <div className="pt-4 border-t border-slate-200">
+                      <h3 className="font-semibold text-slate-800 mb-2 text-sm lg:text-base">Description</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {product.description}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
